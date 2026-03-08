@@ -1,0 +1,326 @@
+/* E-Judge Panel Root Variables & Core styling */
+
+.epanel-wrapper {
+    --bg-color: #0d1117;
+    /* Cyber Dark */
+    --card-bg: #161b22;
+    --text-main: #f9fafb;
+    --text-muted: #8b949e;
+    --primary: #58a6ff;
+    --success: #3fb950;
+    --danger: #f85149;
+    --border: #30363d;
+    --neon-green: #39d353;
+
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.epanel-error {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+}
+
+.epanel-error h2 {
+    color: var(--danger);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.epanel-debug {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--danger);
+    border: 1px dashed var(--danger);
+    border-radius: 8px;
+    font-family: monospace;
+}
+
+/* Header */
+.epanel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.epanel-header .header-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.epanel-header .header-title {
+    font-size: 1.35rem;
+    color: var(--primary);
+    font-weight: 800;
+}
+
+.epanel-header .panel-badge {
+    background: rgba(88, 166, 255, 0.15);
+    color: var(--primary);
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 1.5rem;
+    border: 1px solid rgba(88, 166, 255, 0.4);
+    box-shadow: 0 0 15px rgba(88, 166, 255, 0.2);
+}
+
+/* Main Area */
+.epanel-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.epanel-main .view-section {
+    display: none;
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+.epanel-main .view-section.active {
+    display: block;
+}
+
+/* Waiting View */
+.waiting-view .waiting-icon {
+    font-size: 4.5rem;
+    color: rgba(88, 166, 255, 0.5);
+    margin-bottom: 1.5rem;
+    animation: customPulse 2s infinite;
+}
+
+.waiting-view .waiting-text {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.waiting-view .waiting-subtext {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+/* Athlete Card */
+.athlete-card {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    border: 1px solid rgba(57, 211, 83, 0.5);
+    /* Neon green tint */
+    box-shadow: 0 0 30px rgba(57, 211, 83, 0.15);
+    border-radius: 24px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.athlete-card .athlete-name {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 0.25rem;
+    color: white;
+    letter-spacing: -0.5px;
+}
+
+.athlete-card .athlete-club {
+    font-size: 1rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Scoring Card */
+.scoring-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.scoring-card .input-label {
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.score-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #30363d;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--neon-green);
+    transition: all 0.2s ease;
+    outline: none;
+    font-family: 'Plus Jakarta Sans', monospace;
+}
+
+.score-input:focus {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 0 4px rgba(57, 211, 83, 0.2);
+    color: white;
+}
+
+.score-input::placeholder {
+    color: #30363d;
+}
+
+/* Quick deduction buttons */
+.quick-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.quick-buttons button {
+    flex: 1;
+    background: rgba(248, 81, 73, 0.05);
+    color: var(--danger);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+    border-radius: 12px;
+    padding: 0.85rem;
+    font-weight: 800;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.quick-buttons button:hover,
+.quick-buttons button:active {
+    background: var(--danger);
+    color: white;
+    transform: scale(0.95);
+    box-shadow: 0 4px 15px rgba(248, 81, 73, 0.4);
+}
+
+
+/* Send Button */
+.send-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--success), #2ea043);
+    color: #fff;
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: none;
+    font-size: 1.6rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+    text-transform: uppercase;
+    box-shadow: 0 8px 30px rgba(63, 185, 80, 0.3);
+    margin-top: 0.5rem;
+}
+
+.send-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 4px 15px rgba(63, 185, 80, 0.4);
+}
+
+/* Sent / Locked View */
+.sent-view .sent-icon {
+    font-size: 6.5rem;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 0 30px currentColor;
+}
+
+.sent-view .sent-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+}
+
+.sent-view .sent-score-display {
+    font-size: 7.5rem;
+    font-weight: 900;
+    margin: 1.5rem 0;
+    letter-spacing: -3px;
+    text-shadow: 0 4px 20px rgba(57, 211, 83, 0.4);
+    font-family: 'Plus Jakarta Sans', monospace;
+}
+
+.sent-view .sent-desc {
+    margin-bottom: 2.5rem;
+    font-size: 1.15rem;
+    color: var(--text-muted);
+}
+
+.edit-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    padding: 1.25rem 2.5rem;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-btn:hover,
+.edit-btn:active {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes customPulse {
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+        color: var(--primary);
+        text-shadow: 0 0 20px var(--primary);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

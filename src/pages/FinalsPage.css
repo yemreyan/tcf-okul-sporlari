@@ -1,0 +1,609 @@
+/* ==========================================================
+  FINALS PAGE STYLES - CLASSIC TCF OKULLAR UX
+========================================================== */
+:root {
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    --surface: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+    --border: rgba(0, 0, 0, 0.08);
+    --primary: #E30613;
+    --primary-hover: #B8050F;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gold: #fbbf24;
+    --silver: #9ca3af;
+    --bronze: #d97706;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.finals-page-wrapper {
+    padding: 32px 24px;
+    min-height: calc(100vh - 64px);
+    background: var(--bg-gradient);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text-primary);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.finals-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Base Card Style */
+.classic-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 24px;
+    border: 1px solid var(--border);
+}
+
+/* =========================================
+   HEADER & SELECTOR
+========================================= */
+.finals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.finals-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.finals-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(227, 6, 19, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+}
+
+.finals-icon i {
+    font-size: 28px;
+}
+
+.finals-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+
+.finals-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.finals-selector {
+    flex-grow: 1;
+    max-width: 500px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.classic-select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+
+.classic-select:focus,
+.classic-select:hover {
+    border-color: var(--primary);
+    background: white;
+}
+
+/* =========================================
+   ACTIONS BAR & TABS
+========================================= */
+.finals-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+
+.finals-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+    background: rgba(227, 6, 19, 0.05);
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(227, 6, 19, 0.2);
+}
+
+.finals-export-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+    color: white;
+}
+
+.excel-btn {
+    background: var(--success);
+}
+
+.excel-btn:hover {
+    background: #059669;
+}
+
+.pdf-btn {
+    background: var(--danger);
+}
+
+.pdf-btn:hover {
+    background: #dc2626;
+}
+
+.penalty-btn {
+    background: var(--warning);
+    color: #000;
+}
+
+.penalty-btn:hover {
+    background: #d97706;
+    color: white;
+}
+
+/* =========================================
+   CARDS & TABLES
+========================================= */
+.finals-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+}
+
+.card-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.badge {
+    background: rgba(227, 6, 19, 0.1);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.classic-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.classic-table th {
+    background: #f9fafb;
+    color: var(--text-muted);
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.05em;
+}
+
+.classic-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+
+.classic-table tbody tr:hover td {
+    background: #f9fafb;
+}
+
+.classic-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.th-center,
+.td-center {
+    text-align: center !important;
+}
+
+/* Medal Rows Highlight (Classic) */
+.row-gold td {
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.1) 0%, transparent 50%);
+}
+
+.row-gold td:first-child {
+    border-left: 4px solid var(--gold);
+}
+
+.row-gold .rank-cell {
+    color: var(--gold);
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+
+.row-silver td {
+    background: linear-gradient(90deg, rgba(156, 163, 175, 0.1) 0%, transparent 50%);
+}
+
+.row-silver td:first-child {
+    border-left: 4px solid var(--silver);
+}
+
+.row-silver .rank-cell {
+    color: var(--silver);
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+
+.row-bronze td {
+    background: linear-gradient(90deg, rgba(217, 119, 6, 0.1) 0%, transparent 50%);
+}
+
+.row-bronze td:first-child {
+    border-left: 4px solid var(--bronze);
+}
+
+.row-bronze .rank-cell {
+    color: var(--bronze);
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+
+.rank-col {
+    width: 60px;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.athlete-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.team-col {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.team-col-bold {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.score-main {
+    font-weight: 800;
+    font-size: 1.05rem;
+}
+
+.score-main.total {
+    color: var(--primary);
+    font-size: 1.2rem;
+}
+
+.score-breakdown {
+    font-size: 0.8rem;
+    margin-top: 4px;
+    color: var(--text-muted);
+}
+
+.d-val {
+    color: var(--purple);
+    font-weight: 700;
+    margin-right: 6px;
+}
+
+.e-val {
+    color: var(--success);
+    font-weight: 700;
+    margin-right: 6px;
+}
+
+.p-val {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.score-rank {
+    display: inline-block;
+    background: #f3f4f6;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-weight: 600;
+}
+
+.alet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.empty-state {
+    padding: 48px;
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.empty-state i {
+    font-size: 48px;
+    opacity: 0.5;
+    margin-bottom: 12px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(17, 24, 39, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 450px;
+    padding: 32px;
+    box-shadow: var(--shadow-lg);
+    animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: var(--danger);
+}
+
+.modal-body .form-group {
+    margin-bottom: 20px;
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.modal-body select,
+.modal-body input {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: #f9fafb;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.modal-body select:focus,
+.modal-body input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: white;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.btn-secondary {
+    flex: 1;
+    padding: 12px;
+    background: #f3f4f6;
+    color: var(--text-secondary);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-primary {
+    flex: 2;
+    padding: 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* Switches */
+.switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.switch input {
+    display: none;
+}
+
+.slider {
+    width: 44px;
+    height: 24px;
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    position: relative;
+    transition: 0.3s;
+}
+
+.slider:before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: white;
+    bottom: 3px;
+    left: 3px;
+    transition: 0.3s;
+}
+
+input:checked+.slider {
+    background-color: var(--success);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+.switch-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}

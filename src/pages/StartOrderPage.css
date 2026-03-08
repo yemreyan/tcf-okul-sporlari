@@ -1,0 +1,465 @@
+.order-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #F8FAFC;
+}
+
+/* Header */
+.page-header--bento {
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 0 0 1.5rem 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: -1rem;
+    z-index: 10;
+    position: relative;
+    border-bottom: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header__left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.back-btn--light {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-btn--light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-4px);
+}
+
+.text-white {
+    color: white !important;
+    margin: 0;
+}
+
+.text-white-50 {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 1.05rem;
+    margin-top: 0.5rem;
+}
+
+.btn-bento-primary {
+    background: #4F46E5;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bento-primary:hover:not(:disabled) {
+    background: #4338CA;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
+}
+
+.btn-bento-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Content */
+.bento-content {
+    padding: 3rem 2rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Controls */
+.bento-controls {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    flex-wrap: wrap;
+}
+
+.bento-control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #F8FAFC;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #E2E8F0;
+    flex: 1;
+    min-width: 250px;
+}
+
+.bento-control-group i {
+    color: #64748B;
+}
+
+.bento-select {
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1E293B;
+    width: 100%;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Workspace Configuration */
+.order-workspace {
+    display: flex;
+    gap: 2rem;
+    flex: 1;
+    min-height: 500px;
+}
+
+.order-panel {
+    background: white;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Left Panel: Unassigned */
+.unassigned-pool {
+    width: 380px;
+    flex-shrink: 0;
+}
+
+.panel-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #F1F5F9;
+    background: #F8FAFC;
+    border-radius: 1.25rem 1.25rem 0 0;
+}
+
+.panel-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    color: #0F172A;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.panel-header p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748B;
+}
+
+.count-badge {
+    background: #E0E7FF;
+    color: #4338CA;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-left: auto;
+}
+
+.pool-container {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+    background: #F8FAFC;
+    border-radius: 0 0 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.athlete-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 100%;
+}
+
+.pool-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #94A3B8;
+    background: rgba(241, 245, 249, 0.5);
+    border: 2px dashed #CBD5E1;
+    border-radius: 1rem;
+    font-weight: 500;
+    margin: auto 0;
+}
+
+/* Right Panel: Rotations Array */
+.rotations-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    align-content: start;
+}
+
+.rotation-card {
+    background: white;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+    transition: border-color 0.2s;
+}
+
+.rotation-card:hover {
+    border-color: #A5B4FC;
+}
+
+.rotation-header {
+    background: #EEF2FF;
+    padding: 1rem 1.5rem;
+    border-radius: 1.25rem 1.25rem 0 0;
+    border-bottom: 1px solid #E0E7FF;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rotation-header h3 {
+    margin: 0;
+    color: #3730A3;
+    font-size: 1.1rem;
+}
+
+.rotation-list {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: #F8FAFC;
+    border-radius: 0 0 1.25rem 1.25rem;
+    overflow-y: auto;
+}
+
+/* Athlete Cards that are draggable */
+.order-athlete-card {
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.order-athlete-card:hover {
+    border-color: #6366F1;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.order-athlete-card:active {
+    cursor: grabbing;
+    transform: scale(0.98);
+}
+
+.drag-handle {
+    color: #94A3B8;
+    cursor: grab;
+}
+
+.ath-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.ath-info strong {
+    color: #1E293B;
+    font-size: 0.95rem;
+}
+
+.ath-info small {
+    color: #64748B;
+    font-size: 0.75rem;
+}
+
+/* Assigned styled specifically for Rotations */
+.order-athlete-card.assigned {
+    background: #F0FDF4;
+    /* light green tint */
+    border-color: #BBF7D0;
+}
+
+.order-athlete-card.assigned:hover {
+    border-color: #22C55E;
+    box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.1);
+}
+
+.order-number {
+    width: 24px;
+    height: 24px;
+    background: #22C55E;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.drop-zone-end {
+    height: 30px;
+    border: 2px dashed transparent;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+}
+
+.rotation-list:hover .drop-zone-end {
+    border-color: #CBD5E1;
+}
+
+/* Utils */
+.spinner-small {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .order-workspace {
+        flex-direction: column;
+    }
+
+    .unassigned-pool {
+        width: 100%;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header--bento {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-radius: 0;
+    }
+
+    .bento-controls {
+        flex-direction: column;
+    }
+}
+
+/* Enhancements for Grouping / Start Order */
+.btn-random-assign {
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.btn-random-assign:hover:not(:disabled) {
+    background: #0284c7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.btn-random-assign:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #94a3b8;
+}
+
+.type-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+}
+
+.type-badge.takim,
+.type-badge.takım {
+    background: #E0E7FF;
+    color: #4338CA;
+    border: 1px solid #C7D2FE;
+}
+
+.type-badge.ferdi {
+    background: #FEF3C7;
+    color: #D97706;
+    border: 1px solid #FDE68A;
+}
+
+.btn-bento-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bento-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: white;
+}

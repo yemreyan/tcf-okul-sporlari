@@ -1,0 +1,5213 @@
+{
+  "arsiv" : false,
+  "baslangicTarihi" : "2026-02-27",
+  "bitisTarihi" : "2026-02-27",
+  "flashTrigger" : {
+    "adSoyad" : "Mine Su Temiz",
+    "aletAd" : "ATLAMA MASASI",
+    "d" : 0,
+    "e" : 0,
+    "kulup" : "Özel Su Damlası",
+    "pen" : 0,
+    "timestamp" : 1772195477467,
+    "total" : 0
+  },
+  "il" : "Düzce",
+  "isim" : "DÜZCE OKULLAR ARASI İL SEÇMESİ",
+  "kategoriler" : {
+    "kucuk_erkek" : {
+      "aletler" : [ {
+        "id" : "yer",
+        "name" : "Yer"
+      }, {
+        "id" : "kulplu",
+        "name" : "Kulplu Beygir"
+      }, {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      } ],
+      "gender" : "E",
+      "id" : "kucuk_erkek",
+      "name" : "Küçük Erkek"
+    },
+    "kucuk_kiz" : {
+      "aletler" : [ {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      }, {
+        "id" : "denge",
+        "name" : "Denge"
+      }, {
+        "id" : "yer",
+        "name" : "Yer"
+      } ],
+      "gender" : "K",
+      "id" : "kucuk_kiz",
+      "name" : "Küçük Kız"
+    },
+    "minik_a_erkek" : {
+      "aletler" : [ {
+        "id" : "yer",
+        "name" : "Yer"
+      }, {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      }, {
+        "id" : "mantar",
+        "name" : "Mantar"
+      } ],
+      "gender" : "E",
+      "id" : "minik_a_erkek",
+      "name" : "Minik A Erkek"
+    },
+    "minik_a_kiz" : {
+      "aletler" : [ {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      }, {
+        "id" : "yer",
+        "name" : "Yer"
+      } ],
+      "gender" : "K",
+      "id" : "minik_a_kiz",
+      "name" : "Minik A Kız"
+    },
+    "minik_b_erkek" : {
+      "aletler" : [ {
+        "id" : "yer",
+        "name" : "Yer"
+      }, {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      } ],
+      "gender" : "E",
+      "id" : "minik_b_erkek",
+      "name" : "Minik B Erkek"
+    },
+    "minik_b_kiz" : {
+      "aletler" : [ {
+        "id" : "atlama",
+        "name" : "Atlama Masası"
+      }, {
+        "id" : "yer",
+        "name" : "Yer"
+      } ],
+      "gender" : "K",
+      "id" : "minik_b_kiz",
+      "name" : "Minik B Kız"
+    }
+  },
+  "katilimcilar" : {
+    "-OmOUq0Sa9bDAHou2oS_" : true,
+    "1768313157433" : true,
+    "1772175062138" : true,
+    "1772175062382" : true,
+    "1772175063079" : true,
+    "1772175063809" : true,
+    "1772175064716" : true,
+    "1772175065418" : true,
+    "1772175066356" : true,
+    "1772175066387" : true,
+    "1772175066988" : true,
+    "1772175067489" : true,
+    "1772175068451" : true,
+    "1772175068798" : true,
+    "1772175069685" : true,
+    "1772175070912" : true,
+    "1772175071261" : true,
+    "1772175072166" : true,
+    "1772175072223" : true,
+    "1772175073557" : true,
+    "1772175073604" : true,
+    "1772175074056" : true,
+    "1772175075420" : true,
+    "1772175075901" : true,
+    "1772175076006" : true,
+    "1772175076493" : true,
+    "1772175077800" : true,
+    "1772175078394" : true,
+    "1772175078991" : true,
+    "1772175079650" : true,
+    "1772175079836" : true,
+    "1772175081009" : true,
+    "1772175081344" : true,
+    "1772175082177" : true,
+    "1772175082615" : true,
+    "1772175083116" : true,
+    "1772175384571" : true,
+    "1772175384878" : true,
+    "1772175386341" : true,
+    "1772175386886" : true,
+    "1772175387296" : true,
+    "1772175387762" : true,
+    "1772175388942" : true,
+    "1772175389144" : true,
+    "1772175390050" : true,
+    "1772175390353" : true,
+    "1772175391446" : true,
+    "1772175391564" : true,
+    "1772175392097" : true,
+    "1772175392719" : true,
+    "1772175393530" : true,
+    "1772175394234" : true,
+    "1772175395175" : true,
+    "1772175395908" : true,
+    "1772175396142" : true,
+    "1772175396490" : true,
+    "1772175397991" : true,
+    "1772175398627" : true,
+    "1772175399363" : true,
+    "1772175399930" : true,
+    "1772189832954" : true,
+    "1772189874714" : true,
+    "1772189902282" : true,
+    "1772189910178" : true,
+    "1772190059987" : true,
+    "1772190090432" : true,
+    "1772190107261" : true,
+    "1772190127815" : true,
+    "1772190150024" : true
+  },
+  "onayli_okullar" : {
+    "23 NISAN İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "AVNI AKYOL İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "AZMIMILLI İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "BAHAETTIN GÜÇLÜ İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Akçakoca"
+    },
+    "BILGI ORTAOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "CUMHURIYET ILKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "CUMHURIYET İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "DOĞANLI EŞREF TAŞHAN İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "FATIH İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "GÖNÜL YAVUZ İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Akçakoca"
+    },
+    "GÜMÜŞPINAR MEHMETÇIK İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "HAMIDIYE ŞEHIT ÖZGÜR IŞIK İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "KONURALP İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "NAMIK KEMAL İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "OSMANIYE İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Akçakoca"
+    },
+    "SARIÇÖKEK İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Kaynaşlı"
+    },
+    "TOKI MEHMET AKIF ERSOY İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "UZUN MUSTAFA İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL DÜZCE SAFIR KOLEJI ILKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL DÜZCE TED KOLEJI ILKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL DÜZCE TED KOLEJI ORTAOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL DÜZCE YILDIZLAR OKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL SU DAMLASI ILKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ÖZEL SU DAMLASI İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "İSMETPAŞA ORTAOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ŞEHIT METIN KUCUR İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    },
+    "ŞIRALIK VATAN İLKOKULU" : {
+      "city" : "Düzce",
+      "district" : "Merkez"
+    }
+  },
+  "puanlar" : {
+    "kucuk_kiz" : {
+      "atlama" : {
+        "-OmT95Gz6fohRth0hcoC" : {
+          "e1" : 1.4,
+          "e2" : 1.4,
+          "hareketler" : {
+            "m_1767967337736" : 1.6
+          }
+        },
+        "-OmT95j9vMP2kVZ6PtUu" : {
+          "e1" : 2.2,
+          "e2" : 2.6,
+          "hareketler" : {
+            "m_1767967337736" : 1.6
+          }
+        },
+        "-OmT97yPhrR43fbqHgUt" : {
+          "e1" : 2.6,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967337736" : 1.6
+          },
+          "tarafsiz" : 1
+        },
+        "-OmT99AXWc-u_vYTTsPu" : {
+          "e1" : 1.9,
+          "e2" : 2.1,
+          "hareketler" : {
+            "m_1767967337736" : 1.6
+          }
+        }
+      },
+      "denge" : {
+        "-OmOUq0Sa9bDAHou2oS_" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmOUq0Sa9bDAHou2oSa" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmOUq0Sa9bDAHou2oSb" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmOUq0Sa9bDAHou2oSc" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmT95Gz6fohRth0hcoC" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.5,
+          "hareketler" : {
+            "m_1767967356195" : 0.1,
+            "m_1767967356889" : 1,
+            "m_1767967357266" : 0.9,
+            "m_1767967357679" : 1,
+            "m_1767967385256" : 1,
+            "m_1767967385849" : 0.5,
+            "m_1767967386208" : 1,
+            "m_1767967409283" : 2.5,
+            "m_1767967422187" : 2
+          },
+          "sonuc" : 18.5
+        },
+        "-OmT95j9vMP2kVZ6PtUu" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 6.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.3,
+          "hareketler" : {
+            "m_1767967356195" : 0.1,
+            "m_1767967356889" : 1,
+            "m_1767967357266" : 0.9,
+            "m_1767967357679" : 1,
+            "m_1767967385256" : 1,
+            "m_1767967385849" : 0.5,
+            "m_1767967386208" : 1,
+            "m_1767967409283" : 2.5,
+            "m_1767967422187" : 2
+          },
+          "sonuc" : 16.7
+        },
+        "-OmT97yPhrR43fbqHgUt" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 6.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.1,
+          "hareketler" : {
+            "m_1767967356195" : 0.1,
+            "m_1767967356889" : 1,
+            "m_1767967357266" : 0.9,
+            "m_1767967357679" : 1,
+            "m_1767967385256" : 1,
+            "m_1767967385849" : 0.5,
+            "m_1767967386208" : 1,
+            "m_1767967409283" : 2.5,
+            "m_1767967422187" : 2
+          },
+          "sonuc" : 16.9
+        },
+        "-OmT99AXWc-u_vYTTsPu" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8.5,
+          "calc_E" : 4.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 5.2,
+          "hareketler" : {
+            "m_1767967356195" : 0.1,
+            "m_1767967356889" : 1,
+            "m_1767967357266" : 0.9,
+            "m_1767967357679" : 0,
+            "m_1767967385256" : 0.5,
+            "m_1767967385849" : 0.5,
+            "m_1767967386208" : 1,
+            "m_1767967409283" : 2.5,
+            "m_1767967422187" : 2
+          },
+          "sonuc" : 13.3
+        }
+      },
+      "yer" : {
+        "-OmOUq0Sa9bDAHou2oS_" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmOUq0Sa9bDAHou2oSa" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 3,
+          "calc_E" : 6,
+          "calc_MissingPen" : 4,
+          "durum" : "tamamlandi",
+          "e1" : 4,
+          "e2" : 4,
+          "hareketler" : {
+            "m_1767967470284" : 1,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5,
+            "m_1767967471641" : 1
+          },
+          "sonuc" : 5
+        },
+        "-OmOUq0Sa9bDAHou2oSb" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 6,
+          "calc_MissingPen" : 6,
+          "durum" : "tamamlandi",
+          "e1" : 4,
+          "e2" : 4,
+          "hareketler" : {
+            "m_1767967470284" : 1,
+            "m_1767967470577" : 0.5
+          },
+          "sonuc" : 1.5
+        },
+        "-OmOUq0Sa9bDAHou2oSc" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 3.5,
+          "calc_E" : 6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4,
+          "e2" : 4,
+          "hareketler" : {
+            "m_1767967470284" : 1,
+            "m_1767967470577" : 0.5,
+            "m_1767967470788" : 1,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5
+          },
+          "sonuc" : 9,
+          "tarafsiz" : 0.5
+        },
+        "-OmT95Gz6fohRth0hcoC" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.3,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967470284" : 2.5,
+            "m_1767967470577" : 1.5,
+            "m_1767967470788" : 1,
+            "m_1767967470984" : 0.5,
+            "m_1767967471185" : 1.5,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5,
+            "m_1767967471641" : 1,
+            "m_1767967471817" : 1
+          },
+          "sonuc" : 17.3
+        },
+        "-OmT95j9vMP2kVZ6PtUu" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "e2" : 2,
+          "hareketler" : {
+            "m_1767967470284" : 2.5,
+            "m_1767967470577" : 1.5,
+            "m_1767967470788" : 1,
+            "m_1767967470984" : 0.5,
+            "m_1767967471185" : 1.5,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5,
+            "m_1767967471641" : 1,
+            "m_1767967471817" : 1
+          },
+          "sonuc" : 17.9
+        },
+        "-OmT97yPhrR43fbqHgUt" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.95,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "e2" : 1.9,
+          "hareketler" : {
+            "m_1767967470284" : 2.5,
+            "m_1767967470577" : 1.5,
+            "m_1767967470788" : 1,
+            "m_1767967470984" : 0.5,
+            "m_1767967471185" : 1.5,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5,
+            "m_1767967471641" : 1,
+            "m_1767967471817" : 1
+          },
+          "sonuc" : 17.95
+        },
+        "-OmT99AXWc-u_vYTTsPu" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.3,
+          "e2" : 2.1,
+          "hareketler" : {
+            "m_1767967470284" : 2.5,
+            "m_1767967470577" : 1.5,
+            "m_1767967470788" : 1,
+            "m_1767967470984" : 0.5,
+            "m_1767967471185" : 1.5,
+            "m_1767967471328" : 0.5,
+            "m_1767967471493" : 0.5,
+            "m_1767967471641" : 1,
+            "m_1767967471817" : 1
+          },
+          "sonuc" : 17.8
+        }
+      }
+    },
+    "minik_a_erkek" : {
+      "atlama" : {
+        "-OmAHtPNRzCb2PBooZP4" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 6.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.1,
+          "e2" : 3.1,
+          "hareketler" : {
+            "m_1767967943479" : 5
+          },
+          "sonuc" : 11.9
+        },
+        "-OmAHtPNRzCb2PBooZP5" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP6" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP7" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 6.75,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.1,
+          "e2" : 3.4,
+          "hareketler" : {
+            "m_1767967943479" : 5
+          },
+          "sonuc" : 11.75
+        },
+        "-OmOUleupUnJeq7Qc0iA" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.15,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.8,
+          "e2" : 2.9,
+          "hareketler" : {
+            "m_1767967943479" : 10
+          },
+          "sonuc" : 17.15
+        },
+        "-OmTEiDoi86qy_vnymdk" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.4,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.5,
+          "e2" : 2.7,
+          "hareketler" : {
+            "m_1767967943479" : 10
+          },
+          "sonuc" : 17.4
+        },
+        "-OmTHRL5Cll-jfE1JgBm" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "e2" : 2.1,
+          "hareketler" : {
+            "m_1767967943479" : 10
+          },
+          "sonuc" : 18
+        },
+        "1772189902282" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 6.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.2,
+          "e2" : 3.4,
+          "hareketler" : {
+            "m_1767967943479" : 10
+          },
+          "sonuc" : 16.7
+        }
+      },
+      "mantar" : {
+        "-OmAHtPNRzCb2PBooZP4" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP5" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP6" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP7" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmOUleupUnJeq7Qc0iA" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 9.4,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 0.6,
+          "hareketler" : {
+            "m_1767967832891" : 1,
+            "m_1767967841851" : 1,
+            "m_1767967884910" : 1,
+            "m_1767967885232" : 1,
+            "m_1767967885698" : 1,
+            "m_1767967886140" : 1,
+            "m_1767967892680" : 1,
+            "m_1767967893460" : 1,
+            "m_1767967894990" : 2
+          },
+          "sonuc" : 19.4
+        },
+        "-OmTEiDoi86qy_vnymdk" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 9.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 0.4,
+          "hareketler" : {
+            "m_1767967832891" : 1,
+            "m_1767967841851" : 1,
+            "m_1767967884910" : 1,
+            "m_1767967885232" : 1,
+            "m_1767967885698" : 1,
+            "m_1767967886140" : 1,
+            "m_1767967892680" : 1,
+            "m_1767967893460" : 1,
+            "m_1767967894990" : 2
+          },
+          "sonuc" : 19.6
+        },
+        "-OmTHRL5Cll-jfE1JgBm" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 9.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 0.4,
+          "hareketler" : {
+            "m_1767967832891" : 1,
+            "m_1767967841851" : 1,
+            "m_1767967884910" : 1,
+            "m_1767967885232" : 1,
+            "m_1767967885698" : 1,
+            "m_1767967886140" : 1,
+            "m_1767967892680" : 1,
+            "m_1767967893460" : 0,
+            "m_1767967894990" : 2
+          },
+          "sonuc" : 18.6
+        },
+        "1772189902282" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 9.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 0.3,
+          "hareketler" : {
+            "m_1767967832891" : 1,
+            "m_1767967841851" : 1,
+            "m_1767967884910" : 1,
+            "m_1767967885232" : 1,
+            "m_1767967885698" : 1,
+            "m_1767967886140" : 1,
+            "m_1767967892680" : 1,
+            "m_1767967893460" : 1,
+            "m_1767967894990" : 2
+          },
+          "sonuc" : 19.7
+        }
+      },
+      "yer" : {
+        "-OmAHtPNRzCb2PBooZP4" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP5" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP6" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHtPNRzCb2PBooZP7" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmOUleupUnJeq7Qc0iA" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.1,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "hareketler" : {
+            "m_1767967738777" : 2.5,
+            "m_1767967739247" : 1,
+            "m_1767967739671" : 0.5,
+            "m_1767967740081" : 0.5,
+            "m_1767967740479" : 0.5,
+            "m_1767967740818" : 0.5,
+            "m_1767967741247" : 1,
+            "m_1767967742669" : 1,
+            "m_1767967761840" : 1,
+            "m_1767967762318" : 1.5
+          },
+          "sonuc" : 18.1
+        },
+        "-OmTEiDoi86qy_vnymdk" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 8.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.1,
+          "hareketler" : {
+            "m_1767967738777" : 2.5,
+            "m_1767967739247" : 1,
+            "m_1767967739671" : 0.5,
+            "m_1767967740081" : 0.5,
+            "m_1767967740479" : 0.5,
+            "m_1767967740818" : 0.5,
+            "m_1767967741247" : 1,
+            "m_1767967761840" : 1,
+            "m_1767967762318" : 1.5
+          },
+          "sonuc" : 17.9
+        },
+        "-OmTHRL5Cll-jfE1JgBm" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.1,
+          "hareketler" : {
+            "m_1767967738777" : 2.5,
+            "m_1767967739247" : 1,
+            "m_1767967739671" : 0.5,
+            "m_1767967740081" : 0.5,
+            "m_1767967740479" : 0.5,
+            "m_1767967740818" : 0.5,
+            "m_1767967741247" : 1,
+            "m_1767967742669" : 1,
+            "m_1767967761840" : 1,
+            "m_1767967762318" : 1.5
+          },
+          "sonuc" : 18.9
+        },
+        "1772189902282" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.4,
+          "hareketler" : {
+            "m_1767967738777" : 2.5,
+            "m_1767967739247" : 1,
+            "m_1767967739671" : 0.5,
+            "m_1767967740081" : 0.5,
+            "m_1767967740479" : 0.5,
+            "m_1767967740818" : 0.5,
+            "m_1767967741247" : 1,
+            "m_1767967742669" : 1,
+            "m_1767967761840" : 1,
+            "m_1767967762318" : 1.5
+          },
+          "sonuc" : 18.6
+        }
+      }
+    },
+    "minik_a_kiz" : {
+      "atlama" : {
+        "-OmOUm6trUocti2SSAA6" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 7.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.4,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 9.2
+        },
+        "-OmT967-Q145_tLz2P24" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 6.55,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.3,
+          "e2" : 3.6,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 8.15
+        },
+        "-OmT96tIWry46FeXs_th" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 7.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.6,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 9.1
+        },
+        "-OmT97GzftOlfRAjYKpP" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 8.05,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.8,
+          "e2" : 2.1,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 9.65
+        },
+        "-OmT98IawHwODovl2Vpq" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 6.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.4,
+          "e2" : 3.2,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 7.800000000000001,
+          "tarafsiz" : 0.5
+        },
+        "1772175384571" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 6.55,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.3,
+          "e2" : 3.6,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 8.15
+        },
+        "1772175387296" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.6,
+          "calc_E" : 7.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.4,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767966680686" : 1.6
+          },
+          "sonuc" : 9.2
+        },
+        "1772175392097" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 0,
+          "e2" : 0,
+          "hareketler" : {
+            "m_1767966680686" : 0
+          },
+          "sonuc" : 0
+        }
+      },
+      "yer" : {
+        "-OmAHu1usvgRrVz7XUDp" : {
+          "hareketler" : {
+            "m_1767966764807" : 0,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          }
+        },
+        "-OmOUm6trUocti2SSAA7" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmOUm6trUocti2SSAA8" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmOUm6trUocti2SSAA9" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766960" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "-OmOUm6trUocti2SSAAA" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766570" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmOUnF5qROW7m1zGrLh" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmOUnF5qROW7m1zGrLi" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 4,
+          "calc_E" : 5,
+          "calc_MissingPen" : 6,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 3
+        },
+        "-OmOUofO4makFlbDW17c" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmT96tIWry46FeXs_th" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 17.8
+        },
+        "-OmT97GzftOlfRAjYKpP" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 17.9
+        },
+        "-OmT98IawHwODovl2Vpq" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.25,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.5,
+          "e2" : 2,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 18.25
+        },
+        "1772175384571" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9.5,
+          "calc_E" : 7.85,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 2.3,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 17.35
+        },
+        "1772175384878" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 17.8
+        },
+        "1772175386341" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.25,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.5,
+          "e2" : 2,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 18.25
+        },
+        "1772175386886" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 0
+        },
+        "1772175387296" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 7.45,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.8,
+          "e2" : 2.3,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767261" : 1.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0.5,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 17.45
+        },
+        "1772175387762" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966764807" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175388942" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175389144" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966764807" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175390050" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175390353" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175391446" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175392097" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 7.9,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767966764807" : 0,
+            "m_1767966765714" : 0,
+            "m_1767966766180" : 0,
+            "m_1767966766570" : 0,
+            "m_1767966766960" : 0,
+            "m_1767966767261" : 0,
+            "m_1767966767598" : 0,
+            "m_1767966767890" : 0,
+            "m_1767966768257" : 0,
+            "m_1767966768611" : 0,
+            "m_1767966822311" : 0
+          },
+          "sonuc" : 0
+        },
+        "1772175392719" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766960" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175393530" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 3,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766570" : 1,
+            "m_1767966768257" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175394234" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966766180" : 1,
+            "m_1767966766570" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175395175" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 5.65,
+          "calc_MissingPen" : 4,
+          "durum" : "tamamlandi",
+          "e1" : 4.6,
+          "e2" : 4.1,
+          "hareketler" : {
+            "m_1767966764807" : 0.5,
+            "m_1767966765714" : 1,
+            "m_1767966766960" : 0.5,
+            "m_1767966767890" : 0,
+            "m_1767966768257" : 1,
+            "m_1767966768611" : 0.5,
+            "m_1767966822311" : 1.5
+          },
+          "sonuc" : 6.65
+        },
+        "1772175395908" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766180" : 1,
+            "m_1767966766960" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175396142" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966766960" : 0.5,
+            "m_1767966767598" : 1,
+            "m_1767966767890" : 0,
+            "m_1767966768611" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175396490" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175397991" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966766960" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175398627" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175399363" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767966765714" : 1,
+            "m_1767966766570" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175399930" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 0,
+          "e2" : 0,
+          "hareketler" : {
+            "m_1767966764807" : 0,
+            "m_1767966765714" : 0,
+            "m_1767966766180" : 0,
+            "m_1767966766570" : 0,
+            "m_1767966766960" : 0,
+            "m_1767966767261" : 0,
+            "m_1767966767598" : 0,
+            "m_1767966767890" : 0,
+            "m_1767966768257" : 0,
+            "m_1767966768611" : 0,
+            "m_1767966822311" : 0
+          },
+          "sonuc" : 0
+        }
+      }
+    },
+    "minik_b_erkek" : {
+      "atlama" : {
+        "-OmAHszZ0EXBE7-gej3U" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHszZ0EXBE7-gej3V" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHszZ0EXBE7-gej3W" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHsz_YW4KAv7ZSCiY" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmTEia777kxBDIi-des" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.3,
+          "e2" : 2.1,
+          "hareketler" : {
+            "m_1767967709653" : 5
+          },
+          "sonuc" : 12.8
+        },
+        "-OmTHQz8z3bK-O_yAF0S" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 8.05,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 1.9,
+          "hareketler" : {
+            "m_1767967709653" : 5
+          },
+          "sonuc" : 13.05
+        },
+        "-OmTM8V7xXnxf-vy2AYw" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 7.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.6,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967709653" : 5
+          },
+          "sonuc" : 12.5
+        },
+        "-OmTM8v82NwOzDCyS7fi" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 7.55,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.5,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967709653" : 5
+          },
+          "sonuc" : 12.55
+        },
+        "-OmTM9V-6fSy4X9nQJOT" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.1,
+          "e2" : 1.9,
+          "hareketler" : {
+            "m_1767967709653" : 5
+          },
+          "sonuc" : 13
+        }
+      },
+      "yer" : {
+        "-OmAHszZ0EXBE7-gej3U" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHszZ0EXBE7-gej3V" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHszZ0EXBE7-gej3W" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmAHsz_YW4KAv7ZSCiY" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmTEia777kxBDIi-des" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8.5,
+          "calc_E" : 6.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.3,
+          "hareketler" : {
+            "m_1767967617236" : 1,
+            "m_1767967617964" : 2,
+            "m_1767967622433" : 1,
+            "m_1767967622824" : 0.5,
+            "m_1767967623048" : 0.5,
+            "m_1767967623252" : 0.5,
+            "m_1767967623522" : 1,
+            "m_1767967647930" : 2
+          },
+          "sonuc" : 15.2
+        },
+        "-OmTHQz8z3bK-O_yAF0S" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 8.1,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "hareketler" : {
+            "m_1767967617236" : 1,
+            "m_1767967617964" : 2,
+            "m_1767967622433" : 1,
+            "m_1767967622824" : 0.5,
+            "m_1767967623048" : 0.5,
+            "m_1767967623252" : 0.5,
+            "m_1767967623522" : 1,
+            "m_1767967647184" : 0.5,
+            "m_1767967647649" : 1,
+            "m_1767967647930" : 2
+          },
+          "sonuc" : 18.1
+        },
+        "-OmTM8V7xXnxf-vy2AYw" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 8.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.4,
+          "hareketler" : {
+            "m_1767967617964" : 2,
+            "m_1767967622433" : 1,
+            "m_1767967622824" : 0.5,
+            "m_1767967623048" : 0.5,
+            "m_1767967623252" : 0.5,
+            "m_1767967623522" : 1,
+            "m_1767967647184" : 0.5,
+            "m_1767967647649" : 1,
+            "m_1767967647930" : 2
+          },
+          "sonuc" : 17.6
+        },
+        "-OmTM8v82NwOzDCyS7fi" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 7.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.5,
+          "hareketler" : {
+            "m_1767967617236" : 0,
+            "m_1767967617964" : 2,
+            "m_1767967622433" : 1,
+            "m_1767967622824" : 0.5,
+            "m_1767967623048" : 0.5,
+            "m_1767967623252" : 0.5,
+            "m_1767967623522" : 1,
+            "m_1767967647184" : 0.5,
+            "m_1767967647649" : 1,
+            "m_1767967647930" : 2
+          },
+          "sonuc" : 16.5
+        },
+        "-OmTM9V-6fSy4X9nQJOT" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 10,
+          "calc_E" : 6.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.1,
+          "hareketler" : {
+            "m_1767967617236" : 1,
+            "m_1767967617964" : 2,
+            "m_1767967622433" : 1,
+            "m_1767967622824" : 0.5,
+            "m_1767967623048" : 0.5,
+            "m_1767967623252" : 0.5,
+            "m_1767967623522" : 1,
+            "m_1767967647184" : 0.5,
+            "m_1767967647649" : 1,
+            "m_1767967647930" : 2
+          },
+          "sonuc" : 16.9
+        }
+      }
+    },
+    "minik_b_kiz" : {
+      "atlama" : {
+        "-OmOUpGjRnGyZI2R2XFh" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 6.95,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.9,
+          "e2" : 3.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 7.95
+        },
+        "-OmOUpepPKwiBL5ICxL8" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3,
+          "e2" : 3,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8
+        },
+        "-OmSQ8wAhQdQqgOoVXnT" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 6.3,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.6,
+          "e2" : 3.8,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 7.3
+        },
+        "-OmT00nWzqSRH2jynyXv" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 8.05,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 1.9,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 9.05
+        },
+        "-OmT93M2n7dmJAMVqrjv" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.6,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.5
+        },
+        "-OmT93p0PkUyoG13A0rC" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.4,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.6
+        },
+        "-OmT94CkGEZkpmwln_T-" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 8.15,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "e2" : 1.8,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 9.15
+        },
+        "-OmT94cKk_mwdDKlP8k5" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4,
+          "e2" : 4.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 6.9
+        },
+        "-OmT96YLNjAsGGYhOJff" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 8.15,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "e2" : 1.8,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 9.15
+        },
+        "-OmT97afpKqosTlHz2NP" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.85,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.1,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.85
+        },
+        "-OmT98njJD9M4add2bvo" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.1,
+          "e2" : 2.3,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.8
+        },
+        "-OmTCuh_w8kaW6cXM8Xh" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.8
+        },
+        "-OmTfosVwKM-Dx9n6k0Q" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4.5,
+          "e2" : 4.5,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 6.5
+        },
+        "-OmTfosVwKM-Dx9n6k0U" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 6.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.4,
+          "e2" : 3.4,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 7.6
+        },
+        "-OmTfrbDEvBWSh4gcm0x" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmTfrbDEvBWSh4gcm0y" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.1,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.9,
+          "e2" : 2.9,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.1
+        },
+        "-OmTfsIGGmd1Asvf-kxP" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.2,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.8,
+          "e2" : 2.8,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.2
+        },
+        "1772175062138" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.6,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.5
+        },
+        "1772175062382" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 8.15,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 1.9,
+          "e2" : 1.8,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 9.15
+        },
+        "1772175064716" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.1,
+          "e2" : 2.3,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.8
+        },
+        "1772175065418" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4,
+          "e2" : 4.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 6.9
+        },
+        "1772175068798" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 6.95,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.9,
+          "e2" : 3.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 7.95
+        },
+        "1772175070912" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.85,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.1,
+          "e2" : 2.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.85
+        },
+        "1772175072166" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 8.05,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2,
+          "e2" : 1.9,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 9.05
+        },
+        "1772175072223" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "e2" : 2.4,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.7
+        },
+        "1772175073557" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8.8
+        },
+        "1772175081344" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.8,
+          "e2" : 4.2,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 7
+        },
+        "1772189832954" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772189874714" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 7,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3,
+          "e2" : 3,
+          "hareketler" : {
+            "m_1767967148719" : 1
+          },
+          "sonuc" : 8
+        },
+        "1772189902282" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772190090432" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        }
+      },
+      "yer" : {
+        "-OmOUpepPKwiBL5ICxL8" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmSQ8wAhQdQqgOoVXnT" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "-OmT01z8ytqAA-N4Pd3s" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967185576" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmT96YLNjAsGGYhOJff" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8,
+          "calc_E" : 6.35,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.8,
+          "e2" : 3.5,
+          "hareketler" : {
+            "m_1767967182259" : 0,
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 14.35
+        },
+        "-OmTfosVwKM-Dx9n6k0Q" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfosVwKM-Dx9n6k0R" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfosVwKM-Dx9n6k0S" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "-OmTfosVwKM-Dx9n6k0T" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfosVwKM-Dx9n6k0U" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfosVwKM-Dx9n6k0V" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfrbDEvBWSh4gcm0w" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfrbDEvBWSh4gcm0x" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfrbDEvBWSh4gcm0y" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967186887" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "-OmTfrbDEvBWSh4gcm0z" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1768313157433" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772175062138" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8,
+          "calc_E" : 6.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 2.9,
+          "e2" : 3.3,
+          "hareketler" : {
+            "m_1767967182259" : 0,
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 14.9
+        },
+        "1772175062382" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8.5,
+          "calc_E" : 6.8,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.4,
+          "e2" : 3,
+          "hareketler" : {
+            "m_1767967182259" : 0.5,
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 15.3
+        },
+        "1772175063079" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175063809" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175064716" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 7,
+          "calc_E" : 6.5,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.4,
+          "e2" : 3.6,
+          "hareketler" : {
+            "m_1767967182259" : 0.5,
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186466" : 0,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 13.5
+        },
+        "1772175065418" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8,
+          "calc_E" : 6.05,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.7,
+          "e2" : 4.2,
+          "hareketler" : {
+            "m_1767967182259" : 0,
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967188567" : 0,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 14.05
+        },
+        "1772175066356" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175066387" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967187306" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175066988" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175067489" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175068451" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175068798" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 3,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967186062" : 1,
+            "m_1767967187306" : 0,
+            "m_1767967187712" : 1,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175069685" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175070912" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 6.6,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.4,
+          "hareketler" : {
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186466" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 15.6
+        },
+        "1772175072166" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 5,
+          "calc_E" : 5.9,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4.2,
+          "e2" : 4,
+          "hareketler" : {
+            "m_1767967184306" : 0.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 10.4,
+          "tarafsiz" : 0.5
+        },
+        "1772175072223" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 8,
+          "calc_E" : 5.699999999999999,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 4.4,
+          "e2" : 4.2,
+          "hareketler" : {
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 13.7
+        },
+        "1772175073557" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 9,
+          "calc_E" : 6.25,
+          "calc_MissingPen" : 0,
+          "durum" : "tamamlandi",
+          "e1" : 3.6,
+          "e2" : 3.9,
+          "hareketler" : {
+            "m_1767967184306" : 2.5,
+            "m_1767967185576" : 0.5,
+            "m_1767967186062" : 1,
+            "m_1767967186466" : 1,
+            "m_1767967186887" : 1,
+            "m_1767967187306" : 0.5,
+            "m_1767967187712" : 1,
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 14.75,
+          "tarafsiz" : 0.5
+        },
+        "1772175073604" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 2,
+          "calc_E" : 5.6,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e2" : 4.4,
+          "hareketler" : {
+            "m_1767967184306" : 0.5,
+            "m_1767967186466" : 1,
+            "m_1767967186887" : 0,
+            "m_1767967188132" : 0.5
+          },
+          "sonuc" : 0
+        },
+        "1772175074056" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175075420" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 0,
+          "e2" : 0,
+          "sonuc" : 0
+        },
+        "1772175075901" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175076006" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175076493" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0,
+          "tarafsiz" : 0.5
+        },
+        "1772175077800" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175078394" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175078991" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175079650" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175079836" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175081009" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 1.5,
+          "calc_E" : 5,
+          "calc_MissingPen" : 8,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "hareketler" : {
+            "m_1767967188132" : 0.5,
+            "m_1767967294146" : 1
+          },
+          "sonuc" : 0
+        },
+        "1772175081344" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175082177" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175082615" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772175083116" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 5,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "e1" : 5,
+          "e2" : 5,
+          "sonuc" : 0
+        },
+        "1772189832954" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772189910178" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772190059987" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772190090432" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772190107261" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        },
+        "1772190150024" : {
+          "calc_Bonus" : 0,
+          "calc_D" : 0,
+          "calc_E" : 0,
+          "calc_MissingPen" : 10,
+          "durum" : "tamamlandi",
+          "sonuc" : 0
+        }
+      }
+    }
+  },
+  "sehir" : "DÜZCE",
+  "sporcular" : {
+    "kucuk_kiz" : {
+      "-OmOUq0Sa9bDAHou2oS_" : {
+        "ad" : "ASLI",
+        "cinsiyet" : "kadin",
+        "id" : "-OmOUq0Sa9bDAHou2oS_",
+        "kategori" : "Küçük Kız",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "lisansNo" : "252681122-00084",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "soyad" : "UZUN",
+        "soyadAd" : "UZUN ASLI",
+        "tckn" : "32540452476",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUq0Sa9bDAHou2oSa" : {
+        "ad" : "ZEYNEP",
+        "adSoyad" : "ZEYNEP YIĞIT ",
+        "appId" : "-OmDNqr5LK4K6EIV40N-",
+        "dogumTarihi" : "2014-11-12",
+        "id" : "-OmOUq0Sa9bDAHou2oSa",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "lisansNo" : "252681122-00083",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "soyad" : "YIĞIT",
+        "soyadAd" : "YIĞIT ZEYNEP",
+        "tckn" : "30631704824",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUq0Sa9bDAHou2oSb" : {
+        "ad" : "EKIN",
+        "adSoyad" : "EKIN ÖZDEMIR ",
+        "appId" : "-OmDNqr5LK4K6EIV40N-",
+        "dogumTarihi" : "2014-09-24",
+        "id" : "-OmOUq0Sa9bDAHou2oSb",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "lisansNo" : "252681122-00082",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "soyad" : "ÖZDEMIR",
+        "soyadAd" : "ÖZDEMIR EKIN",
+        "tckn" : "34793402260",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUq0Sa9bDAHou2oSc" : {
+        "ad" : "NIL ASYA",
+        "adSoyad" : "NIL ASYA GÜLAY ",
+        "appId" : "-OmDNqr5LK4K6EIV40N-",
+        "dogumTarihi" : "2014-07-01",
+        "id" : "-OmOUq0Sa9bDAHou2oSc",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "lisansNo" : "252681122-00081",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ORTAOKULU",
+        "soyad" : "GÜLAY",
+        "soyadAd" : "GÜLAY NIL ASYA",
+        "tckn" : "23566939676",
+        "yarismaTuru" : "takim"
+      },
+      "-OmT95Gz6fohRth0hcoC" : {
+        "ad" : "ÖYKÜ",
+        "adSoyad" : "ÖYKÜ AKYILDIZ",
+        "appId" : "-OmT2W7AQw6buUv_iKLC",
+        "dogumTarihi" : "2015-03-22",
+        "id" : "-OmT95Gz6fohRth0hcoC",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "BILGI ORTAOKULU",
+        "lisansNo" : "8113104000918",
+        "okul" : "BILGI ORTAOKULU",
+        "soyad" : "AKYILDIZ",
+        "soyadAd" : "AKYILDIZ ÖYKÜ",
+        "tckn" : "12860297780",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT95j9vMP2kVZ6PtUu" : {
+        "ad" : "ECMAL ADA",
+        "adSoyad" : "ECMAL ADA İNAN",
+        "appId" : "-OmT1zOAQkxWVenzJWAb",
+        "dogumTarihi" : "2014-08-01",
+        "id" : "-OmT95j9vMP2kVZ6PtUu",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "BILGI ORTAOKULU",
+        "lisansNo" : "81-1304-000884",
+        "okul" : "BILGI ORTAOKULU",
+        "soyad" : "İNAN",
+        "soyadAd" : "İNAN ECMAL ADA",
+        "tckn" : "37840464174",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT97yPhrR43fbqHgUt" : {
+        "ad" : "CEYLIN FATMA",
+        "adSoyad" : "CEYLIN FATMA DAĞDELEN ",
+        "appId" : "-OmT1B5l51mjZuXPcu23",
+        "dogumTarihi" : "2015-08-15",
+        "id" : "-OmT97yPhrR43fbqHgUt",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "İSMETPAŞA ORTAOKULU",
+        "lisansNo" : "81-1304-000862",
+        "okul" : "İSMETPAŞA ORTAOKULU",
+        "soyad" : "DAĞDELEN",
+        "soyadAd" : "DAĞDELEN CEYLIN FATMA",
+        "tckn" : "51898808880",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT99AXWc-u_vYTTsPu" : {
+        "ad" : "FIRDEVS",
+        "adSoyad" : "FIRDEVS SÖNMEZ",
+        "appId" : "-OmT0phRUJj9zQhRwwWa",
+        "dogumTarihi" : "2015-04-29",
+        "id" : "-OmT99AXWc-u_vYTTsPu",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "İSMETPAŞA ORTAOKULU",
+        "lisansNo" : "81-1304-000863",
+        "okul" : "İSMETPAŞA ORTAOKULU",
+        "soyad" : "SÖNMEZ",
+        "soyadAd" : "SÖNMEZ FIRDEVS",
+        "tckn" : "33307616346",
+        "yarismaTuru" : "ferdi"
+      }
+    },
+    "minik_a_erkek" : {
+      "-OmAHtPNRzCb2PBooZP4" : {
+        "ad" : "RÜZGAR",
+        "adSoyad" : "RÜZGAR SARIGÜL ",
+        "appId" : "-Om8WgQDca-hSs7bkRQr",
+        "dogumTarihi" : "2017-06-12",
+        "id" : "-OmAHtPNRzCb2PBooZP4",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00091",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "SARIGÜL",
+        "soyadAd" : "SARIGÜL RÜZGAR",
+        "tckn" : "36838499044",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHtPNRzCb2PBooZP5" : {
+        "ad" : "HÜSEYIN ALP",
+        "adSoyad" : "HÜSEYIN ALP TEMEL ",
+        "appId" : "-Om8WgQDca-hSs7bkRQr",
+        "dogumTarihi" : "2017-03-23",
+        "id" : "-OmAHtPNRzCb2PBooZP5",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00054",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "TEMEL",
+        "soyadAd" : "TEMEL HÜSEYIN ALP",
+        "tckn" : "11947134178",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHtPNRzCb2PBooZP6" : {
+        "ad" : "MERCAN",
+        "adSoyad" : "MERCAN ÖZDEMIR ",
+        "appId" : "-Om8WgQDca-hSs7bkRQr",
+        "dogumTarihi" : "2017-03-29",
+        "id" : "-OmAHtPNRzCb2PBooZP6",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00052",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "ÖZDEMIR",
+        "soyadAd" : "ÖZDEMIR MERCAN",
+        "tckn" : "46123189284",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHtPNRzCb2PBooZP7" : {
+        "ad" : "ALI",
+        "adSoyad" : "ALI KESICI ",
+        "appId" : "-Om8WgQDca-hSs7bkRQr",
+        "dogumTarihi" : "2017-04-28",
+        "id" : "-OmAHtPNRzCb2PBooZP7",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00092",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "KESICI",
+        "soyadAd" : "KESICI ALI",
+        "tckn" : "28099790138",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUleupUnJeq7Qc0iA" : {
+        "ad" : "ERDEM METE",
+        "adSoyad" : "ERDEM METE ERGÜN",
+        "appId" : "-OmKGS9bfPB3dahs7oJq",
+        "dogumTarihi" : "2017-03-09",
+        "id" : "-OmOUleupUnJeq7Qc0iA",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00023",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "ERGÜN",
+        "soyadAd" : "ERGÜN ERDEM METE",
+        "tckn" : "40081390522",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTEiDoi86qy_vnymdk" : {
+        "ad" : "TARIK ZIYAD",
+        "adSoyad" : "TARIK ZIYAD GÜMÜŞ",
+        "appId" : "-OmTDQ8akI3o8Ub_JUSQ",
+        "dogumTarihi" : "2017-01-29",
+        "id" : "-OmTEiDoi86qy_vnymdk",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00033",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "GÜMÜŞ",
+        "soyadAd" : "GÜMÜŞ TARIK ZIYAD",
+        "tckn" : "29161754386",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTHRL5Cll-jfE1JgBm" : {
+        "ad" : "TARIK ZIYAD",
+        "adSoyad" : "TARIK ZIYAD AKYAZI",
+        "appId" : "-OmTEtn4-tQ3cBCLx4Ui",
+        "dogumTarihi" : "2015-10-24",
+        "id" : "-OmTHRL5Cll-jfE1JgBm",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞIRALIK VATAN İLKOKULU",
+        "lisansNo" : "252681122-00031",
+        "okul" : "ŞIRALIK VATAN İLKOKULU",
+        "soyad" : "AKYAZI",
+        "soyadAd" : "AKYAZI TARIK ZIYAD",
+        "tckn" : "53692775060",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmrzkAlzjwGC-BKi2en" : {
+        "ad" : "ARAS",
+        "adSoyad" : "ARAS USTA",
+        "appId" : "-OmUAlhfdlNLK4ytuw_H",
+        "dogumTarihi" : "2017-05-18",
+        "id" : "-OmrzkAlzjwGC-BKi2en",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "AZMIMILLI İLKOKULU",
+        "lisansNo" : "252681122-00111",
+        "okul" : "AZMIMILLI İLKOKULU",
+        "soyad" : "USTA",
+        "soyadAd" : "USTA ARAS",
+        "tckn" : "72835108992",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772189902282" : {
+        "ad" : "ARAS",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTjyGjveDldwtJEGQW",
+        "id" : 1772189902282,
+        "kategori" : "Minik A Erkek",
+        "kulup" : "AZMİMİLLİ İLKOKULU",
+        "lisansNo" : "1234",
+        "okul" : "AZMİMİLLİ İLKOKULU",
+        "soyad" : "USTA",
+        "soyadAd" : "USTA ARAS",
+        "tckn" : "",
+        "yarismaTuru" : "takim"
+      }
+    },
+    "minik_a_kiz" : {
+      "-OmAHu1usvgRrVz7XUDp" : {
+        "ad" : "ELIF",
+        "adSoyad" : "ELIF YIĞIT ",
+        "appId" : "-Om8T4-0sAO_ENN9Krt-",
+        "dogumTarihi" : "2017-01-23",
+        "id" : "-OmAHu1usvgRrVz7XUDp",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "2526811222-00053",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "YIĞIT",
+        "soyadAd" : "YIĞIT ELIF",
+        "tckn" : "32761634316",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHu1usvgRrVz7XUDq" : {
+        "ad" : "ZEYNEP",
+        "adSoyad" : "ZEYNEP AKBAŞ ",
+        "appId" : "-Om8T4-0sAO_ENN9Krt-",
+        "dogumTarihi" : "2017-11-27",
+        "id" : "-OmAHu1usvgRrVz7XUDq",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00095",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "AKBAŞ",
+        "soyadAd" : "AKBAŞ ZEYNEP",
+        "tckn" : "34036607728",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHu1usvgRrVz7XUDr" : {
+        "ad" : "AYŞE GÜNEŞ",
+        "adSoyad" : "AYŞE GÜNEŞ BASKIN ",
+        "appId" : "-Om8T4-0sAO_ENN9Krt-",
+        "dogumTarihi" : "2017-07-29",
+        "id" : "-OmAHu1usvgRrVz7XUDr",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00057",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "BASKIN",
+        "soyadAd" : "BASKIN AYŞE GÜNEŞ",
+        "tckn" : "31922474440",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHu1usvgRrVz7XUDs" : {
+        "ad" : "YAĞMUR ECE",
+        "adSoyad" : "YAĞMUR ECE KURNAZ ",
+        "appId" : "-Om8T4-0sAO_ENN9Krt-",
+        "dogumTarihi" : "2017-06-28",
+        "id" : "-OmAHu1usvgRrVz7XUDs",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00101",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "KURNAZ",
+        "soyadAd" : "KURNAZ YAĞMUR ECE",
+        "tckn" : "46408180180",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA4" : {
+        "ad" : "ASYA",
+        "adSoyad" : "ASYA ŞIMŞEK",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2017-01-05",
+        "id" : "-OmOUm6trUocti2SSAA4",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00012",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "ŞIMŞEK",
+        "soyadAd" : "ŞIMŞEK ASYA",
+        "tckn" : "34402579598",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA5" : {
+        "ad" : "AYŞE",
+        "adSoyad" : "AYŞE ULCAY",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2016-10-20",
+        "id" : "-OmOUm6trUocti2SSAA5",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00065",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "ULCAY",
+        "soyadAd" : "ULCAY AYŞE",
+        "tckn" : "38347447752",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA6" : {
+        "ad" : "HIRANUR",
+        "adSoyad" : "HIRANUR ŞAHINŞAH",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2017-03-07",
+        "id" : "-OmOUm6trUocti2SSAA6",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00024",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "ŞAHINŞAH",
+        "soyadAd" : "ŞAHINŞAH HIRANUR",
+        "tckn" : "47602139844",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA7" : {
+        "ad" : "İNCI",
+        "adSoyad" : "İNCI AYKAN",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2015-11-22",
+        "id" : "-OmOUm6trUocti2SSAA7",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00014",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "AYKAN",
+        "soyadAd" : "AYKAN İNCI",
+        "tckn" : "47380148274",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA8" : {
+        "ad" : "IRMAK",
+        "adSoyad" : "IRMAK HASANEFENDIOĞLU",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2017-07-24",
+        "id" : "-OmOUm6trUocti2SSAA8",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00010",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "HASANEFENDIOĞLU",
+        "soyadAd" : "HASANEFENDIOĞLU IRMAK",
+        "tckn" : "53239271574",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAA9" : {
+        "ad" : "SARE MINA",
+        "adSoyad" : "SARE MINA GÜNDOĞDU",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2017-08-25",
+        "id" : "-OmOUm6trUocti2SSAA9",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00011",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "GÜNDOĞDU",
+        "soyadAd" : "GÜNDOĞDU SARE MINA",
+        "tckn" : "39308261226",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUm6trUocti2SSAAA" : {
+        "ad" : "SU ALYA",
+        "adSoyad" : "SU ALYA VAR",
+        "appId" : "-OmKFlt9k4yX4ecPz7e3",
+        "dogumTarihi" : "2017-06-02",
+        "id" : "-OmOUm6trUocti2SSAAA",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00013",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "VAR",
+        "soyadAd" : "VAR SU ALYA",
+        "tckn" : "70984170624",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUnF5qROW7m1zGrLh" : {
+        "ad" : "BERIL ESLEM",
+        "adSoyad" : "BERIL ESLEM AKYÜZ",
+        "appId" : "-OmJLu9PFcpn10nXt7iW",
+        "dogumTarihi" : "2017-07-03",
+        "id" : "-OmOUnF5qROW7m1zGrLh",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE SAFIR KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00001",
+        "okul" : "ÖZEL DÜZCE SAFIR KOLEJI ILKOKULU",
+        "soyad" : "AKYÜZ",
+        "soyadAd" : "AKYÜZ BERIL ESLEM",
+        "tckn" : "41215353284",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmOUnF5qROW7m1zGrLi" : {
+        "ad" : "MIHRIMAH MÜMINE",
+        "adSoyad" : "MIHRIMAH MÜMINE TORLAK",
+        "appId" : "-OmJLu9PFcpn10nXt7iW",
+        "dogumTarihi" : "2016-10-05",
+        "id" : "-OmOUnF5qROW7m1zGrLi",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE SAFIR KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00002",
+        "okul" : "ÖZEL DÜZCE SAFIR KOLEJI ILKOKULU",
+        "soyad" : "TORLAK",
+        "soyadAd" : "TORLAK MIHRIMAH MÜMINE",
+        "tckn" : "27523135446",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmOUo9ppiRfFwKF0obJ" : {
+        "ad" : "ELİFSU",
+        "adSoyad" : "ELİFSU BEKCİ",
+        "appId" : "-OmJ3JH2hOXTTs0BE-xU",
+        "dogumTarihi" : "2016-03-08",
+        "id" : "-OmOUo9ppiRfFwKF0obJ",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "HAMIDIYE ŞEHIT ÖZGÜR IŞIK İLKOKULU",
+        "lisansNo" : "252681122-00016",
+        "okul" : "HAMIDIYE ŞEHIT ÖZGÜR IŞIK İLKOKULU",
+        "soyad" : "BEKCİ",
+        "soyadAd" : "BEKCİ ELİFSU",
+        "tckn" : "18026804694",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmOUofO4makFlbDW17a" : {
+        "ad" : "SALIHA DURU",
+        "adSoyad" : "SALIHA DURU KILIÇ",
+        "appId" : "-OmIQtYa_BhSweBqBHih",
+        "dogumTarihi" : "2026-02-25",
+        "id" : "-OmOUofO4makFlbDW17a",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI İLKOKULU",
+        "lisansNo" : "252681122-00073",
+        "okul" : "ÖZEL SU DAMLASI İLKOKULU",
+        "soyad" : "KILIÇ",
+        "soyadAd" : "KILIÇ SALIHA DURU",
+        "tckn" : "47062159284",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUofO4makFlbDW17b" : {
+        "ad" : "ELIZ",
+        "adSoyad" : "ELIZ AKBAŞ",
+        "appId" : "-OmIQtYa_BhSweBqBHih",
+        "dogumTarihi" : "2016-04-15",
+        "id" : "-OmOUofO4makFlbDW17b",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI İLKOKULU",
+        "lisansNo" : "252681122-00071",
+        "okul" : "ÖZEL SU DAMLASI İLKOKULU",
+        "soyad" : "AKBAŞ",
+        "soyadAd" : "AKBAŞ ELIZ",
+        "tckn" : "19613071222",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUofO4makFlbDW17c" : {
+        "ad" : "İPEK",
+        "adSoyad" : "İPEK AÇARI",
+        "appId" : "-OmIQtYa_BhSweBqBHih",
+        "dogumTarihi" : "2016-03-22",
+        "id" : "-OmOUofO4makFlbDW17c",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI İLKOKULU",
+        "lisansNo" : "252681122-00072",
+        "okul" : "ÖZEL SU DAMLASI İLKOKULU",
+        "soyad" : "AÇARI",
+        "soyadAd" : "AÇARI İPEK",
+        "tckn" : "24091921884",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUofO4makFlbDW17d" : {
+        "ad" : "ZEYNEP MEVA",
+        "adSoyad" : "ZEYNEP MEVA ÖZ",
+        "appId" : "-OmIQtYa_BhSweBqBHih",
+        "dogumTarihi" : "2017-01-20",
+        "id" : "-OmOUofO4makFlbDW17d",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI İLKOKULU",
+        "lisansNo" : "252681122-00074",
+        "okul" : "ÖZEL SU DAMLASI İLKOKULU",
+        "soyad" : "ÖZ",
+        "soyadAd" : "ÖZ ZEYNEP MEVA",
+        "tckn" : "22213986070",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUqw0NXT9DzeKecRa" : {
+        "ad" : "BEYZA",
+        "adSoyad" : "BEYZA YILMAZ",
+        "appId" : "-OmD65C_F3BoYxrwXzcZ",
+        "dogumTarihi" : "2017-06-05",
+        "id" : "-OmOUqw0NXT9DzeKecRa",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT METIN KUCUR İLKOKULU",
+        "lisansNo" : "252681122- 00067",
+        "okul" : "ŞEHIT METIN KUCUR İLKOKULU",
+        "soyad" : "YILMAZ",
+        "soyadAd" : "YILMAZ BEYZA",
+        "tckn" : "26776849346",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmOUqw0NXT9DzeKecRb" : {
+        "ad" : "ERVA",
+        "adSoyad" : "ERVA YILMAZ",
+        "appId" : "-OmD65C_F3BoYxrwXzcZ",
+        "dogumTarihi" : "2017-06-05",
+        "id" : "-OmOUqw0NXT9DzeKecRb",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT METIN KUCUR İLKOKULU",
+        "lisansNo" : "252681122- 00068",
+        "okul" : "ŞEHIT METIN KUCUR İLKOKULU",
+        "soyad" : "YILMAZ",
+        "soyadAd" : "YILMAZ ERVA",
+        "tckn" : "26719851290",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT967-Q145_tLz2P24" : {
+        "ad" : "BEGÜM",
+        "adSoyad" : "BEGÜM OKUMUŞ",
+        "appId" : "-OmT1zGjzyNqe9sxAaI6",
+        "dogumTarihi" : "2017-01-10",
+        "id" : "-OmT967-Q145_tLz2P24",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00107",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "OKUMUŞ",
+        "soyadAd" : "OKUMUŞ BEGÜM",
+        "tckn" : "19172926322",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT96tIWry46FeXs_th" : {
+        "ad" : "ASYA",
+        "adSoyad" : "ASYA FIDAN",
+        "appId" : "-OmT1tUMx0YCnUSdUoLi",
+        "dogumTarihi" : "2017-09-11",
+        "id" : "-OmT96tIWry46FeXs_th",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00060",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "FIDAN",
+        "soyadAd" : "FIDAN ASYA",
+        "tckn" : "25708868240",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT97GzftOlfRAjYKpP" : {
+        "ad" : "MINE SU",
+        "adSoyad" : "MINE SU TEMIZ",
+        "appId" : "-OmT1fNqlmS_yuF2JOC-",
+        "dogumTarihi" : "2017-10-02",
+        "id" : "-OmT97GzftOlfRAjYKpP",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "AZMIMILLI İLKOKULU",
+        "lisansNo" : "252681122-00106",
+        "okul" : "AZMIMILLI İLKOKULU",
+        "soyad" : "TEMIZ",
+        "soyadAd" : "TEMIZ MINE SU",
+        "tckn" : "60295556378",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT98IawHwODovl2Vpq" : {
+        "ad" : "ASYA NUR",
+        "adSoyad" : "ASYA NUR ERGÜN ",
+        "appId" : "-OmT1Ak3ii37mauvwXSx",
+        "dogumTarihi" : "2017-11-08",
+        "id" : "-OmT98IawHwODovl2Vpq",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET ILKOKULU",
+        "lisansNo" : "252681122-00090",
+        "okul" : "CUMHURIYET ILKOKULU",
+        "soyad" : "ERGÜN",
+        "soyadAd" : "ERGÜN ASYA NUR",
+        "tckn" : "322",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175384571" : {
+        "ad" : "BEGÜM",
+        "cinsiyet" : "kadin",
+        "id" : 1772175384571,
+        "kategori" : "Minik A Kız",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "d1",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "OKUMUŞ",
+        "soyadAd" : "OKUMUŞ BEGÜM",
+        "tckn" : "d1",
+        "yarismaTuru" : "takim"
+      },
+      "1772175384878" : {
+        "ad" : "Asya",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsa1lCIt_P071ht8k",
+        "id" : 1772175384878,
+        "kategori" : "Minik A Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : "d2",
+        "okul" : "23 Nisan İO",
+        "soyad" : "Fidan",
+        "soyadAd" : "FIDAN ASYA",
+        "tckn" : "d2",
+        "yarismaTuru" : "takim"
+      },
+      "1772175386341" : {
+        "ad" : "Asyanur",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsaBh8rMI0z7Yf7uc",
+        "id" : 1772175386341,
+        "kategori" : "Minik A Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : "d3",
+        "okul" : "23 Nisan İO",
+        "soyad" : "Ergün",
+        "soyadAd" : "ERGÜN ASYANUR",
+        "tckn" : "d3",
+        "yarismaTuru" : "takim"
+      },
+      "1772175386886" : {
+        "ad" : "Aslı Elisa",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsaPXZDB2kMuIVkd-",
+        "id" : 1772175386886,
+        "kategori" : "Minik A Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : "d4",
+        "okul" : "23 Nisan İO",
+        "soyad" : "İlhan",
+        "soyadAd" : "İLHAN ASLI ELISA",
+        "tckn" : "d4",
+        "yarismaTuru" : "takim"
+      },
+      "1772175387296" : {
+        "ad" : "HİRANUR",
+        "cinsiyet" : "kadin",
+        "id" : 1772175387296,
+        "kategori" : "Minik A Kız",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "d5",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "ŞAHİNSAH",
+        "soyadAd" : "ŞAHİNSAH HİRANUR",
+        "tckn" : "d5",
+        "yarismaTuru" : "takim"
+      },
+      "1772175387762" : {
+        "ad" : "Ayşe",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsahQRYmHmI9cWITS",
+        "id" : 1772175387762,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : "d6",
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Ulcay",
+        "soyadAd" : "ULCAY AYŞE",
+        "tckn" : "d6",
+        "yarismaTuru" : "takim"
+      },
+      "1772175388942" : {
+        "ad" : "Asya",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsb0N20A-DzTWhY_w",
+        "id" : 1772175388942,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : "d8",
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Şimşek",
+        "soyadAd" : "ŞIMŞEK ASYA",
+        "tckn" : "d8",
+        "yarismaTuru" : "takim"
+      },
+      "1772175389144" : {
+        "ad" : "İpek",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsaqrlM9TW_WOoKqs",
+        "id" : 1772175389144,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : "d7",
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Atikoğlu",
+        "soyadAd" : "ATIKOĞLU İPEK",
+        "tckn" : "d7",
+        "yarismaTuru" : "takim"
+      },
+      "1772175390050" : {
+        "ad" : "Saliha Duru",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbA0M2wG4TWFNiM0",
+        "id" : 1772175390050,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : "d9",
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Kılıç",
+        "soyadAd" : "KILIÇ SALIHA DURU",
+        "tckn" : "d9",
+        "yarismaTuru" : "takim"
+      },
+      "1772175390353" : {
+        "ad" : "Eliz",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbJKagxfyAaOA2Jj",
+        "id" : 1772175390353,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : "d10",
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Akbaş",
+        "soyadAd" : "AKBAŞ ELIZ",
+        "tckn" : "d10",
+        "yarismaTuru" : "takim"
+      },
+      "1772175391446" : {
+        "ad" : "Zeynep Meva",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbTJa-nrvKmUaToy",
+        "id" : 1772175391446,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : "d11",
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Öz",
+        "soyadAd" : "ÖZ ZEYNEP MEVA",
+        "tckn" : "d11",
+        "yarismaTuru" : "takim"
+      },
+      "1772175391564" : {
+        "ad" : "İpek",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbcK6ezUh6yguyAb",
+        "id" : 1772175391564,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : "d12",
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Ağarı",
+        "soyadAd" : "AĞARI İPEK",
+        "tckn" : "d12",
+        "yarismaTuru" : "takim"
+      },
+      "1772175392097" : {
+        "ad" : "Mine Su",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbm9WCvhrfr5Vqm8",
+        "id" : 1772175392097,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : "d13",
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Temiz",
+        "soyadAd" : "TEMIZ MINE SU",
+        "tckn" : "d13",
+        "yarismaTuru" : "takim"
+      },
+      "1772175392719" : {
+        "ad" : "Beyza",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsbwAb_V6DnqHrlws",
+        "id" : 1772175392719,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Fatih İO",
+        "lisansNo" : "d14",
+        "okul" : "Fatih İO",
+        "soyad" : "Yılmaz",
+        "soyadAd" : "YILMAZ BEYZA",
+        "tckn" : "d14",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175393530" : {
+        "ad" : "Erva",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsc41AH0JkZ7MaB8o",
+        "id" : 1772175393530,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Fatih İO",
+        "lisansNo" : "d15",
+        "okul" : "Fatih İO",
+        "soyad" : "Yılmaz",
+        "soyadAd" : "YILMAZ ERVA",
+        "tckn" : "d15",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175394234" : {
+        "ad" : "Zeynep Hatice",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSscEVcO-x71vwU6oH",
+        "id" : 1772175394234,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Sarıgöbek İO",
+        "lisansNo" : "d16",
+        "okul" : "Sarıgöbek İO",
+        "soyad" : "Ünaldı",
+        "soyadAd" : "ÜNALDI ZEYNEP HATICE",
+        "tckn" : "d16",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175395175" : {
+        "ad" : "İlkra",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSscNlcBlYnhYW7hSS",
+        "id" : 1772175395175,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Kaynaslı Cumhuriyet İO",
+        "lisansNo" : "d17",
+        "okul" : "Kaynaslı Cumhuriyet İO",
+        "soyad" : "Aksu",
+        "soyadAd" : "AKSU İLKRA",
+        "tckn" : "d17",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175395908" : {
+        "ad" : "Nehir",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSscZTcecz9HhDyj1Y",
+        "id" : 1772175395908,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Toki M. Akif Ersoy İO",
+        "lisansNo" : "d18",
+        "okul" : "Toki M. Akif Ersoy İO",
+        "soyad" : "Karaaslan",
+        "soyadAd" : "KARAASLAN NEHIR",
+        "tckn" : "d18",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175396142" : {
+        "ad" : "Bade",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsciGjNbmNYtDIo9t",
+        "id" : 1772175396142,
+        "kategori" : "Minik A Kız",
+        "kulup" : "Namık Kemal İO",
+        "lisansNo" : "d19",
+        "okul" : "Namık Kemal İO",
+        "soyad" : "Aydın",
+        "soyadAd" : "AYDIN BADE",
+        "tckn" : "d19",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175396490" : {
+        "ad" : "Elif",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSscrn7D6LWUK0vCNX",
+        "id" : 1772175396490,
+        "kategori" : "Minik A Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : "d20",
+        "okul" : "TED Koleji",
+        "soyad" : "Yiğit",
+        "soyadAd" : "YIĞIT ELIF",
+        "tckn" : "d20",
+        "yarismaTuru" : "takim"
+      },
+      "1772175397991" : {
+        "ad" : "Zeynep",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsd0viL13Ay1-PsVK",
+        "id" : 1772175397991,
+        "kategori" : "Minik A Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : "d21",
+        "okul" : "TED Koleji",
+        "soyad" : "Akbaş",
+        "soyadAd" : "AKBAŞ ZEYNEP",
+        "tckn" : "d21",
+        "yarismaTuru" : "takim"
+      },
+      "1772175398627" : {
+        "ad" : "Ayşe Güneş",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsdBUeaxtgeHQdGHx",
+        "id" : 1772175398627,
+        "kategori" : "Minik A Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : "d22",
+        "okul" : "TED Koleji",
+        "soyad" : "Baskın",
+        "soyadAd" : "BASKIN AYŞE GÜNEŞ",
+        "tckn" : "d22",
+        "yarismaTuru" : "takim"
+      },
+      "1772175399363" : {
+        "ad" : "Yağmur Ece",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsdMbHjeze2cvh0sd",
+        "id" : 1772175399363,
+        "kategori" : "Minik A Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : "d23",
+        "okul" : "TED Koleji",
+        "soyad" : "Kurnaz",
+        "soyadAd" : "KURNAZ YAĞMUR ECE",
+        "tckn" : "d23",
+        "yarismaTuru" : "takim"
+      },
+      "1772175399930" : {
+        "ad" : "Mina Talya",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSsdWan1fhLUOUMhFh",
+        "id" : 1772175399930,
+        "kategori" : "Minik A Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : "d24",
+        "okul" : "TED Koleji",
+        "soyad" : "Güven",
+        "soyadAd" : "GÜVEN MINA TALYA",
+        "tckn" : "d24",
+        "yarismaTuru" : "takim"
+      }
+    },
+    "minik_b_erkek" : {
+      "-OmAHszZ0EXBE7-gej3U" : {
+        "ad" : "YIĞIT",
+        "adSoyad" : "YIĞIT ARICI ",
+        "appId" : "-Om8ZZEJMXD4y5UEXidH",
+        "dogumTarihi" : "2018-12-21",
+        "id" : "-OmAHszZ0EXBE7-gej3U",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00096",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "ARICI",
+        "soyadAd" : "ARICI YIĞIT",
+        "tckn" : "29527742064",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHszZ0EXBE7-gej3V" : {
+        "ad" : "KAĞAN",
+        "adSoyad" : "KAĞAN DEMIRCAN ",
+        "appId" : "-Om8ZZEJMXD4y5UEXidH",
+        "dogumTarihi" : "2018-11-28",
+        "id" : "-OmAHszZ0EXBE7-gej3V",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00094",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "DEMIRCAN",
+        "soyadAd" : "DEMIRCAN KAĞAN",
+        "tckn" : "67765278266",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHszZ0EXBE7-gej3W" : {
+        "ad" : "ÇAĞAN",
+        "adSoyad" : "ÇAĞAN ÇOTAK ",
+        "appId" : "-Om8ZZEJMXD4y5UEXidH",
+        "dogumTarihi" : "2018-01-24",
+        "id" : "-OmAHszZ0EXBE7-gej3W",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00097",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "ÇOTAK",
+        "soyadAd" : "ÇOTAK ÇAĞAN",
+        "tckn" : "32578639856",
+        "yarismaTuru" : "takim"
+      },
+      "-OmAHsz_YW4KAv7ZSCiY" : {
+        "ad" : "YUSUF ASAF",
+        "adSoyad" : "YUSUF ASAF BAYRAK ",
+        "appId" : "-Om8ZZEJMXD4y5UEXidH",
+        "dogumTarihi" : "2018-08-13",
+        "id" : "-OmAHsz_YW4KAv7ZSCiY",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "lisansNo" : "252681122-00093",
+        "okul" : "ÖZEL DÜZCE TED KOLEJI ILKOKULU",
+        "soyad" : "BAYRAK",
+        "soyadAd" : "BAYRAK YUSUF ASAF",
+        "tckn" : "14472054300",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTEia777kxBDIi-des" : {
+        "ad" : "SIRAÇ",
+        "adSoyad" : "SIRAÇ NURTEN",
+        "appId" : "-OmTDlPXoIv-axUQd4dB",
+        "dogumTarihi" : "2019-01-08",
+        "id" : "-OmTEia777kxBDIi-des",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "NAMIK KEMAL İLKOKULU",
+        "lisansNo" : "252681122-00029",
+        "okul" : "NAMIK KEMAL İLKOKULU",
+        "soyad" : "NURTEN",
+        "soyadAd" : "NURTEN SIRAÇ",
+        "tckn" : "12383313554",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTHQz8z3bK-O_yAF0S" : {
+        "ad" : "DENIZ ALI",
+        "adSoyad" : "DENIZ ALI BEŞEL",
+        "appId" : "-OmTH0KeDxVdHwPda2Fe",
+        "dogumTarihi" : "2019-08-05",
+        "id" : "-OmTHQz8z3bK-O_yAF0S",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00032",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "BEŞEL",
+        "soyadAd" : "BEŞEL DENIZ ALI",
+        "tckn" : "40273384810",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTM8V7xXnxf-vy2AYw" : {
+        "ad" : "ALI EMIN",
+        "adSoyad" : "ALI EMIN DEMIR",
+        "appId" : "-OmTLfYjrmWS0Y-XX0SE",
+        "dogumTarihi" : "2019-06-02",
+        "id" : "-OmTM8V7xXnxf-vy2AYw",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "GÜMÜŞPINAR MEHMETÇIK İLKOKULU",
+        "lisansNo" : "252681122-00027",
+        "okul" : "GÜMÜŞPINAR MEHMETÇIK İLKOKULU",
+        "soyad" : "DEMIR",
+        "soyadAd" : "DEMIR ALI EMIN",
+        "tckn" : "33085624168",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTM8v82NwOzDCyS7fi" : {
+        "ad" : "İSHAK",
+        "adSoyad" : "İSHAK ZORLU",
+        "appId" : "-OmTHw1Bd-eE1FDBiUw3",
+        "dogumTarihi" : "2019-02-06",
+        "id" : "-OmTM8v82NwOzDCyS7fi",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "DOĞANLI EŞREF TAŞHAN İLKOKULU",
+        "lisansNo" : "252681122-00025",
+        "okul" : "DOĞANLI EŞREF TAŞHAN İLKOKULU",
+        "soyad" : "ZORLU",
+        "soyadAd" : "ZORLU İSHAK",
+        "tckn" : "12431312164",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTM9V-6fSy4X9nQJOT" : {
+        "ad" : "MEHMET",
+        "adSoyad" : "MEHMET SELIM",
+        "appId" : "-OmTHbLWCLbd8rmMc8yU",
+        "dogumTarihi" : "2019-05-24",
+        "id" : "-OmTM9V-6fSy4X9nQJOT",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "TOKI MEHMET AKIF ERSOY İLKOKULU",
+        "lisansNo" : "252681122-00028",
+        "okul" : "TOKI MEHMET AKIF ERSOY İLKOKULU",
+        "soyad" : "SELIM",
+        "soyadAd" : "SELIM MEHMET",
+        "tckn" : "14264251498",
+        "yarismaTuru" : "ferdi"
+      }
+    },
+    "minik_b_kiz" : {
+      "-OmOUpGjRnGyZI2R2XFe" : {
+        "ad" : "DOĞA",
+        "adSoyad" : "DOĞA GÜNAYDIN",
+        "appId" : "-OmIPJiVCYzbnZdZTMVy",
+        "dogumTarihi" : "2018-04-03",
+        "id" : "-OmOUpGjRnGyZI2R2XFe",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI ILKOKULU",
+        "lisansNo" : "252681122-00078",
+        "okul" : "ÖZEL SU DAMLASI ILKOKULU",
+        "soyad" : "GÜNAYDIN",
+        "soyadAd" : "GÜNAYDIN DOĞA",
+        "tckn" : "39059235736",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUpGjRnGyZI2R2XFf" : {
+        "ad" : "AYSIMA ERVA",
+        "adSoyad" : "AYSIMA ERVA VARLIK",
+        "appId" : "-OmIPJiVCYzbnZdZTMVy",
+        "dogumTarihi" : "2018-02-27",
+        "id" : "-OmOUpGjRnGyZI2R2XFf",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI ILKOKULU",
+        "lisansNo" : "252681122-00076",
+        "okul" : "ÖZEL SU DAMLASI ILKOKULU",
+        "soyad" : "VARLIK",
+        "soyadAd" : "VARLIK AYSIMA ERVA",
+        "tckn" : "27406636992",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUpGjRnGyZI2R2XFg" : {
+        "ad" : "YAREN ECRIN",
+        "adSoyad" : "YAREN ECRIN CIVIL",
+        "appId" : "-OmIPJiVCYzbnZdZTMVy",
+        "dogumTarihi" : "2018-07-02",
+        "id" : "-OmOUpGjRnGyZI2R2XFg",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI ILKOKULU",
+        "lisansNo" : "252681122-00077",
+        "okul" : "ÖZEL SU DAMLASI ILKOKULU",
+        "soyad" : "CIVIL",
+        "soyadAd" : "CIVIL YAREN ECRIN",
+        "tckn" : "48823098002",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUpGjRnGyZI2R2XFh" : {
+        "ad" : "AYŞE DERIN",
+        "adSoyad" : "AYŞE DERIN ALTAN",
+        "appId" : "-OmIPJiVCYzbnZdZTMVy",
+        "dogumTarihi" : "2018-05-04",
+        "id" : "-OmOUpGjRnGyZI2R2XFh",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI ILKOKULU",
+        "lisansNo" : "252681122-00075",
+        "okul" : "ÖZEL SU DAMLASI ILKOKULU",
+        "soyad" : "ALTAN",
+        "soyadAd" : "ALTAN AYŞE DERIN",
+        "tckn" : "26887828964",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUpGjRnGyZI2R2XFi" : {
+        "ad" : "İPEK",
+        "adSoyad" : "İPEK KUL",
+        "appId" : "-OmIPJiVCYzbnZdZTMVy",
+        "dogumTarihi" : "2019-09-30",
+        "id" : "-OmOUpGjRnGyZI2R2XFi",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ÖZEL SU DAMLASI ILKOKULU",
+        "lisansNo" : "252681122-00079",
+        "okul" : "ÖZEL SU DAMLASI ILKOKULU",
+        "soyad" : "KUL",
+        "soyadAd" : "KUL İPEK",
+        "tckn" : "48832099878",
+        "yarismaTuru" : "takim"
+      },
+      "-OmOUpepPKwiBL5ICxL8" : {
+        "ad" : "RABIA",
+        "adSoyad" : "RABIA HOTHOT",
+        "appId" : "-OmFypdEfF39Iev-ApK-",
+        "dogumTarihi" : "2018-11-24",
+        "id" : "-OmOUpepPKwiBL5ICxL8",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "UZUN MUSTAFA İLKOKULU",
+        "lisansNo" : "252681122-00008",
+        "okul" : "UZUN MUSTAFA İLKOKULU",
+        "soyad" : "HOTHOT",
+        "soyadAd" : "HOTHOT RABIA",
+        "tckn" : "32230651844",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmOUqZIZwu-RxFJ3kgJ" : {
+        "ad" : "DAMLA",
+        "adSoyad" : "DAMLA SEZGIN",
+        "appId" : "-OmDFlZXlj1AfY33jRd-",
+        "dogumTarihi" : "2018-02-04",
+        "id" : "-OmOUqZIZwu-RxFJ3kgJ",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "NAMIK KEMAL İLKOKULU",
+        "lisansNo" : "252681122-00102",
+        "okul" : "NAMIK KEMAL İLKOKULU",
+        "soyad" : "SEZGIN",
+        "soyadAd" : "SEZGIN DAMLA",
+        "tckn" : "51583006446",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmSQ8wAhQdQqgOoVXnT" : {
+        "ad" : "DURU",
+        "adSoyad" : "DURU ÖZDEMİR",
+        "appId" : "-OmPKF_vYr_X0Fjfyhwh",
+        "dogumTarihi" : "2018-03-05",
+        "id" : "-OmSQ8wAhQdQqgOoVXnT",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "KONURALP İLKOKULU",
+        "lisansNo" : "252681122-00009",
+        "okul" : "KONURALP İLKOKULU",
+        "soyad" : "ÖZDEMİR",
+        "soyadAd" : "ÖZDEMİR DURU",
+        "tckn" : "11513341122",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT00nWzqSRH2jynyXv" : {
+        "ad" : "ASEL",
+        "adSoyad" : "ASEL GÜNEŞ ",
+        "appId" : "-OmT-snfAngeAeSH5Y5f",
+        "dogumTarihi" : "2019-05-09",
+        "id" : "-OmT00nWzqSRH2jynyXv",
+        "il" : "Düzce",
+        "ilce" : "Kaynaşlı",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00105",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "GÜNEŞ",
+        "soyadAd" : "GÜNEŞ ASEL",
+        "tckn" : "50320860464",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT00zr9CMcDcUB7UDR" : {
+        "ad" : "ECRIN GÜNEŞ",
+        "adSoyad" : "ECRIN GÜNEŞ YILDIZ",
+        "appId" : "-OmT-jaUvSNh9yZe1BkS",
+        "dogumTarihi" : "2019-06-30",
+        "id" : "-OmT00zr9CMcDcUB7UDR",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "KONURALP İLKOKULU",
+        "lisansNo" : "252681122-00049",
+        "okul" : "KONURALP İLKOKULU",
+        "soyad" : "YILDIZ",
+        "soyadAd" : "YILDIZ ECRIN GÜNEŞ",
+        "tckn" : "44806233606",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT01z8ytqAA-N4Pd3s" : {
+        "ad" : "DÜNYA",
+        "adSoyad" : "DÜNYA ESKIBINA",
+        "appId" : "-OmSzSlUeOJ5IJMCl3eQ",
+        "dogumTarihi" : "2018-05-21",
+        "id" : "-OmT01z8ytqAA-N4Pd3s",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "OSMANIYE İLKOKULU",
+        "lisansNo" : "00039",
+        "okul" : "OSMANIYE İLKOKULU",
+        "soyad" : "ESKIBINA",
+        "soyadAd" : "ESKIBINA DÜNYA",
+        "tckn" : "18530917576",
+        "yarismaTuru" : "takim"
+      },
+      "-OmT93M2n7dmJAMVqrjv" : {
+        "ad" : "ELA BUĞLEM",
+        "adSoyad" : "ELA BUĞLEM SAYYAR",
+        "appId" : "-OmT746_0dxQYy1wRo15",
+        "dogumTarihi" : "2019-01-14",
+        "id" : "-OmT93M2n7dmJAMVqrjv",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "23 NISAN İLKOKULU",
+        "lisansNo" : "81-1304-001032",
+        "okul" : "23 NISAN İLKOKULU",
+        "soyad" : "SAYYAR",
+        "soyadAd" : "SAYYAR ELA BUĞLEM",
+        "tckn" : "33019701330",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT93p0PkUyoG13A0rC" : {
+        "ad" : "ESIN",
+        "adSoyad" : "ESIN INCE",
+        "appId" : "-OmT4-6_Mm-dyfOK04yj",
+        "dogumTarihi" : "2018-10-24",
+        "id" : "-OmT93p0PkUyoG13A0rC",
+        "il" : "Düzce",
+        "ilce" : "Kaynaşlı",
+        "kulup" : "SARIÇÖKEK İLKOKULU",
+        "lisansNo" : "81-1304-001113",
+        "okul" : "SARIÇÖKEK İLKOKULU",
+        "soyad" : "INCE",
+        "soyadAd" : "INCE ESIN",
+        "tckn" : "74242063086",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT94CkGEZkpmwln_T-" : {
+        "ad" : "MERYEM ŞURA",
+        "adSoyad" : "MERYEM ŞURA KELEŞ",
+        "appId" : "-OmT3w-Cs8ERx2H-hOAy",
+        "dogumTarihi" : "2018-02-26",
+        "id" : "-OmT94CkGEZkpmwln_T-",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "23 NISAN İLKOKULU",
+        "lisansNo" : "252681122-00112",
+        "okul" : "23 NISAN İLKOKULU",
+        "soyad" : "KELEŞ",
+        "soyadAd" : "KELEŞ MERYEM ŞURA",
+        "tckn" : "16706169040",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT94cKk_mwdDKlP8k5" : {
+        "ad" : "HÜMA",
+        "adSoyad" : "HÜMA FIDAN",
+        "appId" : "-OmT2wfLdMWO-uZtpIuj",
+        "dogumTarihi" : "2019-05-27",
+        "id" : "-OmT94cKk_mwdDKlP8k5",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00061",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "FIDAN",
+        "soyadAd" : "FIDAN HÜMA",
+        "tckn" : "33793600584",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT96YLNjAsGGYhOJff" : {
+        "ad" : "GÖKÇEN",
+        "adSoyad" : "GÖKÇEN KIVRAK ",
+        "appId" : "-OmT1uzgFZz9ey5V3vqB",
+        "dogumTarihi" : "2018-10-30",
+        "id" : "-OmT96YLNjAsGGYhOJff",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "FATIH İLKOKULU",
+        "lisansNo" : "252681122-00087",
+        "okul" : "FATIH İLKOKULU",
+        "soyad" : "KIVRAK",
+        "soyadAd" : "KIVRAK GÖKÇEN",
+        "tckn" : "44170253736",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT97afpKqosTlHz2NP" : {
+        "ad" : "AZRA",
+        "adSoyad" : "AZRA KIVRAK ",
+        "appId" : "-OmT1HpjCcrZi1_ZSNoJ",
+        "dogumTarihi" : "2018-10-30",
+        "id" : "-OmT97afpKqosTlHz2NP",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "FATIH İLKOKULU",
+        "lisansNo" : "252681122-00089",
+        "okul" : "FATIH İLKOKULU",
+        "soyad" : "KIVRAK",
+        "soyadAd" : "KIVRAK AZRA",
+        "tckn" : "44125255266",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmT98njJD9M4add2bvo" : {
+        "ad" : "İDIL",
+        "adSoyad" : "İDIL ORUÇ",
+        "appId" : "-OmT0uXpxASLHXzTukvc",
+        "dogumTarihi" : "2018-12-11",
+        "id" : "-OmT98njJD9M4add2bvo",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "CUMHURIYET İLKOKULU",
+        "lisansNo" : "252681122-00108",
+        "okul" : "CUMHURIYET İLKOKULU",
+        "soyad" : "ORUÇ",
+        "soyadAd" : "ORUÇ İDIL",
+        "tckn" : "30415303908",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTCuh_w8kaW6cXM8Xh" : {
+        "ad" : "UMAY JANSEL",
+        "adSoyad" : "UMAY JANSEL DUMAN",
+        "appId" : "-OmTAJa-ZivutF8XZ46E",
+        "dogumTarihi" : "2019-06-27",
+        "id" : "-OmTCuh_w8kaW6cXM8Xh",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "TOKI MEHMET AKIF ERSOY İLKOKULU",
+        "lisansNo" : "25268112200085",
+        "okul" : "TOKI MEHMET AKIF ERSOY İLKOKULU",
+        "soyad" : "DUMAN",
+        "soyadAd" : "DUMAN UMAY JANSEL",
+        "tckn" : "12476311184",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTfosVwKM-Dx9n6k0Q" : {
+        "ad" : "ÖYKÜNAZ",
+        "adSoyad" : "ÖYKÜNAZ ÖZKARA",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2018-07-03",
+        "id" : "-OmTfosVwKM-Dx9n6k0Q",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200044",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "ÖZKARA",
+        "soyadAd" : "ÖZKARA ÖYKÜNAZ",
+        "tckn" : "45280954636",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfosVwKM-Dx9n6k0R" : {
+        "ad" : "ELIF RAMLE",
+        "adSoyad" : "ELIF RAMLE ALBAYRAK",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2018-07-29",
+        "id" : "-OmTfosVwKM-Dx9n6k0R",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200043",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "ALBAYRAK",
+        "soyadAd" : "ALBAYRAK ELIF RAMLE",
+        "tckn" : "75442020510",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfosVwKM-Dx9n6k0S" : {
+        "ad" : "DEFNE",
+        "adSoyad" : "DEFNE AYDOĞAN",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2019-04-18",
+        "id" : "-OmTfosVwKM-Dx9n6k0S",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200047",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "AYDOĞAN",
+        "soyadAd" : "AYDOĞAN DEFNE",
+        "tckn" : "19859873314",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfosVwKM-Dx9n6k0T" : {
+        "ad" : "ZEYNEP",
+        "adSoyad" : "ZEYNEP ÇIÇEK",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2019-05-02",
+        "id" : "-OmTfosVwKM-Dx9n6k0T",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200048",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "ÇIÇEK",
+        "soyadAd" : "ÇIÇEK ZEYNEP",
+        "tckn" : "19343890568",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfosVwKM-Dx9n6k0U" : {
+        "ad" : "ELIF TUNAY",
+        "adSoyad" : "ELIF TUNAY HOŞCA",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2019-01-14",
+        "id" : "-OmTfosVwKM-Dx9n6k0U",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200046",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "HOŞCA",
+        "soyadAd" : "HOŞCA ELIF TUNAY",
+        "tckn" : "35873339506",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfosVwKM-Dx9n6k0V" : {
+        "ad" : "ÖYKÜ ADA",
+        "adSoyad" : "ÖYKÜ ADA PAZVANT",
+        "appId" : "-OmTQfJYLKWKlXIYW6QS",
+        "dogumTarihi" : "2018-07-11",
+        "id" : "-OmTfosVwKM-Dx9n6k0V",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "lisansNo" : "25268112200045",
+        "okul" : "BAHAETTIN GÜÇLÜ İLKOKULU",
+        "soyad" : "PAZVANT",
+        "soyadAd" : "PAZVANT ÖYKÜ ADA",
+        "tckn" : "12165129748",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfqPT5a5qWzJYQ84K" : {
+        "ad" : "SIMRA",
+        "adSoyad" : "SIMRA YILDIZ",
+        "appId" : "-OmTQHDmq1FVvv_hi1hR",
+        "dogumTarihi" : "2018-01-11",
+        "id" : "-OmTfqPT5a5qWzJYQ84K",
+        "il" : "Düzce",
+        "ilce" : "Merkez",
+        "kulup" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "252681122-00122",
+        "okul" : "ŞEHIT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "YILDIZ",
+        "soyadAd" : "YILDIZ SIMRA",
+        "tckn" : "11660337030",
+        "yarismaTuru" : "ferdi"
+      },
+      "-OmTfrbDEvBWSh4gcm0w" : {
+        "ad" : "ÖYKÜ",
+        "adSoyad" : "ÖYKÜ KURT",
+        "appId" : "-OmTPRKl0yCOjhtab5le",
+        "dogumTarihi" : "2018-03-14",
+        "id" : "-OmTfrbDEvBWSh4gcm0w",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "OSMANIYE İLKOKULU",
+        "lisansNo" : "25268112200035",
+        "okul" : "OSMANIYE İLKOKULU",
+        "soyad" : "KURT",
+        "soyadAd" : "KURT ÖYKÜ",
+        "tckn" : "20545350262",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfrbDEvBWSh4gcm0x" : {
+        "ad" : "DEFNE",
+        "adSoyad" : "DEFNE ÇETINKAYA",
+        "appId" : "-OmTPRKl0yCOjhtab5le",
+        "dogumTarihi" : "2018-07-02",
+        "id" : "-OmTfrbDEvBWSh4gcm0x",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "OSMANIYE İLKOKULU",
+        "lisansNo" : "25268112200036",
+        "okul" : "OSMANIYE İLKOKULU",
+        "soyad" : "ÇETINKAYA",
+        "soyadAd" : "ÇETINKAYA DEFNE",
+        "tckn" : "14094065470",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfrbDEvBWSh4gcm0y" : {
+        "ad" : "SALSABIL JARA",
+        "adSoyad" : "SALSABIL JARA MOHAMMED",
+        "appId" : "-OmTPRKl0yCOjhtab5le",
+        "dogumTarihi" : "2018-01-12",
+        "id" : "-OmTfrbDEvBWSh4gcm0y",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "OSMANIYE İLKOKULU",
+        "lisansNo" : "25268112200037",
+        "okul" : "OSMANIYE İLKOKULU",
+        "soyad" : "MOHAMMED",
+        "soyadAd" : "MOHAMMED SALSABIL JARA",
+        "tckn" : "65944389536",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfrbDEvBWSh4gcm0z" : {
+        "ad" : "NEFES",
+        "adSoyad" : "NEFES MEŞHUR",
+        "appId" : "-OmTPRKl0yCOjhtab5le",
+        "dogumTarihi" : "2018-12-17",
+        "id" : "-OmTfrbDEvBWSh4gcm0z",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "OSMANIYE İLKOKULU",
+        "lisansNo" : "25268112200038",
+        "okul" : "OSMANIYE İLKOKULU",
+        "soyad" : "MEŞHUR",
+        "soyadAd" : "MEŞHUR NEFES",
+        "tckn" : "37850318566",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxK" : {
+        "ad" : "AYŞE EYLÜL",
+        "adSoyad" : "AYŞE EYLÜL ÖZTAŞ",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-10-18",
+        "id" : "-OmTfsIGGmd1Asvf-kxK",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00118",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "ÖZTAŞ",
+        "soyadAd" : "ÖZTAŞ AYŞE EYLÜL",
+        "tckn" : "54400721980",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxL" : {
+        "ad" : "SERRA",
+        "adSoyad" : "SERRA KÖROĞLU",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-12-21",
+        "id" : "-OmTfsIGGmd1Asvf-kxL",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00116",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "KÖROĞLU",
+        "soyadAd" : "KÖROĞLU SERRA",
+        "tckn" : "15516058988",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxM" : {
+        "ad" : "İLKE",
+        "adSoyad" : "İLKE BOYALI",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-05-29",
+        "id" : "-OmTfsIGGmd1Asvf-kxM",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00115",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "BOYALI",
+        "soyadAd" : "BOYALI İLKE",
+        "tckn" : "28664611554",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxN" : {
+        "ad" : "ESMA",
+        "adSoyad" : "ESMA PAMUK",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-09-03",
+        "id" : "-OmTfsIGGmd1Asvf-kxN",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00117",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "PAMUK",
+        "soyadAd" : "PAMUK ESMA",
+        "tckn" : "67564283102",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxO" : {
+        "ad" : "ESIN DURU",
+        "adSoyad" : "ESIN DURU DEMIR",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-08-15",
+        "id" : "-OmTfsIGGmd1Asvf-kxO",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00121",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "DEMIR",
+        "soyadAd" : "DEMIR ESIN DURU",
+        "tckn" : "71851140276",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIGGmd1Asvf-kxP" : {
+        "ad" : "ELIZHAN",
+        "adSoyad" : "ELIZHAN ÇETINBAŞ",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-10-02",
+        "id" : "-OmTfsIGGmd1Asvf-kxP",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "252681122 00114",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "ÇETINBAŞ",
+        "soyadAd" : "ÇETINBAŞ ELIZHAN",
+        "tckn" : "55864673150",
+        "yarismaTuru" : "takim"
+      },
+      "-OmTfsIHytO9rUHLxash" : {
+        "ad" : "BILGE",
+        "adSoyad" : "BILGE TAŞKIRAN ",
+        "appId" : "-OmTNzAo4HqmL8Y24ewV",
+        "dogumTarihi" : "2018-11-12",
+        "id" : "-OmTfsIHytO9rUHLxash",
+        "il" : "Düzce",
+        "ilce" : "Akçakoca",
+        "kulup" : "GÖNÜL YAVUZ İLKOKULU",
+        "lisansNo" : "25268112200119",
+        "okul" : "GÖNÜL YAVUZ İLKOKULU",
+        "soyad" : "TAŞKIRAN",
+        "soyadAd" : "TAŞKIRAN BILGE",
+        "tckn" : "53047767122",
+        "yarismaTuru" : "takim"
+      },
+      "1768313157433" : {
+        "ad" : "ADA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OirfMR8xnOXJcIYGM64",
+        "id" : 1768313157433,
+        "kategori" : "Minik B Kız",
+        "kulup" : "NESİBE AYDIN",
+        "lisansNo" : "1",
+        "okul" : "NESİBE AYDIN",
+        "soyad" : "YİĞİT",
+        "soyadAd" : "YİĞİT ADA",
+        "tckn" : "",
+        "yarismaTuru" : "takim"
+      },
+      "1772175062138" : {
+        "ad" : "Ela Buğlem",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrM8glWhASPw_kUwL",
+        "id" : 1772175062138,
+        "kategori" : "Minik B Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : 1,
+        "okul" : "23 Nisan İO",
+        "soyad" : "Sayyar",
+        "soyadAd" : "SAYYAR ELA BUĞLEM",
+        "tckn" : 1,
+        "yarismaTuru" : "takim"
+      },
+      "1772175062382" : {
+        "ad" : "Meryem Xira",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrMIUDz-eDw94RUgB",
+        "id" : 1772175062382,
+        "kategori" : "Minik B Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : 2,
+        "okul" : "23 Nisan İO",
+        "soyad" : "Keleş",
+        "soyadAd" : "KELEŞ MERYEM XIRA",
+        "tckn" : 2,
+        "yarismaTuru" : "takim"
+      },
+      "1772175063079" : {
+        "ad" : "Gökçe",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrMSNN_bzMGw8g-LE",
+        "id" : 1772175063079,
+        "kategori" : "Minik B Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : 3,
+        "okul" : "23 Nisan İO",
+        "soyad" : "Özçelik",
+        "soyadAd" : "ÖZÇELIK GÖKÇE",
+        "tckn" : 3,
+        "yarismaTuru" : "takim"
+      },
+      "1772175063809" : {
+        "ad" : "Gökçe",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrMarOBRGAcIBFxp0",
+        "id" : 1772175063809,
+        "kategori" : "Minik B Kız",
+        "kulup" : "23 Nisan İO",
+        "lisansNo" : 4,
+        "okul" : "23 Nisan İO",
+        "soyad" : "Altay",
+        "soyadAd" : "ALTAY GÖKÇE",
+        "tckn" : 4,
+        "yarismaTuru" : "takim"
+      },
+      "1772175064716" : {
+        "ad" : "İdil",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrMjvutfdXwP2MYA1",
+        "id" : 1772175064716,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : 5,
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Oruç",
+        "soyadAd" : "ORUÇ İDIL",
+        "tckn" : 5,
+        "yarismaTuru" : "takim"
+      },
+      "1772175065418" : {
+        "ad" : "Hüma",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrMuWheg8YphG3vkN",
+        "id" : 1772175065418,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : 6,
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Fidan",
+        "soyadAd" : "FIDAN HÜMA",
+        "tckn" : 6,
+        "yarismaTuru" : "takim"
+      },
+      "1772175066356" : {
+        "ad" : "Ebru",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrN3GAUlCENG0yo8-",
+        "id" : 1772175066356,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : 7,
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Aksü",
+        "soyadAd" : "AKSÜ EBRU",
+        "tckn" : 7,
+        "yarismaTuru" : "takim"
+      },
+      "1772175066387" : {
+        "ad" : "İpek",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrNCsEe2_DMqWOsU9",
+        "id" : 1772175066387,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Cumhuriyet İO",
+        "lisansNo" : 8,
+        "okul" : "Cumhuriyet İO",
+        "soyad" : "Yalın",
+        "soyadAd" : "YALIN İPEK",
+        "tckn" : 8,
+        "yarismaTuru" : "takim"
+      },
+      "1772175066988" : {
+        "ad" : "Doğa",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrNNnAiBRePQ7fnLJ",
+        "id" : 1772175066988,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : 9,
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Günaydın",
+        "soyadAd" : "GÜNAYDIN DOĞA",
+        "tckn" : 9,
+        "yarismaTuru" : "takim"
+      },
+      "1772175067489" : {
+        "ad" : "Yaren Ecrin",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrNXFKw_GWwIn6V9V",
+        "id" : 1772175067489,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : 10,
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Civil",
+        "soyadAd" : "CIVIL YAREN ECRIN",
+        "tckn" : 10,
+        "yarismaTuru" : "takim"
+      },
+      "1772175068451" : {
+        "ad" : "İpek",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrNgzLw2KPNvljUGK",
+        "id" : 1772175068451,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : 11,
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Kul",
+        "soyadAd" : "KUL İPEK",
+        "tckn" : 11,
+        "yarismaTuru" : "takim"
+      },
+      "1772175068798" : {
+        "ad" : "Ayşe Derin",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrNqjMBik6TBCPZLw",
+        "id" : 1772175068798,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : 12,
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Altan",
+        "soyadAd" : "ALTAN AYŞE DERIN",
+        "tckn" : 12,
+        "yarismaTuru" : "takim"
+      },
+      "1772175069685" : {
+        "ad" : "Aysima Erva",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrO-EPRD5_dPY_Suz",
+        "id" : 1772175069685,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Özel Su Damlası",
+        "lisansNo" : 13,
+        "okul" : "Özel Su Damlası",
+        "soyad" : "Varlık",
+        "soyadAd" : "VARLIK AYSIMA ERVA",
+        "tckn" : 13,
+        "yarismaTuru" : "takim"
+      },
+      "1772175070912" : {
+        "ad" : "Azra",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrO8v7Luphu3Haz9x",
+        "id" : 1772175070912,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Fatih İO",
+        "lisansNo" : 14,
+        "okul" : "Fatih İO",
+        "soyad" : "Kıvrak",
+        "soyadAd" : "KIVRAK AZRA",
+        "tckn" : 14,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175071261" : {
+        "ad" : "Gökgen",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrOIZT8N8SpvAboL_",
+        "id" : 1772175071261,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Fatih İO",
+        "lisansNo" : 15,
+        "okul" : "Fatih İO",
+        "soyad" : "Kıvrak",
+        "soyadAd" : "KIVRAK GÖKGEN",
+        "tckn" : 15,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175072166" : {
+        "ad" : "Asel",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrOekyfvDOpdETVCQ",
+        "id" : 1772175072166,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Kaynaslı Cumhuriyet İO",
+        "lisansNo" : 17,
+        "okul" : "Kaynaslı Cumhuriyet İO",
+        "soyad" : "Güneş",
+        "soyadAd" : "GÜNEŞ ASEL",
+        "tckn" : 17,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175072223" : {
+        "ad" : "Esin",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrOVJG88nNMUgRf_9",
+        "id" : 1772175072223,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Sarıgöbek İO",
+        "lisansNo" : 16,
+        "okul" : "Sarıgöbek İO",
+        "soyad" : "İnce",
+        "soyadAd" : "İNCE ESIN",
+        "tckn" : 16,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175073557" : {
+        "ad" : "Limay Jansel",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrOpE26Azc4Yy0_dQ",
+        "id" : 1772175073557,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Toki M. Akif Ersoy İO",
+        "lisansNo" : 18,
+        "okul" : "Toki M. Akif Ersoy İO",
+        "soyad" : "Duman",
+        "soyadAd" : "DUMAN LIMAY JANSEL",
+        "tckn" : 18,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175073604" : {
+        "ad" : "Damla",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrOztL2rgC7DIu1xW",
+        "id" : 1772175073604,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Namık Kemal İO",
+        "lisansNo" : 19,
+        "okul" : "Namık Kemal İO",
+        "soyad" : "Sezgin",
+        "soyadAd" : "SEZGIN DAMLA",
+        "tckn" : 19,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175074056" : {
+        "ad" : "Elif Ela",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrP8CFD0Mc1P0sBcQ",
+        "id" : 1772175074056,
+        "kategori" : "Minik B Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : 20,
+        "okul" : "TED Koleji",
+        "soyad" : "Kahveci",
+        "soyadAd" : "KAHVECI ELIF ELA",
+        "tckn" : 20,
+        "yarismaTuru" : "takim"
+      },
+      "1772175075420" : {
+        "ad" : "Masal Arya",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrPHo-AiV2QDUyiJm",
+        "id" : 1772175075420,
+        "kategori" : "Minik B Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : 21,
+        "okul" : "TED Koleji",
+        "soyad" : "Bulgan",
+        "soyadAd" : "BULGAN MASAL ARYA",
+        "tckn" : 21,
+        "yarismaTuru" : "takim"
+      },
+      "1772175075901" : {
+        "ad" : "Lale Mina İbrahim",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrP_vqrYwO2O9ShAe",
+        "id" : 1772175075901,
+        "kategori" : "Minik B Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : 23,
+        "okul" : "TED Koleji",
+        "soyad" : "Oğlu",
+        "soyadAd" : "OĞLU LALE MINA İBRAHIM",
+        "tckn" : 23,
+        "yarismaTuru" : "takim"
+      },
+      "1772175076006" : {
+        "ad" : "Adel",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrPRaKpLY2jxyRjsn",
+        "id" : 1772175076006,
+        "kategori" : "Minik B Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : 22,
+        "okul" : "TED Koleji",
+        "soyad" : "İlhan",
+        "soyadAd" : "İLHAN ADEL",
+        "tckn" : 22,
+        "yarismaTuru" : "takim"
+      },
+      "1772175076493" : {
+        "ad" : "Zeynep",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrPj102BdEa-X9Usm",
+        "id" : 1772175076493,
+        "kategori" : "Minik B Kız",
+        "kulup" : "TED Koleji",
+        "lisansNo" : 24,
+        "okul" : "TED Koleji",
+        "soyad" : "Günal",
+        "soyadAd" : "GÜNAL ZEYNEP",
+        "tckn" : 24,
+        "yarismaTuru" : "takim"
+      },
+      "1772175077800" : {
+        "ad" : "Mina Talya",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrPsVGRVxEgLF-aPs",
+        "id" : 1772175077800,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Safir Koleji",
+        "lisansNo" : 25,
+        "okul" : "Safir Koleji",
+        "soyad" : "Güven",
+        "soyadAd" : "GÜVEN MINA TALYA",
+        "tckn" : 25,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175078394" : {
+        "ad" : "Ecrin Güneş",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQ0mdBnSMZ2mAXfU",
+        "id" : 1772175078394,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Konuralp İO",
+        "lisansNo" : 26,
+        "okul" : "Konuralp İO",
+        "soyad" : "Yıldız",
+        "soyadAd" : "YILDIZ ECRIN GÜNEŞ",
+        "tckn" : 26,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175078991" : {
+        "ad" : "Eliz",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQBHFRvghmS5XhqB",
+        "id" : 1772175078991,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Hamiyet Sevil İO",
+        "lisansNo" : 27,
+        "okul" : "Hamiyet Sevil İO",
+        "soyad" : "Göğ",
+        "soyadAd" : "GÖĞ ELIZ",
+        "tckn" : 27,
+        "yarismaTuru" : "ferdi"
+      },
+      "1772175079650" : {
+        "ad" : "İlke",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQKwv3O-0_wmsktP",
+        "id" : 1772175079650,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 28,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Boyalı",
+        "soyadAd" : "BOYALI İLKE",
+        "tckn" : 28,
+        "yarismaTuru" : "takim"
+      },
+      "1772175079836" : {
+        "ad" : "Esma",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQV5py6V5OYDOJkd",
+        "id" : 1772175079836,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 29,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Pamuk",
+        "soyadAd" : "PAMUK ESMA",
+        "tckn" : 29,
+        "yarismaTuru" : "takim"
+      },
+      "1772175081009" : {
+        "ad" : "Esin Duru",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQdrBIEiQ6dAiikP",
+        "id" : 1772175081009,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 30,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Demir",
+        "soyadAd" : "DEMIR ESIN DURU",
+        "tckn" : 30,
+        "yarismaTuru" : "takim"
+      },
+      "1772175081344" : {
+        "ad" : "Elizhan",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQnXR28S2ixc1rLM",
+        "id" : 1772175081344,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 32,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Çetinbaş",
+        "soyadAd" : "ÇETINBAŞ ELIZHAN",
+        "tckn" : 32,
+        "yarismaTuru" : "takim"
+      },
+      "1772175082177" : {
+        "ad" : "Ayşe Eylül",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrQxOw_8_xt2adVjo",
+        "id" : 1772175082177,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 33,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Öztaş",
+        "soyadAd" : "ÖZTAŞ AYŞE EYLÜL",
+        "tckn" : 33,
+        "yarismaTuru" : "takim"
+      },
+      "1772175082615" : {
+        "ad" : "Serra",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrR6IG1Jq2tj-p3LI",
+        "id" : 1772175082615,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 34,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Köroğlu",
+        "soyadAd" : "KÖROĞLU SERRA",
+        "tckn" : 34,
+        "yarismaTuru" : "takim"
+      },
+      "1772175083116" : {
+        "ad" : "Bilge",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmSrRIsxRPEaW4pRt1i",
+        "id" : 1772175083116,
+        "kategori" : "Minik B Kız",
+        "kulup" : "Gönül Yavuz İO (Akçakoca)",
+        "lisansNo" : 35,
+        "okul" : "Gönül Yavuz İO (Akçakoca)",
+        "soyad" : "Taşkıran",
+        "soyadAd" : "TAŞKIRAN BILGE",
+        "tckn" : 35,
+        "yarismaTuru" : "takim"
+      },
+      "1772189832954" : {
+        "ad" : "ZEYNEP MİLA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTjhPzZDY-XzADF8In",
+        "id" : 1772189832954,
+        "kategori" : "Minik B Kız",
+        "kulup" : "ŞEHİT TEĞMEN İÖO",
+        "lisansNo" : "2",
+        "okul" : "ŞEHİT TEĞMEN İÖO",
+        "soyad" : "CEBECİ",
+        "soyadAd" : "CEBECİ ZEYNEP MİLA",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772189874714" : {
+        "ad" : "RABİA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTjrbUSvYQdEC3yBk0",
+        "id" : 1772189874714,
+        "kategori" : "Minik B Kız",
+        "kulup" : "UZUN MUSTAFA",
+        "lisansNo" : "3",
+        "okul" : "UZUN MUSTAFA",
+        "soyad" : "HATHAT",
+        "soyadAd" : "HATHAT RABİA",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772189902282" : {
+        "ad" : "ZEYNEP MİLA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTjyGjveDldwtJEGQW",
+        "id" : 1772189902282,
+        "kategori" : "Minik B Kız",
+        "kulup" : "ŞEHİT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "lisansNo" : "1234",
+        "okul" : "ŞEHİT TEĞMEN UĞUR ALTAN İLKOKULU",
+        "soyad" : "CEBECİ",
+        "soyadAd" : "CEBECİ ZEYNEP MİLA",
+        "tckn" : "",
+        "yarismaTuru" : "takim"
+      },
+      "1772189910178" : {
+        "ad" : "SİMAY",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTk-GbdXj7dGldfHr4",
+        "id" : 1772189910178,
+        "kategori" : "Minik B Kız",
+        "kulup" : "NESİBE AYDIN",
+        "lisansNo" : "4",
+        "okul" : "NESİBE AYDIN",
+        "soyad" : "KARAÜÇ",
+        "soyadAd" : "KARAÜÇ SİMAY",
+        "tckn" : "",
+        "yarismaTuru" : "takim"
+      },
+      "1772190059987" : {
+        "ad" : "ASEL İNCİ",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTkZqOgIw2vLlZzKAP",
+        "id" : 1772190059987,
+        "kategori" : "Minik B Kız",
+        "kulup" : "AVNİ AKYOL",
+        "lisansNo" : "ASEL",
+        "okul" : "AVNİ AKYOL",
+        "soyad" : "COŞKUN",
+        "soyadAd" : "COŞKUN ASEL İNCİ",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772190090432" : {
+        "ad" : "ZEYNEP MİLA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTkgH5RqKj9ViyUzHx",
+        "id" : 1772190090432,
+        "kategori" : "Minik B Kız",
+        "kulup" : "ŞEHİT TEĞMEN",
+        "lisansNo" : "ZEYNEP",
+        "okul" : "ŞEHİT TEĞMEN",
+        "soyad" : "CEBECİ",
+        "soyadAd" : "CEBECİ ZEYNEP MİLA",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772190107261" : {
+        "ad" : "ELA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTkkO2ah-PzdpAiDQQ",
+        "id" : 1772190107261,
+        "kategori" : "Minik B Kız",
+        "kulup" : "UZUN MUSTAFA",
+        "lisansNo" : "ELA",
+        "okul" : "UZUN MUSTAFA",
+        "soyad" : "GÜLÇE",
+        "soyadAd" : "GÜLÇE ELA",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772190127815" : {
+        "ad" : "DURU",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTkpPCJ9a9mFuKSvKx",
+        "id" : 1772190127815,
+        "kategori" : "Minik B Kız",
+        "kulup" : "KONURALP",
+        "lisansNo" : "DURU",
+        "okul" : "KONURALP",
+        "soyad" : "ÖZDEMİR",
+        "soyadAd" : "ÖZDEMİR DURU",
+        "tckn" : "",
+        "yarismaTuru" : "ferdi"
+      },
+      "1772190150024" : {
+        "ad" : "ADA",
+        "cinsiyet" : "kadin",
+        "firebaseKey" : "-OmTkupDpJ5njmwmeobB",
+        "id" : 1772190150024,
+        "kategori" : "Minik B Kız",
+        "kulup" : "NESİBE AYDIN",
+        "lisansNo" : "ADA",
+        "okul" : "NESİBE AYDIN",
+        "soyad" : "YİĞİT",
+        "soyadAd" : "YİĞİT ADA",
+        "tckn" : "",
+        "yarismaTuru" : "takim"
+      }
+    }
+  },
+  "tarih" : "2026-02-27",
+  "yil" : 2026
+}
