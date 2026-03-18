@@ -6,6 +6,8 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
+import { useAuth } from '../lib/AuthContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './AnalyticsPage.css';
 
 const COLORS = ['#6366F1', '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
@@ -13,6 +15,7 @@ const GENDER_COLORS = ['#3B82F6', '#EC4899']; // Blue for Erkek, Pink for Kadın
 
 export default function AnalyticsPage() {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
 
     const [loading, setLoading] = useState(true);
 
@@ -59,10 +62,11 @@ export default function AnalyticsPage() {
         const unsubscribeComps = onValue(compsRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                compsCount = Object.keys(data).length;
+                const filteredData = filterCompetitionsByUser(data, currentUser);
+                compsCount = Object.keys(filteredData).length;
 
-                Object.keys(data).forEach(compId => {
-                    const comp = data[compId];
+                Object.keys(filteredData).forEach(compId => {
+                    const comp = filteredData[compId];
                     compsList.push({ id: compId, isim: comp.isim || 'İsimsiz Yarışma' });
 
                     // Only process details if "all" is selected OR it matches the specific dropdown
@@ -168,7 +172,7 @@ export default function AnalyticsPage() {
         });
 
         return () => unsubscribeComps();
-    }, [selectedCompId]);
+    }, [selectedCompId, currentUser]);
 
     // Custom Tooltip for Pie Charts
     const renderCustomTooltip = ({ active, payload }) => {

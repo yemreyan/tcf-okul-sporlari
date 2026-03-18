@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get, push } from 'firebase/database';
 import { db } from '../lib/firebase';
 import './ApplicationsPage.css';
+import { useAuth } from '../lib/AuthContext';
+import { useNotification } from '../lib/NotificationContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 
-// Yardımcı fonksiyon - datayı array'e çevirir
+// Yardımcı fonksiyon - datayı array'e çevirir (Türkçe & İngilizce fallback)
 function getAthletesArray(app) {
-    if (!app || !app.athletes) return [];
-    if (Array.isArray(app.athletes)) return app.athletes;
-    return Object.values(app.athletes);
+    const src = app?.sporcular || app?.athletes;
+    if (!src) return [];
+    if (Array.isArray(src)) return src;
+    return Object.values(src);
 }
 
 // Turkish Character Normalization (Legacy Matching)
@@ -17,56 +21,95 @@ function normalizeString(str) {
         .toLocaleUpperCase('tr-TR')
         .trim()
         .replace(/\s+/g, ' ')
-        .replace(/İ/g, 'I');
+        .replace(/İ/g, 'I')
+        .replace(/Ş/g, 'S')
+        .replace(/Ğ/g, 'G')
+        .replace(/Ç/g, 'C')
+        .replace(/Ö/g, 'O')
+        .replace(/Ü/g, 'U');
 }
 
-// Automatic Team Promotion Logic (Legacy Port)
-async function checkAndPromoteToTeam(compId, catId, catName, schoolName) {
+// ─── Takım Kuralları Tablosu ───
+// Her kategori grubu için: min = takım olma eşiği, max = takımdaki max sporcu
+const TEAM_RULES = {
+    minik:  { min: 4, max: 7 },  // Minik A & Minik B
+    kucuk:  { min: 4, max: 5 },  // Küçükler
+    yildiz: { min: 2, max: 3 },  // Yıldızlar
+    genc:   { min: 2, max: 3 },  // Gençler
+};
+
+// Kategori adından takım kuralını belirle → { min, max } veya null
+function getTeamRules(catName) {
+    const nameLower = (catName || "").toLocaleLowerCase('tr-TR');
+    if (nameLower.includes('minik'))                                        return TEAM_RULES.minik;
+    if (nameLower.includes('küçük') || nameLower.includes('kucuk'))         return TEAM_RULES.kucuk;
+    if (nameLower.includes('yıldız') || nameLower.includes('yildiz'))       return TEAM_RULES.yildiz;
+    if (nameLower.includes('genç')  || nameLower.includes('genc'))          return TEAM_RULES.genc;
+    return null; // Bu kategori için takım kuralı tanımlı değil
+}
+
+// ─── Yardımcı: Bir okulun mevcut sporcu sayısını getirir ───
+async function getSchoolAthleteCount(compId, catId, schoolName) {
+    if (!compId || !catId || !schoolName) return 0;
+    try {
+        const snapshot = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
+        if (!snapshot.exists()) return 0;
+        const all = snapshot.val();
+        const normalizedSchool = normalizeString(schoolName);
+        return Object.values(all).filter(a => normalizeString(a.okul || a.kulup) === normalizedSchool).length;
+    } catch { return 0; }
+}
+
+// ─── Automatic Team Promotion & Demotion Logic ───
+// Sporcu sayısı >= min → tüm okul sporcuları 'takim'
+// Sporcu sayısı <  min → tüm okul sporcuları 'ferdi'
+async function syncTeamStatus(compId, catId, catName, schoolName) {
     if (!compId || !catId || !schoolName) return;
 
-    const nameLower = (catName || "").toLocaleLowerCase('tr-TR');
-    let threshold = 100;
-
-    if (nameLower.includes('minik') || nameLower.includes('küçük') || nameLower.includes('kucuk')) {
-        threshold = 4;
-    } else if (nameLower.includes('yıldız') || nameLower.includes('yildiz') || nameLower.includes('genç') || nameLower.includes('genc')) {
-        threshold = 2;
-    } else {
-        return;
-    }
+    const rules = getTeamRules(catName);
+    if (!rules) return; // Bu kategori için takım kuralı yok
 
     try {
         const snapshot = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
         if (!snapshot.exists()) return;
 
         const allAthletes = snapshot.val();
-        const schoolAthletes = Object.entries(allAthletes).filter(([key, a]) => {
-            const s1 = normalizeString(a.okul || a.kulup);
-            const s2 = normalizeString(schoolName);
-            return s1 === s2;
+        const normalizedSchool = normalizeString(schoolName);
+        const schoolAthletes = Object.entries(allAthletes).filter(([, a]) => {
+            return normalizeString(a.okul || a.kulup) === normalizedSchool;
         });
 
-        if (schoolAthletes.length >= threshold) {
-            const updates = {};
-            let updateCount = 0;
-            schoolAthletes.forEach(([id, ath]) => {
-                if (ath.yarismaTuru !== 'takim') {
-                    updates[`competitions/${compId}/sporcular/${catId}/${id}/yarismaTuru`] = 'takim';
-                    updateCount++;
-                }
-            });
+        const count = schoolAthletes.length;
+        const shouldBeTeam = count >= rules.min;
+        const targetType = shouldBeTeam ? 'takim' : 'ferdi';
 
-            if (updateCount > 0) {
-                await update(ref(db), updates);
+        const updates = {};
+        let updateCount = 0;
+        schoolAthletes.forEach(([id, ath]) => {
+            if (ath.yarismaTuru !== targetType) {
+                updates[`competitions/${compId}/sporcular/${catId}/${id}/yarismaTuru`] = targetType;
+                updateCount++;
             }
+        });
+
+        if (updateCount > 0) {
+            await update(ref(db), updates);
+            console.log(`[syncTeamStatus] ${schoolName} / ${catName}: ${count} sporcu → ${targetType} (min: ${rules.min}, max: ${rules.max})`);
+        }
+
+        // Max aşımı uyarısı (konsol'a log — admin bilgilendirilir)
+        if (count > rules.max) {
+            console.warn(`[syncTeamStatus] ⚠️ ${schoolName} / ${catName}: ${count} sporcu var ama max ${rules.max}! Fazla sporcu düzeltilmeli.`);
         }
     } catch (err) {
-        console.error("Team check error:", err);
+        console.error("Team sync error:", err);
     }
 }
 
 export default function ApplicationsPage() {
     const navigate = useNavigate();
+    const { currentUser, hasPermission } = useAuth();
+    const { toast, confirm } = useNotification();
     const [applications, setApplications] = useState([]);
     const [competitions, setCompetitions] = useState({});
     const [loading, setLoading] = useState(true);
@@ -79,8 +122,8 @@ export default function ApplicationsPage() {
     useEffect(() => {
         // 1. Yarışmaları yükle (isimleri göstermek ve filtrelemek için)
         const compsRef = ref(db, 'competitions');
-        onValue(compsRef, (snap) => {
-            setCompetitions(snap.val() || {});
+        const unsubComps = onValue(compsRef, (snap) => {
+            setCompetitions(filterCompetitionsByUser(snap.val() || {}, currentUser));
         });
 
         // 2. Başvuruları yükle
@@ -94,23 +137,33 @@ export default function ApplicationsPage() {
                     const app = data[appId];
                     const athletes = getAthletesArray(app);
 
+                    // Antrenörler: Türkçe (antrenorler) veya İngilizce (coaches) fallback
+                    const coachesRaw = app.antrenorler || app.coaches || [];
+                    const coachesArr = Array.isArray(coachesRaw) ? coachesRaw : Object.values(coachesRaw);
+
+                    // Öğretmenler: Türkçe (ogretmenler) veya eski format (teacherName)
+                    const teachersRaw = app.ogretmenler || [];
+                    const teachersArr = Array.isArray(teachersRaw) ? teachersRaw : Object.values(teachersRaw);
+                    const firstTeacher = teachersArr[0] || {};
+
                     apps.push({
                         id: appId,
                         compId: app.competitionId || '',
-                        compName: '', // Ayrı eklenecek
-                        schoolName: app.schoolName || 'İsimsiz Okul',
-                        city: app.city || 'Belirtilmemiş',
-                        district: app.district || '',
-                        categoryId: app.categoryId || '',
-                        categoryName: app.categoryName || 'Kategori Yok',
-                        type: app.type || 'ferdi',
-                        status: app.status || 'bekliyor',
-                        timestamp: app.timestamp || 0,
+                        compName: '',
+                        schoolName: app.okul || app.schoolName || 'İsimsiz Okul',
+                        city: app.il || app.city || 'Belirtilmemiş',
+                        district: app.ilce || app.district || '',
+                        categoryId: app.kategoriId || app.categoryId || '',
+                        categoryName: app.kategoriAdi || app.categoryName || 'Kategori Yok',
+                        type: app.katilimTuru || app.type || 'ferdi',
+                        status: app.durum || app.status || 'bekliyor',
+                        timestamp: app.olusturmaTarihi || app.timestamp || 0,
                         athletes: athletes,
                         athleteCount: athletes.length,
-                        teacherName: app.teacherName || '',
-                        teacherPhone: app.teacherPhone || '',
-                        coaches: app.coaches || []
+                        teacherName: firstTeacher.name || app.teacherName || '',
+                        teacherPhone: firstTeacher.phone || app.teacherPhone || '',
+                        coaches: coachesArr,
+                        teachers: teachersArr
                     });
                 });
 
@@ -125,18 +178,35 @@ export default function ApplicationsPage() {
             setLoading(false);
         });
 
-        return () => unsubscribe();
-    }, []);
+        return () => { unsubComps(); unsubscribe(); };
+    }, [currentUser]);
 
     const handleStatusChange = async (app, newStatus) => {
         try {
             const updates = {};
+            // Her iki alan adını da güncelle (eski EN + yeni TR uyumluluğu)
+            updates[`applications/${app.id}/durum`] = newStatus;
             updates[`applications/${app.id}/status`] = newStatus;
 
-            // Eğer ONAYLANIRSA, sporcuları ana yarışma listesine de kopyala (Eski sistemdeki gibi)
+            const compId = app.compId;
+            const catId = app.categoryId;
+
+            // ═══ ONAYLAMA ═══
             if (newStatus === 'onaylandi') {
-                const compId = app.compId;
-                const catId = app.categoryId;
+
+                // 0. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
+                const rules = getTeamRules(app.categoryName);
+                if (rules) {
+                    const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName);
+                    const afterCount = currentCount + app.athleteCount;
+                    if (afterCount > rules.max) {
+                        const proceed = await confirm(
+                            `${app.schoolName} okulunun "${app.categoryName}" kategorisinde şu an ${currentCount} sporcusu var. Bu başvuru onaylanırsa toplam ${afterCount} olacak ama max limit ${rules.max}. Yine de onaylamak istiyor musunuz?`,
+                            { title: 'Max Sporcu Limiti Aşılacak', type: 'warning' }
+                        );
+                        if (!proceed) return;
+                    }
+                }
 
                 // 1. Okulu onaylı okullar listesine ekle
                 const safeSchoolName = app.schoolName.replace(/[.#$[\]]/g, '');
@@ -149,11 +219,14 @@ export default function ApplicationsPage() {
                 app.athletes.forEach(ath => {
                     const newAthKey = push(ref(db, `competitions/${compId}/sporcular/${catId}`)).key;
 
-                    // Ad Soyad Ayırma (Legacy matching)
+                    // Ad Soyad: yeni format (name) veya eski format (adSoyad)
+                    const fullName = ath.name || ath.adSoyad || '';
+
+                    // Ad Soyad Ayırma
                     let ad = "";
                     let soyad = "";
-                    if (ath.adSoyad) {
-                        const parts = ath.adSoyad.trim().split(' ');
+                    if (fullName) {
+                        const parts = fullName.trim().split(' ');
                         if (parts.length > 1) {
                             soyad = parts.pop();
                             ad = parts.join(' ');
@@ -162,24 +235,25 @@ export default function ApplicationsPage() {
                         }
                     }
 
-                    // LEGACY COMPATIBILITY: We MUST add fields like adSoyad, soyadAd, dogumTarihi, etc.
-                    // Otherwise they don't appear in the legacy scoring/result screens.
+                    const lisans = ath.license || ath.lisans || "-";
+
+                    // yarismaTuru her zaman 'ferdi' başlar → syncTeamStatus eşiğe göre günceller
                     updates[`competitions/${compId}/sporcular/${catId}/${newAthKey}`] = {
-                        id: newAthKey, // Inside ID used by some legacy scripts
-                        adSoyad: ath.adSoyad || `${ad} ${soyad}`.trim(),
-                        soyadAd: `${soyad} ${ad}`.trim(), // Consumer sorting uses this
+                        id: newAthKey,
+                        adSoyad: fullName,
+                        soyadAd: `${soyad} ${ad}`.trim(),
                         ad: ad,
                         soyad: soyad,
-                        dogumTarihi: ath.dob || "2010-01-01", // Legacy key
-                        dob: ath.dob || "2010-01-01", // New key (redundant but safe)
-                        lisansNo: ath.lisans || "-", // Legacy key
-                        lisans: ath.lisans || "-", // New key
+                        dogumTarihi: ath.dob || "",
+                        dob: ath.dob || "",
+                        lisansNo: lisans,
+                        lisans: lisans,
                         okul: app.schoolName,
-                        kulup: app.schoolName, // Legacy fallback
+                        kulup: app.schoolName,
                         il: app.city,
                         ilce: app.district || "",
                         sirasi: 999,
-                        yarismaTuru: app.type === 'takim' ? 'takim' : 'ferdi', // Lowercase important
+                        yarismaTuru: 'ferdi',
                         tckn: ath.tckn || "-",
                         appId: app.id
                     };
@@ -187,26 +261,33 @@ export default function ApplicationsPage() {
 
                 await update(ref(db), updates);
 
-                // 3. Otomatik Takım Kontrolü (Legacy logic)
-                await checkAndPromoteToTeam(compId, catId, app.categoryName, app.schoolName);
+                // 3. Eşik kontrolü: Yeterli sporcu varsa takım'e yükselt, yoksa ferdi bırak
+                await syncTeamStatus(compId, catId, app.categoryName, app.schoolName);
+
+            // ═══ GERİ ALMA / REDDETME ═══
             } else {
-                // Eğer GERİ ALINIRSA (Red veya tekrar Bekliyor), sporcuları yarışmadan çıkart
                 if ((newStatus === 'bekliyor' || newStatus === 'reddedildi') && app.status === 'onaylandi') {
-                    const snap = await get(ref(db, `competitions/${app.compId}/sporcular/${app.categoryId}`));
+                    // Sporcuları yarışmadan çıkart
+                    const snap = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
                     if (snap.exists()) {
                         Object.entries(snap.val()).forEach(([athKey, athData]) => {
                             if (athData.appId === app.id) {
-                                updates[`competitions/${app.compId}/sporcular/${app.categoryId}/${athKey}`] = null;
+                                updates[`competitions/${compId}/sporcular/${catId}/${athKey}`] = null;
                             }
                         });
                     }
                 }
                 await update(ref(db), updates);
+
+                // Kalan sporcu sayısı eşiğin altına düşmüş olabilir → demotion kontrolü
+                if ((newStatus === 'bekliyor' || newStatus === 'reddedildi') && app.status === 'onaylandi') {
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName);
+                }
             }
 
         } catch (err) {
             console.error("Status update failed", err);
-            alert("Durum güncellenirken bir hata oluştu.");
+            toast("Durum güncellenirken bir hata oluştu.", "error");
         }
     };
 
@@ -226,7 +307,7 @@ export default function ApplicationsPage() {
     };
 
     const compOptions = Object.entries(competitions)
-        .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih));
+        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     return (
         <div className="applications-page">
@@ -318,9 +399,19 @@ export default function ApplicationsPage() {
                                                         <h3 className="app-card__school">{app.schoolName}</h3>
                                                         <p className="app-card__comp">{app.compName}</p>
                                                         <div className="app-card__meta">
-                                                            <span className="meta-badge"><i className="material-icons-round">category</i> {app.categoryName} ({app.type === 'takim' ? 'TAKIM' : 'FERDİ'})</span>
+                                                            <span className="meta-badge"><i className="material-icons-round">category</i> {app.categoryName}</span>
                                                             <span className="meta-badge"><i className="material-icons-round">place</i> {app.city} {app.district ? `/ ${app.district}` : ''}</span>
                                                             <span className="meta-badge"><i className="material-icons-round">groups</i> {app.athleteCount} Sporcu</span>
+                                                            {(() => {
+                                                                const rules = getTeamRules(app.categoryName);
+                                                                if (!rules) return null;
+                                                                return (
+                                                                    <span className="meta-badge meta-badge--rule" title={`Takım kuralı: min ${rules.min}, max ${rules.max}`}>
+                                                                        <i className="material-icons-round">rule</i>
+                                                                        Takım: {rules.min}-{rules.max} sporcu
+                                                                    </span>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -328,35 +419,41 @@ export default function ApplicationsPage() {
                                                 <div className="app-card__right">
                                                     {app.status === 'bekliyor' && (
                                                         <div className="app-card__actions">
-                                                            <button
-                                                                className="action-btn action-btn--approve"
-                                                                onClick={() => handleStatusChange(app, 'onaylandi')}
-                                                                title="Onayla"
-                                                            >
-                                                                <i className="material-icons-round">check</i>
-                                                                <span>Onayla</span>
-                                                            </button>
-                                                            <button
-                                                                className="action-btn action-btn--reject"
-                                                                onClick={() => handleStatusChange(app, 'reddedildi')}
-                                                                title="Reddet"
-                                                            >
-                                                                <i className="material-icons-round">close</i>
-                                                                <span>Reddet</span>
-                                                            </button>
+                                                            {hasPermission('applications', 'onayla') && (
+                                                                <button
+                                                                    className="action-btn action-btn--approve"
+                                                                    onClick={() => handleStatusChange(app, 'onaylandi')}
+                                                                    title="Onayla"
+                                                                >
+                                                                    <i className="material-icons-round">check</i>
+                                                                    <span>Onayla</span>
+                                                                </button>
+                                                            )}
+                                                            {hasPermission('applications', 'reddet') && (
+                                                                <button
+                                                                    className="action-btn action-btn--reject"
+                                                                    onClick={() => handleStatusChange(app, 'reddedildi')}
+                                                                    title="Reddet"
+                                                                >
+                                                                    <i className="material-icons-round">close</i>
+                                                                    <span>Reddet</span>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
 
                                                     {app.status !== 'bekliyor' && (
                                                         <div className="app-card__status-display" style={{ color: currentStatus.color, background: `${currentStatus.color}15` }}>
                                                             {currentStatus.label}
-                                                            <button
-                                                                className="status-undo-btn"
-                                                                onClick={() => handleStatusChange(app, 'bekliyor')}
-                                                                title="Geri Al"
-                                                            >
-                                                                <i className="material-icons-round">undo</i>
-                                                            </button>
+                                                            {(hasPermission('applications', 'onayla') || hasPermission('applications', 'reddet')) && (
+                                                                <button
+                                                                    className="status-undo-btn"
+                                                                    onClick={() => handleStatusChange(app, 'bekliyor')}
+                                                                    title="Geri Al"
+                                                                >
+                                                                    <i className="material-icons-round">undo</i>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -367,15 +464,21 @@ export default function ApplicationsPage() {
                                                 <div className="app-card__detail">
                                                     <div className="detail-section">
                                                         <div className="detail-info-block">
-                                                            <strong>Sorumlu Öğretmen:</strong>
-                                                            <span>{app.teacherName || '-'} ({app.teacherPhone || '-'})</span>
+                                                            <strong>Öğretmenler:</strong>
+                                                            {app.teachers && app.teachers.length > 0 ? (
+                                                                app.teachers.map((t, i) => (
+                                                                    <span key={i}>{t.name || '-'} ({t.phone || '-'}){t.email ? ` — ${t.email}` : ''}</span>
+                                                                ))
+                                                            ) : app.teacherName ? (
+                                                                <span>{app.teacherName} ({app.teacherPhone || '-'})</span>
+                                                            ) : <span>-</span>}
                                                         </div>
 
                                                         <div className="detail-info-block">
                                                             <strong>Antrenörler:</strong>
                                                             {app.coaches && app.coaches.length > 0 ? (
                                                                 app.coaches.map((c, i) => (
-                                                                    <span key={i}>{c.ad} ({c.tel})</span>
+                                                                    <span key={i}>{c.name || c.ad || '-'} ({c.phone || c.tel || '-'}){c.email ? ` — ${c.email}` : ''}</span>
                                                                 ))
                                                             ) : <span>-</span>}
                                                         </div>
@@ -386,10 +489,10 @@ export default function ApplicationsPage() {
                                                         <div className="athlete-grid">
                                                             {app.athletes.map((ath, idx) => (
                                                                 <div className="athlete-card" key={idx}>
-                                                                    <div className="ath-name">{ath.adSoyad}</div>
-                                                                    <div className="ath-detail">TCKN: {ath.tckn}</div>
-                                                                    <div className="ath-detail">Lisans: {ath.lisans}</div>
-                                                                    <div className="ath-detail">D.Tarihi: {ath.dob}</div>
+                                                                    <div className="ath-name">{ath.name || ath.adSoyad || '-'}</div>
+                                                                    <div className="ath-detail">TCKN: {ath.tckn || '-'}</div>
+                                                                    <div className="ath-detail">Lisans: {ath.license || ath.lisans || '-'}</div>
+                                                                    <div className="ath-detail">D.Tarihi: {ath.dob || '-'}</div>
                                                                 </div>
                                                             ))}
                                                         </div>

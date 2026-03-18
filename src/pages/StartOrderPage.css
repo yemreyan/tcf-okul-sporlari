@@ -463,3 +463,325 @@
     background: rgba(255, 255, 255, 0.25);
     border-color: white;
 }
+
+/* Rotation Full State */
+.rotation-card--full {
+    border-color: #FCA5A5;
+}
+
+.rotation-card--full .rotation-header {
+    background: #FEF2F2;
+    border-color: #FECACA;
+}
+
+.count-badge--full {
+    background: #FEE2E2 !important;
+    color: #DC2626 !important;
+}
+
+/* Rotation Header Right */
+.rotation-header__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rotation-remove-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rotation-remove-btn i {
+    font-size: 1.1rem;
+}
+
+.rotation-remove-btn:hover {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+/* Team athlete card distinction */
+.order-athlete-card.assigned--team {
+    background: #EFF6FF;
+    border-color: #BFDBFE;
+}
+
+.order-athlete-card.assigned--team:hover {
+    border-color: #3B82F6;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+}
+
+/* Add Rotation Button */
+.add-rotation-btn {
+    background: white;
+    border: 2px dashed #CBD5E1;
+    border-radius: 1.25rem;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #94A3B8;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.add-rotation-btn i {
+    font-size: 2rem;
+}
+
+.add-rotation-btn:hover {
+    border-color: #6366F1;
+    color: #6366F1;
+    background: #F5F3FF;
+}
+
+/* ===== Bulk Assign Button (Super Admin) ===== */
+.btn-bulk-assign {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.btn-bulk-assign:hover:not(:disabled) {
+    background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(217, 119, 6, 0.4);
+}
+
+.btn-bulk-assign:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== Toast Notifications ===== */
+.toast-container {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 420px;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.2rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    animation: toastSlideIn 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+    backdrop-filter: blur(8px);
+    border: 1px solid transparent;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(60px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.toast--success {
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+    border-color: #6EE7B7;
+    color: #065F46;
+}
+
+.toast--success .toast__icon {
+    color: #059669;
+}
+
+.toast--error {
+    background: linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%);
+    border-color: #FCA5A5;
+    color: #991B1B;
+}
+
+.toast--error .toast__icon {
+    color: #DC2626;
+}
+
+.toast--warning {
+    background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    border-color: #FCD34D;
+    color: #92400E;
+}
+
+.toast--warning .toast__icon {
+    color: #D97706;
+}
+
+.toast--info {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-color: #93C5FD;
+    color: #1E40AF;
+}
+
+.toast--info .toast__icon {
+    color: #3B82F6;
+}
+
+.toast__icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.toast__message {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.toast__close {
+    font-size: 1.1rem;
+    opacity: 0.4;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+}
+
+.toast:hover .toast__close {
+    opacity: 0.8;
+}
+
+/* ===== Confirm Modal ===== */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: confirmFadeIn 0.2s ease;
+}
+
+@keyframes confirmFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.confirm-modal {
+    background: white;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    max-width: 440px;
+    width: 90%;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    animation: confirmSlideUp 0.25s cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+@keyframes confirmSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.confirm-modal__icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+}
+
+.confirm-modal__icon i {
+    font-size: 2rem;
+    color: #4F46E5;
+}
+
+.confirm-modal__message {
+    font-size: 1rem;
+    color: #334155;
+    line-height: 1.6;
+    margin: 0 0 1.75rem;
+}
+
+.confirm-modal__actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.confirm-btn {
+    padding: 0.7rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.confirm-btn--cancel {
+    background: #F1F5F9;
+    color: #64748B;
+}
+
+.confirm-btn--cancel:hover {
+    background: #E2E8F0;
+    color: #334155;
+}
+
+.confirm-btn--ok {
+    background: #4F46E5;
+    color: white;
+}
+
+.confirm-btn--ok:hover {
+    background: #4338CA;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+/* Responsive toast */
+@media (max-width: 480px) {
+    .toast-container {
+        left: 1rem;
+        right: 1rem;
+        max-width: none;
+    }
+    .confirm-modal {
+        padding: 1.5rem;
+    }
+}

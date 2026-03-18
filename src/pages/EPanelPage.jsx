@@ -2,20 +2,26 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
+import { validateEPanelToken } from '../lib/epanelToken';
+import { useNotification } from '../lib/NotificationContext';
 import './EPanelPage.css';
 
 export default function EPanelPage() {
+    const { toast } = useNotification();
     const [searchParams] = useSearchParams();
     const compId = searchParams.get('competitionId');
     const catId = searchParams.get('catId');
     const aletId = searchParams.get('aletId');
     const panelId = searchParams.get('panelId'); // E1, E2, E3, E4
+    const urlToken = searchParams.get('token'); // Güvenlik token'ı
 
     const [activeAthleteId, setActiveAthleteId] = useState(null);
     const [athleteInfo, setAthleteInfo] = useState(null);
 
-    // Status: 'waiting', 'scoring', 'sent', 'locked'
+    // Status: 'waiting', 'scoring', 'sent', 'locked', 'unauthorized'
     const [status, setStatus] = useState('waiting');
+    const [tokenVerified, setTokenVerified] = useState(false);
+    const [tokenChecking, setTokenChecking] = useState(true);
 
     const [scoreInput, setScoreInput] = useState('');
     const [serverScore, setServerScore] = useState(null);
@@ -23,8 +29,31 @@ export default function EPanelPage() {
     const [compName, setCompName] = useState('...');
     const [refereeName, setRefereeName] = useState('...');
 
+    // Token doğrulama
     useEffect(() => {
-        if (!compId || !catId || !aletId || !panelId) return;
+        if (!compId || !urlToken) {
+            setTokenChecking(false);
+            setTokenVerified(false);
+            return;
+        }
+
+        const tokenRef = ref(db, `competitions/${compId}/epanelToken`);
+        get(tokenRef).then((snap) => {
+            const dbToken = snap.val();
+            if (dbToken && validateEPanelToken(urlToken, dbToken)) {
+                setTokenVerified(true);
+            } else {
+                setTokenVerified(false);
+            }
+            setTokenChecking(false);
+        }).catch(() => {
+            setTokenVerified(false);
+            setTokenChecking(false);
+        });
+    }, [compId, urlToken]);
+
+    useEffect(() => {
+        if (!compId || !catId || !aletId || !panelId || !tokenVerified) return;
 
         // Fetch Comp Name
         const compRef = ref(db, `competitions/${compId}`);
@@ -59,7 +88,7 @@ export default function EPanelPage() {
             unsubComp();
             unsubActive();
         };
-    }, [compId, catId, aletId, panelId]);
+    }, [compId, catId, aletId, panelId, tokenVerified]);
 
     const fetchAthleteData = async (id) => {
         // Try local sporcular first, then globals fallback
@@ -82,7 +111,7 @@ export default function EPanelPage() {
 
     // Listen to specific score for this athlete
     useEffect(() => {
-        if (!compId || !catId || !aletId || !activeAthleteId || !panelId) return;
+        if (!compId || !catId || !aletId || !activeAthleteId || !panelId || !tokenVerified) return;
 
         const scoreRef = ref(db, `competitions/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`);
         const unsubScore = onValue(scoreRef, (snap) => {
@@ -102,7 +131,7 @@ export default function EPanelPage() {
         });
 
         return () => unsubScore();
-    }, [compId, catId, aletId, activeAthleteId, panelId]);
+    }, [compId, catId, aletId, activeAthleteId, panelId, tokenVerified]);
 
     const handleSendScore = async () => {
         if (!activeAthleteId || scoreInput === '') return;
@@ -111,7 +140,7 @@ export default function EPanelPage() {
         const val = parseFloat(valStr);
 
         if (isNaN(val) || val < 0 || val > 10) {
-            alert("Geçersiz Puan! Lütfen geçerli bir kesinti/puan girin (0-10).");
+            toast("Geçersiz Puan! Lütfen geçerli bir kesinti/puan girin (0-10).", "warning");
             return;
         }
 
@@ -122,7 +151,7 @@ export default function EPanelPage() {
             await update(ref(db, path), { [field]: val });
             setScoreInput(''); // Server listener will flip status to 'sent'
         } catch (e) {
-            alert("Hata oluştu: " + e.message);
+            toast("Hata oluştu. Lütfen tekrar deneyin.", "error");
         }
     };
 
@@ -136,7 +165,30 @@ export default function EPanelPage() {
             <div className="epanel-wrapper epanel-error">
                 <h2>Hatalı Link!</h2>
                 <p>Lütfen Başhakeminizden size iletilen tam linke (Karekod vb.) tıklayın veya sayfayı yenileyin.</p>
-                <div className="epanel-debug">Eksik URL Parametreleri (Beklenen: ?competitionId=X&catId=Y&aletId=Z&panelId=E1)</div>
+            </div>
+        );
+    }
+
+    // Token kontrol ediliyor
+    if (tokenChecking) {
+        return (
+            <div className="epanel-wrapper">
+                <div className="epanel-main">
+                    <div className="view-section active waiting-view">
+                        <span className="material-icons-round waiting-icon">hourglass_empty</span>
+                        <div className="waiting-text">Doğrulanıyor...</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Token geçersiz
+    if (!tokenVerified) {
+        return (
+            <div className="epanel-wrapper epanel-error">
+                <h2>Yetkisiz Erişim</h2>
+                <p>Bu bağlantı geçersiz veya süresi dolmuş. Lütfen Başhakeminizden yeni bir QR kod/link alın.</p>
             </div>
         );
     }
@@ -174,6 +226,8 @@ export default function EPanelPage() {
                                 className="score-input"
                                 placeholder="-"
                                 step="0.1"
+                                min="0"
+                                max="10"
                                 value={scoreInput}
                                 onChange={(e) => setScoreInput(e.target.value)}
                                 autoFocus

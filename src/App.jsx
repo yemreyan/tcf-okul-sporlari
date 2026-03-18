@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { NotificationProvider } from './lib/NotificationContext';
 import HomePage from './pages/HomePage';
 import CompetitionsPage from './pages/CompetitionsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
@@ -14,13 +15,33 @@ import EPanelPage from './pages/EPanelPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import LinksPage from './pages/LinksPage';
 import OfficialReportPage from './pages/OfficialReportPage';
+import RoleManagementPage from './pages/RoleManagementPage';
 import './App.css';
 
-// Korumalı Route Bileşeni
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+// Korumalı Route Bileşeni — pageKey ile sayfa izni kontrolü
+const ProtectedRoute = ({ children, pageKey }) => {
+  const { isAuthenticated, loading, hasPermission } = useAuth();
+
+  if (loading) return null;
 
   if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  // pageKey verilmişse sayfa izni kontrolü yap
+  if (pageKey && !hasPermission(pageKey)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+// Super Admin Only Route
+const SuperAdminRoute = ({ children }) => {
+  const { isAuthenticated, loading, isSuperAdmin } = useAuth();
+
+  if (loading) return null;
+  if (!isAuthenticated || !isSuperAdmin()) {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -33,7 +54,7 @@ function AppRoutes() {
       <Route
         path="/competitions"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="competitions">
             <CompetitionsPage />
           </ProtectedRoute>
         }
@@ -41,7 +62,7 @@ function AppRoutes() {
       <Route
         path="/applications"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="applications">
             <ApplicationsPage />
           </ProtectedRoute>
         }
@@ -49,7 +70,7 @@ function AppRoutes() {
       <Route
         path="/athletes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="athletes">
             <AthletesPage />
           </ProtectedRoute>
         }
@@ -57,7 +78,7 @@ function AppRoutes() {
       <Route
         path="/criteria"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="criteria">
             <CriteriaPage />
           </ProtectedRoute>
         }
@@ -65,7 +86,7 @@ function AppRoutes() {
       <Route
         path="/start-order"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="start_order">
             <StartOrderPage />
           </ProtectedRoute>
         }
@@ -73,7 +94,7 @@ function AppRoutes() {
       <Route
         path="/scoring"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="scoring">
             <ScoringPage />
           </ProtectedRoute>
         }
@@ -81,7 +102,7 @@ function AppRoutes() {
       <Route
         path="/referees"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="referees">
             <RefereesPage />
           </ProtectedRoute>
         }
@@ -89,7 +110,7 @@ function AppRoutes() {
       <Route
         path="/analytics"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="analytics">
             <AnalyticsPage />
           </ProtectedRoute>
         }
@@ -97,7 +118,7 @@ function AppRoutes() {
       <Route
         path="/finals"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="finals">
             <FinalsPage />
           </ProtectedRoute>
         }
@@ -105,7 +126,7 @@ function AppRoutes() {
       <Route
         path="/scoreboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="scoreboard">
             <ScoreboardPage />
           </ProtectedRoute>
         }
@@ -113,7 +134,7 @@ function AppRoutes() {
       <Route
         path="/links"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="links">
             <LinksPage />
           </ProtectedRoute>
         }
@@ -121,9 +142,17 @@ function AppRoutes() {
       <Route
         path="/official-report"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute pageKey="official_report">
             <OfficialReportPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/role-management"
+        element={
+          <SuperAdminRoute>
+            <RoleManagementPage />
+          </SuperAdminRoute>
         }
       />
       {/* E-Panel is relatively public/unprotected because refs use external devices via QR code to access. Access control relies on IDs. */}
@@ -135,9 +164,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

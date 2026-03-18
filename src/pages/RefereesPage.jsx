@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, remove, push, set, update } from 'firebase/database';
 import { db } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
+import { useNotification } from '../lib/NotificationContext';
 import * as XLSX from 'xlsx';
 import './RefereesPage.css';
 
 export default function RefereesPage() {
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
+    const { toast, confirm } = useNotification();
 
     const [referees, setReferees] = useState([]);
     const [competitionsList, setCompetitionsList] = useState([]);
@@ -20,10 +24,14 @@ export default function RefereesPage() {
     const [editingReferee, setEditingReferee] = useState(null);
     const [selectedReferee, setSelectedReferee] = useState(null); // Triggers slide-over
 
+    const [filterBrove, setFilterBrove] = useState('');
+
     // Form State for Add/Edit
     const [formData, setFormData] = useState({
         adSoyad: '',
-        brans: 'MAG', // instead of cinsiyet
+        brans: 'MAG',
+        il: '',
+        brove: '',
         email: '',
         telefon: ''
     });
@@ -109,7 +117,8 @@ export default function RefereesPage() {
 
     // 2. Handlers
     const handleDelete = async (refId, name) => {
-        if (window.confirm(`${name} isimli hakemi kalıcı olarak silmek istediğinize emin misiniz?`)) {
+        const ok = await confirm(`${name} isimli hakemi kalıcı olarak silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
+        if (ok) {
             try {
                 await remove(ref(db, `referees/${refId}`));
                 if (selectedReferee && selectedReferee.id === refId) {
@@ -117,7 +126,7 @@ export default function RefereesPage() {
                 }
             } catch (err) {
                 console.error("Delete failed", err);
-                alert("Silme işlemi başarısız.");
+                toast("Silme işlemi başarısız.", "error");
             }
         }
     };
@@ -128,6 +137,8 @@ export default function RefereesPage() {
             setFormData({
                 adSoyad: referee.adSoyad || '',
                 brans: referee.brans || 'MAG',
+                il: referee.il || '',
+                brove: referee.brove || '',
                 email: referee.email || '',
                 telefon: referee.telefon || ''
             });
@@ -136,6 +147,8 @@ export default function RefereesPage() {
             setFormData({
                 adSoyad: '',
                 brans: 'MAG',
+                il: '',
+                brove: '',
                 email: '',
                 telefon: ''
             });
@@ -145,7 +158,7 @@ export default function RefereesPage() {
 
     const saveReferee = async (e) => {
         e.preventDefault();
-        if (!formData.adSoyad) return alert("Ad Soyad zorunludur.");
+        if (!formData.adSoyad) return toast("Ad Soyad zorunludur.", "warning");
 
         try {
             if (editingReferee) {
@@ -162,14 +175,14 @@ export default function RefereesPage() {
             setIsAddEditModalOpen(false);
         } catch (err) {
             console.error("Save failed", err);
-            alert("Kaydetme işlemi başarısız oldu.");
+            toast("Kaydetme işlemi başarısız oldu.", "error");
         }
     };
 
     const handleAddPastCompetition = async (e) => {
         e.preventDefault();
         if (!selectedReferee) return;
-        if (!pastCompForm.compName || !pastCompForm.date) return alert("Yarışma adı ve tarihi zorunludur.");
+        if (!pastCompForm.compName || !pastCompForm.date) return toast("Yarışma adı ve tarihi zorunludur.", "warning");
 
         try {
             const newCompRef = push(ref(db, `referees/${selectedReferee.id}/gecmisYarismalar`));
@@ -190,7 +203,7 @@ export default function RefereesPage() {
             setIsAddHistoryModalOpen(false);
         } catch (err) {
             console.error("Adding past comp failed", err);
-            alert("Geçmiş görev eklenemedi.");
+            toast("Geçmiş görev eklenemedi.", "error");
         }
     };
 
@@ -209,9 +222,9 @@ export default function RefereesPage() {
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
 
-                if (data.length === 0) return alert("Excel dosyası boş.");
+                if (data.length === 0) return toast("Excel dosyası boş.", "warning");
 
-                alert(`${data.length} kayıt bulundu. Yükleme başlıyor...`);
+                toast(`${data.length} kayıt bulundu. Yükleme başlıyor...`, "info");
                 let successCount = 0;
                 let failCount = 0;
 
@@ -242,10 +255,10 @@ export default function RefereesPage() {
                     await push(ref(db, `referees`), newRef);
                     successCount++;
                 }
-                alert(`İşlem tamamlandı. Başarılı: ${successCount}, Başarısız: ${failCount}`);
+                toast(`İşlem tamamlandı. Başarılı: ${successCount}, Başarısız: ${failCount}`, "success");
             } catch (err) {
                 console.error("Excel parse error", err);
-                alert("Hata oluştu.");
+                toast("Hata oluştu.", "error");
             } finally {
                 if (fileInputRef.current) fileInputRef.current.value = "";
             }
@@ -256,9 +269,11 @@ export default function RefereesPage() {
 
     // 4. Filtering
     const filteredReferees = referees.filter(r => {
-        const matchesSearch = (r.adSoyad || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = (r.adSoyad || '').toLowerCase().includes(term) || (r.il || '').toLowerCase().includes(term);
         const matchesGender = filterGender === '' || r.brans === filterGender;
-        return matchesSearch && matchesGender;
+        const matchesBrove = filterBrove === '' || r.brove === filterBrove;
+        return matchesSearch && matchesGender && matchesBrove;
     });
 
     return (
@@ -277,12 +292,16 @@ export default function RefereesPage() {
 
                 <div className="page-header__actions">
                     <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} />
-                    <button className="btn-premium-secondary" onClick={() => fileInputRef.current.click()}>
-                        <i className="material-icons-round">file_upload</i> Toplu Excel Yükle
-                    </button>
-                    <button className="btn-premium-primary" onClick={() => openAddEditModal()}>
-                        <i className="material-icons-round">person_add</i> Yeni Hakem
-                    </button>
+                    {hasPermission('referees', 'ekle') && (
+                        <button className="btn-premium-secondary" onClick={() => fileInputRef.current.click()}>
+                            <i className="material-icons-round">file_upload</i> Toplu Excel Yükle
+                        </button>
+                    )}
+                    {hasPermission('referees', 'ekle') && (
+                        <button className="btn-premium-primary" onClick={() => openAddEditModal()}>
+                            <i className="material-icons-round">person_add</i> Yeni Hakem
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -305,6 +324,13 @@ export default function RefereesPage() {
                             <option value="">Tüm Branşlar</option>
                             <option value="MAG">MAG (Erkekler)</option>
                             <option value="WAG">WAG (Kadınlar)</option>
+                        </select>
+                        <select className="filter-select premium" value={filterBrove} onChange={(e) => setFilterBrove(e.target.value)}>
+                            <option value="">Tüm Bröveler</option>
+                            <option value="ULUSLARARASI">Uluslararası</option>
+                            <option value="MİLLİ">Milli</option>
+                            <option value="BÖLGE">Bölge</option>
+                            <option value="ADAY">Aday</option>
                         </select>
                         <div className="stats-badge">
                             <i className="material-icons-round">groups</i>
@@ -329,6 +355,8 @@ export default function RefereesPage() {
                                 <thead>
                                     <tr>
                                         <th>Ad Soyad</th>
+                                        <th>İl</th>
+                                        <th>Bröve</th>
                                         <th>İletişim</th>
                                         <th className="text-center">Görev Sayısı</th>
                                         <th></th>
@@ -353,6 +381,16 @@ export default function RefereesPage() {
                                                         </span>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td>
+                                                <span className="text-sm text-slate-600">{ref.il || '—'}</span>
+                                            </td>
+                                            <td>
+                                                {ref.brove && (
+                                                    <span className={`badge-brove ${ref.brove === 'ULUSLARARASI' ? 'intl' : ref.brove === 'MİLLİ' ? 'national' : ref.brove === 'BÖLGE' ? 'regional' : 'candidate'}`}>
+                                                        {ref.brove}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td>
                                                 <div className="contact-cell">
@@ -385,15 +423,21 @@ export default function RefereesPage() {
                                     <i className="material-icons-round">close</i> İptal
                                 </button>
                                 <div className="profile-actions">
-                                    <button className="icon-btn" style={{ background: '#EEF2FF', color: '#4F46E5', width: 'auto', padding: '0 1rem', display: 'flex', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => setIsAddHistoryModalOpen(true)} title="Görev Ekle">
-                                        <i className="material-icons-round">add_circle</i> Görev Ekle
-                                    </button>
-                                    <button className="icon-btn edit-btn" onClick={() => openAddEditModal(selectedReferee)} title="Düzenle">
-                                        <i className="material-icons-round">edit</i>
-                                    </button>
-                                    <button className="icon-btn delete-btn" onClick={() => handleDelete(selectedReferee.id, selectedReferee.adSoyad)} title="Sil">
-                                        <i className="material-icons-round">delete_forever</i>
-                                    </button>
+                                    {hasPermission('referees', 'duzenle') && (
+                                        <button className="icon-btn" style={{ background: '#EEF2FF', color: '#4F46E5', width: 'auto', padding: '0 1rem', display: 'flex', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => setIsAddHistoryModalOpen(true)} title="Görev Ekle">
+                                            <i className="material-icons-round">add_circle</i> Görev Ekle
+                                        </button>
+                                    )}
+                                    {hasPermission('referees', 'duzenle') && (
+                                        <button className="icon-btn edit-btn" onClick={() => openAddEditModal(selectedReferee)} title="Düzenle">
+                                            <i className="material-icons-round">edit</i>
+                                        </button>
+                                    )}
+                                    {hasPermission('referees', 'sil') && (
+                                        <button className="icon-btn delete-btn" onClick={() => handleDelete(selectedReferee.id, selectedReferee.adSoyad)} title="Sil">
+                                            <i className="material-icons-round">delete_forever</i>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -402,9 +446,16 @@ export default function RefereesPage() {
                                     {selectedReferee.brans === 'MAG' ? '🤸‍♂️' : '🤸‍♀️'}
                                 </div>
                                 <h2 className="hero-name">{selectedReferee.adSoyad}</h2>
-                                <span className={`badge-branch large ${selectedReferee.brans === 'MAG' ? 'mag' : 'wag'}`}>
-                                    {selectedReferee.brans === 'MAG' ? 'Erkekler Artistik (MAG)' : 'Kadınlar Artistik (WAG)'}
-                                </span>
+                                <div className="hero-badges">
+                                    <span className={`badge-branch large ${selectedReferee.brans === 'MAG' ? 'mag' : 'wag'}`}>
+                                        {selectedReferee.brans === 'MAG' ? 'Erkekler Artistik (MAG)' : 'Kadınlar Artistik (WAG)'}
+                                    </span>
+                                    {selectedReferee.brove && (
+                                        <span className={`badge-brove ${selectedReferee.brove === 'ULUSLARARASI' ? 'intl' : selectedReferee.brove === 'MİLLİ' ? 'national' : selectedReferee.brove === 'BÖLGE' ? 'regional' : 'candidate'}`}>
+                                            {selectedReferee.brove}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="profile-stats-grid">
@@ -428,12 +479,16 @@ export default function RefereesPage() {
                                 <h3 className="section-title">İletişim Bilgileri</h3>
                                 <div className="info-list">
                                     <div className="info-item">
-                                        <i className="material-icons-round">email</i>
-                                        <span>{selectedReferee.email || 'Email belirtilmedi'}</span>
+                                        <i className="material-icons-round">location_city</i>
+                                        <span>{selectedReferee.il || 'İl belirtilmedi'}</span>
                                     </div>
                                     <div className="info-item">
                                         <i className="material-icons-round">phone_iphone</i>
                                         <span>{selectedReferee.telefon || 'Telefon belirtilmedi'}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <i className="material-icons-round">email</i>
+                                        <span>{selectedReferee.email || 'Email belirtilmedi'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -517,6 +572,29 @@ export default function RefereesPage() {
                                             </div>
                                             <i className="material-icons-round check-icon">check_circle</i>
                                         </label>
+                                    </div>
+                                </div>
+
+                                <div className="pm-form-row">
+                                    <div className="pm-form-group">
+                                        <label>İl</label>
+                                        <div className="pm-input-wrapper">
+                                            <i className="material-icons-round">location_city</i>
+                                            <input type="text" value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })} placeholder="Örn: ANKARA" />
+                                        </div>
+                                    </div>
+                                    <div className="pm-form-group">
+                                        <label>Bröve</label>
+                                        <div className="pm-input-wrapper">
+                                            <i className="material-icons-round">workspace_premium</i>
+                                            <select value={formData.brove} onChange={e => setFormData({ ...formData, brove: e.target.value })} style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', border: 'none', fontSize: '1rem', background: 'transparent', outline: 'none' }}>
+                                                <option value="">Seçiniz</option>
+                                                <option value="ULUSLARARASI">Uluslararası</option>
+                                                <option value="MİLLİ">Milli</option>
+                                                <option value="BÖLGE">Bölge</option>
+                                                <option value="ADAY">Aday</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 

@@ -3,10 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue, remove, push, set, update } from 'firebase/database';
 import { db } from '../lib/firebase';
 import * as XLSX from 'xlsx';
+import { useAuth } from '../lib/AuthContext';
+import { useNotification } from '../lib/NotificationContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './AthletesPage.css';
 
 export default function AthletesPage() {
     const navigate = useNavigate();
+    const { currentUser, hasPermission } = useAuth();
+    const { toast, confirm } = useNotification();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
 
@@ -39,10 +44,10 @@ export default function AthletesPage() {
         const compsRef = ref(db, 'competitions');
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
-            setCompetitions(data);
+            setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // Seçilen yarışmaya göre sporcuları yükle
     useEffect(() => {
@@ -89,13 +94,14 @@ export default function AthletesPage() {
     }, [selectedCompId]);
 
     const handleDelete = async (catId, athId, name) => {
-        if (window.confirm(`${name} isimli sporcuyu silmek istediğinize emin misiniz?`)) {
+        const confirmed = await confirm(`${name} isimli sporcuyu silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
+        if (confirmed) {
             try {
                 const athRef = ref(db, `competitions/${selectedCompId}/sporcular/${catId}/${athId}`);
                 await remove(athRef);
             } catch (err) {
                 console.error("Delete failed", err);
-                alert("Silme işlemi başarısız.");
+                toast("Silme işlemi başarısız.", "error");
             }
         }
     };
@@ -133,8 +139,8 @@ export default function AthletesPage() {
 
     const saveAthlete = async (e) => {
         e.preventDefault();
-        if (!selectedCompId) return alert("Önce bir yarışma seçmelisiniz.");
-        if (!formData.categoryId) return alert("Kategori seçimi zorunludur.");
+        if (!selectedCompId) return toast("Önce bir yarışma seçmelisiniz.", "warning");
+        if (!formData.categoryId) return toast("Kategori seçimi zorunludur.", "warning");
 
         try {
             if (editingAthlete) {
@@ -160,7 +166,7 @@ export default function AthletesPage() {
             setIsModalOpen(false);
         } catch (err) {
             console.error("Save error:", err);
-            alert("Kaydedilirken hata oluştu.");
+            toast("Kaydedilirken hata oluştu.", "error");
         }
     };
 
@@ -169,7 +175,7 @@ export default function AthletesPage() {
         if (!file) return;
 
         if (!selectedCompId) {
-            alert("Lütfen önce Excel'in aktarılacağı yarışmayı seçin!");
+            toast("Lütfen önce Excel'in aktarılacağı yarışmayı seçin!", "warning");
             e.target.value = null;
             return;
         }
@@ -184,7 +190,7 @@ export default function AthletesPage() {
                 const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
                 if (data.length === 0) {
-                    alert("Excel dosyası boş veya format hatalı.");
+                    toast("Excel dosyası boş veya format hatalı.", "error");
                     return;
                 }
 
@@ -216,13 +222,13 @@ export default function AthletesPage() {
 
                 if (Object.keys(updates).length > 0) {
                     await update(ref(db), updates);
-                    alert(`${addedCount} sporcu başarıyla içeri aktarıldı!`);
+                    toast(`${addedCount} sporcu başarıyla içeri aktarıldı!`, "success");
                 } else {
-                    alert("Geçerli veri bulunamadı. Lütfen Excel sütun başlıklarını kontrol edin (Ad, Soyad, Kategori zorunlu).");
+                    toast("Geçerli veri bulunamadı. Lütfen Excel sütun başlıklarını kontrol edin (Ad, Soyad, Kategori zorunlu).", "warning");
                 }
             } catch (error) {
                 console.error("Excel import error", error);
-                alert("Excel aktarımında bir hata meydana geldi.");
+                toast("Excel aktarımında bir hata meydana geldi.", "error");
             }
             e.target.value = null; // reset input
         };
@@ -230,7 +236,7 @@ export default function AthletesPage() {
     };
 
     const compOptions = Object.entries(competitions)
-        .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih));
+        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     const filteredAthletes = athletes.filter(ath => {
         const fullName = `${ath.ad || ''} ${ath.soyad || ''}`.toLowerCase();
@@ -267,24 +273,28 @@ export default function AthletesPage() {
                         ref={fileInputRef}
                         onChange={handleExcelImport}
                     />
-                    <button
-                        className="action-btn-outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={!selectedCompId}
-                        title={!selectedCompId ? "Önce Yarışma Seçin" : "Excel Aktar"}
-                    >
-                        <i className="material-icons-round">upload_file</i>
-                        <span>Excel Aktar</span>
-                    </button>
+                    {hasPermission('athletes', 'ekle') && (
+                        <button
+                            className="action-btn-outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={!selectedCompId}
+                            title={!selectedCompId ? "Önce Yarışma Seçin" : "Excel Aktar"}
+                        >
+                            <i className="material-icons-round">upload_file</i>
+                            <span>Excel Aktar</span>
+                        </button>
+                    )}
 
-                    <button
-                        className="create-btn"
-                        onClick={() => openModal()}
-                        disabled={!selectedCompId}
-                    >
-                        <i className="material-icons-round">person_add</i>
-                        <span>Manuel Ekle</span>
-                    </button>
+                    {hasPermission('athletes', 'ekle') && (
+                        <button
+                            className="create-btn"
+                            onClick={() => openModal()}
+                            disabled={!selectedCompId}
+                        >
+                            <i className="material-icons-round">person_add</i>
+                            <span>Manuel Ekle</span>
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -371,12 +381,16 @@ export default function AthletesPage() {
                                                 <span className="athlete-cat-badge" title={ath.categoryId}>{ath.categoryId}</span>
                                             </div>
                                             <div className="athlete-actions">
-                                                <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
-                                                    <i className="material-icons-round">edit</i>
-                                                </button>
-                                                <button className="del-btn" onClick={() => handleDelete(ath.categoryId, ath.id, `${ath.ad} ${ath.soyad}`)} title="Sil">
-                                                    <i className="material-icons-round">delete_outline</i>
-                                                </button>
+                                                {hasPermission('athletes', 'duzenle') && (
+                                                    <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
+                                                        <i className="material-icons-round">edit</i>
+                                                    </button>
+                                                )}
+                                                {hasPermission('athletes', 'sil') && (
+                                                    <button className="del-btn" onClick={() => handleDelete(ath.categoryId, ath.id, `${ath.ad} ${ath.soyad}`)} title="Sil">
+                                                        <i className="material-icons-round">delete_outline</i>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="athlete-card__body">

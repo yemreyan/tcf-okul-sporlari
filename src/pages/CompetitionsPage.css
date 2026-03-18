@@ -548,3 +548,370 @@
 .cat-checkbox .checkbox-indicator {
     display: none;
 }
+
+/* ============================
+   COUNTDOWN BADGE
+   ============================ */
+.comp-card__countdown {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--blue);
+    background: rgba(37, 99, 235, 0.08);
+    padding: 4px 10px;
+    border-radius: 50px;
+    white-space: nowrap;
+}
+
+/* ============================
+   PAST COMPETITIONS SECTION
+   ============================ */
+.past-section {
+    margin-top: 40px;
+}
+
+.past-section__toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.past-section__toggle:hover {
+    background: var(--bg);
+    border-color: #D1D5DB;
+}
+
+.past-section__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.past-section__left i {
+    font-size: 20px;
+    color: var(--text-muted);
+}
+
+.past-section__count {
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 2px 10px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+}
+
+.past-section__arrow {
+    font-size: 22px;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+}
+
+.past-section__arrow.open {
+    transform: rotate(180deg);
+}
+
+.comp-list--past {
+    margin-top: 16px;
+}
+
+/* Geçmiş yarışma kartları hafif soluk */
+.comp-card--past {
+    opacity: 0.75;
+}
+
+.comp-card--past:hover {
+    opacity: 1;
+}
+
+.comp-card--past .comp-card__stats {
+    margin-bottom: 0;
+}
+
+/* ============================
+   TOOLBAR (Search + Filter + Toggle)
+   ============================ */
+.comp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.comp-search {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+}
+
+.comp-search > i {
+    position: absolute;
+    left: 12px;
+    font-size: 20px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.comp-search input {
+    width: 100%;
+    padding: 10px 40px 10px 40px;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    background: var(--bg-white);
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.comp-search input::placeholder {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.comp-search input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.comp-search__clear {
+    position: absolute;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.comp-search__clear i {
+    font-size: 18px;
+}
+
+.comp-search__clear:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+/* Toolbar'daki filter-select-wrapper margin-left override */
+.comp-toolbar .filter-select-wrapper {
+    margin-left: 0;
+}
+
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.view-toggle__btn {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-white);
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-toggle__btn i {
+    font-size: 20px;
+}
+
+.view-toggle__btn:not(:last-child) {
+    border-right: 1px solid var(--border);
+}
+
+.view-toggle__btn:hover {
+    background: var(--bg);
+    color: var(--text-secondary);
+}
+
+.view-toggle__btn.active {
+    background: var(--text-primary);
+    color: white;
+}
+
+/* Toolbar Count */
+.comp-toolbar__count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.comp-toolbar__count span {
+    font-weight: 800;
+    color: var(--text-secondary);
+}
+
+/* ============================
+   LIST VIEW
+   ============================ */
+.comp-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comp-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    animation: cardFadeUp 0.3s ease both;
+}
+
+.comp-row:hover {
+    border-color: var(--border-light);
+    box-shadow: var(--shadow-sm);
+    transform: translateX(2px);
+}
+
+.comp-row__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.comp-row__main {
+    flex: 1;
+    min-width: 0;
+}
+
+.comp-row__name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.comp-row__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.comp-row__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.comp-row__meta span i {
+    font-size: 15px;
+}
+
+.comp-row__countdown {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--blue);
+    background: rgba(37, 99, 235, 0.08);
+    padding: 4px 10px;
+    border-radius: 50px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.comp-row__actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.comp-row--past {
+    opacity: 0.7;
+}
+
+.comp-row--past:hover {
+    opacity: 1;
+}
+
+/* ============================
+   LIST VIEW RESPONSIVE
+   ============================ */
+@media (max-width: 768px) {
+    .comp-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .comp-search {
+        min-width: 100%;
+    }
+
+    .comp-toolbar .filter-select-wrapper {
+        width: 100%;
+    }
+
+    .comp-toolbar .filter-select {
+        width: 100%;
+    }
+
+    .comp-toolbar__count {
+        text-align: center;
+    }
+
+    .comp-row {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .comp-row__main {
+        order: -1;
+        flex-basis: 100%;
+    }
+
+    .comp-row__meta {
+        gap: 8px;
+    }
+}

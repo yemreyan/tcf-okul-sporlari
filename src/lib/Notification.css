@@ -1,0 +1,139 @@
+/* =========================================
+   GLOBAL NOTIFICATION SYSTEM
+   Toast + Confirm Modal
+   ========================================= */
+
+/* ─── Toast Stack ─── */
+.n-toast-container {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 420px;
+    width: calc(100% - 2.5rem);
+}
+
+.n-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.15rem;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    animation: n-slideIn 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+.n-toast i:first-child { font-size: 1.35rem; flex-shrink: 0; }
+.n-toast span { flex: 1; line-height: 1.4; }
+
+.n-toast-info { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.n-toast-success { background: linear-gradient(135deg, #10B981, #059669); }
+.n-toast-error { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.n-toast-warning { background: linear-gradient(135deg, #F59E0B, #D97706); }
+
+.n-toast-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+.n-toast-close:hover { color: #fff; }
+.n-toast-close i { font-size: 1.1rem; }
+
+@keyframes n-slideIn {
+    from { opacity: 0; transform: translateX(40px) scale(0.95); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* ─── Confirm Modal ─── */
+.n-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99998;
+    animation: n-fadeIn 0.2s ease;
+}
+@keyframes n-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.n-confirm-dialog {
+    background: #fff;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    padding: 2rem 1.75rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.22);
+    animation: n-popIn 0.25s ease;
+}
+@keyframes n-popIn {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.n-confirm-icon-area {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+.n-confirm-icon-area i { font-size: 1.75rem; color: #fff; }
+.n-confirm-warning { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.n-confirm-danger { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.n-confirm-info { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+
+.n-confirm-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1E293B;
+    margin: 0 0 0.5rem;
+}
+.n-confirm-message {
+    font-size: 0.92rem;
+    color: #64748B;
+    line-height: 1.5;
+    margin: 0 0 1.5rem;
+}
+
+.n-confirm-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+.n-confirm-btn {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.n-btn-cancel {
+    background: #F1F5F9;
+    color: #475569;
+}
+.n-btn-cancel:hover { background: #E2E8F0; }
+
+.n-btn-ok {
+    color: #fff;
+}
+.n-btn-warning { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.n-btn-danger { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.n-btn-info { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.n-btn-ok:hover { filter: brightness(1.08); transform: translateY(-1px); }

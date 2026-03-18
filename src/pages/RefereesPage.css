@@ -280,6 +280,52 @@
     border: 1px solid #F9A8D4;
 }
 
+/* Brove Badge */
+.badge-brove {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.badge-brove.intl {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    color: #92400E;
+    border: 1px solid #F59E0B;
+}
+
+.badge-brove.national {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+    color: #065F46;
+    border: 1px solid #34D399;
+}
+
+.badge-brove.regional {
+    background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+    color: #3730A3;
+    border: 1px solid #818CF8;
+}
+
+.badge-brove.candidate {
+    background: linear-gradient(135deg, #F1F5F9, #E2E8F0);
+    color: #475569;
+    border: 1px solid #94A3B8;
+}
+
+/* Hero Badges */
+.hero-badges {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+
 /* Contact Cell */
 .contact-cell {
     display: flex;

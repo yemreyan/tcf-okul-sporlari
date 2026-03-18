@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+
 import { ref, onValue, set, remove, push } from "firebase/database";
 import { db } from "../lib/firebase";
 import * as XLSX from "xlsx";
+import { useAuth } from '../lib/AuthContext';
+import { useNotification } from '../lib/NotificationContext';
+import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import "./FinalsPage.css";
 
 const APPARATUS_NAMES = {
@@ -18,6 +21,8 @@ const APPARATUS_NAMES = {
 };
 
 export default function FinalsPage() {
+    const { currentUser, hasPermission } = useAuth();
+    const { toast, confirm } = useNotification();
     const [competitions, setCompetitions] = useState([]);
     const [selectedCompId, setSelectedCompId] = useState("");
     const [competitionData, setCompetitionData] = useState(null);
@@ -44,7 +49,7 @@ export default function FinalsPage() {
                     id: key,
                     ...data[key],
                 })).sort((a, b) => new Date(b.tarih || b.baslangicTarihi || 0) - new Date(a.tarih || a.baslangicTarihi || 0));
-                setCompetitions(list);
+                setCompetitions(filterCompetitionsArrayByUser(list, currentUser));
             }
         });
 
@@ -57,7 +62,7 @@ export default function FinalsPage() {
             unsubscribeComps();
             unsubscribeGlobal();
         };
-    }, []);
+    }, [currentUser]);
 
     // 2. Load Selected Competition Data
     useEffect(() => {
@@ -109,7 +114,6 @@ export default function FinalsPage() {
 
     // 4. Data Processing Logic (Derived State)
     const fullResults = useMemo(() => {
-        console.log("Processing Data. comp:", competitionData, "authletes:", categoryAthletes, "scores:", categoryScores);
         if (!competitionData || !selectedCategoryId) return [];
 
         const catData = competitionData.kategoriler?.[selectedCategoryId];
@@ -173,10 +177,10 @@ export default function FinalsPage() {
                     };
                 }
 
-                let finalScoreVal = scoreData?.finalScore ?? scoreData?.sonuc ?? scoreData?.sonPuan ?? 0;
-                let dScoreVal = scoreData?.dScore ?? scoreData?.calc_D ?? scoreData?.dToplami ?? scoreData?.dPuani ?? 0;
-                let eScoreVal = scoreData?.eScore ?? scoreData?.calc_E ?? scoreData?.ePuani ?? 0;
-                let penVal = scoreData?.neutralDeductions ?? scoreData?.calc_MissingPen ?? scoreData?.tarafsiz ?? scoreData?.TarafsizKesinti ?? 0;
+                let finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
+                let dScoreVal = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
+                let eScoreVal = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
+                let penVal = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
 
                 const score = parseFloat(finalScoreVal || 0);
                 scores[key] = score;
@@ -290,7 +294,7 @@ export default function FinalsPage() {
 
         const amountNum = parseFloat(deductionForm.amount.replace(',', '.'));
         if (isNaN(amountNum) || amountNum <= 0) {
-            alert("Ceza puanı geçerli bir sayı olmalıdır.");
+            toast("Ceza puanı geçerli bir sayı olmalıdır.", "warning");
             return;
         }
 
@@ -307,12 +311,13 @@ export default function FinalsPage() {
             setIsDeductionModalOpen(false);
         } catch (err) {
             console.error("Ceza eklenirken hata oluştu:", err);
-            alert("Ceza kaydedilemedi!");
+            toast("Ceza kaydedilemedi!", "error");
         }
     };
 
     const handleDeleteDeduction = async (deductionId) => {
-        if (window.confirm("Bu cezayı silmek istediğinize emin misiniz?")) {
+        const confirmed = await confirm("Bu cezayı silmek istediğinize emin misiniz?", { title: "Silme Onayı", type: "danger" });
+        if (confirmed) {
             try {
                 const refPath = `competitions/${selectedCompId}/teamDeductions/${deductionId}`;
                 await remove(ref(db, refPath));
@@ -460,9 +465,11 @@ export default function FinalsPage() {
                                 <button className={`tab-btn ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}>Takım Genel Tasnif</button>
                             </div>
                             <div className="finals-export-buttons">
-                                <button className="action-btn penalty-btn" onClick={() => setIsDeductionModalOpen(true)}>
-                                    <i className="material-icons-round">remove_circle_outline</i> Takım Cezası
-                                </button>
+                                {hasPermission('finals', 'duzenle') && (
+                                    <button className="action-btn penalty-btn" onClick={() => setIsDeductionModalOpen(true)}>
+                                        <i className="material-icons-round">remove_circle_outline</i> Takım Cezası
+                                    </button>
+                                )}
                                 <button className="action-btn excel-btn" onClick={handleExportExcel}>
                                     <i className="material-icons-round">table_chart</i> Excel Export
                                 </button>
@@ -733,9 +740,11 @@ export default function FinalsPage() {
                                                 </div>
                                                 <div className="deduction-action">
                                                     <span className="deduction-value">-{formatScore(d.amount)}</span>
-                                                    <button onClick={() => handleDeleteDeduction(id)} title="Cezayı Sil">
-                                                        <i className="material-icons-round">delete</i>
-                                                    </button>
+                                                    {hasPermission('finals', 'duzenle') && (
+                                                        <button onClick={() => handleDeleteDeduction(id)} title="Cezayı Sil">
+                                                            <i className="material-icons-round">delete</i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}

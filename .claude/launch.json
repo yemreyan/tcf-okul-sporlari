@@ -3,15 +3,15 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 5173
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5555"],
+      "port": 5555
     },
     {
       "name": "preview",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
-      "port": 4173
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4444"],
+      "port": 4444
     }
   ]
 }

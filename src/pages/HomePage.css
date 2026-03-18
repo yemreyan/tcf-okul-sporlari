@@ -391,6 +391,74 @@
 }
 
 /* ============================
+   HEADER USER INFO
+   ============================ */
+
+.header__user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header__role-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: var(--blue);
+    color: white;
+    letter-spacing: 0.3px;
+}
+
+.header__il-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.header__login-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+    background: var(--bg-white);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.header__login-btn:hover {
+    background: var(--border-light);
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+/* Login spinner */
+.login-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: loginSpin 0.6s linear infinite;
+}
+
+@keyframes loginSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================
    RESPONSIVE
    ============================ */
 
@@ -420,6 +488,11 @@
     }
 
     .header__username {
+        display: none;
+    }
+
+    .header__role-badge,
+    .header__il-badge {
         display: none;
     }
 

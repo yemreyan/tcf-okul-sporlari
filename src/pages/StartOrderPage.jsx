@@ -1,75 +1,114 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '../lib/AuthContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './StartOrderPage.css';
 
 export default function StartOrderPage() {
     const navigate = useNavigate();
+    const { currentUser, hasPermission, isSuperAdmin } = useAuth();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
 
+    const MAX_PER_ROTATION = 8;
+
     // State
-    const [rotations, setRotations] = useState([[], [], [], [], [], []]); // Supporting up to 6 groups
+    const [rotations, setRotations] = useState([]); // Dynamic rotation count
     const [unassigned, setUnassigned] = useState([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [pdfGenerating, setPdfGenerating] = useState(false);
+    const [bulkAssigning, setBulkAssigning] = useState(false);
+
+    // Toast System
+    const [toasts, setToasts] = useState([]);
+    const toastIdRef = useRef(0);
+
+    const showToast = useCallback((message, type = 'info', duration = 3500) => {
+        const id = ++toastIdRef.current;
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+    }, []);
+
+    const removeToast = useCallback((id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    // Confirm Modal
+    const [confirmModal, setConfirmModal] = useState(null);
+
+    const showConfirm = useCallback((message) => {
+        return new Promise((resolve) => {
+            setConfirmModal({
+                message,
+                onConfirm: () => { setConfirmModal(null); resolve(true); },
+                onCancel: () => { setConfirmModal(null); resolve(false); }
+            });
+        });
+    }, []);
 
     // Initial load
     useEffect(() => {
         const compsRef = ref(db, 'competitions');
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
-            setCompetitions(data);
+            setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // Load data when selections change
     useEffect(() => {
         if (!selectedCompId || !filterCategory) {
             setUnassigned([]);
-            setRotations([[], [], [], [], [], []]);
+            setRotations([]);
             return;
         }
 
         setLoading(true);
-        const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${filterCategory}`);
 
-        const unsubscribeAthletes = onValue(athletesRef, (snapshot) => {
-            const data = snapshot.val();
-            const loadedAthletes = [];
+        const loadData = async () => {
+            try {
+                // Her iki veriyi de aynı anda oku
+                const [athletesSnap, orderSnap] = await Promise.all([
+                    get(ref(db, `competitions/${selectedCompId}/sporcular/${filterCategory}`)),
+                    get(ref(db, `competitions/${selectedCompId}/siralama/${filterCategory}`))
+                ]);
 
-            if (data) {
-                Object.keys(data).forEach(athId => {
-                    loadedAthletes.push({
-                        id: athId,
-                        categoryId: filterCategory,
-                        ...data[athId]
+                const data = athletesSnap.val();
+                const loadedAthletes = [];
+                if (data) {
+                    Object.keys(data).forEach(athId => {
+                        loadedAthletes.push({
+                            ...data[athId],
+                            id: athId,
+                            categoryId: filterCategory
+                        });
                     });
-                });
-            }
+                }
 
-            const orderRef = ref(db, `competitions/${selectedCompId}/siralama/${filterCategory}`);
-            onValue(orderRef, (orderSnap) => {
                 const orderData = orderSnap.val();
-                let currentRotations = [[], [], [], [], [], []];
+                let maxRotIndex = -1;
+                const rotationsMap = {};
                 let currentUnassigned = [...loadedAthletes];
 
                 if (orderData) {
                     Object.keys(orderData).forEach(rotKey => {
                         const rotIndex = parseInt(rotKey.replace('rotation_', ''));
-                        if (!isNaN(rotIndex) && rotIndex < 6) {
+                        if (!isNaN(rotIndex)) {
+                            if (rotIndex > maxRotIndex) maxRotIndex = rotIndex;
                             const athletesInRot = orderData[rotKey];
                             const sortedAthletes = Object.keys(athletesInRot).map(id => {
                                 const athDetails = loadedAthletes.find(a => a.id === id);
                                 return athDetails ? { ...athDetails, sirasi: athletesInRot[id].sirasi } : null;
                             }).filter(a => a !== null).sort((a, b) => a.sirasi - b.sirasi);
 
-                            currentRotations[rotIndex] = sortedAthletes;
+                            rotationsMap[rotIndex] = sortedAthletes;
                             sortedAthletes.forEach(a => {
                                 currentUnassigned = currentUnassigned.filter(ua => ua.id !== a.id);
                             });
@@ -77,21 +116,31 @@ export default function StartOrderPage() {
                     });
                 }
 
+                const currentRotations = [];
+                for (let i = 0; i <= maxRotIndex; i++) {
+                    currentRotations.push(rotationsMap[i] || []);
+                }
+
                 currentUnassigned.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`));
                 setRotations(currentRotations);
                 setUnassigned(currentUnassigned);
+            } catch (err) {
+                if (import.meta.env.DEV) console.error('Load error:', err);
+            } finally {
                 setLoading(false);
-            }, { onlyOnce: true });
-        });
+            }
+        };
 
-        return () => unsubscribeAthletes();
+        loadData();
     }, [selectedCompId, filterCategory]);
 
     // -- Random Assignment Logic --
-    const handleRandomAssign = () => {
+    // Kural: Takım grupları ayrı, ferdi grupları ayrı. Dengeli dağılım. Max 8/grup.
+    const handleRandomAssign = async () => {
         if (!selectedCompId || !filterCategory) return;
         if (rotations.some(r => r.length > 0)) {
-            if (!window.confirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?")) return;
+            const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
+            if (!confirmed) return;
         }
 
         // Combine all athletes
@@ -117,36 +166,56 @@ export default function StartOrderPage() {
         shuffleArray(teamsList);
         shuffleArray(individuals);
 
-        // Prepare new 6 empty groups
-        const newRotations = [[], [], [], [], [], []];
+        // ===== PHASE 1: Takım grupları (sadece takım sporcuları) =====
+        const teamGroups = [];
 
-        // Helper to find the group with the minimum number of athletes currently
-        const getGroupWithMinAthletes = () => {
-            let minIndex = 0;
-            let minCount = newRotations[0].length;
-            for (let i = 1; i < newRotations.length; i++) {
-                if (newRotations[i].length < minCount) {
-                    minCount = newRotations[i].length;
-                    minIndex = i;
+        const findBestTeamGroup = (requiredSlots) => {
+            let bestIndex = -1;
+            let bestCount = Infinity;
+            for (let i = 0; i < teamGroups.length; i++) {
+                if (teamGroups[i].length + requiredSlots <= MAX_PER_ROTATION && teamGroups[i].length < bestCount) {
+                    bestCount = teamGroups[i].length;
+                    bestIndex = i;
                 }
             }
-            return minIndex;
+            if (bestIndex === -1) {
+                teamGroups.push([]);
+                bestIndex = teamGroups.length - 1;
+            }
+            return bestIndex;
         };
 
-        // 2. Distribute Teams first. Entire team goes to the same group.
         teamsList.forEach(teamMembers => {
-            const targetGroupIndex = getGroupWithMinAthletes();
-            newRotations[targetGroupIndex].push(...teamMembers);
+            const targetIndex = findBestTeamGroup(teamMembers.length);
+            teamGroups[targetIndex].push(...teamMembers);
         });
 
-        // 3. Distribute Individuals evenly
-        individuals.forEach(individual => {
-            const targetGroupIndex = getGroupWithMinAthletes();
-            newRotations[targetGroupIndex].push(individual);
-        });
+        // ===== PHASE 2: Ferdi grupları (sadece bireysel sporcular, dengeli) =====
+        const individualGroups = [];
+
+        if (individuals.length > 0) {
+            // Kaç grup lazım? Dengeli dağıtım için: ceil(total / MAX)
+            const numIndGroups = Math.ceil(individuals.length / MAX_PER_ROTATION);
+            for (let i = 0; i < numIndGroups; i++) individualGroups.push([]);
+
+            // Round-robin ile dengeli dağıt
+            individuals.forEach((ath, idx) => {
+                individualGroups[idx % numIndGroups].push(ath);
+            });
+        }
+
+        // ===== Birleştir: önce takım grupları, sonra ferdi grupları =====
+        const newRotations = [...teamGroups, ...individualGroups];
+
+        // Ensure at least 1 group exists
+        if (newRotations.length === 0) newRotations.push([]);
 
         setUnassigned([]);
         setRotations(newRotations);
+
+        // Otomatik kaydet
+        const ok = await saveToFirebase(newRotations, [], true);
+        if (ok) showToast('Rastgele atama yapıldı ve kaydedildi.', 'success');
     };
 
     // Fisher-Yates shuffle
@@ -182,6 +251,16 @@ export default function StartOrderPage() {
             if (currentIndex === targetIndex) return;
         }
 
+        // Max 8 check: if target is a rotation and already full (and not same source)
+        if (targetMap !== 'unassigned' && typeof targetMap === 'number') {
+            const isMovingWithinSameGroup = sourceMap === targetMap;
+            if (!isMovingWithinSameGroup && rotations[targetMap]?.length >= MAX_PER_ROTATION) {
+                showToast(`Bu grupta zaten ${MAX_PER_ROTATION} sporcu var. Daha fazla eklenemez.`, 'warning');
+                setDraggedItem(null);
+                return;
+            }
+        }
+
         let newUnassigned = [...unassigned];
         let newRotations = [...rotations.map(r => [...r])];
 
@@ -207,92 +286,418 @@ export default function StartOrderPage() {
         setDraggedItem(null);
     };
 
+    // Yeni boş grup ekle
+    const addRotation = () => {
+        setRotations(prev => [...prev, []]);
+    };
+
+    // Boş grubu sil
+    const removeRotation = async (index) => {
+        if (rotations[index].length > 0) {
+            const confirmed = await showConfirm(`Grup ${index + 1} içinde ${rotations[index].length} sporcu var. Sporcular boştakiler listesine taşınacak. Devam?`);
+            if (!confirmed) return;
+            setUnassigned(prev => {
+                const merged = [...prev, ...rotations[index]];
+                merged.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`));
+                return merged;
+            });
+        }
+        setRotations(prev => prev.filter((_, i) => i !== index));
+    };
+
     // -- Save & Export --
-    const handleSave = async () => {
-        if (!selectedCompId || !filterCategory) return alert("Kategori seçilmelidir.");
+    // Kaydetme mantığı: rotasyonları ve boştakileri parametre olarak alır (veya state'den okur)
+    const saveToFirebase = async (rotationsToSave, unassignedToSave, silent = false) => {
+        if (!selectedCompId || !filterCategory) {
+            if (!silent) showToast("Kategori seçilmelidir.", 'error');
+            return false;
+        }
         setSaving(true);
 
-        // Instead of setting parent to null and updating children, we build the entire object
         const siralamaData = {};
+        const updates = {};
+        let globalOrder = 0;
 
-        rotations.forEach((rotation, rotIndex) => {
+        rotationsToSave.forEach((rotation, rotIndex) => {
             if (rotation.length > 0) {
                 const rotationObj = {};
                 rotation.forEach((ath, athIndex) => {
+                    globalOrder++;
+                    const grupIciSirasi = athIndex + 1;
+
                     rotationObj[ath.id] = {
-                        sirasi: athIndex + 1,
+                        sirasi: grupIciSirasi,
                         ad: ath.ad,
                         soyad: ath.soyad,
                         tckn: ath.tckn || '',
                         okul: ath.okul || '',
                         yarismaTuru: ath.yarismaTuru || 'ferdi'
                     };
+
+                    const athPath = `competitions/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
+                    updates[`${athPath}/sirasi`] = grupIciSirasi;
+                    updates[`${athPath}/cikisSirasi`] = globalOrder;
+                    updates[`${athPath}/rotasyonGrubu`] = rotIndex;
                 });
                 siralamaData[`rotation_${rotIndex}`] = rotationObj;
             }
         });
 
-        const updates = {};
-        // Replace the entire node with the newly built structure
+        unassignedToSave.forEach((ath) => {
+            const athPath = `competitions/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
+            updates[`${athPath}/sirasi`] = 999;
+            updates[`${athPath}/cikisSirasi`] = null;
+            updates[`${athPath}/rotasyonGrubu`] = null;
+        });
+
         updates[`competitions/${selectedCompId}/siralama/${filterCategory}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
 
         try {
             await update(ref(db), updates);
-            alert("Çıkış sırası başarıyla kaydedildi.");
+            if (!silent) showToast("Çıkış sırası başarıyla kaydedildi.", 'success');
+            return true;
         } catch (err) {
             console.error(err);
-            alert("Kaydetme işlemi başarısız.");
+            showToast("Kaydetme işlemi başarısız.", 'error');
+            return false;
         } finally {
             setSaving(false);
         }
     };
 
-    const handleExportPDF = () => {
-        if (!selectedCompId || !filterCategory) return alert("Dışa aktarmak için kategori seçiniz.");
-        const doc = new jsPDF();
-        const compName = competitions[selectedCompId]?.isim || 'Yarışma';
+    const handleSave = () => saveToFirebase(rotations, unassigned);
 
-        doc.setFontSize(16);
-        doc.text("Çıkış Sırası Listesi", 14, 15);
+    // ===== SUPER ADMIN: Tüm yarışmalarda tüm kategorilerde toplu atama =====
+    const handleBulkAssignAll = async () => {
+        const confirmed = await showConfirm(
+            "Tüm yarışmalardaki tüm kategorilerde atanmamış sporcular rastgele gruplara atanacak. Mevcut atamalar korunacak. Devam etmek istiyor musunuz?"
+        );
+        if (!confirmed) return;
 
-        doc.setFontSize(11);
-        doc.text(`Yarışma: ${compName}`, 14, 23);
-        doc.text(`Kategori: ${filterCategory}`, 14, 29);
+        setBulkAssigning(true);
+        let totalAssigned = 0;
+        let totalCategories = 0;
 
-        let startY = 35;
+        try {
+            const compEntries = Object.entries(competitions);
 
-        rotations.forEach((rotation, index) => {
-            if (rotation.length === 0) return;
+            for (const [compId, comp] of compEntries) {
+                const categories = Object.keys(comp.sporcular || {});
 
-            doc.setFontSize(12);
-            doc.text(`Grup ${index + 1}`, 14, startY);
+                for (const category of categories) {
+                    // Her kategori için verileri çek
+                    const [athletesSnap, orderSnap] = await Promise.all([
+                        get(ref(db, `competitions/${compId}/sporcular/${category}`)),
+                        get(ref(db, `competitions/${compId}/siralama/${category}`))
+                    ]);
 
-            const tableData = rotation.map((ath, idx) => [
-                (idx + 1).toString(),
-                `${ath.ad} ${ath.soyad}`,
-                ath.okul || '-',
-                (ath.yarismaTuru || 'ferdi').toUpperCase()
-            ]);
+                    const data = athletesSnap.val();
+                    if (!data) continue;
 
-            autoTable(doc, {
-                startY: startY + 5,
-                head: [['Sıra', 'Sporcu Adı', 'Okul/Kulüp', 'Türü']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229] },
-                margin: { left: 14 }
-            });
+                    const allAthletes = [];
+                    Object.keys(data).forEach(athId => {
+                        allAthletes.push({ ...data[athId], id: athId, categoryId: category });
+                    });
 
-            startY = doc.lastAutoTable.finalY + 15;
+                    // Mevcut sıralamayı oku
+                    const orderData = orderSnap.val();
+                    const assignedIds = new Set();
 
-            // Handle page breaks if content gets too long
-            if (startY > doc.internal.pageSize.getHeight() - 20) {
-                doc.addPage();
-                startY = 15;
+                    const existingRotations = [];
+                    if (orderData) {
+                        let maxIdx = -1;
+                        Object.keys(orderData).forEach(rotKey => {
+                            const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                            if (!isNaN(rotIndex) && rotIndex > maxIdx) maxIdx = rotIndex;
+                        });
+                        for (let i = 0; i <= maxIdx; i++) existingRotations.push([]);
+
+                        Object.keys(orderData).forEach(rotKey => {
+                            const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                            if (!isNaN(rotIndex)) {
+                                const athletesInRot = orderData[rotKey];
+                                const sorted = Object.keys(athletesInRot).map(id => {
+                                    const ath = allAthletes.find(a => a.id === id);
+                                    if (ath) assignedIds.add(id);
+                                    return ath ? { ...ath, sirasi: athletesInRot[id].sirasi } : null;
+                                }).filter(Boolean).sort((a, b) => a.sirasi - b.sirasi);
+                                existingRotations[rotIndex] = sorted;
+                            }
+                        });
+                    }
+
+                    // Atanmamış sporcuları bul
+                    const unassignedAthletes = allAthletes.filter(a => !assignedIds.has(a.id));
+                    if (unassignedAthletes.length === 0) continue; // Zaten hepsi atanmış
+
+                    // Takım / ferdi ayrımı
+                    const teamsMap = {};
+                    const individuals = [];
+                    unassignedAthletes.forEach(ath => {
+                        const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
+                        if (type === 'takim' || type === 'takım') {
+                            const school = ath.okul || 'Bilinmeyen Takım';
+                            if (!teamsMap[school]) teamsMap[school] = [];
+                            teamsMap[school].push(ath);
+                        } else {
+                            individuals.push(ath);
+                        }
+                    });
+
+                    const teamsList = Object.values(teamsMap);
+                    shuffleArray(teamsList);
+                    shuffleArray(individuals);
+
+                    // Takım grupları
+                    const teamGroups = [];
+                    const findBestTG = (slots) => {
+                        let best = -1, bestC = Infinity;
+                        for (let i = 0; i < teamGroups.length; i++) {
+                            if (teamGroups[i].length + slots <= MAX_PER_ROTATION && teamGroups[i].length < bestC) {
+                                bestC = teamGroups[i].length; best = i;
+                            }
+                        }
+                        if (best === -1) { teamGroups.push([]); best = teamGroups.length - 1; }
+                        return best;
+                    };
+                    teamsList.forEach(members => {
+                        teamGroups[findBestTG(members.length)].push(...members);
+                    });
+
+                    // Ferdi grupları (dengeli)
+                    const indGroups = [];
+                    if (individuals.length > 0) {
+                        const numG = Math.ceil(individuals.length / MAX_PER_ROTATION);
+                        for (let i = 0; i < numG; i++) indGroups.push([]);
+                        individuals.forEach((ath, idx) => { indGroups[idx % numG].push(ath); });
+                    }
+
+                    // Birleştir: mevcut + yeni
+                    const finalRotations = [...existingRotations, ...teamGroups, ...indGroups];
+
+                    // Firebase'e kaydet
+                    const siralamaData = {};
+                    const updates = {};
+                    let globalOrder = 0;
+
+                    finalRotations.forEach((rotation, rotIndex) => {
+                        const validAthletes = rotation.filter(a => a && a.id && a.ad);
+                        if (validAthletes.length > 0) {
+                            const rotObj = {};
+                            validAthletes.forEach((ath, athIndex) => {
+                                globalOrder++;
+                                const grupIci = athIndex + 1;
+                                rotObj[ath.id] = {
+                                    sirasi: grupIci, ad: ath.ad, soyad: ath.soyad || '',
+                                    tckn: ath.tckn || '', okul: ath.okul || '',
+                                    yarismaTuru: ath.yarismaTuru || 'ferdi'
+                                };
+                                const p = `competitions/${compId}/sporcular/${category}/${ath.id}`;
+                                updates[`${p}/sirasi`] = grupIci;
+                                updates[`${p}/cikisSirasi`] = globalOrder;
+                                updates[`${p}/rotasyonGrubu`] = rotIndex;
+                            });
+                            siralamaData[`rotation_${rotIndex}`] = rotObj;
+                        }
+                    });
+
+                    updates[`competitions/${compId}/siralama/${category}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
+                    await update(ref(db), updates);
+
+                    totalAssigned += unassignedAthletes.length;
+                    totalCategories++;
+                }
             }
-        });
 
-        doc.save(`${compName}_${filterCategory}_Cikis_Sirasi.pdf`);
+            if (totalCategories === 0) {
+                showToast('Atanmamış sporcu bulunamadı. Tüm sporcular zaten gruplara atanmış.', 'info');
+            } else {
+                showToast(`${totalCategories} kategoride toplam ${totalAssigned} sporcu başarıyla atandı.`, 'success', 5000);
+            }
+
+            // Eğer şu an bir kategori seçiliyse, güncel veriyi tekrar yükle
+            if (selectedCompId && filterCategory) {
+                const savedCat = filterCategory;
+                setFilterCategory('');
+                setTimeout(() => setFilterCategory(savedCat), 150);
+            }
+        } catch (err) {
+            console.error('Toplu atama hatası:', err);
+            showToast('Toplu atama sırasında hata oluştu: ' + err.message, 'error', 5000);
+        } finally {
+            setBulkAssigning(false);
+        }
+    };
+
+    const handleExportPDF = async () => {
+        if (!selectedCompId) { showToast("Dışa aktarmak için yarışma seçiniz.", 'warning'); return; }
+        if (pdfGenerating) return;
+
+        setPdfGenerating(true);
+
+        try {
+            const compName = competitions[selectedCompId]?.isim || 'Yarışma';
+            const allCategories = Object.keys(
+                competitions[selectedCompId]?.sporcular || {}
+            ).sort();
+
+            if (allCategories.length === 0) {
+                showToast("Bu yarışma için kategori bulunamadı.", 'warning');
+                return;
+            }
+
+            const doc = new jsPDF();
+            let activeFontName = 'helvetica';
+
+            // --- Türkçe karakter desteği için Unicode font yükle ---
+            try {
+                const fontResponse = await fetch(
+                    'https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Me5Q.ttf'
+                );
+                if (fontResponse.ok) {
+                    const fontBuffer = await fontResponse.arrayBuffer();
+                    const uint8Array = new Uint8Array(fontBuffer);
+                    let binaryString = '';
+                    const CHUNK = 8192;
+                    for (let i = 0; i < uint8Array.length; i += CHUNK) {
+                        binaryString += String.fromCharCode(
+                            ...uint8Array.subarray(i, i + CHUNK)
+                        );
+                    }
+                    const base64Font = btoa(binaryString);
+                    doc.addFileToVFS('Roboto-Regular.ttf', base64Font);
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+                    activeFontName = 'Roboto';
+                }
+            } catch {
+                console.warn('Roboto font yüklenemedi, varsayılan font kullanılıyor.');
+            }
+
+            doc.setFont(activeFontName);
+
+            // --- İlk sayfa başlığı ---
+            doc.setFontSize(18);
+            doc.text('Cikis Sirasi Listesi', 14, 18);
+            doc.setFontSize(12);
+            doc.text(`Yarisma: ${compName}`, 14, 27);
+            doc.setFontSize(9);
+            doc.setTextColor(130);
+            const now = new Date();
+            doc.text(
+                `Olusturulma: ${now.toLocaleDateString('tr-TR')} ${now.toLocaleTimeString('tr-TR')}`,
+                14, 34
+            );
+            doc.setTextColor(0);
+
+            let pageCount = 0;
+
+            // --- Her kategori için Firebase'den veri çek ve PDF'e ekle ---
+            for (const category of allCategories) {
+                // Sporcuları çek
+                const athletesSnap = await get(
+                    ref(db, `competitions/${selectedCompId}/sporcular/${category}`)
+                );
+                const athletesData = athletesSnap.val() || {};
+                const athletes = Object.entries(athletesData).map(([id, data]) => ({
+                    ...data,
+                    id,
+                }));
+
+                // Sıralama verisini çek
+                const siraSnap = await get(
+                    ref(db, `competitions/${selectedCompId}/siralama/${category}`)
+                );
+                const siraData = siraSnap.val();
+
+                // Rotasyonları oluştur
+                const catRotations = [];
+                if (siraData) {
+                    let maxIdx = -1;
+                    Object.keys(siraData).forEach((rotKey) => {
+                        const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                        if (!isNaN(rotIndex) && rotIndex > maxIdx) maxIdx = rotIndex;
+                    });
+                    for (let i = 0; i <= maxIdx; i++) catRotations.push([]);
+
+                    Object.keys(siraData).forEach((rotKey) => {
+                        const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                        if (!isNaN(rotIndex)) {
+                            const athletesInRot = siraData[rotKey];
+                            const sorted = Object.keys(athletesInRot)
+                                .map((id) => {
+                                    const ath = athletes.find((a) => a.id === id);
+                                    return ath
+                                        ? { ...ath, sirasi: athletesInRot[id].sirasi }
+                                        : null;
+                                })
+                                .filter(Boolean)
+                                .sort((a, b) => a.sirasi - b.sirasi);
+                            catRotations[rotIndex] = sorted;
+                        }
+                    });
+                }
+
+                // Sıralaması olmayan kategorileri atla
+                if (!catRotations.some((r) => r.length > 0)) continue;
+
+                // Yeni sayfa (ilk kategori hariç)
+                if (pageCount > 0) doc.addPage();
+                const startYBase = pageCount === 0 ? 44 : 15;
+                pageCount++;
+
+                let startY = startYBase;
+                doc.setFont(activeFontName);
+                doc.setFontSize(14);
+                doc.setTextColor(79, 70, 229);
+                doc.text(`Kategori: ${category}`, 14, startY);
+                doc.setTextColor(0);
+                startY += 10;
+
+                catRotations.forEach((rotation, index) => {
+                    if (rotation.length === 0) return;
+
+                    doc.setFontSize(11);
+                    doc.text(`Grup ${index + 1}`, 14, startY);
+
+                    const tableData = rotation.map((ath, idx) => [
+                        (idx + 1).toString(),
+                        `${ath.ad} ${ath.soyad}`,
+                        ath.okul || '-',
+                        (ath.yarismaTuru || 'ferdi').toUpperCase(),
+                    ]);
+
+                    autoTable(doc, {
+                        startY: startY + 5,
+                        head: [['Sira', 'Sporcu Adi', 'Okul/Kulup', 'Turu']],
+                        body: tableData,
+                        theme: 'striped',
+                        headStyles: { fillColor: [79, 70, 229] },
+                        styles: { font: activeFontName, fontSize: 10 },
+                        margin: { left: 14 },
+                    });
+
+                    startY = doc.lastAutoTable.finalY + 12;
+
+                    if (startY > doc.internal.pageSize.getHeight() - 30) {
+                        doc.addPage();
+                        startY = 15;
+                    }
+                });
+            }
+
+            if (pageCount === 0) {
+                showToast("Henüz hiçbir kategoride sıralama yapılmamış.", 'warning');
+                return;
+            }
+
+            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
+            doc.save(`${safeCompName}_Tum_Kategoriler_Cikis_Sirasi.pdf`);
+        } catch (err) {
+            console.error('PDF oluşturma hatası:', err);
+            showToast('PDF oluşturulurken bir hata oluştu: ' + err.message, 'error');
+        } finally {
+            setPdfGenerating(false);
+        }
     };
 
 
@@ -315,18 +720,42 @@ export default function StartOrderPage() {
                     </div>
                 </div>
                 <div className="page-header__right flex-gap">
-                    <button className="btn-bento-secondary" onClick={handleExportPDF} title="PDF İndir">
-                        <i className="material-icons-round">picture_as_pdf</i>
-                        <span>PDF Çıktısı</span>
-                    </button>
-                    <button
-                        className="btn-bento-primary shadow-lg"
-                        onClick={handleSave}
-                        disabled={saving || !selectedCompId || !filterCategory}
-                    >
-                        {saving ? <div className="spinner-small"></div> : <i className="material-icons-round">save</i>}
-                        <span>Kaydet</span>
-                    </button>
+                    {isSuperAdmin() && (
+                        <button
+                            className="btn-bulk-assign"
+                            onClick={handleBulkAssignAll}
+                            disabled={bulkAssigning || Object.keys(competitions).length === 0}
+                            title="Tüm yarışmalarda tüm kategorilerde atanmamış sporcuları otomatik ata"
+                        >
+                            {bulkAssigning
+                                ? <><div className="spinner-small"></div><span>Atanıyor...</span></>
+                                : <><i className="material-icons-round">bolt</i><span>Tümünü Ata</span></>
+                            }
+                        </button>
+                    )}
+                    {hasPermission('start_order', 'pdf') && (
+                        <button
+                            className="btn-bento-secondary"
+                            onClick={handleExportPDF}
+                            title="Tüm kategorileri PDF olarak indir"
+                            disabled={!selectedCompId || pdfGenerating}
+                        >
+                            {pdfGenerating
+                                ? <><div className="spinner-small"></div><span>Hazırlanıyor...</span></>
+                                : <><i className="material-icons-round">picture_as_pdf</i><span>PDF İndir</span></>
+                            }
+                        </button>
+                    )}
+                    {hasPermission('start_order', 'duzenle') && (
+                        <button
+                            className="btn-bento-primary shadow-lg"
+                            onClick={handleSave}
+                            disabled={saving || !selectedCompId || !filterCategory}
+                        >
+                            {saving ? <div className="spinner-small"></div> : <i className="material-icons-round">save</i>}
+                            <span>Kaydet</span>
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -357,14 +786,16 @@ export default function StartOrderPage() {
                         </select>
                     </div>
 
-                    <button
-                        className="btn-random-assign"
-                        onClick={handleRandomAssign}
-                        disabled={!selectedCompId || !filterCategory}
-                    >
-                        <i className="material-icons-round">auto_awesome</i>
-                        Rastgele Atama Yap
-                    </button>
+                    {hasPermission('start_order', 'duzenle') && (
+                        <button
+                            className="btn-random-assign"
+                            onClick={handleRandomAssign}
+                            disabled={!selectedCompId || !filterCategory}
+                        >
+                            <i className="material-icons-round">auto_awesome</i>
+                            Rastgele Atama Yap
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -403,33 +834,85 @@ export default function StartOrderPage() {
                         </div>
 
                         <div className="rotations-grid">
-                            {rotations.map((rotation, index) => (
-                                <div key={index} className="rotation-card" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
-                                    <div className="rotation-header">
-                                        <h3>Grup {index + 1}</h3>
-                                        <span className="count-badge">{rotation.length}</span>
-                                    </div>
-                                    <div className="rotation-list">
-                                        {rotation.length === 0 ? <div className="pool-empty">Boş Grup</div> : (
-                                            rotation.map((ath, athIndex) => (
-                                                <div key={ath.id} className="order-athlete-card assigned" draggable onDragStart={(e) => handleDragStart(e, ath, index)} onDragOver={handleDragOver} onDrop={(e) => { e.stopPropagation(); handleDrop(e, index, athIndex); }}>
-                                                    <div className="order-number">{athIndex + 1}</div>
-                                                    <div className="ath-info">
-                                                        <strong>{ath.ad} {ath.soyad}</strong>
-                                                        <small>{ath.okul ? ath.okul.substring(0, 15) + '...' : ''} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span></small>
+                            {rotations.map((rotation, index) => {
+                                const isFull = rotation.length >= MAX_PER_ROTATION;
+                                return (
+                                    <div key={index} className={`rotation-card ${isFull ? 'rotation-card--full' : ''}`} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
+                                        <div className="rotation-header">
+                                            <h3>Grup {index + 1}</h3>
+                                            <div className="rotation-header__right">
+                                                <span className={`count-badge ${isFull ? 'count-badge--full' : ''}`}>{rotation.length}/{MAX_PER_ROTATION}</span>
+                                                {hasPermission('start_order', 'duzenle') && (
+                                                    <button className="rotation-remove-btn" onClick={() => removeRotation(index)} title="Grubu sil">
+                                                        <i className="material-icons-round">close</i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="rotation-list">
+                                            {rotation.length === 0 ? <div className="pool-empty">Boş Grup</div> : (
+                                                rotation.map((ath, athIndex) => (
+                                                    <div key={ath.id} className={`order-athlete-card assigned ${(ath.yarismaTuru || 'ferdi').toLowerCase() === 'takim' || (ath.yarismaTuru || 'ferdi').toLowerCase() === 'takım' ? 'assigned--team' : ''}`} draggable onDragStart={(e) => handleDragStart(e, ath, index)} onDragOver={handleDragOver} onDrop={(e) => { e.stopPropagation(); handleDrop(e, index, athIndex); }}>
+                                                        <div className="order-number">{athIndex + 1}</div>
+                                                        <div className="ath-info">
+                                                            <strong>{ath.ad} {ath.soyad}</strong>
+                                                            <small>{ath.okul ? ath.okul.substring(0, 20) : ''} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span></small>
+                                                        </div>
+                                                        <i className="material-icons-round drag-handle">drag_indicator</i>
                                                     </div>
-                                                    <i className="material-icons-round drag-handle">drag_indicator</i>
-                                                </div>
-                                            ))
-                                        )}
-                                        <div className="drop-zone-end" onDragOver={handleDragOver} onDrop={(e) => { e.stopPropagation(); handleDrop(e, index); }}></div>
+                                                ))
+                                            )}
+                                            <div className="drop-zone-end" onDragOver={handleDragOver} onDrop={(e) => { e.stopPropagation(); handleDrop(e, index); }}></div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
+                            {/* Yeni Grup Ekle butonu */}
+                            {hasPermission('start_order', 'duzenle') && (
+                                <button className="add-rotation-btn" onClick={addRotation}>
+                                    <i className="material-icons-round">add_circle_outline</i>
+                                    <span>Yeni Grup Ekle</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
             </main>
+
+            {/* Toast Container */}
+            {toasts.length > 0 && (
+                <div className="toast-container">
+                    {toasts.map(toast => (
+                        <div key={toast.id} className={`toast toast--${toast.type}`} onClick={() => removeToast(toast.id)}>
+                            <i className="material-icons-round toast__icon">
+                                {toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : toast.type === 'warning' ? 'warning' : 'info'}
+                            </i>
+                            <span className="toast__message">{toast.message}</span>
+                            <i className="material-icons-round toast__close">close</i>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Confirm Modal */}
+            {confirmModal && (
+                <div className="confirm-overlay" onClick={confirmModal.onCancel}>
+                    <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+                        <div className="confirm-modal__icon">
+                            <i className="material-icons-round">help_outline</i>
+                        </div>
+                        <p className="confirm-modal__message">{confirmModal.message}</p>
+                        <div className="confirm-modal__actions">
+                            <button className="confirm-btn confirm-btn--cancel" onClick={confirmModal.onCancel}>
+                                İptal
+                            </button>
+                            <button className="confirm-btn confirm-btn--ok" onClick={confirmModal.onConfirm}>
+                                Evet, Devam Et
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

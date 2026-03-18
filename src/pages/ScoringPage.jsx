@@ -3,10 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults';
+import { useAuth } from '../lib/AuthContext';
+import { useNotification } from '../lib/NotificationContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './ScoringPage.css';
 
 export default function ScoringPage() {
     const navigate = useNavigate();
+    const { currentUser, hasPermission } = useAuth();
+    const { toast } = useNotification();
     const [competitions, setCompetitions] = useState({});
 
     // Selections
@@ -16,30 +21,70 @@ export default function ScoringPage() {
 
     // Athlete State
     const [selectedAthlete, setSelectedAthlete] = useState(null);
-    const [isAthleteCalled, setIsAthleteCalled] = useState(false); // Controls the "Call Athlete" vs "Scoring Form" view
+    const [isAthleteCalled, setIsAthleteCalled] = useState(false);
 
     // Data mapped from Firebase
     const [athletesByRotation, setAthletesByRotation] = useState([]);
     const [existingScores, setExistingScores] = useState({});
 
+    // Firebase criteria
+    const [liveCriteria, setLiveCriteria] = useState(null);
+    const [activeYear, setActiveYear] = useState(null);
+
+    // Scoring Mode: 'separate' (D ve E ayrı panel) | 'combined' (tek hakem ikisini de girer)
+    const [scoringMode, setScoringMode] = useState('separate');
+    const [combinedEDeduction, setCombinedEDeduction] = useState(0);
+
     // Active Scoring State
-    const [dScore, setDScore] = useState(0); // Custom dynamic
-    const [skillScores, setSkillScores] = useState({}); // Skill-based D-scoring
-    const [eDeductions, setEDeductions] = useState([]); // Local fallback
+    const [dScore, setDScore] = useState(0);
+    const [skillScores, setSkillScores] = useState({});
     const [neutralDeductions, setNeutralDeductions] = useState(0);
+    const [manualEksikSayisi, setManualEksikSayisi] = useState(0);
+    const [ePanelLocal, setEPanelLocal] = useState({});
+    const [ePanelTouched, setEPanelTouched] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const [successModal, setSuccessModal] = useState(null);
 
     // 1. Load Competitions
     useEffect(() => {
         const compsRef = ref(db, 'competitions');
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
-            setCompetitions(data);
+            setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
+    }, [currentUser]);
+
+    // 2. Load active year from Firebase
+    useEffect(() => {
+        const ayRef = ref(db, 'criteria/activeYear');
+        const unsub = onValue(ayRef, (snap) => {
+            setActiveYear(snap.val() || new Date().getFullYear());
+        });
+        return () => unsub();
     }, []);
 
-    // 2. Load Start Order and Scores
+    // 3. Load criteria from Firebase (fallback: DEFAULT_CRITERIA)
+    useEffect(() => {
+        if (!selectedCategory) {
+            setLiveCriteria(null);
+            return;
+        }
+        // activeYear henüz yüklenmediyse doğrudan DEFAULT_CRITERIA kullan
+        if (!activeYear) {
+            setLiveCriteria(DEFAULT_CRITERIA[selectedCategory] || null);
+            return;
+        }
+        const criteriaRef = ref(db, `criteria/${activeYear}/${selectedCategory}`);
+        const unsub = onValue(criteriaRef, (snap) => {
+            const data = snap.val();
+            setLiveCriteria(data || DEFAULT_CRITERIA[selectedCategory] || null);
+        });
+        return () => unsub();
+    }, [selectedCategory, activeYear]);
+
+    // 4. Load Start Order and Scores
     useEffect(() => {
         if (!selectedCompId || !selectedCategory || !selectedApparatus) {
             setAthletesByRotation([]);
@@ -48,6 +93,8 @@ export default function ScoringPage() {
             setIsAthleteCalled(false);
             return;
         }
+
+        let fallbackUnsub = null;
 
         const orderRef = ref(db, `competitions/${selectedCompId}/siralama/${selectedCategory}`);
         const unsubOrder = onValue(orderRef, (orderSnap) => {
@@ -69,20 +116,18 @@ export default function ScoringPage() {
                         formattedRotations.push([]);
                     }
                 }
+                setAthletesByRotation(formattedRotations);
             } else {
-                // Fallback if no rotations, fetch directly from sporcular
                 const fallbackRef = ref(db, `competitions/${selectedCompId}/sporcular/${selectedCategory}`);
-                onValue(fallbackRef, (fbSnap) => {
+                fallbackUnsub = onValue(fallbackRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
                         const arr = Object.keys(fbData).map(id => ({ id, ...fbData[id] }));
-                        // Sort by cikisSirasi or name if missing
                         arr.sort((a, b) => (a.cikisSirasi || 999) - (b.cikisSirasi || 999));
                         setAthletesByRotation([arr]);
                     }
                 }, { onlyOnce: true });
             }
-            if (orderData) setAthletesByRotation(formattedRotations);
         });
 
         const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}`);
@@ -93,12 +138,30 @@ export default function ScoringPage() {
         return () => {
             unsubOrder();
             unsubScores();
+            if (fallbackUnsub) fallbackUnsub();
         };
 
     }, [selectedCompId, selectedCategory, selectedApparatus]);
 
+    // 5. Sync remote E-panel scores to local state
+    useEffect(() => {
+        if (!selectedAthlete) return;
+        const scores = existingScores[selectedAthlete.id] || {};
+        setEPanelLocal(prev => {
+            const updated = { ...prev };
+            for (let i = 1; i <= 10; i++) {
+                const key = `e${i}`;
+                if (scores[key] !== undefined && scores[key] !== null && !ePanelTouched[key]) {
+                    updated[key] = scores[key];
+                }
+            }
+            return updated;
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id]);
+
     // Dropdown Data & Criteria Options
-    const compOptions = Object.entries(competitions).sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih));
+    const compOptions = Object.entries(competitions).sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
     if (selectedCompId && competitions[selectedCompId]?.sporcular) {
@@ -107,27 +170,38 @@ export default function ScoringPage() {
         categoryOptions = Object.keys(competitions[selectedCompId].kategoriler);
     }
 
+    // Yarışma bazlı alet filtreleme
+    const compData = selectedCompId ? competitions[selectedCompId] : null;
+    const rawAletler = compData?.kategoriler?.[selectedCategory]?.aletler;
+    // Firebase array'leri bazen obje olarak gelir ({0: "x", 1: "y"}) — normalize et
+    const compAletler = Array.isArray(rawAletler)
+        ? rawAletler
+        : rawAletler && typeof rawAletler === 'object'
+            ? Object.values(rawAletler)
+            : [];
+
+    // Criteria kaynağı: liveCriteria (Firebase) → DEFAULT_CRITERIA (fallback)
+    const effectiveCriteria = liveCriteria || (selectedCategory ? DEFAULT_CRITERIA[selectedCategory] : null);
+
     let apparatusOptions = [];
     let currentCriteria = null;
-    if (selectedCategory) {
-        const criteriaCat = DEFAULT_CRITERIA[selectedCategory];
-        if (criteriaCat) {
-            apparatusOptions = Object.keys(criteriaCat)
-                .filter(key => key !== 'metadata' && key !== 'eksikKesintiTiers')
-                .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
-            if (selectedApparatus) {
-                currentCriteria = criteriaCat[selectedApparatus];
-            }
+    if (selectedCategory && effectiveCriteria) {
+        const allKeys = Object.keys(effectiveCriteria).filter(key => key !== 'metadata' && key !== 'eksikKesintiTiers');
+        // compAletler varsa sadece eşleşenleri göster, yoksa tümünü göster
+        apparatusOptions = allKeys
+            .filter(key => compAletler.length === 0 || compAletler.includes(key))
+            .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
+
+        // Eğer compAletler filtresi sonrası boş kaldıysa, filtresiz göster (veri uyumsuzluğu durumu)
+        if (apparatusOptions.length === 0 && allKeys.length > 0) {
+            console.warn('[ScoringPage] compAletler filtresi tüm aletleri eledi, filtresiz gösteriliyor. compAletler:', compAletler, 'allKeys:', allKeys);
+            apparatusOptions = allKeys.map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
+        }
+
+        if (selectedApparatus) {
+            currentCriteria = effectiveCriteria[selectedApparatus];
         }
     }
-
-    // Computed Values
-    const getActiveAthleteScores = () => {
-        if (!selectedAthlete) return {};
-        return existingScores[selectedAthlete.id] || {};
-    };
-
-    const activeScores = getActiveAthleteScores();
 
     // D-Score Calculation
     const hasDynamicSkills = currentCriteria?.hareketler && currentCriteria.hareketler.length > 0;
@@ -139,23 +213,24 @@ export default function ScoringPage() {
         calculatedDScore = parseFloat(dScore) || 0;
     }
 
-    // Missing penalty (Eksik) for dynamic D-Score
+    // Eksik Eleman Kesintisi
     let missingPenalty = 0;
-    if (hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
-        const validSkillCount = Object.values(skillScores).filter(val => (parseFloat(val) || 0) > 0).length;
-        const tiers = currentCriteria.eksikKesintiTiers;
+    let missingCount = 0;
 
-        let targetTierKey = validSkillCount.toString();
-        // If skill count is lower than the lowest tier, apply the highest penalty possible inside tiers
-        const tierKeys = Object.keys(tiers).map(Number).sort((a, b) => a - b);
-        if (tierKeys.length > 0) {
-            if (validSkillCount < tierKeys[0]) {
-                missingPenalty = tiers[tierKeys[0].toString()]; // worst case penalty
-            } else if (tiers[targetTierKey] !== undefined) {
-                missingPenalty = tiers[targetTierKey];
-            } else {
-                missingPenalty = 0; // count is strictly higher than max penalized tier
-            }
+    if (hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
+        const moves = currentCriteria.hareketler || [];
+        const performedCount = Object.values(skillScores).filter(val => (parseFloat(val) || 0) > 0).length;
+        missingCount = Math.max(0, moves.length - performedCount);
+
+        const tiers = currentCriteria.eksikKesintiTiers;
+        if (tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
+            missingPenalty = parseFloat(tiers[missingCount]);
+        }
+    } else if (!hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
+        missingCount = parseInt(manualEksikSayisi) || 0;
+        const tiers = currentCriteria.eksikKesintiTiers;
+        if (missingCount > 0 && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
+            missingPenalty = parseFloat(tiers[missingCount]);
         }
     }
 
@@ -171,31 +246,47 @@ export default function ScoringPage() {
 
     const ePanels = renderEPanels();
     const calculateAvgEDeduction = () => {
-        const remoteScores = ePanels.map(p => activeScores[p]).filter(val => val !== undefined && val !== null && val !== '');
-        if (remoteScores.length > 0) {
-            const sum = remoteScores.reduce((acc, val) => acc + parseFloat(val), 0);
-            return sum / remoteScores.length;
+        // Birleşik modda tek E kesinti değeri kullanılır
+        if (scoringMode === 'combined') {
+            return parseFloat(combinedEDeduction) || 0;
         }
-        // Fallback to local E deductions if remote not used
-        return eDeductions.reduce((sum, val) => sum + parseFloat(val), 0);
+        // Ayrı modda çoklu hakem panel ortalaması
+        const localScores = ePanels
+            .map(p => ePanelLocal[p])
+            .filter(val => val !== undefined && val !== null && val !== '' && !isNaN(parseFloat(val)));
+        if (localScores.length > 0) {
+            const sum = localScores.reduce((acc, val) => acc + parseFloat(val), 0);
+            return sum / localScores.length;
+        }
+        return 0;
     };
 
     const E_SCORE_BASE = 10.0;
     const avgEDeduction = calculateAvgEDeduction();
     const currentEScore = Math.max(0, E_SCORE_BASE - avgEDeduction);
 
-    // Neutral Penalties: Missing Penalty + Tarafsiz
-    const totalNeutral = (parseFloat(neutralDeductions) || 0) + missingPenalty;
-    const finalScore = Math.max(0, calculatedDScore + currentEScore - totalNeutral).toFixed(3);
+    // Bonus
+    let bonusValue = 0;
+    if (currentCriteria?.bonus && currentCriteria.bonus.value > 0) {
+        const reqD = parseFloat(currentCriteria.bonus.requiredD || 0);
+        const maxE = parseFloat(currentCriteria.bonus.maxE !== undefined ? currentCriteria.bonus.maxE : 10);
+        const eDed = E_SCORE_BASE - currentEScore;
+        if (calculatedDScore >= reqD && eDed <= maxE) {
+            bonusValue = parseFloat(currentCriteria.bonus.value);
+        }
+    }
+
+    // Final Score
+    const tarafsizKesinti = parseFloat(neutralDeductions) || 0;
+    const finalScore = Math.max(0, calculatedDScore + currentEScore - missingPenalty - tarafsizKesinti + bonusValue).toFixed(3);
 
     // Handlers
     const handleSelectAthlete = (athlete) => {
         if (selectedAthlete?.id === athlete.id) return;
 
         setSelectedAthlete(athlete);
-        setIsAthleteCalled(false); // Reset to wait state when selected
+        setIsAthleteCalled(false);
 
-        // Remove active marker if we switch without finishing
         if (selectedAthlete && isAthleteCalled) {
             update(ref(db, `competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`), null);
         }
@@ -203,24 +294,38 @@ export default function ScoringPage() {
         const prevScore = existingScores[athlete.id];
         if (prevScore) {
             setDScore(prevScore.dScore || prevScore.calc_D || 0);
-            setEDeductions(prevScore.eDeductionsList || []);
-            setNeutralDeductions(prevScore.neutralDeductions || (prevScore.calc_MissingPen && !hasDynamicSkills ? prevScore.calc_MissingPen : 0));
+            setNeutralDeductions(prevScore.tarafsiz || prevScore.neutralDeductions || 0);
+            setManualEksikSayisi(prevScore.eksikSayisi || 0);
             setSkillScores(prevScore.hareketler || {});
+            // Kaydedilmiş scoring mode ve combined E değerini geri yükle
+            if (prevScore.scoringMode) setScoringMode(prevScore.scoringMode);
+            setCombinedEDeduction(prevScore.combinedEDeduction || 0);
+            const panels = {};
+            for (let i = 1; i <= 10; i++) {
+                const key = `e${i}`;
+                if (prevScore[key] !== undefined && prevScore[key] !== null) {
+                    panels[key] = prevScore[key];
+                }
+            }
+            setEPanelLocal(panels);
         } else {
             resetScoringPanel();
         }
+        setEPanelTouched({});
     };
 
     const resetScoringPanel = () => {
         setDScore(0);
         setSkillScores({});
-        setEDeductions([]);
         setNeutralDeductions(0);
+        setManualEksikSayisi(0);
+        setEPanelLocal({});
+        setEPanelTouched({});
+        setCombinedEDeduction(0);
     };
 
     const handleCallAthlete = async () => {
         setIsAthleteCalled(true);
-        // Set this athlete as active in Firebase to wake up the E-Panels
         try {
             await update(ref(db), {
                 [`competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: selectedAthlete.id
@@ -228,88 +333,135 @@ export default function ScoringPage() {
         } catch (e) { console.error("Could not set active athlete", e); }
     };
 
-    const addEDeduction = (val) => {
-        setEDeductions(prev => [...prev, val]);
-    };
-
-    const removeLastEDeduction = () => {
-        setEDeductions(prev => {
-            const newArr = [...prev];
-            newArr.pop();
-            return newArr;
-        });
-    };
-
-    const clearEDeductions = () => {
-        if (window.confirm("Tüm E (Uygulama) kesintilerini sıfırlamak istiyor musunuz?")) {
-            setEDeductions([]);
-        }
+    // Sonraki sporcuyu bul
+    const getNextAthlete = () => {
+        if (!selectedAthlete || athletesByRotation.length === 0) return null;
+        const allAthletes = athletesByRotation.flat();
+        const currentIdx = allAthletes.findIndex(a => a.id === selectedAthlete.id);
+        if (currentIdx === -1 || currentIdx >= allAthletes.length - 1) return null;
+        return allAthletes[currentIdx + 1];
     };
 
     const handleSubmitScore = async () => {
-        if (!selectedAthlete) return alert("Lütfen puanlamak için bir sporcu seçin.");
+        if (!selectedAthlete) return toast("Lütfen puanlamak için bir sporcu seçin.", "warning");
 
-        const confirmMsg = `${selectedAthlete.ad} ${selectedAthlete.soyad} için Final Puanı: ${finalScore} kaydedilecek. Emin misiniz?`;
-        if (!window.confirm(confirmMsg)) return;
+        // Skor sınır doğrulaması
+        const dVal = calculatedDScore;
+        const finalVal = parseFloat(finalScore);
+        if (dVal < 0 || dVal > 30) {
+            return toast("D puanı 0-30 arasında olmalıdır.", "error");
+        }
+        if (isNaN(finalVal) || finalVal < 0 || finalVal > 40) {
+            return toast("Final puanı geçersiz (0-40 arası olmalı).", "error");
+        }
+        if (scoringMode === 'combined') {
+            const eVal = parseFloat(combinedEDeduction) || 0;
+            if (eVal < 0 || eVal > 10) {
+                return toast("E kesintisi 0-10 arasında olmalıdır.", "error");
+            }
+        }
 
+        // Özel onay popup'ı göster
+        setConfirmModal({
+            athlete: selectedAthlete,
+            dScore: calculatedDScore,
+            eScore: currentEScore,
+            missingPen: missingPenalty,
+            neutralPen: tarafsizKesinti,
+            bonus: bonusValue,
+            finalScore: finalScore,
+            apparatus: apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus
+        });
+    };
+
+    const executeScoreSave = async () => {
+        const savedAthlete = confirmModal.athlete;
+        setConfirmModal(null);
         setIsSubmitting(true);
         try {
-            const scorePath = `competitions/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${selectedAthlete.id}`;
+            const scorePath = `competitions/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${savedAthlete.id}`;
             const activePath = `competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`;
             const flashPath = `competitions/${selectedCompId}/flashTrigger`;
             const ts = new Date().toISOString();
 
+            // Ayrı modda E-panel verilerini kaydet, birleşik modda kaydetme
+            const ePanelSaveData = {};
+            if (scoringMode === 'separate') {
+                ePanels.forEach(p => {
+                    const val = ePanelLocal[p];
+                    if (val !== undefined && val !== null && val !== '') {
+                        ePanelSaveData[scorePath + '/' + p] = parseFloat(val);
+                    }
+                });
+            }
+
             await update(ref(db), {
+                ...ePanelSaveData,
+                [scorePath + '/scoringMode']: scoringMode,
+                [scorePath + '/combinedEDeduction']: scoringMode === 'combined' ? parseFloat(combinedEDeduction) || 0 : null,
+                [scorePath + '/dScore']: calculatedDScore,
                 [scorePath + '/calc_D']: calculatedDScore,
-                [scorePath + '/eDeductionsList']: eDeductions,
                 [scorePath + '/calc_E']: currentEScore,
-                [scorePath + '/calc_MissingPen']: missingPenalty > 0 ? missingPenalty : parseFloat(neutralDeductions) || 0,
-                [scorePath + '/neutralDeductions']: parseFloat(neutralDeductions) || 0,
+                [scorePath + '/calc_MissingPen']: missingPenalty,
+                [scorePath + '/calc_Bonus']: bonusValue,
+                [scorePath + '/tarafsiz']: tarafsizKesinti,
+                [scorePath + '/neutralDeductions']: tarafsizKesinti,
+                [scorePath + '/eksikSayisi']: missingCount,
                 [scorePath + '/sonuc']: parseFloat(finalScore),
                 [scorePath + '/timestamp']: ts,
                 [scorePath + '/durum']: "tamamlandi",
                 [scorePath + '/hareketler']: skillScores,
-                [activePath]: null, // Clear active athlete to put E-panels to sleep
+                [activePath]: null,
                 [flashPath]: {
-                    adSoyad: `${selectedAthlete.ad} ${selectedAthlete.soyad}`,
-                    kulup: selectedAthlete.okul || selectedAthlete.kulup,
+                    adSoyad: `${savedAthlete.ad} ${savedAthlete.soyad}`,
+                    kulup: savedAthlete.okul || savedAthlete.kulup,
                     aletAd: apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus,
                     d: calculatedDScore,
                     e: currentEScore,
-                    pen: missingPenalty > 0 ? missingPenalty : parseFloat(neutralDeductions) || 0,
+                    pen: missingPenalty + tarafsizKesinti,
                     total: finalScore,
                     timestamp: Date.now()
                 }
             });
 
-            // Keep athlete selected to view final state, but indicate save success
-            // setSelectedAthlete(null);
-            // setIsAthleteCalled(false);
-            // resetScoringPanel();
+            // Başarılı — sonraki sporcu modal'ı göster
+            const nextAth = getNextAthlete();
+            setSuccessModal({
+                athlete: savedAthlete,
+                finalScore: finalScore,
+                dScore: calculatedDScore,
+                eScore: currentEScore,
+                apparatus: apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus,
+                nextAthlete: nextAth
+            });
 
-            // Optionally blink the screen or show a brief success message
         } catch (error) {
-            console.error(error);
-            alert("Puan kaydedilirken bir hata oluştu.");
+            if (import.meta.env.DEV) console.error('Score save error:', error);
+            toast("Puan kaydedilirken bir hata oluştu.", "error");
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const handleNextAthlete = (nextAth) => {
+        setSuccessModal(null);
+        handleSelectAthlete(nextAth);
+    };
+
     return (
-        <div className="scoring-page dark-vibrant-theme">
-            <header className="scoring-header neon-border">
+        <div className="scoring-page-light">
+            <header className="scoring-header-light">
                 <div className="sh-left">
-                    <button className="back-btn neon-glow" onClick={() => navigate('/')}>
+                    <button className="btn-back-light" onClick={() => navigate('/')}>
                         <i className="material-icons-round">home</i>
                     </button>
                     <div>
-                        <h1>HAKEM PUANLAMA TERMİNALİ</h1>
-                        <p className="subtitle text-cyber">Canlı Veri Giriş Sistemi</p>
+                        <h1>Hakem Puanlama</h1>
+                        <p className="text-subtitle">Puanlama Paneli</p>
                     </div>
                 </div>
                 {selectedAthlete && isAthleteCalled && (
-                    <div className="live-indicator">
+                    <div className="live-badge">
                         <div className="pulse-dot"></div>
                         <span>CANLI PUANLAMA</span>
                     </div>
@@ -318,21 +470,42 @@ export default function ScoringPage() {
 
             <div className="scoring-layout">
                 {/* Left Sidebar: Controls & Roster */}
-                <aside className="scoring-sidebar neon-panel">
+                <aside className="scoring-sidebar-light">
                     <div className="sidebar-controls">
-                        <select className="score-select cyber-input" value={selectedCompId} onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); setSelectedApparatus(''); setSelectedAthlete(null); }}>
+                        <select className="premium-select" value={selectedCompId} onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); setSelectedApparatus(''); setSelectedAthlete(null); }}>
                             <option value="">Yarışma Seçin</option>
                             {compOptions.map(([id, comp]) => <option key={id} value={id}>{comp.isim}</option>)}
                         </select>
-                        <select className="score-select cyber-input" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setSelectedApparatus(''); setSelectedAthlete(null); }} disabled={!selectedCompId}>
+                        <select className="premium-select" value={selectedCategory} onChange={e => { setSelectedCategory(e.target.value); setSelectedApparatus(''); setSelectedAthlete(null); }} disabled={!selectedCompId}>
                             <option value="">Kategori Seçin</option>
                             {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
-                        <select className="score-select cyber-input" value={selectedApparatus} onChange={e => { setSelectedApparatus(e.target.value); setSelectedAthlete(null); }} disabled={!selectedCategory}>
+                        <select className="premium-select" value={selectedApparatus} onChange={e => { setSelectedApparatus(e.target.value); setSelectedAthlete(null); }} disabled={!selectedCategory}>
                             <option value="">Alet Seçin</option>
                             {apparatusOptions.map(app => <option key={app.id} value={app.id}>{app.name}</option>)}
                         </select>
                     </div>
+
+                    {/* Puanlama Modu Toggle — sadece kategori seçildiyse göster */}
+                    {selectedCategory && <div className="scoring-mode-section">
+                        <div className="mode-label">Puanlama Modu</div>
+                        <div className="scoring-mode-toggle">
+                            <button
+                                className={`mode-btn ${scoringMode === 'separate' ? 'active' : ''}`}
+                                onClick={() => setScoringMode('separate')}
+                            >
+                                <i className="material-icons-round" style={{ fontSize: '1rem' }}>view_column</i>
+                                Ayrı (D + E)
+                            </button>
+                            <button
+                                className={`mode-btn ${scoringMode === 'combined' ? 'active' : ''}`}
+                                onClick={() => setScoringMode('combined')}
+                            >
+                                <i className="material-icons-round" style={{ fontSize: '1rem' }}>join_full</i>
+                                Birleşik (D &amp; E)
+                            </button>
+                        </div>
+                    </div>}
 
                     <div className="roster-container">
                         {!selectedApparatus ? (
@@ -342,7 +515,7 @@ export default function ScoringPage() {
                             </div>
                         ) : (
                             <div className="roster-list">
-                                <h3 className="section-title text-cyber">ÇIKIŞ SIRASI (ROTASYONLAR)</h3>
+                                <h3 className="section-title-light">Çıkış Sırası</h3>
                                 {athletesByRotation.length === 0 && <p className="text-muted">Bu kategori için çıkış sırası bulunamadı.</p>}
 
                                 {athletesByRotation.map((rotation, rIdx) => (
@@ -384,18 +557,18 @@ export default function ScoringPage() {
                 </aside>
 
                 {/* Right Area: Active Scoring Panel */}
-                <main className="scoring-main terminal-bg">
+                <main className="scoring-main-light">
                     {!selectedAthlete ? (
                         <div className="main-empty">
-                            <div className="me-icon cyber-pulse"><i className="material-icons-round">sensors</i></div>
-                            <h2>SİSTEM HAZIR</h2>
+                            <div className="empty-icon"><i className="material-icons-round">sports_gymnastics</i></div>
+                            <h2>Puanlamaya Hazır</h2>
                             <p>Puanlamaya başlamak için sol taraftaki listeden sıradaki sporcuyu seçin.</p>
                         </div>
                     ) : !isAthleteCalled ? (
                         /* CALL ATHLETE STATE */
                         <div className="call-athlete-view animate-zoom-in">
                             <div className="ca-athlete-card">
-                                <h3>SIRADAKİ SPORCU</h3>
+                                <h3>Sıradaki Sporcu</h3>
                                 <h1>{selectedAthlete.ad} {selectedAthlete.soyad}</h1>
                                 <p className="ca-club">{selectedAthlete.okul || selectedAthlete.kulup || '{Kulüp Bilgisi Yok}'}</p>
                                 <div className="ca-meta">
@@ -403,34 +576,34 @@ export default function ScoringPage() {
                                     <span className="ca-badge">Alet: {apparatusOptions.find(a => a.id === selectedApparatus)?.name}</span>
                                 </div>
                             </div>
-                            <button className="btn-massive-call pulse-glow" onClick={handleCallAthlete}>
+                            <button className="btn-call-athlete" onClick={handleCallAthlete}>
                                 <i className="material-icons-round">campaign</i>
-                                SPORCUYU ÇAĞIR VE PUANLA
+                                Sporcuyu Çağır ve Puanla
                             </button>
                         </div>
                     ) : (
                         /* ACTIVE SCORING STATE */
                         <div className="active-scoring-panel animate-slide-up">
 
-                            <div className="active-athlete-header floating-panel">
-                                <div className="aah-avatar cyber-gradient">{selectedAthlete.ad.charAt(0)}{selectedAthlete.soyad.charAt(0)}</div>
+                            <div className="athlete-header-card">
+                                <div className="avatar-gradient">{selectedAthlete.ad.charAt(0)}{selectedAthlete.soyad.charAt(0)}</div>
                                 <div className="aah-details">
                                     <h2>{selectedAthlete.ad} {selectedAthlete.soyad}</h2>
-                                    <p className="text-cyber">{selectedAthlete.okul || selectedAthlete.kulup} • Alet: {apparatusOptions.find(a => a.id === selectedApparatus)?.name}</p>
+                                    <p className="text-subtitle">{selectedAthlete.okul || selectedAthlete.kulup} &bull; Alet: {apparatusOptions.find(a => a.id === selectedApparatus)?.name}</p>
                                 </div>
                                 {existingScores[selectedAthlete.id] && (
-                                    <div className="aah-status score-override-warning">
+                                    <div className="score-override-warning">
                                         <i className="material-icons-round">warning</i> Önceki Puan Değiştiriliyor
                                     </div>
                                 )}
                             </div>
 
                             <div className="scoring-grid">
-                                {/* D-Score Panel - NEON BLUE */}
-                                <div className="score-card d-panel neon-border-blue">
-                                    <div className="sc-header bg-dark-blue">
-                                        <h3>D-PUANI (ZORLUK)</h3>
-                                        <i className="material-icons-round text-neon-blue">emoji_events</i>
+                                {/* D-Score Panel */}
+                                <div className="score-card card-blue">
+                                    <div className="sc-header card-header-blue">
+                                        <h3>D-Puanı (Zorluk)</h3>
+                                        <i className="material-icons-round">emoji_events</i>
                                     </div>
                                     <div className="sc-body">
                                         {hasDynamicSkills ? (
@@ -438,11 +611,11 @@ export default function ScoringPage() {
                                                 {currentCriteria.hareketler.map(skill => {
                                                     const dVals = String(skill.dValues).split(',').map(v => v.trim()).filter(v => v !== '');
                                                     return (
-                                                        <div key={skill.id} className="skill-row cyber-input">
+                                                        <div key={skill.id} className="skill-row">
                                                             <div className="skill-name">{skill.isim || 'Hareket'}</div>
                                                             <div className="skill-btn-group">
                                                                 <button
-                                                                    className={`skill-val-btn ${(!skillScores[skill.id] || skillScores[skill.id] == 0) ? 'selected' : ''}`}
+                                                                    className={`skill-val-btn ${(!skillScores[skill.id] || Number(skillScores[skill.id]) === 0) ? 'selected' : ''}`}
                                                                     onClick={() => setSkillScores(prev => ({ ...prev, [skill.id]: 0 }))}
                                                                 >
                                                                     0.0
@@ -450,7 +623,7 @@ export default function ScoringPage() {
                                                                 {dVals.map(v => (
                                                                     <button
                                                                         key={v}
-                                                                        className={`skill-val-btn ${skillScores[skill.id] == v ? 'selected' : ''}`}
+                                                                        className={`skill-val-btn ${String(skillScores[skill.id]) === String(v) ? 'selected' : ''}`}
                                                                         onClick={() => setSkillScores(prev => ({ ...prev, [skill.id]: v }))}
                                                                     >
                                                                         {v}
@@ -460,8 +633,8 @@ export default function ScoringPage() {
                                                         </div>
                                                     );
                                                 })}
-                                                <div className="dynamic-score-display text-neon-blue">
-                                                    TOPLAM D: {calculatedDScore.toFixed(2)}
+                                                <div className="dynamic-score-display">
+                                                    Toplam D: {calculatedDScore.toFixed(2)}
                                                 </div>
                                             </div>
                                         ) : (
@@ -473,71 +646,153 @@ export default function ScoringPage() {
                                                         min="0"
                                                         value={dScore}
                                                         onChange={e => setDScore(e.target.value)}
-                                                        className="giant-num-input input-neon-blue"
+                                                        className="giant-num-input input-blue"
                                                     />
                                                 </div>
                                                 <div className="quick-d-buttons">
                                                     {[2.0, 2.5, 3.0, 3.5, 4.0, 4.5].map(val => (
-                                                        <button key={val} className="btn-quick-val cyber-btn-blue" onClick={() => setDScore(val)}>
+                                                        <button key={val} className="btn-quick-blue" onClick={() => setDScore(val)}>
                                                             {val.toFixed(1)}
                                                         </button>
                                                     ))}
-                                                    <button className="btn-quick-val clear-btn" onClick={() => setDScore(0)}>Sıfırla</button>
+                                                    <button className="btn-quick-blue clear-btn" onClick={() => setDScore(0)}>Sıfırla</button>
                                                 </div>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* E-Score Panel - NEON GREEN (Collaborative) */}
-                                <div className="score-card e-panel neon-border-green">
-                                    <div className="sc-header bg-dark-green">
-                                        <h3>E-PUANI YÖNETİMİ</h3>
+                                {/* E-Score Panel */}
+                                <div className="score-card card-green">
+                                    <div className="sc-header card-header-green">
+                                        <h3>{scoringMode === 'combined' ? 'E-Puanı (Uygulama Kesintisi)' : 'E-Puanı Yönetimi'}</h3>
+                                        {scoringMode === 'combined' && (
+                                            <span className="mode-indicator-badge">Birleşik</span>
+                                        )}
                                     </div>
                                     <div className="sc-body e-panel-body">
-                                        <div className="collaborative-panels">
-                                            {ePanels.map(panelId => {
-                                                const rawVal = activeScores[panelId];
-                                                const hasVal = rawVal !== undefined && rawVal !== null && rawVal !== '';
-                                                return (
-                                                    <div key={panelId} className={`ref-panel-status ${hasVal ? 'status-ready' : 'status-waiting'}`}>
-                                                        <div className="rp-name">{panelId.toUpperCase()}</div>
-                                                        <div className="rp-val">{hasVal ? `-${rawVal}` : 'Bekliyor...'}</div>
+                                        {scoringMode === 'combined' ? (
+                                            /* Birleşik mod: Tek E kesinti input'u */
+                                            <>
+                                                <div className="combined-e-wrapper">
+                                                    <label className="combined-e-label">Toplam E Kesintisi</label>
+                                                    <div className="d-input-wrapper">
+                                                        <input
+                                                            type="number"
+                                                            step="0.1"
+                                                            min="0"
+                                                            value={combinedEDeduction}
+                                                            onChange={e => setCombinedEDeduction(e.target.value)}
+                                                            className="giant-num-input input-green"
+                                                            placeholder="0.0"
+                                                        />
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                                    <div className="combined-e-quick-btns">
+                                                        {[0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(val => (
+                                                            <button key={val} className="btn-quick-green" onClick={() => setCombinedEDeduction(val)}>
+                                                                {val.toFixed(1)}
+                                                            </button>
+                                                        ))}
+                                                        <button className="btn-quick-green clear-btn-green" onClick={() => setCombinedEDeduction(0)}>Sıfırla</button>
+                                                    </div>
+                                                </div>
+                                                <div className="e-summary">
+                                                    <span className="sum-label">Kesinti: <strong className="text-orange">-{avgEDeduction.toFixed(2)}</strong></span>
+                                                    <span className="sum-label">Net E-Puanı: <strong className="text-green">{currentEScore.toFixed(3)}</strong></span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            /* Ayrı mod: Çoklu hakem panelleri */
+                                            <>
+                                                <div className="collaborative-panels">
+                                                    {ePanels.map(panelId => {
+                                                        const localVal = ePanelLocal[panelId];
+                                                        const hasVal = localVal !== undefined && localVal !== null && localVal !== '';
+                                                        const isTouched = ePanelTouched[panelId];
+                                                        return (
+                                                            <div key={panelId} className={`ref-panel-status ${hasVal ? 'status-ready' : 'status-waiting'} ${isTouched ? 'status-edited' : ''}`}>
+                                                                <div className="rp-name">{panelId.toUpperCase()}</div>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                    min="0"
+                                                                    value={hasVal ? localVal : ''}
+                                                                    placeholder="—"
+                                                                    className="rp-input"
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setEPanelLocal(prev => ({ ...prev, [panelId]: val }));
+                                                                        setEPanelTouched(prev => ({ ...prev, [panelId]: true }));
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
 
-                                        <div className="e-summary cyber-summary">
-                                            <span className="sum-label">Ort. Kesinti: <strong className="text-neon-orange">-{avgEDeduction.toFixed(2)}</strong></span>
-                                            <span className="sum-label">Net E-Puanı: <strong className="text-neon-green">{currentEScore.toFixed(3)}</strong></span>
-                                        </div>
+                                                <div className="e-summary">
+                                                    <span className="sum-label">Ort. Kesinti: <strong className="text-orange">-{avgEDeduction.toFixed(2)}</strong></span>
+                                                    <span className="sum-label">Net E-Puanı: <strong className="text-green">{currentEScore.toFixed(3)}</strong></span>
+                                                </div>
 
-                                        <div className="local-override-section">
-                                            <p className="local-title">Lokal Manuel Giriş (Opsiyonel)</p>
-                                            <div className="deduction-log led-display small-led">
-                                                {eDeductions.length === 0 ? (
-                                                    <span className="text-muted blink-cursor">_Fallback_Modu</span>
-                                                ) : (
-                                                    eDeductions.map((d, i) => (
-                                                        <span key={i} className="deduction-pill tech-pill">-{d}</span>
-                                                    ))
-                                                )}
-                                            </div>
-                                            <div className="huge-deduction-buttons mini">
-                                                <button className="btn-deduct hover-glow-red" onClick={() => addEDeduction(0.1)}>-0.1</button>
-                                                <button className="btn-deduct hover-glow-red" onClick={() => addEDeduction(0.3)}>-0.3</button>
-                                                <button className="btn-icon hover-glow-orange" onClick={removeLastEDeduction} title="Geri Al"><i className="material-icons-round">undo</i></button>
-                                                <button className="btn-icon hover-glow-orange" onClick={clearEDeductions} title="Sıfırla"><i className="material-icons-round">delete_sweep</i></button>
-                                            </div>
-                                        </div>
+                                                <div className="e-panel-actions">
+                                                    <button className="btn-outline-gray" onClick={() => { setEPanelLocal({}); setEPanelTouched({}); }}>
+                                                        <i className="material-icons-round" style={{ fontSize: '1rem', marginRight: '0.25rem', verticalAlign: 'middle' }}>refresh</i>
+                                                        Panelleri Sıfırla
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Neutral Deductions - NEON ORANGE */}
-                                <div className="score-card nd-panel span-full neon-border-orange">
-                                    <div className="sc-header bg-dark-orange">
-                                        <h3>NÖTR KESİNTİLER (Çizgi, Süre vb.)</h3>
+                                {/* Eksik Eleman Kesintisi */}
+                                <div className="score-card card-orange">
+                                    <div className="sc-header card-header-orange">
+                                        <h3>Eksik Eleman Kesintisi</h3>
+                                    </div>
+                                    <div className="sc-body">
+                                        {hasDynamicSkills ? (
+                                            <div className="eksik-auto-display">
+                                                <div className="eksik-info-row">
+                                                    <span className="eksik-label">Eksik Hareket:</span>
+                                                    <span className={`eksik-value ${missingCount > 0 ? 'text-danger' : 'text-success'}`}>
+                                                        {missingCount > 0 ? `${missingCount} hareket eksik` : 'Tümü yapıldı'}
+                                                    </span>
+                                                </div>
+                                                <div className="eksik-info-row">
+                                                    <span className="eksik-label">Kesinti:</span>
+                                                    <span className={`eksik-penalty ${missingPenalty > 0 ? 'badge-missing' : ''}`}>
+                                                        {missingPenalty > 0 ? `-${missingPenalty}` : '0'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="eksik-manual-input">
+                                                <label className="eksik-input-label">Eksik Eleman Sayısı:</label>
+                                                <div className="eksik-input-row">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={manualEksikSayisi}
+                                                        onChange={e => setManualEksikSayisi(e.target.value)}
+                                                        className="med-num-input input-orange"
+                                                        placeholder="0"
+                                                    />
+                                                    <span className={`eksik-penalty ${missingPenalty > 0 ? 'badge-missing' : ''}`}>
+                                                        Kesinti: {missingPenalty > 0 ? `-${missingPenalty}` : '0'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Tarafsiz Kesinti */}
+                                <div className="score-card card-orange">
+                                    <div className="sc-header card-header-orange">
+                                        <h3>Tarafsız Kesinti (Çizgi, Süre vb.)</h3>
                                     </div>
                                     <div className="sc-body horizontal">
                                         <input
@@ -546,47 +801,182 @@ export default function ScoringPage() {
                                             min="0"
                                             value={neutralDeductions}
                                             onChange={e => setNeutralDeductions(e.target.value)}
-                                            className="med-num-input input-neon-orange"
+                                            className="med-num-input input-orange"
                                         />
                                         <div className="nd-quick">
-                                            <button className="btn-cyber-outline orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.1).toFixed(1))}>+0.1</button>
-                                            <button className="btn-cyber-outline orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.3).toFixed(1))}>+0.3</button>
-                                            <button className="btn-cyber-outline gray" onClick={() => setNeutralDeductions(0)}>Sıfırla</button>
+                                            <button className="btn-outline-orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.1).toFixed(1))}>+0.1</button>
+                                            <button className="btn-outline-orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.3).toFixed(1))}>+0.3</button>
+                                            <button className="btn-outline-gray" onClick={() => setNeutralDeductions(0)}>Sıfırla</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="final-score-bar ultra-glow">
+                            <div className="final-score-bar-light">
                                 <div className="fs-calc">
-                                    <span className="fs-part bg-cyber-blue">D: {calculatedDScore.toFixed(3)}</span>
+                                    <span className="fs-part score-chip-blue">D: {calculatedDScore.toFixed(3)}</span>
                                     <span className="fs-math">+</span>
-                                    <span className="fs-part bg-cyber-green">E: {currentEScore.toFixed(3)}</span>
-                                    {totalNeutral > 0 && (
+                                    <span className="fs-part score-chip-green">E: {currentEScore.toFixed(3)}</span>
+                                    {missingPenalty > 0 && (
                                         <>
-                                            <span className="fs-math">-</span>
-                                            <span className="fs-part bg-cyber-orange">ND: {totalNeutral.toFixed(3)}</span>
+                                            <span className="fs-math">−</span>
+                                            <span className="fs-part score-chip-red">Eksik: {missingPenalty.toFixed(1)}</span>
+                                        </>
+                                    )}
+                                    {tarafsizKesinti > 0 && (
+                                        <>
+                                            <span className="fs-math">−</span>
+                                            <span className="fs-part score-chip-orange">Trfs: {tarafsizKesinti.toFixed(1)}</span>
+                                        </>
+                                    )}
+                                    {bonusValue > 0 && (
+                                        <>
+                                            <span className="fs-math">+</span>
+                                            <span className="fs-part score-chip-purple">Bonus: {bonusValue.toFixed(1)}</span>
                                         </>
                                     )}
                                     <span className="fs-math">=</span>
                                 </div>
-                                <div className="fs-total text-hero">
+                                <div className="text-hero">
                                     {finalScore}
                                 </div>
-                                <button
-                                    className="btn-submit-score shadow-massive cyber-save"
-                                    onClick={handleSubmitScore}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">publish</i>}
-                                    <span>PUANI KAYDET</span>
-                                </button>
+                                {hasPermission('scoring', 'puanla') && (
+                                    <button
+                                        className="btn-save-score"
+                                        onClick={handleSubmitScore}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">publish</i>}
+                                        <span>Puanı Kaydet</span>
+                                    </button>
+                                )}
                             </div>
 
                         </div>
                     )}
                 </main>
             </div>
+
+            {/* Puan Onay Modal */}
+            {confirmModal && (
+                <div className="scoring-modal-overlay" onClick={() => setConfirmModal(null)}>
+                    <div className="scoring-modal" onClick={e => e.stopPropagation()}>
+                        <div className="scoring-modal-header confirm-header">
+                            <i className="material-icons-round">fact_check</i>
+                            <h2>Puan Onayı</h2>
+                        </div>
+                        <div className="scoring-modal-body">
+                            <div className="modal-athlete-info">
+                                <div className="modal-avatar">{confirmModal.athlete.ad.charAt(0)}{confirmModal.athlete.soyad.charAt(0)}</div>
+                                <div>
+                                    <h3>{confirmModal.athlete.ad} {confirmModal.athlete.soyad}</h3>
+                                    <p>{confirmModal.athlete.okul || confirmModal.athlete.kulup} &bull; {confirmModal.apparatus}</p>
+                                </div>
+                            </div>
+                            <div className="modal-score-grid">
+                                <div className="modal-score-item blue">
+                                    <span className="msi-label">D Puanı</span>
+                                    <span className="msi-value">{confirmModal.dScore.toFixed(3)}</span>
+                                </div>
+                                <div className="modal-score-item green">
+                                    <span className="msi-label">E Puanı</span>
+                                    <span className="msi-value">{confirmModal.eScore.toFixed(3)}</span>
+                                </div>
+                                {confirmModal.missingPen > 0 && (
+                                    <div className="modal-score-item red">
+                                        <span className="msi-label">Eksik Kesinti</span>
+                                        <span className="msi-value">-{confirmModal.missingPen.toFixed(3)}</span>
+                                    </div>
+                                )}
+                                {confirmModal.neutralPen > 0 && (
+                                    <div className="modal-score-item orange">
+                                        <span className="msi-label">Tarafsız Kesinti</span>
+                                        <span className="msi-value">-{confirmModal.neutralPen.toFixed(3)}</span>
+                                    </div>
+                                )}
+                                {confirmModal.bonus > 0 && (
+                                    <div className="modal-score-item purple">
+                                        <span className="msi-label">Bonus</span>
+                                        <span className="msi-value">+{confirmModal.bonus.toFixed(3)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-final-score">
+                                <span>Final Puanı</span>
+                                <strong>{confirmModal.finalScore}</strong>
+                            </div>
+                        </div>
+                        <div className="scoring-modal-actions">
+                            <button className="modal-btn cancel" onClick={() => setConfirmModal(null)}>
+                                <i className="material-icons-round">close</i> Vazgeç
+                            </button>
+                            <button className="modal-btn confirm" onClick={executeScoreSave} disabled={isSubmitting}>
+                                {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">check</i>}
+                                Onayla ve Kaydet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Kayıt Başarılı + Sonraki Sporcu Modal */}
+            {successModal && (
+                <div className="scoring-modal-overlay">
+                    <div className="scoring-modal success-modal">
+                        <div className="scoring-modal-header success-header">
+                            <i className="material-icons-round">check_circle</i>
+                            <h2>Puan Kaydedildi</h2>
+                        </div>
+                        <div className="scoring-modal-body">
+                            <div className="modal-athlete-info">
+                                <div className="modal-avatar success-avatar">{successModal.athlete.ad.charAt(0)}{successModal.athlete.soyad.charAt(0)}</div>
+                                <div>
+                                    <h3>{successModal.athlete.ad} {successModal.athlete.soyad}</h3>
+                                    <p>{successModal.apparatus}</p>
+                                </div>
+                                <div className="saved-score-badge">{successModal.finalScore}</div>
+                            </div>
+                            <div className="modal-saved-details">
+                                <span className="msd-chip blue">D: {successModal.dScore.toFixed(3)}</span>
+                                <span className="msd-chip green">E: {successModal.eScore.toFixed(3)}</span>
+                            </div>
+
+                            {successModal.nextAthlete ? (
+                                <div className="next-athlete-section">
+                                    <div className="next-divider">
+                                        <span>Sıradaki Sporcu</span>
+                                    </div>
+                                    <div className="next-athlete-card">
+                                        <div className="na-avatar">{successModal.nextAthlete.ad.charAt(0)}{successModal.nextAthlete.soyad.charAt(0)}</div>
+                                        <div className="na-info">
+                                            <h3>{successModal.nextAthlete.ad} {successModal.nextAthlete.soyad}</h3>
+                                            <p>{successModal.nextAthlete.okul || successModal.nextAthlete.kulup || ''}</p>
+                                        </div>
+                                        <span className="na-order">#{successModal.nextAthlete.sirasi || successModal.nextAthlete.cikisSirasi}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="next-athlete-section">
+                                    <div className="next-divider">
+                                        <span>Bu alet için tüm sporcular puanlandı</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="scoring-modal-actions">
+                            <button className="modal-btn cancel" onClick={() => setSuccessModal(null)}>
+                                Kapat
+                            </button>
+                            {successModal.nextAthlete && (
+                                <button className="modal-btn next-btn" onClick={() => handleNextAthlete(successModal.nextAthlete)}>
+                                    <i className="material-icons-round">campaign</i>
+                                    Sporcuyu Çağır
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

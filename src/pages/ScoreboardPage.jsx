@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ref, onValue } from 'firebase/database';
+import { useState, useEffect, useRef } from 'react';
+import { ref, onValue, off } from 'firebase/database';
 import { db } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
+import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './ScoreboardPage.css';
 
 export default function ScoreboardPage() {
+    const { currentUser } = useAuth();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -20,25 +23,34 @@ export default function ScoreboardPage() {
     const [flashData, setFlashData] = useState(null);
     const [isFlashing, setIsFlashing] = useState(false);
 
+    // Listener refs for cleanup
+    const liveListenersRef = useRef([]);
+
     // Initial Data Fetch
     useEffect(() => {
         const compRef = ref(db, 'competitions');
         const unsubscribe = onValue(compRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                setCompetitions(data);
+                setCompetitions(filterCompetitionsByUser(data, currentUser));
             }
         });
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // Load detailed data once competition is selected and Go Live is clicked
     const handleGoLive = () => {
         if (!selectedCompId || !selectedCategory) return;
+
+        // Cleanup previous listeners
+        liveListenersRef.current.forEach(r => off(r));
+        liveListenersRef.current = [];
+
         setIsLive(true);
 
         // 1. Fetch Athletes
         const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${selectedCategory}`);
+        liveListenersRef.current.push(athletesRef);
         onValue(athletesRef, (snap) => {
             const data = snap.val();
             if (data) {
@@ -50,6 +62,7 @@ export default function ScoreboardPage() {
 
         // 2. Fetch Scores
         const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${selectedCategory}`);
+        liveListenersRef.current.push(scoresRef);
         onValue(scoresRef, (snap) => {
             const data = snap.val() || {};
             setAllScores(data);
@@ -57,6 +70,7 @@ export default function ScoreboardPage() {
 
         // 3. Listen for Flash Triggers
         const flashRef = ref(db, `competitions/${selectedCompId}/flashTrigger`);
+        liveListenersRef.current.push(flashRef);
         let isInitialLoad = true;
 
         onValue(flashRef, (snap) => {
@@ -116,11 +130,22 @@ export default function ScoreboardPage() {
     }, [isLive]);
 
     const exitLiveMode = () => {
+        // Cleanup live listeners
+        liveListenersRef.current.forEach(r => off(r));
+        liveListenersRef.current = [];
+
         setIsLive(false);
         if (document.fullscreenElement) {
             document.exitFullscreen().catch(err => console.log(err));
         }
     };
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            liveListenersRef.current.forEach(r => off(r));
+        };
+    }, []);
 
     const triggerFlash = (data) => {
         setFlashData(data);
@@ -190,7 +215,11 @@ export default function ScoreboardPage() {
     // LIVE VIEW
     const compOptions = competitions[selectedCompId];
     const catOptions = compOptions?.kategoriler?.[selectedCategory] || {};
-    const apparatusList = catOptions.aletler || [];
+    // aletler: string[] veya {id, name}[] olabilir — normalize et
+    const rawAletler = catOptions.aletler || [];
+    const apparatusList = rawAletler.map(a =>
+        typeof a === 'string' ? { id: a, name: a } : a
+    );
     const currentView = views[viewIndex];
 
     // Calculate Rankings
