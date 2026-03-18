@@ -86,11 +86,11 @@ export const AuthProvider = ({ children }) => {
             return { error: `Çok fazla deneme. ${remainSec} saniye sonra tekrar deneyin.` };
         }
 
-        // 1. Super admin şifresi (geriye uyumlu)
-        if (SUPER_ADMIN_PASSWORD && password === SUPER_ADMIN_PASSWORD && (!username || username.trim() === '' || username.toLowerCase() === 'admin')) {
+        // 1. Super admin şifresi — kullanıcı adı ne olursa olsun, şifre doğruysa giriş
+        if (SUPER_ADMIN_PASSWORD && password === SUPER_ADMIN_PASSWORD) {
             loginAttemptsRef.current = 0;
             const superAdminUser = {
-                kullaniciAdi: 'admin',
+                kullaniciAdi: username.trim() || 'admin',
                 rolAdi: 'Super Admin',
                 il: null,
                 izinler: {}
