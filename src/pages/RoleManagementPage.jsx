@@ -249,11 +249,11 @@ export default function RoleManagementPage() {
     // Modal aç
     const openModal = (user = null) => {
         if (user) {
-            // Düzenleme
+            // Düzenleme — şifre alanı boş açılır; boş bırakılırsa mevcut hash korunur
             setEditingUser(user.id);
             setFormData({
                 kullaniciAdi: user.id,
-                sifre: user.sifre || '',
+                sifre: '',
                 rolAdi: user.rolAdi || '',
                 il: user.il || '',
                 aktif: user.aktif !== false,
@@ -334,7 +334,8 @@ export default function RoleManagementPage() {
             setFormError('Kullanıcı adı zorunludur.');
             return;
         }
-        if (!formData.sifre.trim()) {
+        // Yeni kullanıcıda şifre zorunlu; düzenlemede boş bırakılırsa mevcut hash korunur
+        if (!editingUser && !formData.sifre.trim()) {
             setFormError('Şifre zorunludur.');
             return;
         }
@@ -351,15 +352,20 @@ export default function RoleManagementPage() {
 
         setSaving(true);
         try {
-            // Şifreyi hashle
-            const hashedPassword = await hashPassword(formData.sifre.trim());
             const userData = {
-                sifreHash: hashedPassword,
                 rolAdi: formData.rolAdi.trim(),
                 il: formData.il || null,
                 aktif: formData.aktif,
                 izinler: formData.izinler,
             };
+
+            if (formData.sifre.trim()) {
+                // Yeni şifre girildi — hashle ve kaydet
+                userData.sifreHash = await hashPassword(formData.sifre.trim());
+            } else {
+                // Şifre boş bırakıldı (sadece düzenlemede mümkün) — mevcut hash'i koru
+                userData.sifreHash = users[username]?.sifreHash || '';
+            }
 
             // Yeni kullanıcı ise oluşturma tarihi ekle
             if (!editingUser) {
@@ -529,12 +535,12 @@ export default function RoleManagementPage() {
                                         />
                                     </div>
                                     <div className="rm-form-group">
-                                        <label>Şifre *</label>
+                                        <label>{editingUser ? 'Yeni Şifre (boş = değiştirme)' : 'Şifre *'}</label>
                                         <input
                                             type="password"
                                             value={formData.sifre}
                                             onChange={e => setFormData({ ...formData, sifre: e.target.value })}
-                                            placeholder="Şifre"
+                                            placeholder={editingUser ? 'Boş bırakın — şifre değişmez' : 'Şifre'}
                                             autoComplete="new-password"
                                         />
                                     </div>

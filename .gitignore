@@ -32,3 +32,4 @@ dist-ssr
 
 # Credential files
 il-temsilcileri-sifreler.txt
+.vercel
