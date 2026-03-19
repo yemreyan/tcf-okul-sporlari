@@ -1,19 +1,69 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, remove, push, set, update } from 'firebase/database';
+import { ref, onValue, remove, push, set, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import * as XLSX from 'xlsx';
 import './RefereesPage.css';
 
+// ─── Hakem Hesap Oluşturma Yardımcı Fonksiyonlar ───
+
+// Türkçe karakterleri ASCII'ye çevir
+function turkishToAscii(str) {
+    const map = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+                  'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u' };
+    return str.replace(/[çğıöşüÇĞİÖŞÜ]/g, c => map[c] || c);
+}
+
+// Ad soyad'dan kullanıcı adı oluştur: "Ahmet Yılmaz" → "ahmet.yilmaz"
+function generateUsername(adSoyad) {
+    const cleaned = turkishToAscii(adSoyad.trim().toLowerCase());
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'hakem';
+    if (parts.length === 1) return parts[0].replace(/[^a-z0-9]/g, '');
+    // İlk ad + son soyad
+    const ad = parts[0].replace(/[^a-z0-9]/g, '');
+    const soyad = parts[parts.length - 1].replace(/[^a-z0-9]/g, '');
+    return `${ad}.${soyad}`;
+}
+
+// Basit rastgele şifre oluştur (6 karakter: harf + rakam)
+function generateSimplePassword() {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let pwd = '';
+    for (let i = 0; i < 6; i++) {
+        pwd += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return pwd;
+}
+
+// Hakem için sadece puanlama izinleri
+function createRefereePermissions() {
+    return {
+        competitions: { goruntule: true, olustur: false, duzenle: false, sil: false },
+        applications: { goruntule: false, onayla: false, reddet: false },
+        athletes: { goruntule: true, ekle: false, duzenle: false, sil: false },
+        scoring: { goruntule: true, puanla: true },
+        criteria: { goruntule: true, duzenle: false },
+        referees: { goruntule: false, ekle: false, duzenle: false, sil: false },
+        scoreboard: { goruntule: true },
+        finals: { goruntule: true, duzenle: false },
+        analytics: { goruntule: false },
+        start_order: { goruntule: true, duzenle: false, pdf: false },
+        links: { goruntule: true },
+        official_report: { goruntule: false, duzenle: false, sil: false },
+    };
+}
+
 export default function RefereesPage() {
     const navigate = useNavigate();
-    const { hasPermission } = useAuth();
+    const { hasPermission, hashPassword } = useAuth();
     const { toast, confirm } = useNotification();
 
     const [referees, setReferees] = useState([]);
     const [competitionsList, setCompetitionsList] = useState([]);
+    const [existingUsers, setExistingUsers] = useState({}); // kullanicilar verisi
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGender, setFilterGender] = useState('');
@@ -23,6 +73,11 @@ export default function RefereesPage() {
     const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
     const [editingReferee, setEditingReferee] = useState(null);
     const [selectedReferee, setSelectedReferee] = useState(null); // Triggers slide-over
+
+    // Hesap oluşturma modal state
+    const [credentialsModal, setCredentialsModal] = useState(null); // { username, password, adSoyad }
+    const [bulkCreating, setBulkCreating] = useState(false);
+    const [bulkResults, setBulkResults] = useState(null); // [{ adSoyad, username, password }]
 
     const [filterBrove, setFilterBrove] = useState('');
 
@@ -107,9 +162,16 @@ export default function RefereesPage() {
             setCompetitionsList(list);
         });
 
+        // Fetch existing users (to check who has an account)
+        const usersRef = ref(db, 'kullanicilar');
+        const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+            setExistingUsers(snapshot.val() || {});
+        });
+
         return () => {
             unsubscribeRefs();
             unsubscribeComps();
+            unsubscribeUsers();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedReferee?.id]);
@@ -163,16 +225,30 @@ export default function RefereesPage() {
         try {
             if (editingReferee) {
                 await update(ref(db, `referees/${editingReferee.id}`), formData);
+                setIsAddEditModalOpen(false);
             } else {
+                // Yeni hakem kaydet
                 const newRefRef = push(ref(db, `referees`));
+                const newRefId = newRefRef.key;
                 await set(newRefRef, {
                     ...formData,
                     gorevSayisi: 0,
                     gecmisYarismalar: {},
                     createdAt: new Date().toISOString()
                 });
+                setIsAddEditModalOpen(false);
+
+                // Otomatik hesap oluştur
+                try {
+                    const newReferee = { id: newRefId, ...formData };
+                    const { username, password } = await createRefereeAccount(newReferee);
+                    setCredentialsModal({ username, password, adSoyad: formData.adSoyad });
+                    toast(`${formData.adSoyad} kaydedildi ve giriş hesabı oluşturuldu.`, 'success');
+                } catch (accErr) {
+                    console.error('Auto account creation failed:', accErr);
+                    toast(`Hakem kaydedildi ancak otomatik hesap oluşturulamadı.`, 'warning');
+                }
             }
-            setIsAddEditModalOpen(false);
         } catch (err) {
             console.error("Save failed", err);
             toast("Kaydetme işlemi başarısız oldu.", "error");
@@ -207,6 +283,99 @@ export default function RefereesPage() {
         }
     };
 
+
+    // ─── Hakem Hesabı Oluşturma ───
+
+    // Mevcut kullanıcılar arasında çakışma kontrolü ile benzersiz username üret
+    async function findUniqueUsername(adSoyad) {
+        const base = generateUsername(adSoyad);
+        const snapshot = await get(ref(db, 'kullanicilar'));
+        const allUsers = snapshot.val() || {};
+        if (!allUsers[base]) return base;
+        // Çakışma varsa numara ekle
+        let i = 2;
+        while (allUsers[`${base}${i}`]) i++;
+        return `${base}${i}`;
+    }
+
+    // Tek hakem için hesap oluştur
+    async function createRefereeAccount(referee) {
+        const username = await findUniqueUsername(referee.adSoyad);
+        const password = generateSimplePassword();
+        const sifreHash = await hashPassword(password);
+
+        const userData = {
+            rolAdi: 'Hakem',
+            il: referee.il || null,
+            aktif: true,
+            izinler: createRefereePermissions(),
+            sifreHash,
+            olusturmaTarihi: new Date().toISOString(),
+            hakemId: referee.id || null, // Hakem kaydı ile bağlantı
+        };
+
+        await set(ref(db, `kullanicilar/${username}`), userData);
+
+        // Hakem kaydına kullanıcı adını kaydet
+        if (referee.id) {
+            await update(ref(db, `referees/${referee.id}`), { hesapKullaniciAdi: username });
+        }
+
+        return { username, password };
+    }
+
+    // Tek hakem için hesap oluştur (buton handler)
+    const handleCreateAccount = async (referee) => {
+        try {
+            const result = await createRefereeAccount(referee);
+            setCredentialsModal({ ...result, adSoyad: referee.adSoyad });
+            toast(`${referee.adSoyad} için hesap oluşturuldu.`, 'success');
+        } catch (err) {
+            console.error('Hesap oluşturma hatası:', err);
+            toast('Hesap oluşturma başarısız.', 'error');
+        }
+    };
+
+    // Toplu hesap oluşturma (hesabı olmayanlar için)
+    const handleBulkCreateAccounts = async () => {
+        const refereesWithoutAccount = referees.filter(r => !r.hesapKullaniciAdi);
+        if (refereesWithoutAccount.length === 0) {
+            toast('Tüm hakemlerin zaten hesabı var.', 'info');
+            return;
+        }
+
+        const ok = await confirm(
+            `${refereesWithoutAccount.length} hakem için otomatik hesap oluşturulacak. Devam etmek istiyor musunuz?`,
+            { title: 'Toplu Hesap Oluşturma', type: 'info' }
+        );
+        if (!ok) return;
+
+        setBulkCreating(true);
+        const results = [];
+        let success = 0;
+        let fail = 0;
+
+        for (const referee of refereesWithoutAccount) {
+            try {
+                const { username, password } = await createRefereeAccount(referee);
+                results.push({ adSoyad: referee.adSoyad, username, password, status: 'ok' });
+                success++;
+            } catch (err) {
+                console.error(`Hesap oluşturulamadı: ${referee.adSoyad}`, err);
+                results.push({ adSoyad: referee.adSoyad, username: '-', password: '-', status: 'fail' });
+                fail++;
+            }
+        }
+
+        setBulkCreating(false);
+        setBulkResults(results);
+        toast(`Toplu hesap oluşturma tamamlandı. Başarılı: ${success}, Başarısız: ${fail}`, success > 0 ? 'success' : 'error');
+    };
+
+    // Hakemlerin hesap durumu bilgisi
+    const refereesWithAccountCount = useMemo(() => {
+        return referees.filter(r => r.hesapKullaniciAdi).length;
+    }, [referees]);
 
     // 3. Excel Upload Logic (Initializes stats)
     const handleFileUpload = (e) => {
@@ -298,6 +467,17 @@ export default function RefereesPage() {
                         </button>
                     )}
                     {hasPermission('referees', 'ekle') && (
+                        <button
+                            className="btn-premium-secondary"
+                            onClick={handleBulkCreateAccounts}
+                            disabled={bulkCreating}
+                            title={`${referees.length - refereesWithAccountCount} hakem hesapsız`}
+                        >
+                            <i className="material-icons-round">{bulkCreating ? 'hourglass_top' : 'manage_accounts'}</i>
+                            {bulkCreating ? 'Oluşturuluyor...' : `Toplu Hesap (${referees.length - refereesWithAccountCount})`}
+                        </button>
+                    )}
+                    {hasPermission('referees', 'ekle') && (
                         <button className="btn-premium-primary" onClick={() => openAddEditModal()}>
                             <i className="material-icons-round">person_add</i> Yeni Hakem
                         </button>
@@ -359,6 +539,7 @@ export default function RefereesPage() {
                                         <th>Bröve</th>
                                         <th>İletişim</th>
                                         <th className="text-center">Görev Sayısı</th>
+                                        <th className="text-center">Hesap</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -402,6 +583,19 @@ export default function RefereesPage() {
                                                 <div className="stat-pill">
                                                     {ref.gorevSayisi || 0} Görev
                                                 </div>
+                                            </td>
+                                            <td className="text-center">
+                                                {ref.hesapKullaniciAdi ? (
+                                                    <span className="badge-account active" title={`Kullanıcı: ${ref.hesapKullaniciAdi}`}>
+                                                        <i className="material-icons-round" style={{ fontSize: 14 }}>verified_user</i>
+                                                        {ref.hesapKullaniciAdi}
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge-account inactive" title="Hesap yok">
+                                                        <i className="material-icons-round" style={{ fontSize: 14 }}>person_off</i>
+                                                        Yok
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="text-right pr-4">
                                                 <i className="material-icons-round row-chevron text-slate-400">chevron_right</i>
@@ -491,6 +685,41 @@ export default function RefereesPage() {
                                         <span>{selectedReferee.email || 'Email belirtilmedi'}</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Sistem Hesabı */}
+                            <div className="profile-section">
+                                <h3 className="section-title">Sistem Hesabı</h3>
+                                {selectedReferee.hesapKullaniciAdi ? (
+                                    <div className="ref-account-info">
+                                        <div className="ref-account-badge active">
+                                            <i className="material-icons-round">verified_user</i>
+                                            <div>
+                                                <strong>Hesap Aktif</strong>
+                                                <span>Kullanıcı: <code>{selectedReferee.hesapKullaniciAdi}</code></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="ref-account-info">
+                                        <div className="ref-account-badge inactive">
+                                            <i className="material-icons-round">person_off</i>
+                                            <div>
+                                                <strong>Hesap Yok</strong>
+                                                <span>Bu hakem henüz sisteme giriş yapamaz.</span>
+                                            </div>
+                                        </div>
+                                        {hasPermission('referees', 'ekle') && (
+                                            <button
+                                                className="ref-create-account-btn"
+                                                onClick={() => handleCreateAccount(selectedReferee)}
+                                            >
+                                                <i className="material-icons-round">person_add</i>
+                                                Hesap Oluştur
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="profile-section flex-1 overflow-hidden flex flex-col">
@@ -705,6 +934,121 @@ export default function RefereesPage() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hesap Bilgileri Modal (Tek hakem) */}
+            {credentialsModal && (
+                <div className="premium-modal-overlay" onClick={() => setCredentialsModal(null)}>
+                    <div className="premium-modal-dialog cred-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+                        <div className="pm-header">
+                            <div className="pm-title">
+                                <i className="material-icons-round" style={{ color: '#16A34A', background: '#DCFCE7' }}>how_to_reg</i>
+                                <h2>Hesap Oluşturuldu</h2>
+                            </div>
+                            <button className="pm-close-btn" onClick={() => setCredentialsModal(null)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="pm-body">
+                            <div className="cred-info-box">
+                                <div className="cred-warning">
+                                    <i className="material-icons-round">warning</i>
+                                    <span>Bu bilgileri not edin! Şifre tekrar gösterilmez.</span>
+                                </div>
+                                <div className="cred-card">
+                                    <div className="cred-name">{credentialsModal.adSoyad}</div>
+                                    <div className="cred-row">
+                                        <label>Kullanıcı Adı:</label>
+                                        <code className="cred-value">{credentialsModal.username}</code>
+                                    </div>
+                                    <div className="cred-row">
+                                        <label>Şifre:</label>
+                                        <code className="cred-value">{credentialsModal.password}</code>
+                                    </div>
+                                    <div className="cred-row">
+                                        <label>Rol:</label>
+                                        <span className="cred-role-badge">Hakem (Sadece Puanlama)</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className="cred-copy-btn"
+                                    onClick={() => {
+                                        const text = `Hakem: ${credentialsModal.adSoyad}\nKullanıcı Adı: ${credentialsModal.username}\nŞifre: ${credentialsModal.password}`;
+                                        navigator.clipboard.writeText(text).then(() => toast('Panoya kopyalandı!', 'success'));
+                                    }}
+                                >
+                                    <i className="material-icons-round">content_copy</i>
+                                    Bilgileri Kopyala
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toplu Hesap Sonuçları Modal */}
+            {bulkResults && (
+                <div className="premium-modal-overlay" onClick={() => setBulkResults(null)}>
+                    <div className="premium-modal-dialog" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+                        <div className="pm-header">
+                            <div className="pm-title">
+                                <i className="material-icons-round" style={{ color: '#4F46E5', background: '#EEF2FF' }}>assignment_turned_in</i>
+                                <h2>Toplu Hesap Oluşturma Sonuçları</h2>
+                            </div>
+                            <button className="pm-close-btn" onClick={() => setBulkResults(null)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="pm-body">
+                            <div className="cred-warning">
+                                <i className="material-icons-round">warning</i>
+                                <span>Bu listeyi kaydedin! Şifreler tekrar gösterilmez.</span>
+                            </div>
+                            <div className="bulk-results-table-wrap">
+                                <table className="bulk-results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Hakem</th>
+                                            <th>Kullanıcı Adı</th>
+                                            <th>Şifre</th>
+                                            <th>Durum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bulkResults.map((r, i) => (
+                                            <tr key={i} className={r.status === 'fail' ? 'row-fail' : ''}>
+                                                <td><strong>{r.adSoyad}</strong></td>
+                                                <td><code>{r.username}</code></td>
+                                                <td><code>{r.password}</code></td>
+                                                <td>
+                                                    {r.status === 'ok'
+                                                        ? <span className="badge-account active"><i className="material-icons-round" style={{ fontSize: 14 }}>check_circle</i> Başarılı</span>
+                                                        : <span className="badge-account inactive"><i className="material-icons-round" style={{ fontSize: 14 }}>error</i> Hata</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button
+                                className="cred-copy-btn"
+                                style={{ marginTop: '1rem' }}
+                                onClick={() => {
+                                    const lines = bulkResults
+                                        .filter(r => r.status === 'ok')
+                                        .map(r => `${r.adSoyad}\t${r.username}\t${r.password}`)
+                                        .join('\n');
+                                    const header = 'Hakem\tKullanıcı Adı\tŞifre\n';
+                                    navigator.clipboard.writeText(header + lines).then(() => toast('Tüm bilgiler panoya kopyalandı!', 'success'));
+                                }}
+                            >
+                                <i className="material-icons-round">content_copy</i>
+                                Tümünü Kopyala (Tab ile Ayrılmış)
+                            </button>
                         </div>
                     </div>
                 </div>

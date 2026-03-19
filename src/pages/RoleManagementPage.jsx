@@ -231,13 +231,15 @@ export default function RoleManagementPage() {
                 }
                 // İl filtresi
                 if (filterIl && (user.il || '') !== filterIl) return false;
+                // Rol filtresi
+                if (filterRole && (user.rolAdi || '') !== filterRole) return false;
                 // Aktiflik filtresi
                 if (filterAktif === 'active' && user.aktif === false) return false;
                 if (filterAktif === 'passive' && user.aktif !== false) return false;
                 return true;
             })
             .sort((a, b) => a.id.localeCompare(b.id, 'tr-TR'));
-    }, [users, search, filterIl, filterAktif]);
+    }, [users, search, filterIl, filterRole, filterAktif]);
 
     // İllerde kullanılan iller (filtre dropdown için)
     const usedCities = useMemo(() => {
@@ -245,6 +247,15 @@ export default function RoleManagementPage() {
         Object.values(users).forEach(u => { if (u.il) set.add(u.il); });
         return [...set].sort((a, b) => a.localeCompare(b, 'tr-TR'));
     }, [users]);
+
+    // Kullanılan rol adları (filtre dropdown için)
+    const usedRoles = useMemo(() => {
+        const set = new Set();
+        Object.values(users).forEach(u => { if (u.rolAdi) set.add(u.rolAdi); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    }, [users]);
+
+    const [filterRole, setFilterRole] = useState('');
 
     // Modal aç
     const openModal = (user = null) => {
@@ -429,6 +440,10 @@ export default function RoleManagementPage() {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
+                    <select className="rm-filter-select" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                        <option value="">Tüm Roller</option>
+                        {usedRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
                     <select className="rm-filter-select" value={filterIl} onChange={e => setFilterIl(e.target.value)}>
                         <option value="">Tüm İller</option>
                         {usedCities.map(c => <option key={c} value={c}>{c}</option>)}

@@ -1096,6 +1096,285 @@
     color: #EF4444;
 }
 
+/* =========================================
+   HESAP DURUMU BADGE (Tablo satırında)
+   ========================================= */
+
+.badge-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.badge-account.active {
+    background: #DCFCE7;
+    color: #16A34A;
+}
+
+.badge-account.inactive {
+    background: #F1F5F9;
+    color: #94A3B8;
+}
+
+/* =========================================
+   PROFIL PANELİ — SİSTEM HESABI
+   ========================================= */
+
+.ref-account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ref-account-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.ref-account-badge i {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.ref-account-badge div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ref-account-badge div strong {
+    font-weight: 700;
+    font-size: 0.88rem;
+}
+
+.ref-account-badge div span {
+    font-size: 0.78rem;
+    opacity: 0.8;
+}
+
+.ref-account-badge div code {
+    background: rgba(0,0,0,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.ref-account-badge.active {
+    background: #DCFCE7;
+    color: #166534;
+    border: 1px solid #BBF7D0;
+}
+
+.ref-account-badge.active i {
+    color: #16A34A;
+}
+
+.ref-account-badge.inactive {
+    background: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FECACA;
+}
+
+.ref-account-badge.inactive i {
+    color: #DC2626;
+}
+
+.ref-create-account-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.ref-create-account-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+}
+
+/* =========================================
+   HESAP BİLGİLERİ MODAL
+   ========================================= */
+
+.cred-info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.cred-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 0.75rem;
+    color: #92400E;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.cred-warning i {
+    color: #F59E0B;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.cred-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.cred-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0F172A;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.cred-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cred-row label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #64748B;
+    min-width: 110px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cred-value {
+    background: #0F172A;
+    color: #22D3EE;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.cred-role-badge {
+    background: #EEF2FF;
+    color: #4F46E5;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.cred-copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: #0F172A;
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.cred-copy-btn:hover {
+    background: #1E293B;
+}
+
+/* =========================================
+   TOPLU HESAP SONUÇLARI TABLOSU
+   ========================================= */
+
+.bulk-results-table-wrap {
+    max-height: 400px;
+    overflow-y: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #E2E8F0;
+    margin-top: 0.75rem;
+}
+
+.bulk-results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.bulk-results-table thead {
+    background: #F1F5F9;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.bulk-results-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 700;
+    color: #475569;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.bulk-results-table td {
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid #F1F5F9;
+    color: #334155;
+}
+
+.bulk-results-table code {
+    background: #0F172A;
+    color: #22D3EE;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.bulk-results-table tr.row-fail {
+    background: #FEF2F2;
+}
+
+.bulk-results-table tbody tr:hover {
+    background: #F8FAFC;
+}
+
 /* Responsive Slide-Over Behavior */
 @media (max-width: 1279px) {
     /* On medium screens, table shrinks or stays normal, panel overlaps it slightly */
@@ -1132,5 +1411,15 @@
 
     .pm-branch-selector {
         grid-template-columns: 1fr;
+    }
+
+    .cred-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .cred-row label {
+        min-width: unset;
     }
 }
