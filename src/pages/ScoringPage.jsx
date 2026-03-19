@@ -253,15 +253,27 @@ export default function ScoringPage() {
         if (scoringMode === 'combined') {
             return parseFloat(combinedEDeduction) || 0;
         }
-        // Ayrı modda çoklu hakem panel ortalaması
-        const localScores = ePanels
+        // Ayrı modda: hakem puanlarını topla
+        let localScores = ePanels
             .map(p => ePanelLocal[p])
-            .filter(val => val !== undefined && val !== null && val !== '' && !isNaN(parseFloat(val)));
-        if (localScores.length > 0) {
-            const sum = localScores.reduce((acc, val) => acc + parseFloat(val), 0);
-            return sum / localScores.length;
+            .filter(val => val !== undefined && val !== null && val !== '' && !isNaN(parseFloat(val)))
+            .map(val => parseFloat(val));
+
+        if (localScores.length === 0) return 0;
+
+        // FIG kuralı: 4+ hakem varsa en yüksek ve en düşük atılır, kalan ortalaması
+        // 3 veya daha az hakem varsa düz ortalama
+        if (localScores.length >= 4) {
+            localScores.sort((a, b) => a - b);
+            // En düşük ve en yüksek atılır
+            const trimmed = localScores.slice(1, -1);
+            const sum = trimmed.reduce((acc, val) => acc + val, 0);
+            return sum / trimmed.length;
         }
-        return 0;
+
+        // 3 veya daha az: düz ortalama
+        const sum = localScores.reduce((acc, val) => acc + val, 0);
+        return sum / localScores.length;
     };
 
     const E_SCORE_BASE = 10.0;
@@ -737,6 +749,12 @@ export default function ScoringPage() {
                                                 </div>
 
                                                 <div className="e-summary">
+                                                    {(() => {
+                                                        const filledCount = ePanels.filter(p => ePanelLocal[p] !== undefined && ePanelLocal[p] !== null && ePanelLocal[p] !== '' && !isNaN(parseFloat(ePanelLocal[p]))).length;
+                                                        return filledCount >= 4 ? (
+                                                            <span className="sum-label trim-info"><i className="material-icons-round" style={{fontSize:'0.85rem',verticalAlign:'middle',marginRight:2}}>info</i>En yüksek ve en düşük atıldı</span>
+                                                        ) : null;
+                                                    })()}
                                                     <span className="sum-label">Ort. Kesinti: <strong className="text-orange">-{avgEDeduction.toFixed(2)}</strong></span>
                                                     <span className="sum-label">Net E-Puanı: <strong className="text-green">{currentEScore.toFixed(3)}</strong></span>
                                                 </div>

@@ -859,6 +859,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     font-size: 1rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid #E2E8F0;
@@ -867,6 +869,19 @@
 .sum-label {
     font-weight: 600;
     color: #64748B;
+}
+
+.trim-info {
+    width: 100%;
+    font-size: 0.75rem;
+    color: #6366F1;
+    font-weight: 600;
+    background: #EEF2FF;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .text-orange {
