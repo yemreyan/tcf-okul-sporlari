@@ -5,10 +5,7 @@ import { db } from './firebase';
 
 const AuthContext = createContext();
 
-// Super admin şifresi artık env'den okunuyor
-const SUPER_ADMIN_PASSWORD = import.meta.env.VITE_SUPER_ADMIN_PASSWORD || '';
-
-// Basit SHA-256 hash fonksiyonu (Web Crypto API)
+// SHA-256 hash fonksiyonu (Web Crypto API)
 async function hashPassword(password) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
@@ -17,9 +14,22 @@ async function hashPassword(password) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Brute-force koruması: Login deneme sınırlandırma
+// Timing-safe karşılaştırma (side-channel saldırılarına karşı)
+function timingSafeEqual(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+        result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return result === 0;
+}
+
+// Brute-force koruması
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 2 * 60 * 1000; // 2 dakika
+
+// Session token expiration: 24 saat
+const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -36,15 +46,18 @@ export const AuthProvider = ({ children }) => {
         if (savedUser) {
             try {
                 const user = JSON.parse(savedUser);
-                // Session token kontrolü
                 const savedToken = localStorage.getItem('sessionToken');
                 if (savedToken && user.sessionToken === savedToken) {
-                    // sessionToken'ı user objesinden temizle (memory'de tutma)
-                    const { sessionToken: _, ...cleanUser } = user;
-                    setCurrentUser(cleanUser);
-                    setIsAuthenticated(true);
+                    // Session süresi dolmuş mu kontrol et
+                    if (user.expiresAt && Date.now() > user.expiresAt) {
+                        localStorage.removeItem('currentUser');
+                        localStorage.removeItem('sessionToken');
+                    } else {
+                        const { sessionToken: _, expiresAt: __, ...cleanUser } = user;
+                        setCurrentUser(cleanUser);
+                        setIsAuthenticated(true);
+                    }
                 } else {
-                    // Token uyuşmazlığı — oturumu temizle
                     localStorage.removeItem('currentUser');
                     localStorage.removeItem('sessionToken');
                 }
@@ -86,29 +99,11 @@ export const AuthProvider = ({ children }) => {
             return { error: `Çok fazla deneme. ${remainSec} saniye sonra tekrar deneyin.` };
         }
 
-        // 1. Super admin şifresi — kullanıcı adı ne olursa olsun, şifre doğruysa giriş
-        if (SUPER_ADMIN_PASSWORD && password === SUPER_ADMIN_PASSWORD) {
-            loginAttemptsRef.current = 0;
-            const superAdminUser = {
-                kullaniciAdi: username.trim() || 'admin',
-                rolAdi: 'Super Admin',
-                il: null,
-                izinler: {}
-            };
-            const token = generateSessionToken();
-            setCurrentUser(superAdminUser);
-            setIsAuthenticated(true);
-            localStorage.setItem('currentUser', JSON.stringify({ ...superAdminUser, sessionToken: token }));
-            localStorage.setItem('sessionToken', token);
-            return superAdminUser;
-        }
-
-        // 2. Kullanıcı adı + şifre ile Firebase'den kontrol
         if (!username || !username.trim()) return false;
 
-        // Kullanıcı adı sanitizasyonu — path traversal engelle
-        const sanitizedUsername = username.trim().replace(/[.#$\[\]\/]/g, '');
-        if (!sanitizedUsername) return false;
+        // Kullanıcı adı sanitizasyonu — sadece güvenli karakterlere izin ver (whitelist)
+        const sanitizedUsername = username.trim().replace(/[^a-zA-Z0-9_çğıöşüÇĞİÖŞÜ]/g, '');
+        if (!sanitizedUsername || sanitizedUsername.length > 100) return false;
 
         try {
             const userRef = ref(db, `kullanicilar/${sanitizedUsername}`);
@@ -125,14 +120,13 @@ export const AuthProvider = ({ children }) => {
 
             const userData = snapshot.val();
 
-            // Hashlenmiş şifre kontrolü
+            // Hashlenmiş şifre kontrolü (timing-safe karşılaştırma)
             let passwordMatch = false;
             if (userData.sifreHash) {
-                // Yeni format: hashlenmiş şifre
                 const inputHash = await hashPassword(password);
-                passwordMatch = inputHash === userData.sifreHash;
-            } else {
-                // Eski format: düz metin (geriye uyumluluk)
+                passwordMatch = timingSafeEqual(inputHash, userData.sifreHash);
+            } else if (userData.sifre) {
+                // Eski format: düz metin (geriye uyumluluk — migration gerekir)
                 passwordMatch = userData.sifre === password;
             }
 
@@ -156,9 +150,10 @@ export const AuthProvider = ({ children }) => {
             };
 
             const token = generateSessionToken();
+            const expiresAt = Date.now() + SESSION_EXPIRY_MS;
             setCurrentUser(user);
             setIsAuthenticated(true);
-            localStorage.setItem('currentUser', JSON.stringify({ ...user, sessionToken: token }));
+            localStorage.setItem('currentUser', JSON.stringify({ ...user, sessionToken: token, expiresAt }));
             localStorage.setItem('sessionToken', token);
             return user;
         } catch (err) {

@@ -29,7 +29,7 @@
                 ".indexOn": ["toplam", "durum"],
                 ".validate": "newData.hasChildren()",
                 "sonuc": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40"
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
                 },
                 "dScore": {
                   ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
@@ -57,7 +57,7 @@
                   ".validate": "newData.isString() && (newData.val() === 'separate' || newData.val() === 'combined')"
                 },
                 "timestamp": {
-                  ".validate": "newData.isNumber()"
+                  ".validate": "newData.isNumber() || newData.isString()"
                 },
                 "hakem": {
                   ".validate": "newData.isString()"
@@ -174,7 +174,22 @@
       ".read": true,
       ".write": true,
       "$userId": {
-        ".indexOn": ["email", "role"]
+        ".indexOn": ["email", "role"],
+        "sifreHash": {
+          ".validate": "newData.isString() && newData.val().length == 64"
+        },
+        "rolAdi": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "il": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "aktif": {
+          ".validate": "newData.isBoolean()"
+        },
+        "olusturmaTarihi": {
+          ".validate": "newData.isString()"
+        }
       }
     },
 
@@ -189,25 +204,48 @@
       ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet"],
 
       "$athleteKey": {
-        ".indexOn": ["lisansNo"]
+        ".indexOn": ["lisansNo"],
+        "tckn": {
+          ".validate": "newData.isString() && newData.val().length <= 11"
+        },
+        "lisansNo": {
+          ".validate": "newData.isString() && newData.val().length <= 50"
+        },
+        "soyadAd": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        }
       }
     },
 
     "referees": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$refereeId": {
+        "adSoyad": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "brans": { ".validate": "newData.isString() && newData.val().length <= 50" },
+        "brove": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "il": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "email": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "telefon": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "gorevSayisi": { ".validate": "newData.isNumber()" },
+        "createdAt": { ".validate": "newData.isString()" }
+      }
     },
 
     "reports": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".validate": "newData.hasChildren()"
     },
 
     "broadcasts": {
       ".read": true,
       ".write": true,
       ".indexOn": ["competitionId", "createdAt"],
-      "$broadcastId": {}
+      "$broadcastId": {
+        "competitionId": { ".validate": "newData.isString()" },
+        "message": { ".validate": "newData.isString() && newData.val().length <= 1000" }
+      }
     },
 
     "defaultCriteria": {
@@ -221,7 +259,12 @@
     "logs": {
       ".read": true,
       ".write": true,
-      ".indexOn": ["timestamp", "type", "competitionId"]
+      ".indexOn": ["timestamp", "type", "competitionId"],
+      "$logId": {
+        "timestamp": { ".validate": "newData.isNumber()" },
+        "type": { ".validate": "newData.isString() && newData.val().length <= 50" },
+        "message": { ".validate": "newData.isString() && newData.val().length <= 500" }
+      }
     }
   }
 }

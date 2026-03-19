@@ -10,6 +10,7 @@ export default defineConfig({
     port: 5555,
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

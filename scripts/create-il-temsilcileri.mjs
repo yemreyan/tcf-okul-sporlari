@@ -21,15 +21,18 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Firebase config
+// Firebase config — .env dosyasından oku
+import { config } from 'dotenv';
+config({ path: join(__dirname, '../.env') });
+
 const firebaseConfig = {
-    apiKey: "AIzaSyDYtaWg0QdpuG_aAcGe2KrPpc3fhxmoKp4",
-    authDomain: "okulsporlari-6db6e.firebaseapp.com",
-    databaseURL: "https://okulsporlari-6db6e-default-rtdb.firebaseio.com",
-    projectId: "okulsporlari-6db6e",
-    storageBucket: "okulsporlari-6db6e.firebasestorage.app",
-    messagingSenderId: "445126405585",
-    appId: "1:445126405585:web:35e7f90397445670c13c998",
+    apiKey: process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
