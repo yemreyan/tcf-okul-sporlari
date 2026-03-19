@@ -194,6 +194,7 @@ export default function RoleManagementPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterIl, setFilterIl] = useState('');
+    const [filterRole, setFilterRole] = useState('');
     const [filterAktif, setFilterAktif] = useState('all'); // all, active, passive
 
     // Modal state
@@ -254,8 +255,6 @@ export default function RoleManagementPage() {
         Object.values(users).forEach(u => { if (u.rolAdi) set.add(u.rolAdi); });
         return [...set].sort((a, b) => a.localeCompare(b, 'tr-TR'));
     }, [users]);
-
-    const [filterRole, setFilterRole] = useState('');
 
     // Modal aç
     const openModal = (user = null) => {
