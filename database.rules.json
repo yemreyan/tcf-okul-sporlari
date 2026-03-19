@@ -47,6 +47,8 @@
                 "e2": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
                 "e3": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
                 "e4": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+                "e5": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+                "e6": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
                 "tarafsiz": {
                   ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
                 },
@@ -68,6 +70,10 @@
               }
             }
           }
+        },
+
+        "hakemSayisi": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10"
         },
 
         "hakemler": {

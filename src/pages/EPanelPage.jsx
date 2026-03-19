@@ -61,8 +61,11 @@ export default function EPanelPage() {
             const data = snap.val();
             if (data) setCompName(data.isim || 'Yarışma');
             // Check if there is a specific name registered for this panel
-            if (data?.hakemler?.[catId]?.[aletId]?.[panelId]) {
-                setRefereeName(data.hakemler[catId][aletId][panelId]);
+            const hakemVal = data?.hakemler?.[catId]?.[aletId]?.[panelId];
+            if (hakemVal) {
+                // Yeni format: {id, name} obje | Eski format: string
+                const displayName = typeof hakemVal === 'object' && hakemVal.name ? hakemVal.name : String(hakemVal);
+                setRefereeName(displayName);
             } else {
                 setRefereeName(`HAKEM ${panelId.toUpperCase()}`);
             }

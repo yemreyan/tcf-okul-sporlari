@@ -724,9 +724,9 @@ export default function ScoringPage() {
                                                         const localVal = ePanelLocal[panelId];
                                                         const hasVal = localVal !== undefined && localVal !== null && localVal !== '';
                                                         const isTouched = ePanelTouched[panelId];
-                                                        // Yarışmada atanmış hakem adını göster
+                                                        // Yarışmada atanmış hakem adını göster (yeni format: {id,name} | eski: string)
                                                         const assignedRef = compData?.hakemler?.[selectedCategory]?.[selectedApparatus]?.[panelId];
-                                                        const panelLabel = assignedRef?.name || panelId.toUpperCase();
+                                                        const panelLabel = assignedRef ? (typeof assignedRef === 'object' ? assignedRef.name : String(assignedRef)) || panelId.toUpperCase() : panelId.toUpperCase();
                                                         return (
                                                             <div key={panelId} className={`ref-panel-status ${hasVal ? 'status-ready' : 'status-waiting'} ${isTouched ? 'status-edited' : ''}`}>
                                                                 <div className="rp-name" title={assignedRef?.name || panelId.toUpperCase()}>{panelLabel}</div>
