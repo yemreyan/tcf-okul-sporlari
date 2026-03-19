@@ -370,7 +370,7 @@ export default function StartOrderPage() {
     // ===== SUPER ADMIN: Tüm yarışmalarda tüm kategorilerde toplu atama =====
     const handleBulkAssignAll = async () => {
         const confirmed = await showConfirm(
-            "Tüm yarışmalardaki tüm kategorilerde sporcular sıfırdan rastgele gruplara atanacak. Mevcut atamalar üzerine yazılacak. Devam etmek istiyor musunuz?"
+            "Tüm yarışmalardaki tüm kategorilerde atanmamış sporcular mevcut gruplara dağıtılacak. Atanmış sporculara dokunulmayacak. Devam etmek istiyor musunuz?"
         );
         if (!confirmed) return;
 
@@ -385,21 +385,53 @@ export default function StartOrderPage() {
                 const categories = Object.keys(comp.sporcular || {});
 
                 for (const category of categories) {
-                    const athletesSnap = await get(ref(db, `competitions/${compId}/sporcular/${category}`));
+                    const [athletesSnap, orderSnap] = await Promise.all([
+                        get(ref(db, `competitions/${compId}/sporcular/${category}`)),
+                        get(ref(db, `competitions/${compId}/siralama/${category}`))
+                    ]);
+
                     const data = athletesSnap.val();
                     if (!data) continue;
 
-                    // TÜM sporcuları havuza al (Rastgele Ata ile aynı mantık)
                     const allAthletes = Object.keys(data).map(athId => ({
                         ...data[athId], id: athId, categoryId: category
                     }));
 
-                    if (allAthletes.length === 0) continue;
+                    // Mevcut sıralamayı oku — atanmış sporculara dokunma
+                    const orderData = orderSnap.val();
+                    const assignedIds = new Set();
+                    const existingRotations = [];
 
-                    // Takım / ferdi ayrımı (Rastgele Ata ile birebir aynı)
+                    if (orderData) {
+                        let maxIdx = -1;
+                        Object.keys(orderData).forEach(rotKey => {
+                            const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                            if (!isNaN(rotIndex) && rotIndex > maxIdx) maxIdx = rotIndex;
+                        });
+                        for (let i = 0; i <= maxIdx; i++) existingRotations.push([]);
+
+                        Object.keys(orderData).forEach(rotKey => {
+                            const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                            if (!isNaN(rotIndex)) {
+                                const athletesInRot = orderData[rotKey];
+                                const sorted = Object.keys(athletesInRot).map(id => {
+                                    const ath = allAthletes.find(a => a.id === id);
+                                    if (ath) assignedIds.add(id);
+                                    return ath ? { ...ath, sirasi: athletesInRot[id].sirasi } : null;
+                                }).filter(Boolean).sort((a, b) => a.sirasi - b.sirasi);
+                                existingRotations[rotIndex] = sorted;
+                            }
+                        });
+                    }
+
+                    // Atanmamış sporcuları bul
+                    const unassignedAthletes = allAthletes.filter(a => !assignedIds.has(a.id));
+                    if (unassignedAthletes.length === 0) continue;
+
+                    // Takım / ferdi ayrımı (Rastgele Ata ile aynı kurallar)
                     const teamsMap = {};
                     const individuals = [];
-                    allAthletes.forEach(ath => {
+                    unassignedAthletes.forEach(ath => {
                         const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                         if (type === 'takim' || type === 'takım') {
                             const school = ath.okul || 'Bilinmeyen Takım';
@@ -414,32 +446,45 @@ export default function StartOrderPage() {
                     shuffleArray(teamsList);
                     shuffleArray(individuals);
 
-                    // PHASE 1: Takım grupları (Rastgele Ata ile aynı)
-                    const teamGroups = [];
-                    const findBestTG = (slots) => {
-                        let best = -1, bestC = Infinity;
-                        for (let i = 0; i < teamGroups.length; i++) {
-                            if (teamGroups[i].length + slots <= MAX_PER_ROTATION && teamGroups[i].length < bestC) {
-                                bestC = teamGroups[i].length; best = i;
+                    // Mevcut rotasyonları kopyala (atanmışlar korunuyor)
+                    const finalRotations = existingRotations.map(r => [...r]);
+
+                    // Mevcut gruplarda boş yer bul helper
+                    const findGroupWithSpace = (requiredSlots) => {
+                        let best = -1, bestCount = Infinity;
+                        for (let i = 0; i < finalRotations.length; i++) {
+                            const available = MAX_PER_ROTATION - finalRotations[i].length;
+                            if (available >= requiredSlots && finalRotations[i].length < bestCount) {
+                                bestCount = finalRotations[i].length;
+                                best = i;
                             }
                         }
-                        if (best === -1) { teamGroups.push([]); best = teamGroups.length - 1; }
                         return best;
                     };
-                    teamsList.forEach(members => {
-                        teamGroups[findBestTG(members.length)].push(...members);
+
+                    // PHASE 1: Takım sporcularını yerleştir (Rastgele Ata ile aynı)
+                    teamsList.forEach(teamMembers => {
+                        // Önce mevcut gruplarda yer ara
+                        let targetIdx = findGroupWithSpace(teamMembers.length);
+                        if (targetIdx === -1) {
+                            // Yer yoksa yeni grup oluştur
+                            finalRotations.push([]);
+                            targetIdx = finalRotations.length - 1;
+                        }
+                        finalRotations[targetIdx].push(...teamMembers);
                     });
 
-                    // PHASE 2: Ferdi grupları — dengeli round-robin (Rastgele Ata ile aynı)
-                    const indGroups = [];
-                    if (individuals.length > 0) {
-                        const numG = Math.ceil(individuals.length / MAX_PER_ROTATION);
-                        for (let i = 0; i < numG; i++) indGroups.push([]);
-                        individuals.forEach((ath, idx) => { indGroups[idx % numG].push(ath); });
-                    }
+                    // PHASE 2: Ferdi sporcuları yerleştir — mevcut gruplara dengeli dağıt
+                    individuals.forEach(ath => {
+                        // En az kişi olan ve yer olan grubu bul
+                        let targetIdx = findGroupWithSpace(1);
+                        if (targetIdx === -1) {
+                            finalRotations.push([]);
+                            targetIdx = finalRotations.length - 1;
+                        }
+                        finalRotations[targetIdx].push(ath);
+                    });
 
-                    // Birleştir: önce takım grupları, sonra ferdi grupları
-                    const finalRotations = [...teamGroups, ...indGroups];
                     if (finalRotations.length === 0) finalRotations.push([]);
 
                     // Firebase'e kaydet
@@ -471,18 +516,17 @@ export default function StartOrderPage() {
                     updates[`competitions/${compId}/siralama/${category}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
                     await update(ref(db), updates);
 
-                    totalAssigned += allAthletes.length;
+                    totalAssigned += unassignedAthletes.length;
                     totalCategories++;
                 }
             }
 
             if (totalCategories === 0) {
-                showToast('Hiçbir kategoride sporcu bulunamadı.', 'info');
+                showToast('Atanmamış sporcu bulunamadı. Tüm sporcular zaten gruplara atanmış.', 'info');
             } else {
                 showToast(`${totalCategories} kategoride toplam ${totalAssigned} sporcu başarıyla atandı.`, 'success', 5000);
             }
 
-            // Eğer şu an bir kategori seçiliyse, güncel veriyi tekrar yükle
             if (selectedCompId && filterCategory) {
                 const savedCat = filterCategory;
                 setFilterCategory('');
