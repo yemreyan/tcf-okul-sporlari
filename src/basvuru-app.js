@@ -35,6 +35,9 @@ let selectedCompetition = null;
 let selectedCategory = null;
 let participationType = 'Ferdi';
 let categoryLimits = { min: 3, max: 8 };
+let existingAthleteCount = 0; // Bu okul+kategori için veritabanındaki mevcut sporcu sayısı
+let remainingQuota = 8;       // Kalan kontenjan = max - existingAthleteCount
+let quotaLoading = false;
 let submitCooldown = false;
 
 // ─── Utility Functions ───
@@ -501,7 +504,7 @@ function createDynamicRow(containerId, fields, index) {
   removeBtn.addEventListener('click', () => {
     row.remove();
     renumberRows(containerId);
-    if (containerId === 'athleteRows') checkAthleteCount();
+    if (containerId === 'athleteRows') { checkAthleteCount(); updateQuotaInfoBox(); }
     updateStepIndicators();
   });
   row.appendChild(removeBtn);
@@ -541,10 +544,22 @@ function addTeacherRow() {
 
 function addAthleteRow() {
   const container = document.getElementById('athleteRows');
-  const count = container.querySelectorAll('.dynamic-row').length + 1;
+  const currentCount = container.querySelectorAll('.dynamic-row').length;
+  const newCount = currentCount + 1;
 
-  if (participationType === 'Takım' && count > categoryLimits.max) {
-    showToast(`✗ TAKIM İÇİN EN FAZLA ${categoryLimits.max} SPORCU EKLENEBİLİR`, 'warning');
+  // Kalan kontenjan kontrolü (mevcut kayıtlılar + formdakiler)
+  if (remainingQuota === 0) {
+    showToast(`✗ KONTENJAN DOLU! BU OKULDAN BU KATEGORİDE ${existingAthleteCount} SPORCU ZATEN KAYITLI (MAX: ${categoryLimits.max})`, 'error');
+    return;
+  }
+
+  if (newCount > remainingQuota) {
+    const kalan = remainingQuota - currentCount;
+    if (kalan <= 0) {
+      showToast(`✗ KONTENJAN DOLDU! MEVCUT: ${existingAthleteCount} KAYITLI + ${currentCount} FORMDA = ${existingAthleteCount + currentCount}/${categoryLimits.max}`, 'error');
+    } else {
+      showToast(`✗ EN FAZLA ${remainingQuota} SPORCU EKLENEBİLİR (MEVCUT KAYITLI: ${existingAthleteCount}, MAX: ${categoryLimits.max})`, 'warning');
+    }
     return;
   }
 
@@ -553,34 +568,45 @@ function addAthleteRow() {
     { name: 'name', placeholder: 'AD SOYAD', type: 'text' },
     { name: 'dob', placeholder: 'DOĞUM TARİHİ', type: 'date' },
     { name: 'license', placeholder: 'LİSANS NO', type: 'text' }
-  ], count);
+  ], newCount);
   container.appendChild(row);
 
   const tcknInput = row.querySelector('[data-field="tckn"]');
   if (tcknInput) tcknInput.focus();
 
   checkAthleteCount();
+  updateQuotaInfoBox();
   updateStepIndicators();
 
-  if (participationType === 'Takım' && count === categoryLimits.max) {
-    showToast(`TAKIM LİMİTİNE ULAŞILDI (${categoryLimits.max}/${categoryLimits.max})`, 'info');
-  } else if (participationType === 'Takım' && count === categoryLimits.max - 1) {
-    showToast(`TAKIM LİMİTİNE 1 SPORCU KALDI (${count}/${categoryLimits.max})`, 'info');
+  const effectiveRemaining = remainingQuota - newCount;
+  if (effectiveRemaining === 0) {
+    const totalAll = existingAthleteCount + newCount;
+    showToast(`KONTENJAN DOLDU (${totalAll}/${categoryLimits.max})`, 'info');
+  } else if (effectiveRemaining === 1) {
+    showToast(`KONTENJANA 1 SPORCU KALDI`, 'info');
   }
 }
 
 function checkAthleteCount() {
-  const count = document.getElementById('athleteRows').querySelectorAll('.dynamic-row').length;
-  if (participationType === 'Ferdi' && count >= categoryLimits.min) {
+  const formCount = document.getElementById('athleteRows').querySelectorAll('.dynamic-row').length;
+  const totalCount = existingAthleteCount + formCount; // Mevcut kayıtlı + formdaki
+
+  // Toplam sporcu sayısı min'e ulaştıysa otomatik takım yap
+  if (participationType === 'Ferdi' && totalCount >= categoryLimits.min) {
     participationType = 'Takım';
     document.getElementById('participationType').value = 'Takım';
     document.getElementById('btnFerdi').classList.remove('active');
     document.getElementById('btnTakim').classList.add('active');
     updateTeamWarning();
-    showToast(`SPORCU SAYISI TAKIM LİMİTİNE ULAŞTI — KATILIM TÜRÜ "TAKIM" OLARAK GÜNCELLENDİ`, 'info');
+    if (existingAthleteCount > 0) {
+      showToast(`TOPLAM SPORCU (${existingAthleteCount} KAYITLI + ${formCount} YENİ = ${totalCount}) TAKIM LİMİTİNE ULAŞTI`, 'info');
+    } else {
+      showToast(`SPORCU SAYISI TAKIM LİMİTİNE ULAŞTI — KATILIM TÜRÜ "TAKIM" OLARAK GÜNCELLENDİ`, 'info');
+    }
   }
-  if (participationType === 'Takım' && count > 0 && count < categoryLimits.min) {
-    showToast(`TAKIM İÇİN EN AZ ${categoryLimits.min} SPORCU GEREKLİ (MEVCUT: ${count})`, 'warning');
+  if (participationType === 'Takım' && totalCount > 0 && totalCount < categoryLimits.min) {
+    const gereken = categoryLimits.min - existingAthleteCount;
+    showToast(`TAKIM İÇİN EN AZ ${categoryLimits.min} SPORCU GEREKLİ (MEVCUT: ${existingAthleteCount} KAYITLI + ${formCount} YENİ = ${totalCount})`, 'warning');
   }
   updateStepIndicators();
 }
@@ -589,7 +615,11 @@ function updateTeamWarning() {
   const box = document.getElementById('teamWarning');
   const text = document.getElementById('teamWarningText');
   if (participationType === 'Takım') {
-    text.textContent = `Takım katılımı: Bu kategori için en az ${categoryLimits.min}, en fazla ${categoryLimits.max} sporcu gereklidir.`;
+    if (existingAthleteCount > 0) {
+      text.textContent = `Takım katılımı: Bu kategori için max ${categoryLimits.max} sporcu. Bu okuldan ${existingAthleteCount} sporcu zaten kayıtlı, ${remainingQuota} sporcu daha eklenebilir.`;
+    } else {
+      text.textContent = `Takım katılımı: Bu kategori için en az ${categoryLimits.min}, en fazla ${categoryLimits.max} sporcu gereklidir.`;
+    }
     box.classList.add('show');
   } else {
     box.classList.remove('show');
@@ -694,6 +724,124 @@ async function checkSchoolQuota(competitionId, categoryId, schoolName, newAthlet
     return { exceeded: true, existing: existingCount, threshold };
   }
   return { exceeded: false, existing: existingCount, threshold };
+}
+
+// ─── Realtime Quota Check (okul+kategori seçilince çağrılır) ───
+async function fetchExistingAthleteCount() {
+  const competitionId = document.getElementById('competitionSelect').value;
+  const categoryId = document.getElementById('categorySelect').value;
+  const schoolName = getSelectedSchool();
+
+  if (!competitionId || !categoryId || !schoolName) {
+    existingAthleteCount = 0;
+    remainingQuota = categoryLimits.max;
+    updateQuotaInfoBox();
+    return;
+  }
+
+  quotaLoading = true;
+  updateQuotaInfoBox();
+
+  let count = 0;
+  try {
+    // 1. Bekleyen/onaylı başvurulardaki sporcuları say
+    const appsSnap = await get(query(ref(db, 'applications'), orderByChild('competitionId'), equalTo(competitionId)));
+    if (appsSnap.exists()) {
+      appsSnap.forEach(child => {
+        const appData = child.val();
+        const appSchool = (appData.okul || '').toLocaleUpperCase('tr-TR');
+        const targetSchool = schoolName.toLocaleUpperCase('tr-TR');
+        if (appSchool === targetSchool && appData.kategoriId === categoryId &&
+            (appData.durum === 'bekliyor' || appData.durum === 'onaylandi' || appData.status === 'bekliyor' || appData.status === 'onaylandi')) {
+          if (appData.sporcular && Array.isArray(appData.sporcular)) {
+            count += appData.sporcular.length;
+          }
+        }
+      });
+    }
+
+    // 2. Zaten onaylanıp yarışmaya aktarılmış sporcuları say
+    const approvedSnap = await get(ref(db, `competitions/${competitionId}/sporcular/${categoryId}`));
+    if (approvedSnap.exists()) {
+      const approved = approvedSnap.val();
+      Object.values(approved).forEach(sp => {
+        const spSchool = (sp.okul || sp.school || '').toLocaleUpperCase('tr-TR');
+        if (spSchool === schoolName.toLocaleUpperCase('tr-TR')) {
+          count++;
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('Kontenjan sorgulamasında hata:', e);
+  }
+
+  existingAthleteCount = count;
+  remainingQuota = Math.max(0, categoryLimits.max - existingAthleteCount);
+  quotaLoading = false;
+
+  updateQuotaInfoBox();
+
+  // Eğer halihazırda eklenen sporcu sayısı kalan kontenjandan fazlaysa uyar
+  const currentFormCount = document.getElementById('athleteRows').querySelectorAll('.dynamic-row').length;
+  if (currentFormCount > remainingQuota && remainingQuota > 0) {
+    showToast(`⚠ FORMDA ${currentFormCount} SPORCU VAR AMA KALAN KONTENJAN ${remainingQuota}. LÜTFEN FAZLA SPORCULARI ÇIKARINIZ.`, 'warning');
+  } else if (remainingQuota === 0) {
+    showToast(`✗ BU OKUL VE KATEGORİ İÇİN KONTENJAN DOLMUŞTUR (${existingAthleteCount}/${categoryLimits.max})`, 'error');
+  }
+}
+
+function updateQuotaInfoBox() {
+  const infoBox = document.getElementById('athleteInfo');
+  if (!infoBox) return;
+  const infoSpan = infoBox.querySelector('span:last-child');
+  if (!infoSpan) return;
+
+  const competitionId = document.getElementById('competitionSelect').value;
+  const categoryId = document.getElementById('categorySelect').value;
+  const schoolName = getSelectedSchool();
+
+  if (!competitionId || !categoryId || !schoolName) {
+    infoSpan.textContent = 'SPORCU EKLEMEK İÇİN ÖNCE YARIŞMA, KATEGORİ VE OKUL SEÇİNİZ.';
+    infoBox.className = 'info-box';
+    return;
+  }
+
+  if (quotaLoading) {
+    infoSpan.textContent = 'KONTENJAN SORGULANYOR...';
+    infoBox.className = 'info-box';
+    return;
+  }
+
+  const currentFormCount = document.getElementById('athleteRows').querySelectorAll('.dynamic-row').length;
+  const effectiveRemaining = Math.max(0, remainingQuota - currentFormCount);
+
+  if (remainingQuota === 0) {
+    infoSpan.textContent = `✗ BU OKUL İÇİN KONTENJAN DOLU! MEVCUT KAYITLI SPORCU: ${existingAthleteCount} / MAX: ${categoryLimits.max}. YENİ SPORCU EKLENEMez.`;
+    infoBox.className = 'info-box';
+    infoBox.style.background = '#fef2f2';
+    infoBox.style.borderColor = '#fca5a5';
+    infoBox.style.color = '#991b1b';
+    return;
+  }
+
+  if (existingAthleteCount > 0) {
+    const totalAfter = existingAthleteCount + currentFormCount;
+    infoSpan.textContent = `BU OKULDAN BU KATEGORİDE ${existingAthleteCount} SPORCU KAYITLI. EN FAZLA ${remainingQuota} SPORCU DAHA EKLENEBİLİR (MAX: ${categoryLimits.max}). ${currentFormCount > 0 ? `FORMDA: ${currentFormCount} | TOPLAM OLACAK: ${totalAfter}` : ''}`;
+    if (effectiveRemaining <= 1 && effectiveRemaining >= 0) {
+      infoBox.style.background = '#fffbeb';
+      infoBox.style.borderColor = '#fde68a';
+      infoBox.style.color = '#92400e';
+    } else {
+      infoBox.style.background = '#eff6ff';
+      infoBox.style.borderColor = '#bfdbfe';
+      infoBox.style.color = '#1e40af';
+    }
+  } else {
+    infoSpan.textContent = `BU KATEGORİDE EN FAZLA ${categoryLimits.max} SPORCU EKLENEBİLİR.${currentFormCount > 0 ? ` FORMDA: ${currentFormCount}` : ''}`;
+    infoBox.style.background = '#eff6ff';
+    infoBox.style.borderColor = '#bfdbfe';
+    infoBox.style.color = '#1e40af';
+  }
 }
 
 // ─── Coach Verification ───
@@ -1024,12 +1172,16 @@ function validateForm(data) {
     }
   });
 
+  // Kontenjan kontrolü — mevcut kayıtlılar dahil
+  const totalAfterSubmit = existingAthleteCount + data.sporcular.length;
+  if (totalAfterSubmit > categoryLimits.max) {
+    errors.push(`✗ KONTENJAN AŞILIYOR! MEVCUT KAYITLI: ${existingAthleteCount} + YENİ: ${data.sporcular.length} = ${totalAfterSubmit} (MAX: ${categoryLimits.max}). EN FAZLA ${remainingQuota} SPORCU EKLENEBİLİR.`);
+  }
+
   if (data.katilimTuru === 'Takım') {
-    if (data.sporcular.length < categoryLimits.min) {
-      errors.push(`✗ TAKIM İÇİN EN AZ ${categoryLimits.min} SPORCU GEREKLİDİR (MEVCUT: ${data.sporcular.length})`);
-    }
-    if (data.sporcular.length > categoryLimits.max) {
-      errors.push(`✗ TAKIM İÇİN EN FAZLA ${categoryLimits.max} SPORCU EKLENEBİLİR (MEVCUT: ${data.sporcular.length})`);
+    const totalForTeam = existingAthleteCount + data.sporcular.length;
+    if (totalForTeam < categoryLimits.min) {
+      errors.push(`✗ TAKIM İÇİN EN AZ ${categoryLimits.min} SPORCU GEREKLİ (KAYITLI: ${existingAthleteCount} + YENİ: ${data.sporcular.length} = ${totalForTeam})`);
     }
   }
 
@@ -1093,9 +1245,22 @@ async function handleSubmit(e) {
       return;
     }
 
+    // Son dakika kontenjan kontrolü (birden fazla kişi aynı anda başvuru yapıyor olabilir)
     const quota = await checkSchoolQuota(data.competitionId, data.kategoriId, data.okul, data.sporcular.length);
     if (quota.exceeded) {
-      showErrorModal('KONTENJAN AŞILDI', `BU OKUL VE KATEGORİ İÇİN KONTENJAN DOLMUŞTUR. MEVCUT SPORCU: ${quota.existing}, LİMİT: ${quota.threshold}. LÜTFEN İL TEMSİLCİNİZLE İLETİŞİME GEÇİNİZ.`);
+      const kalanGercek = Math.max(0, categoryLimits.max - quota.existing);
+      showErrorModal('KONTENJAN AŞILDI',
+        `BU OKUL VE KATEGORİ İÇİN KONTENJAN DOLMUŞTUR.\n\n` +
+        `MEVCUT KAYITLI SPORCU: ${quota.existing}\n` +
+        `KATEGORİ LİMİTİ: ${categoryLimits.max}\n` +
+        `EKLENEBİLECEK SPORCU: ${kalanGercek}\n` +
+        `SİZİN BAŞVURUNUZ: ${data.sporcular.length} SPORCU\n\n` +
+        `LÜTFEN SPORCU SAYINIZI ${kalanGercek} VEYA DAHA AZ YAPINIZ.`
+      );
+      // Güncel veriyle arayüzü de güncelle
+      existingAthleteCount = quota.existing;
+      remainingQuota = kalanGercek;
+      updateQuotaInfoBox();
       submitBtn.classList.remove('loading');
       submitBtn.disabled = false;
       setTimeout(() => { submitCooldown = false; }, 5000);
@@ -1152,8 +1317,10 @@ function initEventListeners() {
     const opt = this.options[this.selectedIndex];
     const catName = opt ? opt.getAttribute('data-name') || opt.textContent : '';
     categoryLimits = getCategoryLimits(catName);
+    remainingQuota = categoryLimits.max;
     updateTeamWarning();
     updateStepIndicators();
+    fetchExistingAthleteCount(); // Kontenjan sorgula
   });
 
   document.getElementById('citySelect').addEventListener('change', function() {
@@ -1191,6 +1358,7 @@ function initEventListeners() {
       schoolName.value = this.value;
     }
     updateStepIndicators();
+    fetchExistingAthleteCount(); // Okul değişince kontenjan sorgula
   });
 
   document.getElementById('btnFerdi').addEventListener('click', function() {
