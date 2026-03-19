@@ -10,6 +10,9 @@ import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
 import './CompetitionsPage.css';
 
+/* ─── HAKEM PANEL SAYISI SEÇENEKLERI ─── */
+const HAKEM_SAYISI_OPTIONS = [2, 3, 4, 5, 6];
+
 function countAthletes(sporcularObj) {
     if (!sporcularObj) return 0;
     let count = 0;
@@ -69,6 +72,14 @@ export default function CompetitionsPage() {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingComp, setEditingComp] = useState(null);
+
+    // Hakem Yönetimi Modal State
+    const [hakemModalComp, setHakemModalComp] = useState(null);
+    const [hakemModalCat, setHakemModalCat] = useState('');
+    const [hakemSayisi, setHakemSayisi] = useState(4);
+    const [hakemAtama, setHakemAtama] = useState({});  // {catId: {aletId: {e1: {id, name}, e2: ...}}}
+    const [referees, setReferees] = useState([]);
+    const [hakemSaving, setHakemSaving] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
     const [formData, setFormData] = useState({
         isim: '',
@@ -125,6 +136,20 @@ export default function CompetitionsPage() {
         });
         return () => unsubscribe();
     }, [currentUser]);
+
+    // Hakem listesini yükle (hakem yönetimi için)
+    useEffect(() => {
+        const refsRef = ref(db, 'referees');
+        const unsub = onValue(refsRef, (snap) => {
+            const data = snap.val();
+            if (data) {
+                setReferees(Object.entries(data).map(([id, r]) => ({ id, ...r })));
+            } else {
+                setReferees([]);
+            }
+        });
+        return () => unsub();
+    }, []);
 
     // Arama + il filtreleme
     const filtered = useMemo(() => {
@@ -217,7 +242,152 @@ export default function CompetitionsPage() {
         }
     };
 
+    // ── Hakem Yönetimi Modal ──
+    const normalizeHakemler = (hakemler) => {
+        // Eski format: hakemler[cat][alet][panel] = "string name"
+        // Yeni format: hakemler[cat][alet][panel] = {id, name}
+        if (!hakemler || typeof hakemler !== 'object') return {};
+        const normalized = {};
+        try {
+            Object.entries(hakemler).forEach(([catId, catObj]) => {
+                if (!catObj || typeof catObj !== 'object') return;
+                normalized[catId] = {};
+                Object.entries(catObj).forEach(([aletId, aletObj]) => {
+                    if (!aletObj || typeof aletObj !== 'object') return;
+                    normalized[catId][aletId] = {};
+                    Object.entries(aletObj).forEach(([panelId, val]) => {
+                        if (typeof val === 'string') {
+                            // Eski format: sadece isim
+                            normalized[catId][aletId][panelId] = { id: '', name: val };
+                        } else if (val && typeof val === 'object' && val.name) {
+                            normalized[catId][aletId][panelId] = val;
+                        }
+                    });
+                });
+            });
+        } catch { /* ignore */ }
+        return normalized;
+    };
+
+    const openHakemModal = (comp) => {
+        setHakemModalComp(comp);
+        const cats = comp.kategoriler ? Object.keys(comp.kategoriler) : [];
+        setHakemModalCat(cats[0] || '');
+        setHakemSayisi(comp.hakemSayisi || 4);
+        setHakemAtama(normalizeHakemler(comp.hakemler));
+    };
+
+    const closeHakemModal = () => {
+        setHakemModalComp(null);
+        setHakemModalCat('');
+    };
+
+    const handleHakemAssign = (catId, aletId, panelId, refereeId) => {
+        const referee = referees.find(r => r.id === refereeId);
+        setHakemAtama(prev => {
+            const next = { ...prev };
+            if (!next[catId]) next[catId] = {};
+            if (!next[catId][aletId]) next[catId][aletId] = {};
+            if (refereeId) {
+                next[catId][aletId][panelId] = { id: refereeId, name: referee?.adSoyad || 'Bilinmiyor' };
+            } else {
+                delete next[catId][aletId][panelId];
+                // Clean up empty objects
+                if (Object.keys(next[catId][aletId]).length === 0) delete next[catId][aletId];
+                if (Object.keys(next[catId]).length === 0) delete next[catId];
+            }
+            return next;
+        });
+    };
+
+    const copyHakemToAllApparatus = (catId, sourceAletId) => {
+        const sourceAssignments = hakemAtama?.[catId]?.[sourceAletId];
+        if (!sourceAssignments) return;
+        const comp = hakemModalComp;
+        const aletler = getCompAletler(comp, catId);
+        setHakemAtama(prev => {
+            const next = { ...prev };
+            if (!next[catId]) next[catId] = {};
+            aletler.forEach(alet => {
+                if (alet !== sourceAletId) {
+                    next[catId][alet] = { ...sourceAssignments };
+                }
+            });
+            return next;
+        });
+        toast("Hakem ataması tüm aletlere kopyalandı.", "success");
+    };
+
+    const saveHakemSettings = async () => {
+        if (!hakemModalComp) return;
+        setHakemSaving(true);
+        try {
+            await update(ref(db, `competitions/${hakemModalComp.id}`), {
+                hakemSayisi: hakemSayisi,
+                hakemler: hakemAtama
+            });
+            toast("Hakem ayarları kaydedildi.", "success");
+            closeHakemModal();
+        } catch (err) {
+            console.error("Hakem save error", err);
+            toast("Hakem ayarları kaydedilemedi.", "error");
+        } finally {
+            setHakemSaving(false);
+        }
+    };
+
+    const getCompAletler = (comp, catId) => {
+        try {
+            if (!comp?.kategoriler?.[catId]) {
+                const def = DEFAULT_CRITERIA[catId];
+                if (def) return Object.keys(def).filter(k => k !== 'metadata' && k !== 'eksikKesintiTiers');
+                return [];
+            }
+            const raw = comp.kategoriler[catId].aletler;
+            const normalize = (arr) => arr.map(a => {
+                if (typeof a === 'string') return a;
+                if (a && typeof a === 'object' && a.id) return a.id;
+                return null;
+            }).filter(Boolean);
+
+            if (Array.isArray(raw)) return normalize(raw);
+            if (raw && typeof raw === 'object') return normalize(Object.values(raw));
+            // Fallback: DEFAULT_CRITERIA
+            const def = DEFAULT_CRITERIA[catId];
+            if (def) return Object.keys(def).filter(k => k !== 'metadata' && k !== 'eksikKesintiTiers');
+            return [];
+        } catch { return []; }
+    };
+
+    const getAssignedCount = (comp) => {
+        try {
+            const h = comp.hakemler;
+            if (!h || typeof h !== 'object') return 0;
+            let count = 0;
+            Object.values(h).forEach(catObj => {
+                if (catObj && typeof catObj === 'object') {
+                    Object.values(catObj).forEach(aletObj => {
+                        if (aletObj && typeof aletObj === 'object') {
+                            count += Object.keys(aletObj).length;
+                        }
+                    });
+                }
+            });
+            return count;
+        } catch { return 0; }
+    };
+
     const getCategoryLabel = (catKey) => catKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    const getAletDisplayName = (comp, catId, aletId) => {
+        try {
+            const raw = comp?.kategoriler?.[catId]?.aletler;
+            const arr = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+            const found = arr.find(a => (typeof a === 'object' && a?.id === aletId));
+            if (found?.name) return found.name;
+        } catch { /* ignore */ }
+        return aletId.charAt(0).toUpperCase() + aletId.slice(1);
+    };
 
     const statusConfig = {
         active: { label: 'Devam Ediyor', color: 'var(--green)' },
@@ -269,6 +439,15 @@ export default function CompetitionsPage() {
                         <span className="stat-label">Kayıtlı Sporcu</span>
                     </div>
                 </div>
+                {hasPermission('competitions', 'duzenle') && (
+                    <button className="comp-card__hakem-btn" onClick={() => openHakemModal(comp)}>
+                        <i className="material-icons-round">gavel</i>
+                        <span>Hakem Yönetimi</span>
+                        {getAssignedCount(comp) > 0 && (
+                            <span className="hakem-count-badge">{getAssignedCount(comp)}</span>
+                        )}
+                    </button>
+                )}
             </div>
         );
     };
@@ -408,6 +587,124 @@ export default function CompetitionsPage() {
                     </>
                 )}
             </main>
+
+            {/* Hakem Yönetimi Modal */}
+            {hakemModalComp && (
+                <div className="modal-overlay" onClick={closeHakemModal}>
+                    <div className="modal hakem-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal__header">
+                            <div>
+                                <h2><i className="material-icons-round" style={{verticalAlign:'middle',marginRight:8,fontSize:'1.3rem'}}>gavel</i>Hakem Yönetimi</h2>
+                                <p className="hakem-modal-subtitle">{hakemModalComp.name}</p>
+                            </div>
+                            <button className="modal__close" onClick={closeHakemModal}><i className="material-icons-round">close</i></button>
+                        </div>
+
+                        <div className="hakem-modal-body">
+                            {/* Hakem Sayısı Seçimi */}
+                            <div className="hakem-sayisi-section">
+                                <label className="hakem-section-label">
+                                    <i className="material-icons-round">groups</i>
+                                    E-Panel Hakem Sayısı
+                                </label>
+                                <div className="hakem-sayisi-pills">
+                                    {HAKEM_SAYISI_OPTIONS.map(n => (
+                                        <button
+                                            key={n}
+                                            className={`hsayisi-pill ${hakemSayisi === n ? 'active' : ''}`}
+                                            onClick={() => setHakemSayisi(n)}
+                                        >
+                                            {n} Hakem
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Kategori Tabs */}
+                            {hakemModalComp.kategoriler && Object.keys(hakemModalComp.kategoriler).length > 0 ? (
+                                <>
+                                    <div className="hakem-cat-tabs">
+                                        {Object.keys(hakemModalComp.kategoriler).map(catId => (
+                                            <button
+                                                key={catId}
+                                                className={`hcat-tab ${hakemModalCat === catId ? 'active' : ''}`}
+                                                onClick={() => setHakemModalCat(catId)}
+                                            >
+                                                {getCategoryLabel(catId)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Alet Bazlı Hakem Atama */}
+                                    {hakemModalCat && (
+                                        <div className="hakem-alet-list">
+                                            {getCompAletler(hakemModalComp, hakemModalCat).map(aletId => (
+                                                <div key={aletId} className="hakem-alet-card">
+                                                    <div className="halet-header">
+                                                        <h4 className="halet-name">
+                                                            <i className="material-icons-round">fitness_center</i>
+                                                            {getAletDisplayName(hakemModalComp, hakemModalCat, aletId)}
+                                                        </h4>
+                                                        <button
+                                                            className="halet-copy-btn"
+                                                            onClick={() => copyHakemToAllApparatus(hakemModalCat, aletId)}
+                                                            title="Bu atamaları tüm aletlere kopyala"
+                                                        >
+                                                            <i className="material-icons-round">content_copy</i>
+                                                            Tümüne Kopyala
+                                                        </button>
+                                                    </div>
+                                                    <div className="halet-panels">
+                                                        {Array.from({ length: hakemSayisi }, (_, i) => {
+                                                            const panelId = `e${i + 1}`;
+                                                            const assigned = hakemAtama?.[hakemModalCat]?.[aletId]?.[panelId];
+                                                            return (
+                                                                <div key={panelId} className="hpanel-slot">
+                                                                    <div className="hpanel-label">{panelId.toUpperCase()}</div>
+                                                                    <select
+                                                                        className="hpanel-select"
+                                                                        value={assigned?.id || ''}
+                                                                        onChange={e => handleHakemAssign(hakemModalCat, aletId, panelId, e.target.value)}
+                                                                    >
+                                                                        <option value="">— Hakem Seç —</option>
+                                                                        {referees.map(r => (
+                                                                            <option key={r.id} value={r.id}>{r.adSoyad}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    {assigned && (
+                                                                        <span className="hpanel-assigned-name">{assigned.name}</span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="hakem-empty">
+                                    <i className="material-icons-round">info</i>
+                                    <p>Bu yarışmada henüz kategori tanımlanmamış.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal__footer">
+                            <button type="button" className="btn btn--secondary" onClick={closeHakemModal}>İptal</button>
+                            <button
+                                type="button"
+                                className="btn btn--primary"
+                                onClick={saveHakemSettings}
+                                disabled={hakemSaving}
+                            >
+                                {hakemSaving ? 'Kaydediliyor...' : 'Kaydet'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal */}
             {isModalOpen && (

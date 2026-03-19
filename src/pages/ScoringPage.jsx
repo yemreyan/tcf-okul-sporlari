@@ -235,10 +235,13 @@ export default function ScoringPage() {
     }
 
     // E-Score Calculation
+    // Yarışma bazlı hakemSayisi (override) > criteria hakemSayisi > fallback 4
+    const effectiveHakemSayisi = compData?.hakemSayisi || currentCriteria?.hakemSayisi || 4;
+
     const renderEPanels = () => {
         if (!currentCriteria) return [];
         const panels = [];
-        for (let i = 1; i <= (currentCriteria.hakemSayisi || 4); i++) {
+        for (let i = 1; i <= effectiveHakemSayisi; i++) {
             panels.push(`e${i}`);
         }
         return panels;
@@ -709,9 +712,12 @@ export default function ScoringPage() {
                                                         const localVal = ePanelLocal[panelId];
                                                         const hasVal = localVal !== undefined && localVal !== null && localVal !== '';
                                                         const isTouched = ePanelTouched[panelId];
+                                                        // Yarışmada atanmış hakem adını göster
+                                                        const assignedRef = compData?.hakemler?.[selectedCategory]?.[selectedApparatus]?.[panelId];
+                                                        const panelLabel = assignedRef?.name || panelId.toUpperCase();
                                                         return (
                                                             <div key={panelId} className={`ref-panel-status ${hasVal ? 'status-ready' : 'status-waiting'} ${isTouched ? 'status-edited' : ''}`}>
-                                                                <div className="rp-name">{panelId.toUpperCase()}</div>
+                                                                <div className="rp-name" title={assignedRef?.name || panelId.toUpperCase()}>{panelLabel}</div>
                                                                 <input
                                                                     type="number"
                                                                     step="0.1"
