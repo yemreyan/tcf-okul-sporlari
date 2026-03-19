@@ -90,12 +90,63 @@ function getCategoryLimits(categoryName) {
 }
 
 function validateTCKN(tckn) {
-  return /^\d{11}$/.test(tckn);
+  if (!/^\d{11}$/.test(tckn)) return false;
+  // İlk hane 0 olamaz
+  if (tckn[0] === '0') return false;
+  const d = tckn.split('').map(Number);
+  // 10. hane kontrolü: ((d1+d3+d5+d7+d9)*7 - (d2+d4+d6+d8)) mod 10
+  const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];
+  const evenSum = d[1] + d[3] + d[5] + d[7];
+  if ((oddSum * 7 - evenSum) % 10 !== d[9]) return false;
+  // 11. hane kontrolü: ilk 10 hanenin toplamı mod 10
+  const first10Sum = d.slice(0, 10).reduce((a, b) => a + b, 0);
+  if (first10Sum % 10 !== d[10]) return false;
+  return true;
 }
 
 function validatePhone(phone) {
   const cleaned = phone.replace(/[\s\-\(\)]/g, '');
   return /^(\+?90)?[0-9]{10}$/.test(cleaned) || /^[0-9]{10,11}$/.test(cleaned);
+}
+
+function validateEmail(email) {
+  if (!email || !email.trim()) return true; // opsiyonel alan
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
+function validateDOBRange(dob, categoryName) {
+  if (!dob) return { valid: false, message: 'DOĞUM TARİHİ BOŞ' };
+  const birthDate = new Date(dob);
+  const today = new Date();
+  if (isNaN(birthDate.getTime())) return { valid: false, message: 'GEÇERSİZ TARİH FORMATI' };
+  // Gelecek tarih olamaz
+  if (birthDate > today) return { valid: false, message: 'DOĞUM TARİHİ GELECEKTE OLAMAZ' };
+  // Yaş hesapla
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+  // Genel aralık: 5-25 yaş arası okul sporcusu olabilir
+  if (age < 5) return { valid: false, message: `SPORCU YAŞI ÇOK KÜÇÜK (${age} YAŞ)` };
+  if (age > 25) return { valid: false, message: `SPORCU YAŞI ÇOK BÜYÜK (${age} YAŞ)` };
+  // Kategori bazlı yaş uyarıları (hata değil, uyarı)
+  const lower = (categoryName || '').toLowerCase().replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
+  let expectedMin = 5, expectedMax = 25;
+  if (lower.includes('minik')) { expectedMin = 6; expectedMax = 11; }
+  else if (lower.includes('kucuk')) { expectedMin = 9; expectedMax = 13; }
+  else if (lower.includes('yildiz')) { expectedMin = 11; expectedMax = 15; }
+  else if (lower.includes('genc')) { expectedMin = 13; expectedMax = 18; }
+  if (age < expectedMin || age > expectedMax) {
+    return { valid: true, warning: `SPORCU YAŞI (${age}) BU KATEGORİ İÇİN UYGUN OLMAYABİLİR (BEKLENen: ${expectedMin}-${expectedMax} YAŞ)` };
+  }
+  return { valid: true };
+}
+
+function validateLicenseNo(license) {
+  if (!license || !license.trim()) return true; // opsiyonel
+  const cleaned = license.trim();
+  if (cleaned.length > 50) return false;
+  // Sadece harf, rakam, tire ve boşluk
+  return /^[a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s\-]{1,50}$/.test(cleaned);
 }
 
 // ─── Data Loading ───
@@ -411,6 +462,19 @@ function createDynamicRow(containerId, fields, index) {
     if (containerId === 'coachRows' && f.name === 'name') {
       input.addEventListener('input', function() { validateCoachInput(this); });
       input.addEventListener('blur', function() { handleCoachBlur(this); });
+    }
+    // E-posta doğrulaması (antrenör + öğretmen)
+    if ((containerId === 'coachRows' || containerId === 'teacherRows') && f.name === 'email') {
+      input.addEventListener('blur', function() {
+        const val = (this.value || '').trim();
+        if (!val) { this.classList.remove('valid', 'invalid'); return; }
+        if (validateEmail(val)) {
+          this.classList.remove('invalid'); this.classList.add('valid');
+        } else {
+          this.classList.remove('valid'); this.classList.add('invalid');
+          showToast('✗ E-POSTA FORMATI GEÇERSİZ', 'error');
+        }
+      });
     }
     // Athlete field validations
     if (containerId === 'athleteRows') {
@@ -794,8 +858,17 @@ function validateAthleteDOBInput(inputEl) {
     inputEl.classList.remove('valid', 'invalid');
     return;
   }
-  inputEl.classList.remove('invalid');
-  inputEl.classList.add('valid');
+  const categorySelect = document.getElementById('categorySelect');
+  const selectedOpt = categorySelect.options[categorySelect.selectedIndex];
+  const catName = selectedOpt ? selectedOpt.getAttribute('data-name') || selectedOpt.textContent : '';
+  const result = validateDOBRange(val, catName);
+  if (!result.valid) {
+    inputEl.classList.remove('valid');
+    inputEl.classList.add('invalid');
+  } else {
+    inputEl.classList.remove('invalid');
+    inputEl.classList.add('valid');
+  }
 }
 
 function handleAthleteDOBBlur(inputEl) {
@@ -804,6 +877,16 @@ function handleAthleteDOBBlur(inputEl) {
     inputEl.classList.remove('valid');
     inputEl.classList.add('invalid');
     showToast('✗ SPORCU DOĞUM TARİHİ BOŞ BIRAKILAMAZ', 'warning');
+    return;
+  }
+  const categorySelect = document.getElementById('categorySelect');
+  const selectedOpt = categorySelect.options[categorySelect.selectedIndex];
+  const catName = selectedOpt ? selectedOpt.getAttribute('data-name') || selectedOpt.textContent : '';
+  const result = validateDOBRange(val, catName);
+  if (!result.valid) {
+    showToast(`✗ ${result.message}`, 'error');
+  } else if (result.warning) {
+    showToast(`⚠ ${result.warning}`, 'warning');
   }
 }
 
@@ -877,6 +960,7 @@ function validateForm(data) {
   if (!data.il) errors.push('✗ İL SEÇİNİZ');
   if (!data.ilce) errors.push('✗ İLÇE SEÇİNİZ');
   if (!data.okul) errors.push('✗ OKUL BİLGİSİ GİRİNİZ');
+  else if (data.okul.length > 200) errors.push('✗ OKUL ADI ÇOK UZUN (MAX 200 KARAKTER)');
   if (!data.kategoriId && data.kategoriId !== 0) errors.push('✗ KATEGORİ SEÇİNİZ');
 
   // En az bir antrenör VEYA bir öğretmen olmalı
@@ -886,10 +970,12 @@ function validateForm(data) {
   data.antrenorler.forEach((c, i) => {
     if (!c.name) errors.push(`✗ ${i + 1}. ANTRENÖR ADI BOŞ`);
     if (c.phone && !validatePhone(c.phone)) errors.push(`✗ ${i + 1}. ANTRENÖR TELEFON FORMATI HATALI`);
+    if (c.email && !validateEmail(c.email)) errors.push(`✗ ${i + 1}. ANTRENÖR E-POSTA FORMATI HATALI`);
   });
   data.ogretmenler.forEach((t, i) => {
     if (!t.name) errors.push(`✗ ${i + 1}. ÖĞRETMEN ADI BOŞ`);
     if (t.phone && !validatePhone(t.phone)) errors.push(`✗ ${i + 1}. ÖĞRETMEN TELEFON FORMATI HATALI`);
+    if (t.email && !validateEmail(t.email)) errors.push(`✗ ${i + 1}. ÖĞRETMEN E-POSTA FORMATI HATALI`);
   });
 
   if (data.sporcular.length === 0) errors.push('✗ EN AZ BİR SPORCU EKLEYİNİZ');
@@ -908,7 +994,7 @@ function validateForm(data) {
       return;
     }
     if (!validateTCKN(a.tckn)) {
-      errors.push(`✗ ${i + 1}. SPORCU T.C. KİMLİK NO GEÇERSİZ (11 HANELİ RAKAM OLMALIDIR)`);
+      errors.push(`✗ ${i + 1}. SPORCU T.C. KİMLİK NO GEÇERSİZ (11 HANELİ RAKAM + ALGORİTMA HATASI)`);
       if (tcknInput) { tcknInput.classList.remove('valid'); tcknInput.classList.add('invalid'); }
     }
     if (tcknSet.has(a.tckn)) {
@@ -923,6 +1009,18 @@ function validateForm(data) {
     if (!a.dob) {
       errors.push(`✗ ${i + 1}. SPORCU DOĞUM TARİHİ BOŞ`);
       if (dobInput) { dobInput.classList.remove('valid'); dobInput.classList.add('invalid'); }
+    } else {
+      const dobResult = validateDOBRange(a.dob, data.kategoriAdi);
+      if (!dobResult.valid) {
+        errors.push(`✗ ${i + 1}. SPORCU ${dobResult.message}`);
+        if (dobInput) { dobInput.classList.remove('valid'); dobInput.classList.add('invalid'); }
+      } else if (dobResult.warning) {
+        // Uyarı — hata değil, toast ile bildir
+        showToast(`⚠ ${i + 1}. SPORCU: ${dobResult.warning}`, 'warning');
+      }
+    }
+    if (a.license && !validateLicenseNo(a.license)) {
+      errors.push(`✗ ${i + 1}. SPORCU LİSANS NO FORMATI GEÇERSİZ (MAX 50 KARAKTER, ÖZEL KARAKTER YOK)`);
     }
   });
 
