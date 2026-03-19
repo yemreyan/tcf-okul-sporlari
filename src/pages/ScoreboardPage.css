@@ -1,10 +1,18 @@
-/* SCOREBOARD CONFIGURATION SCREEN */
+/* ================================================================
+   SCOREBOARD — FIG / Olympic / SmartScoring Inspired
+   ================================================================
+   Referanslar:
+   - SmartScoring (FIG World Cup): #080915, Proxima Nova, mavi/mor
+   - OMEGA Vionardo (Olimpiyat): Temiz tipografi, altın vurgular
+   - NBC Broadcast: Skor kalitesi renklendirmesi
+   ================================================================ */
+
+/* ─── CONFIG SCREEN (değişmedi) ────────────────────────────── */
 .scoreboard-config {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 80px);
-    /* Account for header */
 }
 
 .config-card {
@@ -45,366 +53,778 @@
     text-align: left;
 }
 
-/* LIVE SCOREBOARD FULLSCREEN */
-.scoreboard-live.fullscreen-mode {
+.config-preview {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 0.75rem;
+    color: #94A3B8;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-preview i {
+    color: #60A5FA;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* ================================================================
+   LIVE SCOREBOARD — Tam Ekran
+   ================================================================ */
+.sb-live {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100vw;
     height: 100vh;
-    background: #0B0F19;
-    /* Very deep dark */
-    color: #F8FAFC;
+    background: #060a14;
+    color: #e2e8f0;
     z-index: 9999;
     display: flex;
     flex-direction: column;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Nunito', 'Inter', system-ui, sans-serif;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Header */
-.sb-header {
+/* ─── TOP BAR ──────────────────────────────────────────────── */
+.sb-topbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 2.5rem;
-    background: #111827;
-    border-bottom: 2px solid #1F2937;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    position: relative;
+    justify-content: space-between;
+    padding: 0.6rem 1.8rem;
+    background: #0a0e1a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
     z-index: 10;
 }
 
-.sb-comp-title {
-    font-size: 2.5rem;
+.sb-topbar-left,
+.sb-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.sb-topbar-right {
+    justify-content: flex-end;
+}
+
+.sb-topbar-center {
+    text-align: center;
+    flex: 2;
+}
+
+/* LIVE Badge — kırmızı nokta + "LIVE" */
+.sb-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    font-size: 0.7rem;
     font-weight: 900;
-    margin: 0;
-    letter-spacing: -0.02em;
-    background: linear-gradient(90deg, #F8FAFC, #94A3B8);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 4px;
     text-transform: uppercase;
 }
 
-.sb-cat-title {
-    font-size: 1.25rem;
-    color: #64748B;
+.sb-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+.sb-clock {
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Yarışma + Kategori */
+.sb-comp-name {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #f1f5f9;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sb-cat-name {
+    font-size: 0.72rem;
+    color: #64748b;
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-top: 0.25rem;
 }
 
-.sb-view-title {
-    font-size: 2.2rem;
-    font-weight: 900;
-    padding-bottom: 0.5rem;
-    border-bottom: 4px solid;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: color 0.4s, border-color 0.4s;
-    text-align: center;
+/* İstatistik Pill */
+.sb-stats-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
 }
 
+/* Exit Button */
 .sb-exit-btn {
     background: transparent;
     border: none;
-    color: #475569;
+    color: #334155;
     cursor: pointer;
     transition: color 0.2s;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
 }
 
 .sb-exit-btn:hover {
-    color: #EF4444;
+    color: #ef4444;
 }
 
 .sb-exit-btn i {
-    font-size: 2.5rem;
+    font-size: 1.4rem;
 }
 
-/* Table Header */
-.sb-table-header {
-    display: grid;
-    padding: 1.5rem 2.5rem;
-    background: #0f172a;
-    border-bottom: 2px solid #1E293B;
-    align-items: center;
+/* ─── VIEW BANNER ──────────────────────────────────────────── */
+.sb-view-banner {
+    padding: 0.9rem 1.8rem 0;
+    flex-shrink: 0;
+    position: relative;
 }
 
-.sb-th {
-    color: #64748B;
-    font-weight: 800;
-    font-size: 1.1rem;
-    letter-spacing: 1.5px;
+.sb-view-info {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.sb-view-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--view-color, #0ea5e9);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 1;
+}
+
+.sb-view-sub {
+    font-size: 0.72rem;
+    color: #475569;
+    font-weight: 700;
+    letter-spacing: 3px;
     text-transform: uppercase;
 }
 
-.pl-20 {
-    padding-left: 1.5rem;
+/* View Nav Dots */
+.sb-view-nav {
+    display: flex;
+    gap: 6px;
+    position: absolute;
+    right: 1.8rem;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
-/* Table Body */
-.sb-container {
+.sb-nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1e293b;
+    transition: all 0.3s ease;
+}
+
+.sb-nav-dot.active {
+    width: 24px;
+    border-radius: 4px;
+}
+
+/* Cycle Progress Track */
+.sb-cycle-track {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.04);
+    margin-top: 0.75rem;
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.sb-cycle-fill {
+    height: 100%;
+    background: var(--view-color, #0ea5e9);
+    opacity: 0.5;
+    transition: width 50ms linear;
+    border-radius: 1px;
+}
+
+/* ─── TABLE HEADER ─────────────────────────────────────────── */
+.sb-thead {
+    display: grid;
+    padding: 0.65rem 1.8rem;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sb-th {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #475569;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.sb-th-rank {
+    text-align: center;
+}
+
+.sb-th-name {
+    padding-left: 0.75rem;
+}
+
+.sb-th-app {
+    text-align: center;
+}
+
+.sb-th-total {
+    text-align: right;
+    padding-right: 0.5rem;
+}
+
+/* ─── TABLE BODY ───────────────────────────────────────────── */
+.sb-tbody {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem 2.5rem;
+    padding: 0.4rem 1.8rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 3px;
 }
 
+/* Geçiş animasyonları */
+.sb-fade-in {
+    animation: sbFadeIn 0.4s ease both;
+}
+
+.sb-fade-out {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+@keyframes sbFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+.sb-tbody::-webkit-scrollbar { width: 4px; }
+.sb-tbody::-webkit-scrollbar-track { background: transparent; }
+.sb-tbody::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+
+/* ─── TABLE ROW ────────────────────────────────────────────── */
 .sb-row {
     display: grid;
     align-items: center;
-    background: #111827;
-    padding: 1rem 0;
-    border-radius: 12px;
-    border: 1px solid #1E293B;
-    transition: transform 0.2s, background 0.2s;
+    padding: 0.55rem 0;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid transparent;
+    animation: rowEnter 0.35s ease both;
+    transition: background 0.2s;
 }
 
 .sb-row:nth-child(even) {
-    background: #0d131f;
-    /* Slightly darker */
+    background: rgba(255, 255, 255, 0.03);
 }
 
-/* Ranks */
-.rank-1 {
-    background: linear-gradient(90deg, rgba(234, 179, 8, 0.1), transparent);
-    border-left: 6px solid #EAB308;
+.sb-row:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
-.rank-2 {
-    background: linear-gradient(90deg, rgba(148, 163, 184, 0.1), transparent);
-    border-left: 6px solid #CBD5E1;
+@keyframes rowEnter {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
-.rank-3 {
-    background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), transparent);
-    border-left: 6px solid #D97706;
+/* ─── MEDAL ROWS ───────────────────────────────────────────── */
+.sb-medal-1 {
+    background: linear-gradient(90deg, rgba(234, 179, 8, 0.08), transparent 60%) !important;
+    border-color: rgba(234, 179, 8, 0.15) !important;
 }
 
+.sb-medal-2 {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.06), transparent 60%) !important;
+    border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+.sb-medal-3 {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.06), transparent 60%) !important;
+    border-color: rgba(205, 127, 50, 0.12) !important;
+}
+
+/* ─── CELLS ────────────────────────────────────────────────── */
 .sb-cell {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
 }
 
-.rank-num {
-    font-size: 2.2rem;
-    font-weight: 900;
-    color: #64748B;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
+/* Rank */
+.sb-rank {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.rank-1 .rank-num {
-    color: #EAB308;
-}
-
-.rank-2 .rank-num {
-    color: #CBD5E1;
-}
-
-.rank-3 .rank-num {
-    color: #D97706;
-}
-
-.sb-name-col {
-    padding-left: 1.5rem;
-}
-
-.sb-name {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #F8FAFC;
-    line-height: 1.2;
-}
-
-.team-name {
-    font-size: 1.8rem;
-}
-
-.sb-club {
+.sb-rank-num {
     font-size: 1.1rem;
-    color: #94A3B8;
-    margin-top: 0.25rem;
-}
-
-.score-detail {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #CBD5E1;
-    font-variant-numeric: tabular-nums;
-}
-
-.total-score {
-    font-size: 2.8rem;
-    font-weight: 900;
-    padding-right: 1.5rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.text-gold {
-    color: #FBBF24;
-}
-
-.sb-empty {
-    text-align: center;
-    font-size: 2rem;
     font-weight: 800;
     color: #475569;
-    padding: 5rem 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Medal Icon — altın/gümüş/bronz daire */
+.sb-medal-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #000;
+}
+
+.sb-medal-icon-1 {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+.sb-medal-icon-2 {
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    box-shadow: 0 0 10px rgba(148, 163, 184, 0.2);
+}
+
+.sb-medal-icon-3 {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.2);
+}
+
+/* Name Cell */
+.sb-name-cell {
+    padding-left: 0.75rem;
+    overflow: hidden;
+}
+
+.sb-athlete-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sb-team-label {
+    font-size: 1.1rem;
+    color: #e2e8f0;
+}
+
+.sb-athlete-club {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Score Cell */
+.sb-score-cell {
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+}
+
+.sb-scored {
+    color: #cbd5e1;
+}
+
+.sb-pending {
+    color: #1e293b;
+}
+
+/* NBC tarzı skor kalitesi renkleri */
+.sq-excellent {
+    color: #4ade80 !important;
+}
+
+.sq-good {
+    color: #a3e635 !important;
+}
+
+.sq-average {
+    color: #fbbf24 !important;
+}
+
+.sq-low {
+    color: #f87171 !important;
+}
+
+/* Total Cell */
+.sb-total-cell {
+    text-align: right;
+    padding-right: 0.75rem;
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #fbbf24;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+}
+
+/* ─── EMPTY STATE ──────────────────────────────────────────── */
+.sb-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 4rem 0;
+    color: #334155;
+}
+
+.sb-empty-state i {
+    font-size: 3rem;
+    opacity: 0.4;
+}
+
+.sb-empty-state span {
+    font-size: 1rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
 }
 
-/* FLASH OVERLAY */
-.sb-flash-overlay {
+/* ================================================================
+   FLASH OVERLAY — Olimpiyat Tarzı Sıralı Skor Açılışı
+   ================================================================ */
+.sb-flash {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(12px);
     z-index: 10000;
     display: flex;
     justify-content: center;
     align-items: center;
+    background: rgba(4, 6, 14, 0.92);
+    backdrop-filter: blur(20px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.5s ease;
 }
 
-.sb-flash-overlay.visible {
+.sb-flash-visible {
     opacity: 1;
     pointer-events: auto;
 }
 
 .sb-flash-card {
-    background: #0B0F19;
-    border: 2px solid #1E3A8A;
-    border-radius: 2rem;
-    padding: 4rem;
+    width: 92%;
+    max-width: 800px;
     text-align: center;
-    width: 90%;
-    max-width: 900px;
-    box-shadow: 0 0 80px rgba(37, 99, 235, 0.4);
-    transform: scale(0.9);
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: scale(0.92);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sb-flash-overlay.visible .sb-flash-card {
+.sb-flash-visible .sb-flash-card {
     transform: scale(1);
 }
 
-.f-title {
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: 4px;
-    margin-bottom: 2rem;
-    display: inline-block;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid rgba(59, 130, 246, 0.3);
-}
-
-.f-name {
-    font-size: 4.5rem;
-    font-weight: 900;
-    color: white;
-    margin: 0;
-    line-height: 1.1;
-}
-
-.f-club {
-    font-size: 2rem;
-    margin-top: 0.5rem;
+/* Flash Header */
+.sf-header {
     margin-bottom: 2rem;
 }
 
-.f-apparatus {
-    font-size: 1.8rem;
-    color: #E2E8F0;
-    font-weight: 800;
-    margin-bottom: 3rem;
-    background: #111827;
-    display: inline-block;
-    padding: 0.5rem 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid #374151;
-}
-
-.f-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 3rem;
-}
-
-.f-stat-box {
-    background: rgba(255, 255, 255, 0.02);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    border: 1px solid;
-    display: flex;
-    flex-direction: column;
-}
-
-.border-purple {
-    border-color: rgba(168, 85, 247, 0.3);
-}
-
-.border-green {
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.border-red {
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.f-stat-box .lbl {
-    font-size: 1.1rem;
-    color: #94A3B8;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.f-stat-box .val {
-    font-size: 3.5rem;
-    font-weight: 900;
-    font-variant-numeric: tabular-nums;
-}
-
-.text-purple {
-    color: #C084FC;
-}
-
-.text-green {
-    color: #34D399;
-}
-
-.text-red {
-    color: #F87171;
-}
-
-.f-total-box {
-    background: #EAB308;
-    /* Solid Gold */
-    border-radius: 1.5rem;
-    padding: 2rem 4rem;
+.sf-new-score-tag {
     display: inline-flex;
     align-items: center;
-    gap: 2rem;
-    color: #000;
-    box-shadow: 0 0 50px rgba(234, 179, 8, 0.4);
+    gap: 6px;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+    color: #38bdf8;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    padding: 5px 14px;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
 }
 
-.ft-lbl {
-    font-size: 2rem;
+.sf-new-score-tag i {
+    font-size: 0.9rem;
+    animation: bellShake 2s ease-in-out infinite;
+}
+
+@keyframes bellShake {
+    0%, 80%, 100% { transform: rotate(0); }
+    85% { transform: rotate(12deg); }
+    90% { transform: rotate(-12deg); }
+    95% { transform: rotate(6deg); }
+}
+
+.sf-athlete {
+    font-size: 3rem;
     font-weight: 900;
+    color: #fff;
+    margin: 0;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+
+.sf-club {
+    font-size: 1.1rem;
+    color: #64748b;
+    font-weight: 700;
+    margin: 0.25rem 0 0;
+}
+
+.sf-apparatus {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.35rem 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #94a3b8;
+    letter-spacing: 3px;
+}
+
+/* ─── Sıralı Skor Açılışı ─────────────────────────────────── */
+.sf-scores {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.sf-score-item {
+    padding: 1.2rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    opacity: 0;
+    transform: translateY(15px) scale(0.9);
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 130px;
+}
+
+.sf-score-item.sf-reveal {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.sf-score-label {
+    font-size: 0.65rem;
+    font-weight: 800;
     letter-spacing: 2px;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
 }
 
-.ft-val {
-    font-size: 6rem;
+.sf-score-value {
+    font-size: 2.4rem;
     font-weight: 900;
-    line-height: 1;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+/* D-Score */
+.sf-d {
+    background: rgba(168, 85, 247, 0.06);
+    border-color: rgba(168, 85, 247, 0.15);
+}
+
+.sf-d .sf-score-label { color: #a78bfa; }
+.sf-d .sf-score-value { color: #c4b5fd; }
+
+/* E-Score */
+.sf-e {
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(16, 185, 129, 0.15);
+}
+
+.sf-e .sf-score-label { color: #34d399; }
+.sf-e .sf-score-value { color: #6ee7b7; }
+
+/* Penalty */
+.sf-pen {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.15);
+}
+
+.sf-pen .sf-score-label { color: #f87171; }
+.sf-pen .sf-score-value { color: #fca5a5; }
+
+.sf-score-divider {
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: #334155;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.3s;
+}
+
+/* Divider'lar flash açılınca görünür olur */
+.sb-flash-visible .sf-score-divider {
+    opacity: 0.5;
+    transition: opacity 0.5s ease 0.6s;
+}
+
+/* ─── Total Score — Büyük final gösterimi ──────────────────── */
+.sf-total {
+    margin-top: 1.5rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sf-total.sf-reveal-total {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.sf-total-value {
+    font-size: 5rem;
+    font-weight: 900;
+    color: #fbbf24;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 60px rgba(251, 191, 36, 0.3);
+    line-height: 1;
+    display: inline-block;
+    background: linear-gradient(180deg, #fde68a, #f59e0b);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Timer Bar */
+.sf-timer {
+    margin-top: 2rem;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 2px;
+    overflow: hidden;
+    max-width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.sf-timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+    border-radius: 2px;
+    animation: timerCountdown 7s linear forwards;
+}
+
+@keyframes timerCountdown {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 1400px) {
+    .sb-view-title { font-size: 1.3rem; }
+    .sb-athlete-name { font-size: 0.95rem; }
+    .sb-score-cell { font-size: 0.95rem; }
+    .sb-total-cell { font-size: 1.2rem; }
+    .sf-athlete { font-size: 2.5rem; }
+    .sf-score-value { font-size: 2rem; }
+    .sf-total-value { font-size: 4rem; }
+}
+
+@media (max-width: 1024px) {
+    .sb-topbar { padding: 0.5rem 1rem; }
+    .sb-view-banner { padding: 0.7rem 1rem 0; }
+    .sb-thead { padding: 0.5rem 1rem; }
+    .sb-tbody { padding: 0.3rem 1rem 0.5rem; }
+    .sb-view-title { font-size: 1.1rem; }
+    .sb-comp-name { font-size: 0.9rem; }
+    .sb-athlete-name { font-size: 0.85rem; }
+    .sb-team-label { font-size: 0.9rem; }
+    .sb-score-cell { font-size: 0.85rem; }
+    .sb-total-cell { font-size: 1.05rem; }
+    .sb-medal-icon { width: 26px; height: 26px; font-size: 0.75rem; }
+    .sf-scores { flex-wrap: wrap; gap: 0.75rem; }
+    .sf-score-item { min-width: 100px; padding: 1rem; }
+    .sf-score-value { font-size: 1.6rem; }
+    .sf-total-value { font-size: 3rem; }
+}
+
+@media (max-width: 768px) {
+    .sb-topbar {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.4rem 0.75rem;
+    }
+
+    .sb-topbar-center {
+        order: -1;
+        flex-basis: 100%;
+    }
+
+    .sb-view-banner {
+        padding: 0.5rem 0.75rem 0;
+    }
+
+    .sb-view-title { font-size: 0.9rem; }
+    .sb-view-nav { right: 0.75rem; }
+
+    .sb-thead,
+    .sb-tbody {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .sb-athlete-name { font-size: 0.8rem; }
+    .sb-score-cell { font-size: 0.75rem; }
+    .sb-total-cell { font-size: 0.9rem; }
+
+    .sf-athlete { font-size: 1.8rem; }
+    .sf-club { font-size: 0.85rem; }
+    .sf-scores { flex-direction: column; gap: 0.5rem; }
+    .sf-score-item { min-width: auto; width: 80%; }
+    .sf-score-divider { display: none; }
+    .sf-total-value { font-size: 2.5rem; }
+    .sb-flash-card { width: 96%; }
 }
