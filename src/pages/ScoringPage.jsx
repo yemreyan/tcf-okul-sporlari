@@ -47,6 +47,7 @@ export default function ScoringPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     // Difficulty Mode State (yıldız/genç kategoriler için)
     const [difficultyMoves, setDifficultyMoves] = useState({});
@@ -536,17 +537,22 @@ export default function ScoringPage() {
                         <p className="text-subtitle">Puanlama Paneli</p>
                     </div>
                 </div>
-                {selectedAthlete && isAthleteCalled && (
-                    <div className="live-badge">
-                        <div className="pulse-dot"></div>
-                        <span>CANLI PUANLAMA</span>
-                    </div>
-                )}
+                <div className="sh-right">
+                    {selectedAthlete && isAthleteCalled && (
+                        <div className="live-badge">
+                            <div className="pulse-dot"></div>
+                            <span>CANLI PUANLAMA</span>
+                        </div>
+                    )}
+                    <button className="btn-toggle-sidebar" onClick={() => setSidebarOpen(prev => !prev)}>
+                        <i className="material-icons-round">{sidebarOpen ? 'menu_open' : 'menu'}</i>
+                    </button>
+                </div>
             </header>
 
             <div className="scoring-layout">
                 {/* Left Sidebar: Controls & Roster */}
-                <aside className="scoring-sidebar-light">
+                <aside className={`scoring-sidebar-light ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
                     <div className="sidebar-controls">
                         <select className="premium-select" value={selectedCity} onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedCategory(''); setSelectedApparatus(''); setSelectedAthlete(null); }}>
                             <option value="">Tüm İller</option>
