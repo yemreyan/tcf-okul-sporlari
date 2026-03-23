@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './CompetitionSchedulePage.css';
 
 /* ── Yardımcı fonksiyonlar ── */
@@ -50,6 +51,7 @@ export default function CompetitionSchedulePage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
 
     const canCreate = hasPermission('schedule', 'olustur');
     const canEdit = hasPermission('schedule', 'duzenle');
@@ -76,7 +78,7 @@ export default function CompetitionSchedulePage() {
 
     // Firebase — yarışmalar
     useEffect(() => {
-        const unsub = onValue(ref(db, 'competitions'), (s) => {
+        const unsub = onValue(ref(db, firebasePath), (s) => {
             const data = s.val() || {};
             setCompetitions(data);
             setLoading(false);
@@ -87,7 +89,7 @@ export default function CompetitionSchedulePage() {
     // Firebase — seçili yarışmanın programı
     useEffect(() => {
         if (!selectedCompId) { setSessions({}); return; }
-        const unsub = onValue(ref(db, `competitions/${selectedCompId}/program`), (s) => {
+        const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/program`), (s) => {
             setSessions(s.val() || {});
         });
         return () => unsub();
@@ -201,10 +203,10 @@ export default function CompetitionSchedulePage() {
 
         try {
             if (editingSession) {
-                await update(ref(db, `competitions/${selectedCompId}/program/${editingSession.id}`), sessionData);
+                await update(ref(db, `${firebasePath}/${selectedCompId}/program/${editingSession.id}`), sessionData);
                 toast('Oturum güncellendi', 'success');
             } else {
-                await push(ref(db, `competitions/${selectedCompId}/program`), sessionData);
+                await push(ref(db, `${firebasePath}/${selectedCompId}/program`), sessionData);
                 toast('Oturum eklendi', 'success');
             }
             closeModal();
@@ -217,7 +219,7 @@ export default function CompetitionSchedulePage() {
         const ok = await confirm('Bu oturumu silmek istediğinize emin misiniz?');
         if (!ok) return;
         try {
-            await remove(ref(db, `competitions/${selectedCompId}/program/${sessId}`));
+            await remove(ref(db, `${firebasePath}/${selectedCompId}/program/${sessId}`));
             toast('Oturum silindi', 'success');
         } catch (err) {
             toast('Hata: ' + err.message, 'error');
@@ -226,7 +228,7 @@ export default function CompetitionSchedulePage() {
 
     const handleStatusChange = async (sessId, newStatus) => {
         try {
-            await update(ref(db, `competitions/${selectedCompId}/program/${sessId}`), { durum: newStatus });
+            await update(ref(db, `${firebasePath}/${selectedCompId}/program/${sessId}`), { durum: newStatus });
         } catch (err) {
             toast('Hata: ' + err.message, 'error');
         }
@@ -236,7 +238,7 @@ export default function CompetitionSchedulePage() {
     const [athleteCounts, setAthleteCounts] = useState({});
     useEffect(() => {
         if (!selectedCompId) { setAthleteCounts({}); return; }
-        const unsub = onValue(ref(db, `competitions/${selectedCompId}/sporcular`), (s) => {
+        const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/sporcular`), (s) => {
             const data = s.val() || {};
             const counts = {};
             Object.entries(data).forEach(([catKey, athletes]) => {
@@ -266,7 +268,7 @@ export default function CompetitionSchedulePage() {
 
         try {
             // Sporcu sayılarını doğrudan Firebase'den oku (race condition önlemi)
-            const athleteSnap = await get(ref(db, `competitions/${selectedCompId}/sporcular`));
+            const athleteSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular`));
             const athleteData = athleteSnap.val() || {};
             const freshAthleteCounts = {};
             Object.entries(athleteData).forEach(([catKey, athletes]) => {
@@ -342,7 +344,7 @@ export default function CompetitionSchedulePage() {
                 const endH = String(Math.floor(endMin / 60)).padStart(2, '0');
                 const endM = String(endMin % 60).padStart(2, '0');
 
-                const key = push(ref(db, `competitions/${selectedCompId}/program`)).key;
+                const key = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
                 newSessions[key] = {
                     tarih: dates[dayIdx],
                     saat: `${startH}:${startM}`,
@@ -357,7 +359,7 @@ export default function CompetitionSchedulePage() {
                 currentSlotInDay++;
             });
 
-            await set(ref(db, `competitions/${selectedCompId}/program`), newSessions);
+            await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newSessions);
             toast(`${Object.keys(newSessions).length} oturum otomatik oluşturuldu`, 'success');
         } catch (err) {
             toast('Hata: ' + err.message, 'error');
@@ -387,7 +389,7 @@ export default function CompetitionSchedulePage() {
             {/* Header */}
             <header className="sched-header">
                 <div className="sched-header__left">
-                    <button className="sched-back-btn" onClick={() => navigate('/artistik')}>
+                    <button className="sched-back-btn" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

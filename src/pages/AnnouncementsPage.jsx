@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './AnnouncementsPage.css';
 
 const CATEGORY_ICONS = {
@@ -81,6 +82,7 @@ export default function AnnouncementsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
 
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('all');
@@ -107,7 +109,7 @@ export default function AnnouncementsPage() {
     // Firebase listeners
     useEffect(() => {
         const unsubs = [];
-        unsubs.push(onValue(ref(db, 'competitions'), s => {
+        unsubs.push(onValue(ref(db, firebasePath), s => {
             setCompetitions(s.val() || {});
         }));
         unsubs.push(onValue(ref(db, 'broadcasts'), s => {
@@ -292,7 +294,7 @@ export default function AnnouncementsPage() {
             {/* Header */}
             <header className="ann-header">
                 <div className="ann-header__left">
-                    <button className="ann-back" onClick={() => navigate('/artistik')}>
+                    <button className="ann-back" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

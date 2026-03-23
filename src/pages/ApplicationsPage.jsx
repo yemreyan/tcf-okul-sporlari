@@ -6,6 +6,7 @@ import './ApplicationsPage.css';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 
 // Yardımcı fonksiyon - datayı array'e çevirir (Türkçe & İngilizce fallback)
 function getAthletesArray(app) {
@@ -49,10 +50,10 @@ function getTeamRules(catName) {
 }
 
 // ─── Yardımcı: Bir okulun mevcut sporcu sayısını getirir ───
-async function getSchoolAthleteCount(compId, catId, schoolName) {
+async function getSchoolAthleteCount(compId, catId, schoolName, firebasePath) {
     if (!compId || !catId || !schoolName) return 0;
     try {
-        const snapshot = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
+        const snapshot = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
         if (!snapshot.exists()) return 0;
         const all = snapshot.val();
         const normalizedSchool = normalizeString(schoolName);
@@ -63,14 +64,14 @@ async function getSchoolAthleteCount(compId, catId, schoolName) {
 // ─── Automatic Team Promotion & Demotion Logic ───
 // Sporcu sayısı >= min → tüm okul sporcuları 'takim'
 // Sporcu sayısı <  min → tüm okul sporcuları 'ferdi'
-async function syncTeamStatus(compId, catId, catName, schoolName) {
+async function syncTeamStatus(compId, catId, catName, schoolName, firebasePath) {
     if (!compId || !catId || !schoolName) return;
 
     const rules = getTeamRules(catName);
     if (!rules) return; // Bu kategori için takım kuralı yok
 
     try {
-        const snapshot = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
+        const snapshot = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
         if (!snapshot.exists()) return;
 
         const allAthletes = snapshot.val();
@@ -87,7 +88,7 @@ async function syncTeamStatus(compId, catId, catName, schoolName) {
         let updateCount = 0;
         schoolAthletes.forEach(([id, ath]) => {
             if (ath.yarismaTuru !== targetType) {
-                updates[`competitions/${compId}/sporcular/${catId}/${id}/yarismaTuru`] = targetType;
+                updates[`${firebasePath}/${compId}/sporcular/${catId}/${id}/yarismaTuru`] = targetType;
                 updateCount++;
             }
         });
@@ -110,6 +111,7 @@ export default function ApplicationsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [applications, setApplications] = useState([]);
     const [competitions, setCompetitions] = useState({});
     const [loading, setLoading] = useState(true);
@@ -122,7 +124,7 @@ export default function ApplicationsPage() {
 
     useEffect(() => {
         // 1. Yarışmaları yükle (isimleri göstermek ve filtrelemek için)
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubComps = onValue(compsRef, (snap) => {
             setCompetitions(filterCompetitionsByUser(snap.val() || {}, currentUser));
         });
@@ -180,7 +182,7 @@ export default function ApplicationsPage() {
         });
 
         return () => { unsubComps(); unsubscribe(); };
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     const handleStatusChange = async (app, newStatus) => {
         try {
@@ -198,7 +200,7 @@ export default function ApplicationsPage() {
                 // 0. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
                 const rules = getTeamRules(app.categoryName);
                 if (rules) {
-                    const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName);
+                    const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName, firebasePath);
                     const afterCount = currentCount + app.athleteCount;
                     if (afterCount > rules.max) {
                         const proceed = await confirm(
@@ -211,14 +213,14 @@ export default function ApplicationsPage() {
 
                 // 1. Okulu onaylı okullar listesine ekle
                 const safeSchoolName = app.schoolName.replace(/[.#$[\]]/g, '');
-                updates[`competitions/${compId}/onayli_okullar/${safeSchoolName}`] = {
+                updates[`${firebasePath}/${compId}/onayli_okullar/${safeSchoolName}`] = {
                     city: app.city,
                     district: app.district
                 };
 
                 // 2. Sporcuları ilgili kategori altına ekle
                 app.athletes.forEach(ath => {
-                    const newAthKey = push(ref(db, `competitions/${compId}/sporcular/${catId}`)).key;
+                    const newAthKey = push(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`)).key;
 
                     // Ad Soyad: yeni format (name) veya eski format (adSoyad)
                     const fullName = ath.name || ath.adSoyad || '';
@@ -239,7 +241,7 @@ export default function ApplicationsPage() {
                     const lisans = ath.license || ath.lisans || "-";
 
                     // yarismaTuru her zaman 'ferdi' başlar → syncTeamStatus eşiğe göre günceller
-                    updates[`competitions/${compId}/sporcular/${catId}/${newAthKey}`] = {
+                    updates[`${firebasePath}/${compId}/sporcular/${catId}/${newAthKey}`] = {
                         id: newAthKey,
                         adSoyad: fullName,
                         soyadAd: `${soyad} ${ad}`.trim(),
@@ -263,17 +265,17 @@ export default function ApplicationsPage() {
                 await update(ref(db), updates);
 
                 // 3. Eşik kontrolü: Yeterli sporcu varsa takım'e yükselt, yoksa ferdi bırak
-                await syncTeamStatus(compId, catId, app.categoryName, app.schoolName);
+                await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, firebasePath);
 
             // ═══ GERİ ALMA / REDDETME ═══
             } else {
                 if ((newStatus === 'bekliyor' || newStatus === 'reddedildi') && app.status === 'onaylandi') {
                     // Sporcuları yarışmadan çıkart
-                    const snap = await get(ref(db, `competitions/${compId}/sporcular/${catId}`));
+                    const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
                     if (snap.exists()) {
                         Object.entries(snap.val()).forEach(([athKey, athData]) => {
                             if (athData.appId === app.id) {
-                                updates[`competitions/${compId}/sporcular/${catId}/${athKey}`] = null;
+                                updates[`${firebasePath}/${compId}/sporcular/${catId}/${athKey}`] = null;
                             }
                         });
                     }
@@ -282,7 +284,7 @@ export default function ApplicationsPage() {
 
                 // Kalan sporcu sayısı eşiğin altına düşmüş olabilir → demotion kontrolü
                 if ((newStatus === 'bekliyor' || newStatus === 'reddedildi') && app.status === 'onaylandi') {
-                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, firebasePath);
                 }
             }
 
@@ -318,7 +320,7 @@ export default function ApplicationsPage() {
         <div className="applications-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

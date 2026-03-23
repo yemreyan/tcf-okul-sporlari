@@ -3,25 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './HomePage.css';
 
-const MENU_ITEMS = [
-    { id: 'competitions', icon: 'emoji_events', label: 'Yarışmalar', desc: 'Yarışma oluştur ve yönet', color: '#E30613', path: '/artistik/competitions', permKey: 'competitions' },
-    { id: 'applications', icon: 'assignment_turned_in', label: 'Başvurular', desc: 'Başvuruları incele ve onayla', color: '#2563EB', path: '/artistik/applications', permKey: 'applications' },
-    { id: 'athletes', icon: 'groups', label: 'Sporcular', desc: 'Sporcu kayıt ve yönetimi', color: '#16A34A', path: '/artistik/athletes', permKey: 'athletes' },
-    { id: 'scoring', icon: 'scoreboard', label: 'Puanlama', desc: 'Canlı puan girişi', color: '#EA580C', path: '/artistik/scoring', permKey: 'scoring' },
-    { id: 'criteria', icon: 'tune', label: 'Kriterler', desc: 'Puanlama kuralları', color: '#7C3AED', path: '/artistik/criteria', permKey: 'criteria' },
-    { id: 'judges', icon: 'gavel', label: 'Hakem Listesi', desc: 'Hakem ekleme ve excel yükleme', color: '#0D9488', path: '/artistik/referees', permKey: 'referees' },
-    { id: 'scoreboard', icon: 'live_tv', label: 'Canlı Skor', desc: 'Canlı skorboard ekranı', color: '#DB2777', path: '/artistik/scoreboard', permKey: 'scoreboard' },
-    { id: 'finals', icon: 'military_tech', label: 'Finaller', desc: 'Final sonuçları', color: '#D97706', path: '/artistik/finals', permKey: 'finals' },
-    { id: 'analytics', icon: 'analytics', label: 'Raporlar', desc: 'İstatistik ve analiz', color: '#4F46E5', path: '/artistik/analytics', permKey: 'analytics' },
-    { id: 'order', icon: 'format_list_numbered', label: 'Çıkış Sırası', desc: 'Sporcu sıralama ve rotasyon', color: '#0891B2', path: '/artistik/start-order', permKey: 'start_order' },
-    { id: 'schedule', icon: 'calendar_month', label: 'Program', desc: 'Yarışma gün programı', color: '#8B5CF6', path: '/artistik/schedule', permKey: 'schedule' },
-    { id: 'links', icon: 'qr_code_2', label: 'QR & Linkler', desc: 'Link ve QR oluştur', color: '#059669', path: '/artistik/links', permKey: 'links' },
-    { id: 'report', icon: 'description', label: 'Yarışma Raporu', desc: 'Resmi müsabaka raporu oluştur', color: '#475569', path: '/artistik/official-report', permKey: 'official_report' },
-    { id: 'announcements', icon: 'campaign', label: 'Duyurular', desc: 'Yarışma duyuruları yönetimi', color: '#4F46E5', path: '/artistik/announcements', permKey: 'announcements' },
-    { id: 'certificates', icon: 'card_membership', label: 'Sertifikalar', desc: 'Katılım ve derece belgeleri', color: '#D97706', path: '/artistik/certificates', permKey: 'certificates' },
+const MENU_ITEMS_BASE = [
+    { id: 'competitions', icon: 'emoji_events', label: 'Yarışmalar', desc: 'Yarışma oluştur ve yönet', color: '#E30613', subpath: '/competitions', permKey: 'competitions' },
+    { id: 'applications', icon: 'assignment_turned_in', label: 'Başvurular', desc: 'Başvuruları incele ve onayla', color: '#2563EB', subpath: '/applications', permKey: 'applications' },
+    { id: 'athletes', icon: 'groups', label: 'Sporcular', desc: 'Sporcu kayıt ve yönetimi', color: '#16A34A', subpath: '/athletes', permKey: 'athletes' },
+    { id: 'scoring', icon: 'scoreboard', label: 'Puanlama', desc: 'Canlı puan girişi', color: '#EA580C', subpath: '/scoring', permKey: 'scoring' },
+    { id: 'criteria', icon: 'tune', label: 'Kriterler', desc: 'Puanlama kuralları', color: '#7C3AED', subpath: '/criteria', permKey: 'criteria' },
+    { id: 'judges', icon: 'gavel', label: 'Hakem Listesi', desc: 'Hakem ekleme ve excel yükleme', color: '#0D9488', subpath: '/referees', permKey: 'referees' },
+    { id: 'scoreboard', icon: 'live_tv', label: 'Canlı Skor', desc: 'Canlı skorboard ekranı', color: '#DB2777', subpath: '/scoreboard', permKey: 'scoreboard' },
+    { id: 'finals', icon: 'military_tech', label: 'Finaller', desc: 'Final sonuçları', color: '#D97706', subpath: '/finals', permKey: 'finals' },
+    { id: 'analytics', icon: 'analytics', label: 'Raporlar', desc: 'İstatistik ve analiz', color: '#4F46E5', subpath: '/analytics', permKey: 'analytics' },
+    { id: 'order', icon: 'format_list_numbered', label: 'Çıkış Sırası', desc: 'Sporcu sıralama ve rotasyon', color: '#0891B2', subpath: '/start-order', permKey: 'start_order' },
+    { id: 'schedule', icon: 'calendar_month', label: 'Program', desc: 'Yarışma gün programı', color: '#8B5CF6', subpath: '/schedule', permKey: 'schedule' },
+    { id: 'links', icon: 'qr_code_2', label: 'QR & Linkler', desc: 'Link ve QR oluştur', color: '#059669', subpath: '/links', permKey: 'links' },
+    { id: 'report', icon: 'description', label: 'Yarışma Raporu', desc: 'Resmi müsabaka raporu oluştur', color: '#475569', subpath: '/official-report', permKey: 'official_report' },
+    { id: 'announcements', icon: 'campaign', label: 'Duyurular', desc: 'Yarışma duyuruları yönetimi', color: '#4F46E5', subpath: '/announcements', permKey: 'announcements' },
+    { id: 'certificates', icon: 'card_membership', label: 'Sertifikalar', desc: 'Katılım ve derece belgeleri', color: '#D97706', subpath: '/certificates', permKey: 'certificates' },
 ];
 
 // Yarışma durumu hesapla
@@ -42,6 +43,13 @@ function computeCompStatus(comp) {
 export default function HomePage() {
     const navigate = useNavigate();
     const { login, isAuthenticated, logout, currentUser, isSuperAdmin, hasPermission } = useAuth();
+    const { id: disciplineId, label: disciplineLabel, firebasePath, routePrefix, theme } = useDiscipline();
+
+    // Menu items — route prefix'i discipline'e göre ayarla
+    const MENU_ITEMS = useMemo(() =>
+        MENU_ITEMS_BASE.map(item => ({ ...item, path: `${routePrefix}${item.subpath}` })),
+        [routePrefix]
+    );
 
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginTarget, setLoginTarget] = useState(null);
@@ -63,7 +71,7 @@ export default function HomePage() {
 
         const unsubs = [];
 
-        unsubs.push(onValue(ref(db, 'competitions'), s => setRawComps(s.val() || {})));
+        unsubs.push(onValue(ref(db, firebasePath), s => setRawComps(s.val() || {})));
         unsubs.push(onValue(ref(db, 'applications'), s => setRawApps(s.val() || {})));
         unsubs.push(onValue(ref(db, 'referees'), s => {
             const d = s.val();
@@ -76,7 +84,7 @@ export default function HomePage() {
         }));
 
         return () => unsubs.forEach(u => u());
-    }, [isAuthenticated]);
+    }, [isAuthenticated, firebasePath]);
 
     // Dashboard istatistikleri hesapla
     const stats = useMemo(() => {
@@ -201,12 +209,15 @@ export default function HomePage() {
             {/* Header */}
             <header className="header">
                 <div className="header__left">
-                    <div className="header__logo">
-                        <i className="material-icons-round">sports_gymnastics</i>
+                    <button className="header__back-btn" onClick={() => navigate('/')} title="Branş Seçimine Dön">
+                        <i className="material-icons-round">arrow_back</i>
+                    </button>
+                    <div className="header__logo" style={{ background: theme.primary }}>
+                        <i className="material-icons-round">{disciplineId === 'aerobik' ? 'directions_run' : 'sports_gymnastics'}</i>
                     </div>
                     <div>
-                        <h1 className="header__title">TCF Okul Sporları</h1>
-                        <p className="header__subtitle">Yönetim Paneli</p>
+                        <h1 className="header__title">{disciplineLabel}</h1>
+                        <p className="header__subtitle">Okul Sporları Yönetim Paneli</p>
                     </div>
                 </div>
                 <div className="header__right">
@@ -245,7 +256,7 @@ export default function HomePage() {
                 {isAuthenticated && dashLoaded && (
                     <section className="dash-stats">
                         <div className="dash-stats__grid">
-                            <div className="stat-card stat-card--red" onClick={() => navigate('/artistik/competitions')}>
+                            <div className="stat-card stat-card--red" onClick={() => navigate(`${routePrefix}/competitions`)}>
                                 <div className="stat-card__icon"><i className="material-icons-round">play_circle</i></div>
                                 <div className="stat-card__body">
                                     <span className="stat-card__value">{stats.activeCount}</span>
@@ -254,7 +265,7 @@ export default function HomePage() {
                                 {stats.activeCount > 0 && <span className="stat-card__pulse" />}
                             </div>
 
-                            <div className="stat-card stat-card--blue" onClick={() => navigate('/artistik/competitions')}>
+                            <div className="stat-card stat-card--blue" onClick={() => navigate(`${routePrefix}/competitions`)}>
                                 <div className="stat-card__icon"><i className="material-icons-round">event</i></div>
                                 <div className="stat-card__body">
                                     <span className="stat-card__value">{stats.upcomingCount}</span>
@@ -265,7 +276,7 @@ export default function HomePage() {
                                 )}
                             </div>
 
-                            <div className="stat-card stat-card--green" onClick={() => navigate('/artistik/athletes')}>
+                            <div className="stat-card stat-card--green" onClick={() => navigate(`${routePrefix}/athletes`)}>
                                 <div className="stat-card__icon"><i className="material-icons-round">groups</i></div>
                                 <div className="stat-card__body">
                                     <span className="stat-card__value">{athCount.toLocaleString('tr-TR')}</span>
@@ -273,7 +284,7 @@ export default function HomePage() {
                                 </div>
                             </div>
 
-                            <div className="stat-card stat-card--orange" onClick={() => hasPermission('applications') && navigate('/artistik/applications')}>
+                            <div className="stat-card stat-card--orange" onClick={() => hasPermission('applications') && navigate(`${routePrefix}/applications`)}>
                                 <div className="stat-card__icon"><i className="material-icons-round">pending_actions</i></div>
                                 <div className="stat-card__body">
                                     <span className="stat-card__value">{stats.pendingApps}</span>
@@ -282,7 +293,7 @@ export default function HomePage() {
                                 {stats.pendingApps > 0 && <span className="stat-card__badge">{stats.pendingApps}</span>}
                             </div>
 
-                            <div className="stat-card stat-card--teal" onClick={() => hasPermission('referees') && navigate('/artistik/referees')}>
+                            <div className="stat-card stat-card--teal" onClick={() => hasPermission('referees') && navigate(`${routePrefix}/referees`)}>
                                 <div className="stat-card__icon"><i className="material-icons-round">gavel</i></div>
                                 <div className="stat-card__body">
                                     <span className="stat-card__value">{refCount}</span>
@@ -301,7 +312,7 @@ export default function HomePage() {
 
                         {/* Yaklaşan yarışma banner */}
                         {stats.nextComp && (
-                            <div className="dash-next-comp" onClick={() => navigate('/artistik/competitions')}>
+                            <div className="dash-next-comp" onClick={() => navigate(`${routePrefix}/competitions`)}>
                                 <i className="material-icons-round">notifications_active</i>
                                 <div className="dash-next-comp__info">
                                     <span className="dash-next-comp__title">Sıradaki Yarışma</span>
@@ -345,7 +356,7 @@ export default function HomePage() {
                     {isAuthenticated && isSuperAdmin() && (
                         <button
                             className="menu-card"
-                            onClick={() => navigate('/artistik/role-management')}
+                            onClick={() => navigate(`${routePrefix}/role-management`)}
                             style={{ '--card-color': '#6B7280', animationDelay: `${visibleMenuItems.length * 0.04}s` }}
                         >
                             <div className="menu-card__icon">
@@ -362,7 +373,7 @@ export default function HomePage() {
                     {isAuthenticated && isSuperAdmin() && (
                         <button
                             className="menu-card"
-                            onClick={() => navigate('/artistik/audit-log')}
+                            onClick={() => navigate(`${routePrefix}/audit-log`)}
                             style={{ '--card-color': '#475569', animationDelay: `${(visibleMenuItems.length + 1) * 0.04}s` }}
                         >
                             <div className="menu-card__icon">

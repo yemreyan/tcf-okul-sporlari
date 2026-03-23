@@ -8,6 +8,7 @@ import {
     PolarAngleAxis, PolarRadiusAxis, LineChart, Line
 } from 'recharts';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './AnalyticsPage.css';
 
@@ -44,6 +45,7 @@ const TABS = [
 export default function AnalyticsPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const reportCardRef = useRef(null);
 
     const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export default function AnalyticsPage() {
     const [selectedReportComp, setSelectedReportComp] = useState('');
 
     useEffect(() => {
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const refsRef = ref(db, 'referees');
         const unsubComps = onValue(compsRef, (snap) => setRawCompetitions(snap.val() || {}));
         const unsubRefs = onValue(refsRef, (snap) => { setRefereesData(snap.val() || {}); setLoading(false); });
@@ -517,7 +519,7 @@ export default function AnalyticsPage() {
         <div className="analytics-page premium-layout">
             <header className="page-header--bento premium-header">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
@@ -538,7 +540,7 @@ export default function AnalyticsPage() {
 
             {/* Tab Navigation */}
             <nav className="an-tabs">
-                {TABS.map(tab => (
+                {TABS.filter(tab => hasApparatus || tab.id !== 'apparatus').map(tab => (
                     <button
                         key={tab.id}
                         className={`an-tab ${activeTab === tab.id ? 'an-tab--active' : ''}`}
@@ -677,6 +679,7 @@ export default function AnalyticsPage() {
                                         </div>
                                     </div>
 
+                                    {hasApparatus && (
                                     <div className="chart-panel glass-panel">
                                         <div className="chart-header">
                                             <h3 className="chart-title"><i className="material-icons-round">fitness_center</i> Alet Bazlı Ortalamalar</h3>
@@ -698,12 +701,13 @@ export default function AnalyticsPage() {
                                             )}
                                         </div>
                                     </div>
+                                    )}
                                 </section>
                             </>
                         )}
 
                         {/* ════════════ APPARATUS TAB ════════════ */}
-                        {activeTab === 'apparatus' && (
+                        {hasApparatus && activeTab === 'apparatus' && (
                             <>
                                 {/* Apparatus E Chart */}
                                 <section className="chart-panel glass-panel an-full-width">

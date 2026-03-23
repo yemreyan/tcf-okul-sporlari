@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import { useAuth } from '../lib/AuthContext';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults.js';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './CriteriaPage.css';
 
 const APPARATUS_ICONS = {
@@ -53,6 +54,7 @@ const EMPTY_HAREKET = () => ({
 export default function CriteriaPage() {
     const navigate = useNavigate();
     const { hasPermission } = useAuth();
+    const { routePrefix } = useDiscipline();
     const canEdit = hasPermission('criteria', 'duzenle');
 
     // Data
@@ -333,7 +335,7 @@ export default function CriteriaPage() {
             {/* Header */}
             <header className="page-header page-header--rulebook no-print">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

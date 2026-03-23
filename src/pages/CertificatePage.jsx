@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './CertificatePage.css';
 
 const getCategoryLabel = (catKey) =>
@@ -37,6 +38,7 @@ export default function CertificatePage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
     const canvasRef = useRef(null);
 
     const canGenerate = hasPermission('certificates', 'olustur');
@@ -52,7 +54,7 @@ export default function CertificatePage() {
     const [fedTemsilcisi, setFedTemsilcisi] = useState('');
 
     useEffect(() => {
-        const unsub = onValue(ref(db, 'competitions'), s => {
+        const unsub = onValue(ref(db, firebasePath), s => {
             setCompetitions(s.val() || {});
             setLoading(false);
         });
@@ -470,7 +472,7 @@ export default function CertificatePage() {
             {/* Header */}
             <header className="cert-header">
                 <div className="cert-header__left">
-                    <button className="cert-back" onClick={() => navigate('/artistik')}>
+                    <button className="cert-back" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

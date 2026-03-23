@@ -5,11 +5,13 @@ import { db } from '../lib/firebase';
 // jsPDF ve autoTable — sadece PDF export sırasında dynamic import ile yüklenir (code splitting)
 import { useAuth } from '../lib/AuthContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './StartOrderPage.css';
 
 export default function StartOrderPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission, isSuperAdmin } = useAuth();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
@@ -53,13 +55,13 @@ export default function StartOrderPage() {
 
     // Initial load
     useEffect(() => {
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
             setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // Load data when selections change
     useEffect(() => {
@@ -75,8 +77,8 @@ export default function StartOrderPage() {
             try {
                 // Her iki veriyi de aynı anda oku
                 const [athletesSnap, orderSnap] = await Promise.all([
-                    get(ref(db, `competitions/${selectedCompId}/sporcular/${filterCategory}`)),
-                    get(ref(db, `competitions/${selectedCompId}/siralama/${filterCategory}`))
+                    get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${filterCategory}`))
                 ]);
 
                 const data = athletesSnap.val();
@@ -333,7 +335,7 @@ export default function StartOrderPage() {
                         yarismaTuru: ath.yarismaTuru || 'ferdi'
                     };
 
-                    const athPath = `competitions/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
+                    const athPath = `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
                     updates[`${athPath}/sirasi`] = grupIciSirasi;
                     updates[`${athPath}/cikisSirasi`] = globalOrder;
                     updates[`${athPath}/rotasyonGrubu`] = rotIndex;
@@ -343,13 +345,13 @@ export default function StartOrderPage() {
         });
 
         unassignedToSave.forEach((ath) => {
-            const athPath = `competitions/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
+            const athPath = `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}/${ath.id}`;
             updates[`${athPath}/sirasi`] = 999;
             updates[`${athPath}/cikisSirasi`] = null;
             updates[`${athPath}/rotasyonGrubu`] = null;
         });
 
-        updates[`competitions/${selectedCompId}/siralama/${filterCategory}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
+        updates[`${firebasePath}/${selectedCompId}/siralama/${filterCategory}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
 
         try {
             await update(ref(db), updates);
@@ -385,8 +387,8 @@ export default function StartOrderPage() {
 
                 for (const category of categories) {
                     const [athletesSnap, orderSnap] = await Promise.all([
-                        get(ref(db, `competitions/${compId}/sporcular/${category}`)),
-                        get(ref(db, `competitions/${compId}/siralama/${category}`))
+                        get(ref(db, `${firebasePath}/${compId}/sporcular/${category}`)),
+                        get(ref(db, `${firebasePath}/${compId}/siralama/${category}`))
                     ]);
 
                     const data = athletesSnap.val();
@@ -503,7 +505,7 @@ export default function StartOrderPage() {
                                     tckn: ath.tckn || '', okul: ath.okul || '',
                                     yarismaTuru: ath.yarismaTuru || 'ferdi'
                                 };
-                                const p = `competitions/${compId}/sporcular/${category}/${ath.id}`;
+                                const p = `${firebasePath}/${compId}/sporcular/${category}/${ath.id}`;
                                 updates[`${p}/sirasi`] = grupIci;
                                 updates[`${p}/cikisSirasi`] = globalOrder;
                                 updates[`${p}/rotasyonGrubu`] = rotIndex;
@@ -512,7 +514,7 @@ export default function StartOrderPage() {
                         }
                     });
 
-                    updates[`competitions/${compId}/siralama/${category}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
+                    updates[`${firebasePath}/${compId}/siralama/${category}`] = Object.keys(siralamaData).length > 0 ? siralamaData : null;
                     await update(ref(db), updates);
 
                     totalAssigned += unassignedAthletes.length;
@@ -607,7 +609,7 @@ export default function StartOrderPage() {
             for (const category of allCategories) {
                 // Sporcuları çek
                 const athletesSnap = await get(
-                    ref(db, `competitions/${selectedCompId}/sporcular/${category}`)
+                    ref(db, `${firebasePath}/${selectedCompId}/sporcular/${category}`)
                 );
                 const athletesData = athletesSnap.val() || {};
                 const athletes = Object.entries(athletesData).map(([id, data]) => ({
@@ -617,7 +619,7 @@ export default function StartOrderPage() {
 
                 // Sıralama verisini çek
                 const siraSnap = await get(
-                    ref(db, `competitions/${selectedCompId}/siralama/${category}`)
+                    ref(db, `${firebasePath}/${selectedCompId}/siralama/${category}`)
                 );
                 const siraData = siraSnap.val();
 
@@ -723,7 +725,7 @@ export default function StartOrderPage() {
         <div className="order-page">
             <header className="page-header--bento">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { ref, onValue, set, get, remove } from 'firebase/database';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import turkeyData from '../data/turkey_data.json';
 import './OfficialReportPage.css';
@@ -24,6 +25,7 @@ const EMPTY_REPORT = {
 const OfficialReportPage = () => {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
+    const { firebasePath, routePrefix } = useDiscipline();
 
     // Data
     const [competitions, setCompetitions] = useState([]);
@@ -77,7 +79,7 @@ const OfficialReportPage = () => {
 
     // Fetch competitions
     useEffect(() => {
-        const compRef = ref(db, 'competitions');
+        const compRef = ref(db, firebasePath);
         const unsubscribe = onValue(compRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -212,7 +214,7 @@ const OfficialReportPage = () => {
 
         // Load competition data if we have a valid compId
         if (report._compId) {
-            get(ref(db, `competitions/${report._compId}`)).then(snap => {
+            get(ref(db, `${firebasePath}/${report._compId}`)).then(snap => {
                 if (snap.exists()) setCompetitionData(snap.val());
             }).catch(() => {});
         } else {
@@ -231,7 +233,7 @@ const OfficialReportPage = () => {
         setCompetitionData(null);
 
         try {
-            const compSnap = await get(ref(db, `competitions/${compId}`));
+            const compSnap = await get(ref(db, `${firebasePath}/${compId}`));
             if (compSnap.exists()) setCompetitionData(compSnap.val());
 
             const comp = competitions.find(c => c.id === compId);
@@ -323,7 +325,7 @@ const OfficialReportPage = () => {
                 <div className="report-header-card classic-card no-print">
                     <div className="report-header-top">
                         <div className="report-header-left">
-                            <button type="button" className="report-back-btn" onClick={() => navigate('/artistik')}>
+                            <button type="button" className="report-back-btn" onClick={() => navigate(routePrefix)}>
                                 <i className="material-icons-round">arrow_back</i>
                             </button>
                             <div className="report-icon-box">

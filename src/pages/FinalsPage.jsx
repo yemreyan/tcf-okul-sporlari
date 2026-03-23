@@ -5,6 +5,7 @@ import { db } from "../lib/firebase";
 // XLSX — sadece Excel export sırasında dynamic import ile yüklenir
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import "./FinalsPage.css";
 
@@ -25,6 +26,7 @@ export default function FinalsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const [competitions, setCompetitions] = useState([]);
     const [selectedCompId, setSelectedCompId] = useState("");
     const [competitionData, setCompetitionData] = useState(null);
@@ -43,7 +45,7 @@ export default function FinalsPage() {
 
     // 1. Fetch Competitions List
     useEffect(() => {
-        const compsRef = ref(db, "competitions");
+        const compsRef = ref(db, firebasePath);
         const unsubscribeComps = onValue(compsRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -74,7 +76,7 @@ export default function FinalsPage() {
             return;
         }
 
-        const compRef = ref(db, `competitions/${selectedCompId}`);
+        const compRef = ref(db, `${firebasePath}/${selectedCompId}`);
         const unsubscribeComp = onValue(compRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -102,8 +104,8 @@ export default function FinalsPage() {
             return;
         }
 
-        const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${selectedCategoryId}`);
-        const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${selectedCategoryId}`);
+        const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategoryId}`);
+        const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategoryId}`);
 
         const unsubAthletes = onValue(athletesRef, snap => setCategoryAthletes(snap.val() || {}));
         const unsubScores = onValue(scoresRef, snap => setCategoryScores(snap.val() || {}));
@@ -305,7 +307,7 @@ export default function FinalsPage() {
         }
 
         try {
-            const deductionRef = ref(db, `competitions/${selectedCompId}/teamDeductions`);
+            const deductionRef = ref(db, `${firebasePath}/${selectedCompId}/teamDeductions`);
             const newDeductionRef = push(deductionRef);
             await set(newDeductionRef, {
                 teamName: deductionForm.team,
@@ -325,7 +327,7 @@ export default function FinalsPage() {
         const confirmed = await confirm("Bu cezayı silmek istediğinize emin misiniz?", { title: "Silme Onayı", type: "danger" });
         if (confirmed) {
             try {
-                const refPath = `competitions/${selectedCompId}/teamDeductions/${deductionId}`;
+                const refPath = `${firebasePath}/${selectedCompId}/teamDeductions/${deductionId}`;
                 await remove(ref(db, refPath));
             } catch (err) {
                 console.error("Ceza silinirken hata:", err);
@@ -335,8 +337,8 @@ export default function FinalsPage() {
 
     // Export Data Processor Helpers
     const fetchAllExportData = async () => {
-        const compAthletesRef = ref(db, `competitions/${selectedCompId}/sporcular`);
-        const compScoresRef = ref(db, `competitions/${selectedCompId}/puanlar`);
+        const compAthletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular`);
+        const compScoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar`);
         const [athSnap, scoSnap] = await Promise.all([get(compAthletesRef), get(compScoresRef)]);
         return { compAthletes: athSnap.val() || {}, compScores: scoSnap.val() || {} };
     };
@@ -667,7 +669,7 @@ export default function FinalsPage() {
                 {/* Header Section */}
                 <div className="classic-card finals-header">
                     <div className="finals-header-left">
-                        <button type="button" className="back-btn" onClick={() => navigate('/artistik')}>
+                        <button type="button" className="back-btn" onClick={() => navigate(routePrefix)}>
                             <i className="material-icons-round">arrow_back</i>
                         </button>
                         <div className="finals-icon">
@@ -733,7 +735,7 @@ export default function FinalsPage() {
                         <div className="classic-card finals-actions">
                             <div className="finals-tabs">
                                 <button className={`tab-btn ${activeTab === 'all-around' ? 'active' : ''}`} onClick={() => setActiveTab('all-around')}>Bireysel Genel Tasnif</button>
-                                <button className={`tab-btn ${activeTab === 'apparatus' ? 'active' : ''}`} onClick={() => setActiveTab('apparatus')}>Alet Finalleri</button>
+                                {hasApparatus && <button className={`tab-btn ${activeTab === 'apparatus' ? 'active' : ''}`} onClick={() => setActiveTab('apparatus')}>Alet Finalleri</button>}
                                 <button className={`tab-btn ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}>Takım Genel Tasnif</button>
                             </div>
                             <div className="finals-export-buttons">
@@ -827,7 +829,7 @@ export default function FinalsPage() {
                         )}
 
                         {/* TAB CONTENT: APPARATUS FINALS */}
-                        {activeTab === 'apparatus' && (
+                        {hasApparatus && activeTab === 'apparatus' && (
                             <div className="apparatus-grid print-section">
                                 {apparatusKeys.map(key => {
                                     const items = fullResults

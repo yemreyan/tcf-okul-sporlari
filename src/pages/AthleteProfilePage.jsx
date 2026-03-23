@@ -4,6 +4,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './AthleteProfilePage.css';
 
 const ALET_LABELS = {
@@ -25,12 +26,13 @@ export default function AthleteProfilePage() {
     const navigate = useNavigate();
     const { compId, catId, athId } = useParams();
     const { currentUser } = useAuth();
+    const { firebasePath, routePrefix } = useDiscipline();
 
     const [competitions, setCompetitions] = useState({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsub = onValue(ref(db, 'competitions'), s => {
+        const unsub = onValue(ref(db, firebasePath), s => {
             setCompetitions(s.val() || {});
             setLoading(false);
         });
@@ -147,7 +149,7 @@ export default function AthleteProfilePage() {
         return (
             <div className="ath-profile">
                 <header className="ath-header">
-                    <button className="ath-back" onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/artistik'); }}>
+                    <button className="ath-back" onClick={() => { if (window.history.length > 1) navigate(-1); else navigate(routePrefix); }}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <h1>Sporcu Bulunamadı</h1>
@@ -155,7 +157,7 @@ export default function AthleteProfilePage() {
                 <div className="ath-profile__empty">
                     <i className="material-icons-round">person_off</i>
                     <p>Bu sporcu kaydı bulunamadı veya erişim yetkiniz yok.</p>
-                    <button className="ath-btn ath-btn--back" onClick={() => navigate('/artistik/athletes')}>
+                    <button className="ath-btn ath-btn--back" onClick={() => navigate(`${routePrefix}/athletes`)}>
                         Sporculara Dön
                     </button>
                 </div>
@@ -168,7 +170,7 @@ export default function AthleteProfilePage() {
             {/* Header */}
             <header className="ath-header">
                 <div className="ath-header__left">
-                    <button className="ath-back" onClick={() => { if (window.history.length > 1) navigate(-1); else navigate('/artistik'); }}>
+                    <button className="ath-back" onClick={() => { if (window.history.length > 1) navigate(-1); else navigate(routePrefix); }}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

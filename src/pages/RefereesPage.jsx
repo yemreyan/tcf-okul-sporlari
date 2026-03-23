@@ -4,6 +4,7 @@ import { ref, onValue, remove, push, set, update, get } from 'firebase/database'
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import './RefereesPage.css';
 
@@ -60,6 +61,7 @@ export default function RefereesPage() {
     const navigate = useNavigate();
     const { hasPermission, hashPassword } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
 
     const [referees, setReferees] = useState([]);
     const [competitionsList, setCompetitionsList] = useState([]);
@@ -144,7 +146,7 @@ export default function RefereesPage() {
         });
 
         // Fetch Competitions for the dropdown
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribeComps = onValue(compsRef, (snapshot) => {
             const data = snapshot.val();
             const list = [];
@@ -451,7 +453,7 @@ export default function RefereesPage() {
             {/* Header */}
             <header className="page-header--bento premium-header">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

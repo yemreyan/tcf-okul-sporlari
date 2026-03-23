@@ -9,6 +9,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
 import { logAction } from '../lib/auditLogger';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './CompetitionsPage.css';
 
 /* ─── HAKEM PANEL SAYISI SEÇENEKLERI ─── */
@@ -63,6 +64,7 @@ export default function CompetitionsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -93,7 +95,7 @@ export default function CompetitionsPage() {
     const cities = Object.keys(turkeyData).sort();
 
     useEffect(() => {
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -136,7 +138,7 @@ export default function CompetitionsPage() {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // Hakem listesini yükle (hakem yönetimi için)
     useEffect(() => {
@@ -173,7 +175,7 @@ export default function CompetitionsPage() {
         const confirmed = await confirm(`"${name}" isimli yarışmayı silmek istediğinize emin misiniz? Tüm başvuru ve sporcu verileri kalıcı olarak silinecektir!`, { title: 'Silme Onayı', type: 'danger' });
         if (confirmed) {
             try {
-                await remove(ref(db, `competitions/${id}`));
+                await remove(ref(db, `${firebasePath}/${id}`));
             } catch (err) {
                 if (import.meta.env.DEV) console.error("Delete failed", err);
                 toast("Silme işlemi başarısız oldu.", "error");
@@ -246,10 +248,10 @@ export default function CompetitionsPage() {
 
         try {
             if (editingComp) {
-                await update(ref(db, `competitions/${editingComp.id}`), { ...saveData, kategoriler: generateKategoriler(editingComp.kategoriler || {}) });
+                await update(ref(db, `${firebasePath}/${editingComp.id}`), { ...saveData, kategoriler: generateKategoriler(editingComp.kategoriler || {}) });
                 logAction('competition_update', `Yarışma güncellendi: ${saveData.isim}`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: editingComp.id });
             } else {
-                const newRef = push(ref(db, 'competitions'));
+                const newRef = push(ref(db, firebasePath));
                 await set(newRef, { ...saveData, kategoriler: generateKategoriler({}), sporcular: {}, epanelToken: generateEPanelToken() });
                 logAction('competition_create', `Yeni yarışma: ${saveData.isim} (${saveData.il})`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: newRef.key });
             }
@@ -340,7 +342,7 @@ export default function CompetitionsPage() {
         if (!hakemModalComp) return;
         setHakemSaving(true);
         try {
-            await update(ref(db, `competitions/${hakemModalComp.id}`), {
+            await update(ref(db, `${firebasePath}/${hakemModalComp.id}`), {
                 hakemSayisi: hakemSayisi,
                 hakemler: hakemAtama
             });
@@ -515,7 +517,7 @@ export default function CompetitionsPage() {
         <div className="competitions-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

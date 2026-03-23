@@ -6,12 +6,14 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './AthletesPage.css';
 
 export default function AthletesPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
 
@@ -46,13 +48,13 @@ export default function AthletesPage() {
 
     // Sadece yarışma listesini yükle
     useEffect(() => {
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
             setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // Seçilen yarışmaya göre sporcuları yükle
     useEffect(() => {
@@ -62,7 +64,7 @@ export default function AthletesPage() {
         }
 
         setLoading(true);
-        const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular`);
+        const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular`);
 
         const unsubscribe = onValue(athletesRef, (snapshot) => {
             const data = snapshot.val();
@@ -102,7 +104,7 @@ export default function AthletesPage() {
         const confirmed = await confirm(`${name} isimli sporcuyu silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
         if (confirmed) {
             try {
-                const athRef = ref(db, `competitions/${selectedCompId}/sporcular/${catId}/${athId}`);
+                const athRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`);
                 await remove(athRef);
             } catch (err) {
                 console.error("Delete failed", err);
@@ -151,18 +153,18 @@ export default function AthletesPage() {
             if (editingAthlete) {
                 // Kategori değiştiyse eski yerden sil, yeni yere ekle
                 if (editingAthlete.categoryId !== formData.categoryId) {
-                    await remove(ref(db, `competitions/${selectedCompId}/sporcular/${editingAthlete.categoryId}/${editingAthlete.id}`));
-                    await set(ref(db, `competitions/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), {
+                    await remove(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${editingAthlete.categoryId}/${editingAthlete.id}`));
+                    await set(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), {
                         ...formData,
                         sirasi: editingAthlete.sirasi || 999
                     });
                 } else {
                     // Sadece güncelle
-                    await update(ref(db, `competitions/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), formData);
+                    await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), formData);
                 }
             } else {
                 // Yeni Ekle
-                const newRef = push(ref(db, `competitions/${selectedCompId}/sporcular/${formData.categoryId}`));
+                const newRef = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}`));
                 await set(newRef, {
                     ...formData,
                     sirasi: 999
@@ -216,8 +218,8 @@ export default function AthletesPage() {
                     const yarismaTuru = (row['Tur'] || row['TÜR'] || row['Tür'] || 'ferdi').toLowerCase();
 
                     if (ad && soyad && categoryId) {
-                        const newKey = push(ref(db, `competitions/${selectedCompId}/sporcular/${categoryId}`)).key;
-                        updates[`competitions/${selectedCompId}/sporcular/${categoryId}/${newKey}`] = {
+                        const newKey = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${categoryId}`)).key;
+                        updates[`${firebasePath}/${selectedCompId}/sporcular/${categoryId}/${newKey}`] = {
                             ad, soyad, tckn, lisans, dob, okul, il, yarismaTuru,
                             sirasi: 999,
                             appId: "excel_import"
@@ -319,7 +321,7 @@ export default function AthletesPage() {
         <div className="athletes-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
@@ -496,7 +498,7 @@ export default function AthletesPage() {
                                             </div>
                                             <button
                                                 className="athlete-profile-link"
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/artistik/athlete/${selectedCompId}/${ath.categoryId}/${ath.id}`); }}
+                                                onClick={(e) => { e.stopPropagation(); navigate(`${routePrefix}/athlete/${selectedCompId}/${ath.categoryId}/${ath.id}`); }}
                                             >
                                                 <i className="material-icons-round">person</i>
                                                 Profil & Puanlar
@@ -627,7 +629,7 @@ export default function AthletesPage() {
                                             <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Katıldığı Yarışmalar ({res.competitions.length})</h4>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                 {res.competitions.map((c, j) => (
-                                                    <div key={j} onClick={() => navigate(`/artistik/athlete/${c.compId}/${c.catId}/${c.id}`)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.2rem' }} className="hover-lift">
+                                                    <div key={j} onClick={() => navigate(`${routePrefix}/athlete/${c.compId}/${c.catId}/${c.id}`)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.2rem' }} className="hover-lift">
                                                         <strong style={{ color: 'var(--primary)' }}>{c.compName}</strong>
                                                         <span style={{ color: 'var(--text-secondary)' }}>{c.catId} • {c.okul || 'Okul Yok'}</span>
                                                     </div>

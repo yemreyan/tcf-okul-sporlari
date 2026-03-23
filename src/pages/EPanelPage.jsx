@@ -4,10 +4,12 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './EPanelPage.css';
 
 export default function EPanelPage() {
     const { toast } = useNotification();
+    const { firebasePath } = useDiscipline();
     const [searchParams] = useSearchParams();
     const compId = searchParams.get('competitionId');
     const catId = searchParams.get('catId');
@@ -37,7 +39,7 @@ export default function EPanelPage() {
             return;
         }
 
-        const tokenRef = ref(db, `competitions/${compId}/epanelToken`);
+        const tokenRef = ref(db, `${firebasePath}/${compId}/epanelToken`);
         get(tokenRef).then((snap) => {
             const dbToken = snap.val();
             if (dbToken && validateEPanelToken(urlToken, dbToken)) {
@@ -56,7 +58,7 @@ export default function EPanelPage() {
         if (!compId || !catId || !aletId || !panelId || !tokenVerified) return;
 
         // Fetch Comp Name
-        const compRef = ref(db, `competitions/${compId}`);
+        const compRef = ref(db, `${firebasePath}/${compId}`);
         const unsubComp = onValue(compRef, (snap) => {
             const data = snap.val();
             if (data) setCompName(data.isim || 'Yarışma');
@@ -72,7 +74,7 @@ export default function EPanelPage() {
         });
 
         // Listen for active athlete
-        const activeRef = ref(db, `competitions/${compId}/aktifSporcu/${catId}/${aletId}`);
+        const activeRef = ref(db, `${firebasePath}/${compId}/aktifSporcu/${catId}/${aletId}`);
         const unsubActive = onValue(activeRef, (snap) => {
             const newId = snap.val();
             if (newId) {
@@ -95,7 +97,7 @@ export default function EPanelPage() {
 
     const fetchAthleteData = async (id) => {
         // Try local sporcular first, then globals fallback
-        const localRef = ref(db, `competitions/${compId}/sporcular/${catId}/${id}`);
+        const localRef = ref(db, `${firebasePath}/${compId}/sporcular/${catId}/${id}`);
         const snap = await get(localRef);
         let ath = snap.val();
 
@@ -116,7 +118,7 @@ export default function EPanelPage() {
     useEffect(() => {
         if (!compId || !catId || !aletId || !activeAthleteId || !panelId || !tokenVerified) return;
 
-        const scoreRef = ref(db, `competitions/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`);
+        const scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`);
         const unsubScore = onValue(scoreRef, (snap) => {
             const scores = snap.val() || {};
             const myScore = scores[panelId.toLowerCase()]; // e.g. e1
@@ -147,7 +149,7 @@ export default function EPanelPage() {
             return;
         }
 
-        const path = `competitions/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`;
+        const path = `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`;
         const field = panelId.toLowerCase();
 
         try {

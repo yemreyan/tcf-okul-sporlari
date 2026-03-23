@@ -4,6 +4,7 @@ import { ref, onValue, get, update } from 'firebase/database';
 import { db } from '../lib/firebase';
 import QRCode from 'react-qr-code';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
 import './LinksPage.css';
@@ -11,6 +12,7 @@ import './LinksPage.css';
 export default function LinksPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState([]);
     const [selectedCompId, setSelectedCompId] = useState('');
     const [competitionData, setCompetitionData] = useState(null);
@@ -25,7 +27,7 @@ export default function LinksPage() {
         const parsedUrl = new URL(window.location.href);
         setBaseUrl(`${parsedUrl.protocol}//${parsedUrl.host}`);
 
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -54,14 +56,14 @@ export default function LinksPage() {
     // E-Panel token yönetimi: yoksa oluştur, varsa yükle
     useEffect(() => {
         if (!selectedCompId) { setEpanelToken(''); return; }
-        const tokenRef = ref(db, `competitions/${selectedCompId}/epanelToken`);
+        const tokenRef = ref(db, `${firebasePath}/${selectedCompId}/epanelToken`);
         get(tokenRef).then((snap) => {
             const existing = snap.val();
             if (existing) {
                 setEpanelToken(existing);
             } else {
                 const newToken = generateEPanelToken();
-                update(ref(db, `competitions/${selectedCompId}`), { epanelToken: newToken });
+                update(ref(db, `${firebasePath}/${selectedCompId}`), { epanelToken: newToken });
                 setEpanelToken(newToken);
             }
         });
@@ -69,7 +71,7 @@ export default function LinksPage() {
 
     useEffect(() => {
         if (!selectedCompId) { setCompetitionData(null); return; }
-        const compRef = ref(db, `competitions/${selectedCompId}`);
+        const compRef = ref(db, `${firebasePath}/${selectedCompId}`);
         const unsubscribe = onValue(compRef, (snapshot) => {
             const data = snapshot.val();
             setCompetitionData(data);
@@ -107,7 +109,7 @@ export default function LinksPage() {
     }));
 
     const panelIds = ['e1', 'e2', 'e3', 'e4'];
-    const scoreboardUrl = `${baseUrl}/artistik/scoreboard`;
+    const scoreboardUrl = `${baseUrl}${routePrefix}/scoreboard`;
 
     const filteredCategories = activeCategory === 'all'
         ? categoryList
@@ -115,7 +117,7 @@ export default function LinksPage() {
 
     // D Panel URL'i
     const getDPanelUrl = (catId, aletId) => {
-        return `${baseUrl}/artistik/scoring?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}`;
+        return `${baseUrl}${routePrefix}/scoring?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}`;
     };
 
     // Tüm linkleri kopyala
@@ -137,7 +139,7 @@ export default function LinksPage() {
                 allLinks += `--- ${cat.name} ---\n`;
                 cat.aletler.forEach(alet => {
                     panelIds.forEach(pid => {
-                        const url = `${baseUrl}/artistik/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                        const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
                         allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${url}\n`;
                     });
                 });
@@ -154,7 +156,7 @@ export default function LinksPage() {
             <div className="links-page">
                 <div className="page-header">
                     <div className="page-header__left">
-                        <button className="back-btn" onClick={() => navigate('/artistik')}>
+                        <button className="back-btn" onClick={() => navigate(routePrefix)}>
                             <i className="material-icons-round">arrow_back</i>
                         </button>
                         <div>
@@ -307,7 +309,7 @@ export default function LinksPage() {
                                         </div>
                                         <div className="panels-grid">
                                             {panelIds.map(pid => {
-                                                const url = `${baseUrl}/artistik/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                                const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
                                                 const cardId = `${cat.id}-${alet.id}-${pid}`;
                                                 return (
                                                     <div className="panel-card printable-card" key={pid}>
@@ -351,7 +353,7 @@ export default function LinksPage() {
             {/* Sticky Header */}
             <div className="page-header no-print">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/artistik')}>
+                    <button className="back-btn" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

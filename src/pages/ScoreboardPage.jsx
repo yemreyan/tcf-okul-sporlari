@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './ScoreboardPage.css';
 
@@ -47,6 +48,7 @@ const APPARATUS_IMAGES = {
 export default function ScoreboardPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCategories, setSelectedCategories] = useState(new Set());
@@ -94,7 +96,7 @@ export default function ScoreboardPage() {
 
     // Initial Data Fetch
     useEffect(() => {
-        const compRef = ref(db, 'competitions');
+        const compRef = ref(db, firebasePath);
         const unsubscribe = onValue(compRef, (snapshot) => {
             const data = snapshot.val();
             if (data) setCompetitions(filterCompetitionsByUser(data, currentUser));
@@ -156,7 +158,7 @@ export default function ScoreboardPage() {
         // Set up listeners for each category
         cats.forEach(catId => {
             // Athletes
-            const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${catId}`);
+            const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`);
             const unsubAthletes = onValue(athletesRef, (snap) => {
                 const data = snap.val();
                 setCategoryData(prev => ({
@@ -170,7 +172,7 @@ export default function ScoreboardPage() {
             liveUnsubsRef.current.push(unsubAthletes);
 
             // Scores
-            const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${catId}`);
+            const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${catId}`);
             const unsubScores = onValue(scoresRef, (snap) => {
                 setCategoryData(prev => ({
                     ...prev,
@@ -184,7 +186,7 @@ export default function ScoreboardPage() {
         });
 
         // Flash trigger (shared across categories)
-        const flashRef = ref(db, `competitions/${selectedCompId}/flashTrigger`);
+        const flashRef = ref(db, `${firebasePath}/${selectedCompId}/flashTrigger`);
         let isInitialLoad = true;
         const unsubFlash = onValue(flashRef, (snap) => {
             if (isInitialLoad) { isInitialLoad = false; return; }
@@ -440,7 +442,7 @@ export default function ScoreboardPage() {
 
         return (
             <div className="sb-config page-container">
-                <button type="button" className="back-btn" onClick={() => navigate('/artistik')}>
+                <button type="button" className="back-btn" onClick={() => navigate(routePrefix)}>
                     <i className="material-icons-round">arrow_back</i>
                 </button>
 

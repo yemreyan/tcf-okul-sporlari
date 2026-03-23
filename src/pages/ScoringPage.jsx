@@ -7,12 +7,14 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
+import { useDiscipline } from '../lib/DisciplineContext';
 import './ScoringPage.css';
 
 export default function ScoringPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast } = useNotification();
+    const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
 
     // Selections
@@ -62,7 +64,7 @@ export default function ScoringPage() {
 
     // 1. Load Competitions
     useEffect(() => {
-        const compsRef = ref(db, 'competitions');
+        const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
             setCompetitions(filterCompetitionsByUser(data, currentUser));
@@ -110,7 +112,7 @@ export default function ScoringPage() {
 
         let fallbackUnsub = null;
 
-        const orderRef = ref(db, `competitions/${selectedCompId}/siralama/${selectedCategory}`);
+        const orderRef = ref(db, `${firebasePath}/${selectedCompId}/siralama/${selectedCategory}`);
         const unsubOrder = onValue(orderRef, (orderSnap) => {
             const orderData = orderSnap.val();
             const formattedRotations = [];
@@ -132,7 +134,7 @@ export default function ScoringPage() {
                 }
                 setAthletesByRotation(formattedRotations);
             } else {
-                const fallbackRef = ref(db, `competitions/${selectedCompId}/sporcular/${selectedCategory}`);
+                const fallbackRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategory}`);
                 fallbackUnsub = onValue(fallbackRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
@@ -144,7 +146,7 @@ export default function ScoringPage() {
             }
         });
 
-        const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}`);
+        const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}`);
         const unsubScores = onValue(scoresRef, (scoreSnap) => {
             setExistingScores(scoreSnap.val() || {});
         });
@@ -337,7 +339,7 @@ export default function ScoringPage() {
         setIsAthleteCalled(false);
 
         if (selectedAthlete && isAthleteCalled) {
-            update(ref(db, `competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`), null);
+            update(ref(db, `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`), null);
         }
 
         const prevScore = existingScores[athlete.id];
@@ -387,7 +389,7 @@ export default function ScoringPage() {
         setIsAthleteCalled(true);
         try {
             await update(ref(db), {
-                [`competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: selectedAthlete.id
+                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: selectedAthlete.id
             });
         } catch (e) { console.error("Could not set active athlete", e); }
     };
@@ -438,9 +440,9 @@ export default function ScoringPage() {
         setConfirmModal(null);
         setIsSubmitting(true);
         try {
-            const scorePath = `competitions/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${savedAthlete.id}`;
-            const activePath = `competitions/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`;
-            const flashPath = `competitions/${selectedCompId}/flashTrigger`;
+            const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${savedAthlete.id}`;
+            const activePath = `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`;
+            const flashPath = `${firebasePath}/${selectedCompId}/flashTrigger`;
             const ts = new Date().toISOString();
 
             // Ayrı modda E-panel verilerini kaydet, birleşik modda kaydetme
@@ -529,7 +531,7 @@ export default function ScoringPage() {
         <div className="scoring-page-light">
             <header className="scoring-header-light">
                 <div className="sh-left">
-                    <button className="btn-back-light" onClick={() => navigate('/artistik')}>
+                    <button className="btn-back-light" onClick={() => navigate(routePrefix)}>
                         <i className="material-icons-round">home</i>
                     </button>
                     <div>
