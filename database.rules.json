@@ -4,10 +4,10 @@
     ".write": true,
 
     "competitions": {
-      ".indexOn": ["tarih", "yil", "baslangicTarihi", "il"],
+      ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
 
       "$competitionId": {
-        ".indexOn": ["tarih"],
+        ".indexOn": ["tarih", "isim", "il"],
 
         "kategoriler": {
           "$categoryId": {
@@ -17,8 +17,10 @@
 
         "sporcular": {
           "$categoryId": {
+            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
+
             "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul"]
+              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
             }
           }
         },
@@ -27,75 +29,128 @@
           "$categoryId": {
             "$apparatusId": {
               "$athleteId": {
-                ".indexOn": ["toplam", "durum"]
+                ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
+              }
+            }
+          }
+        },
+
+        "siralama": {
+          "$categoryId": {
+            "$rotationId": {
+              "$athleteId": {
+                ".indexOn": ["sirasi"]
               }
             }
           }
         },
 
         "hakemler": {
-          ".indexOn": ["name"]
+          ".indexOn": ["name"],
+          "$categoryId": {
+            "$apparatusId": {}
+          }
         },
 
         "teamDeductions": {
-          ".indexOn": ["teamName"]
+          ".indexOn": ["teamName", "team"]
         },
 
-        "katilimcilar": {},
-        "aktifSporcu": {},
+        "program": {
+          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
+          "$sessionId": {
+            ".indexOn": ["baslangic", "kategori", "alet", "durum"]
+          }
+        },
+
+        "aktifSporcu": {
+          "$categoryId": {}
+        },
+
         "flashTrigger": {},
-        "program": {},
-        "siralama": {},
-        "onayli_okullar": {}
+        "katilimcilar": {},
+        "onayli_okullar": {},
+        "epanelToken": {},
+        "cimnastikVerileri": {}
       }
     },
 
     "globalSporcular": {
-      ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet"],
+      ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet", "kategori"],
 
       "$athleteKey": {
-        ".indexOn": ["lisansNo"]
+        ".indexOn": ["lisansNo", "tckn", "soyadAd"]
       }
     },
 
     "applications": {
-      ".indexOn": ["competitionId", "status", "createdAt", "olusturmaTarihi"],
+      ".indexOn": ["competitionId", "status", "durum", "createdAt", "olusturmaTarihi", "okul", "il"],
 
       "$applicationId": {
-        ".indexOn": ["competitionId", "status"]
+        ".indexOn": ["competitionId", "status", "durum", "kategoriId", "categoryId"]
       }
     },
 
     "kullanicilar": {
       "$userId": {
-        ".indexOn": ["email", "role", "rolAdi"]
+        ".indexOn": ["email", "role", "rolAdi", "kullaniciAdi", "aktif", "il"]
       }
     },
 
     "broadcasts": {
-      ".indexOn": ["competitionId", "createdAt"],
+      ".indexOn": ["competitionId", "createdAt", "kategori", "expiresAt"],
 
-      "$broadcastId": {}
+      "$broadcastId": {
+        ".indexOn": ["competitionId", "createdAt"]
+      }
     },
 
     "referees": {
+      ".indexOn": ["adSoyad", "brans", "il", "brove"],
+
       "$refereeId": {
-        ".indexOn": ["adSoyad", "brans", "il"]
+        ".indexOn": ["adSoyad", "brans", "il", "brove", "email", "hesapOlusturuldu"]
       }
+    },
+
+    "criteria": {
+      ".indexOn": ["activeYear"],
+
+      "activeYear": {},
+
+      "$year": {
+        ".indexOn": ["isActive"],
+
+        "metadata": {},
+
+        "$categoryId": {
+          ".indexOn": ["isActive"],
+
+          "metadata": {},
+
+          "$apparatusId": {
+            ".indexOn": ["isActive", "hakemSayisi"]
+          }
+        }
+      }
+    },
+
+    "reports": {
+      ".indexOn": ["_compId"],
+
+      "$reportId": {
+        ".indexOn": ["_compId", "tarih"]
+      }
+    },
+
+    "logs": {
+      ".indexOn": ["timestamp", "type", "competitionId", "user"]
     },
 
     "defaultCriteria": {
       "$criteriaType": {
         ".indexOn": ["name"]
       }
-    },
-
-    "criteria": {},
-
-    "reports": {},
-
-    "logs": {
-      ".indexOn": ["timestamp", "type", "competitionId", "user"]
     }
   }
 }
