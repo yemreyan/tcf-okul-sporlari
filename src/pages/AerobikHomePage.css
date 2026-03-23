@@ -1,0 +1,870 @@
+/* ============================
+   AEROBIK DASHBOARD PAGE — Green Theme
+   ============================ */
+
+.aerobik-home-dashboard {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.aerobik-home-header {
+    background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0 24px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(6, 78, 59, 0.3);
+}
+
+.aerobik-home-header__left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.aerobik-home-header__back {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.15s;
+    color: white;
+}
+
+.aerobik-home-header__back:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.aerobik-home-header__back i {
+    font-size: 20px;
+}
+
+.aerobik-home-header__logo {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: #10B981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.aerobik-home-header__logo i {
+    font-size: 26px;
+}
+
+.aerobik-home-header__title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+}
+
+.aerobik-home-header__subtitle {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+}
+
+.aerobik-home-header__right {
+    display: flex;
+    align-items: center;
+}
+
+.aerobik-home-header__user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px 6px 6px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: 0.15s;
+    color: white;
+    background: transparent;
+    cursor: pointer;
+}
+
+.aerobik-home-header__user:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.aerobik-home-header__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #10B981;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+}
+
+.aerobik-home-header__username {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: white;
+}
+
+/* Main */
+.aerobik-home-main {
+    flex: 1;
+    padding: 32px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Menu Grid */
+.aerobik-home-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.aerobik-home-menu-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    text-align: center;
+    animation: aerobikCardIn 0.35s ease both;
+}
+
+@keyframes aerobikCardIn {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.aerobik-home-menu-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+    border-color: var(--card-color);
+}
+
+.aerobik-home-menu-card:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.aerobik-home-menu-card__icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: var(--card-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--card-color) 35%, transparent);
+    transition: transform 0.2s ease;
+}
+
+.aerobik-home-menu-card:hover .aerobik-home-menu-card__icon {
+    transform: scale(1.08);
+}
+
+.aerobik-home-menu-card__icon i {
+    font-size: 30px;
+    color: white;
+}
+
+.aerobik-home-menu-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.aerobik-home-menu-card__label {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.aerobik-home-menu-card__desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.aerobik-home-menu-card__lock {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 16px;
+    color: var(--text-muted);
+    opacity: 0.4;
+}
+
+/* ============================
+   DASHBOARD STATS
+   ============================ */
+
+.aerobik-home-dash-stats {
+    margin-bottom: 28px;
+    animation: aerobikCardIn 0.4s ease both;
+}
+
+.aerobik-home-dash-stats__grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.aerobik-home-stat-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.aerobik-home-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.aerobik-home-stat-card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.aerobik-home-stat-card__icon i {
+    font-size: 24px;
+    color: white;
+}
+
+.aerobik-home-stat-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.aerobik-home-stat-card__value {
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text-primary);
+}
+
+.aerobik-home-stat-card__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Pulse dot for active competitions */
+.aerobik-home-stat-card__pulse {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10B981;
+    animation: aerobikPulseDot 1.5s ease-in-out infinite;
+}
+
+@keyframes aerobikPulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* Badge for pending items */
+.aerobik-home-stat-card__badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background: #EA580C;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
+}
+
+/* Sub text (e.g. "3 gün") */
+.aerobik-home-stat-card__sub {
+    position: absolute;
+    bottom: 6px;
+    right: 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* ── Color variants ── */
+.aerobik-home-stat-card--green .aerobik-home-stat-card__icon { background: #10B981; }
+.aerobik-home-stat-card--green:hover { border-color: #10B981; }
+
+.aerobik-home-stat-card--blue .aerobik-home-stat-card__icon { background: #2563EB; }
+.aerobik-home-stat-card--blue:hover { border-color: #2563EB; }
+
+.aerobik-home-stat-card--emerald .aerobik-home-stat-card__icon { background: #059669; }
+.aerobik-home-stat-card--emerald:hover { border-color: #059669; }
+
+.aerobik-home-stat-card--orange .aerobik-home-stat-card__icon { background: #EA580C; }
+.aerobik-home-stat-card--orange:hover { border-color: #EA580C; }
+
+.aerobik-home-stat-card--teal .aerobik-home-stat-card__icon { background: #0D9488; }
+.aerobik-home-stat-card--teal:hover { border-color: #0D9488; }
+
+.aerobik-home-stat-card--purple .aerobik-home-stat-card__icon { background: #7C3AED; }
+.aerobik-home-stat-card--purple:hover { border-color: #7C3AED; }
+
+/* ── Next Competition Banner ── */
+.aerobik-home-dash-next-comp {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    border: 1px solid #A7F3D0;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.aerobik-home-dash-next-comp:hover {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.aerobik-home-dash-next-comp > i:first-child {
+    font-size: 28px;
+    color: #10B981;
+    animation: aerobikBellRing 2s ease-in-out infinite;
+}
+
+@keyframes aerobikBellRing {
+    0%, 80%, 100% { transform: rotate(0deg); }
+    85% { transform: rotate(8deg); }
+    90% { transform: rotate(-8deg); }
+    95% { transform: rotate(4deg); }
+}
+
+.aerobik-home-dash-next-comp__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.aerobik-home-dash-next-comp__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #10B981;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.aerobik-home-dash-next-comp__info strong {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aerobik-home-dash-next-comp__date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.aerobik-home-dash-next-comp__days {
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #10B981;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+/* Footer */
+.aerobik-home-dash-footer {
+    padding: 24px;
+    text-align: center;
+    border-top: 1px solid var(--border);
+    background: var(--bg-white);
+}
+
+.aerobik-home-dash-footer p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* ============================
+   PASSWORD MODAL
+   ============================ */
+
+.aerobik-home-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: aerobikOverlayIn 0.2s ease;
+}
+
+@keyframes aerobikOverlayIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.aerobik-home-modal {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 380px;
+    padding: 36px 28px 28px;
+    text-align: center;
+    animation: aerobikModalIn 0.25s ease;
+    box-shadow: var(--shadow-lg);
+}
+
+@keyframes aerobikModalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.aerobik-home-modal__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+}
+
+.aerobik-home-modal__icon i {
+    font-size: 32px;
+    color: white;
+}
+
+.aerobik-home-modal__title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.aerobik-home-modal__desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    font-weight: 500;
+}
+
+.aerobik-home-modal__form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.aerobik-home-modal__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    transition: border-color 0.15s;
+}
+
+.aerobik-home-modal__input-wrap:focus-within {
+    border-color: #10B981;
+    background: white;
+}
+
+.aerobik-home-modal__input-wrap i {
+    font-size: 20px;
+    color: var(--text-muted);
+}
+
+.aerobik-home-modal__input {
+    width: 100%;
+    padding: 14px 0;
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    font-family: var(--font);
+    color: var(--text-primary);
+    font-weight: 600;
+    outline: none;
+}
+
+.aerobik-home-modal__input::placeholder {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.aerobik-home-modal__error {
+    color: #DC2626;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.aerobik-home-modal__buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.aerobik-home-modal__btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.15s;
+}
+
+.aerobik-home-modal__btn i {
+    font-size: 20px;
+}
+
+.aerobik-home-modal__btn--cancel {
+    background: var(--bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.aerobik-home-modal__btn--cancel:hover {
+    background: var(--border-light);
+}
+
+.aerobik-home-modal__btn--enter {
+    color: white;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.aerobik-home-modal__btn--enter:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* ============================
+   HEADER USER INFO
+   ============================ */
+
+.aerobik-home-header__user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aerobik-home-header__role-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: #10B981;
+    color: white;
+    letter-spacing: 0.3px;
+}
+
+.aerobik-home-header__il-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.aerobik-home-header__login-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.aerobik-home-header__login-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Login spinner */
+.aerobik-home-login-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: aerobikLoginSpin 0.6s linear infinite;
+}
+
+@keyframes aerobikLoginSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+
+@media (max-width: 900px) {
+    .aerobik-home-dash-stats__grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .aerobik-home-menu-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .aerobik-home-dash-stats__grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .aerobik-home-stat-card {
+        padding: 14px 12px;
+        gap: 10px;
+    }
+
+    .aerobik-home-stat-card__icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+    }
+
+    .aerobik-home-stat-card__icon i {
+        font-size: 20px;
+    }
+
+    .aerobik-home-stat-card__value {
+        font-size: 1.25rem;
+    }
+
+    .aerobik-home-stat-card__label {
+        font-size: 0.68rem;
+    }
+
+    .aerobik-home-dash-next-comp {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .aerobik-home-dash-next-comp > i:first-child {
+        font-size: 22px;
+    }
+
+    .aerobik-home-dash-next-comp__info strong {
+        font-size: 0.85rem;
+    }
+
+    .aerobik-home-dash-next-comp__date {
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .aerobik-home-menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .aerobik-home-main {
+        padding: 20px 16px;
+    }
+
+    .aerobik-home-header {
+        padding: 0 16px;
+        height: 60px;
+    }
+
+    .aerobik-home-header__title {
+        font-size: 1rem;
+    }
+
+    .aerobik-home-header__username {
+        display: none;
+    }
+
+    .aerobik-home-header__role-badge,
+    .aerobik-home-header__il-badge {
+        display: none;
+    }
+
+    .aerobik-home-menu-card {
+        padding: 20px 14px;
+    }
+
+    .aerobik-home-menu-card__icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+    }
+
+    .aerobik-home-menu-card__icon i {
+        font-size: 26px;
+    }
+
+    .aerobik-home-menu-card__label {
+        font-size: 0.85rem;
+    }
+
+    .aerobik-home-menu-card__desc {
+        font-size: 0.7rem;
+    }
+
+    .aerobik-home-modal {
+        max-width: 100%;
+        padding: 28px 20px 22px;
+    }
+}
+
+@media (max-width: 380px) {
+    .aerobik-home-dash-stats__grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .aerobik-home-stat-card {
+        padding: 12px 10px;
+        gap: 8px;
+    }
+
+    .aerobik-home-stat-card__icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+    }
+
+    .aerobik-home-stat-card__icon i {
+        font-size: 18px;
+    }
+
+    .aerobik-home-stat-card__value {
+        font-size: 1.1rem;
+    }
+
+    .aerobik-home-dash-next-comp {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .aerobik-home-dash-next-comp__date {
+        width: 100%;
+        font-size: 0.7rem;
+    }
+
+    .aerobik-home-menu-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .aerobik-home-menu-card {
+        padding: 16px 10px;
+        gap: 10px;
+    }
+
+    .aerobik-home-menu-card__icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+    }
+
+    .aerobik-home-menu-card__icon i {
+        font-size: 22px;
+    }
+}

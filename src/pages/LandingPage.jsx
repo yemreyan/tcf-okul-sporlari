@@ -30,7 +30,7 @@ const DISCIPLINES = [
         color: '#10B981',
         gradient: 'linear-gradient(135deg, #10B981, #34D399)',
         path: '/aerobik',
-        active: false,
+        active: true,
     },
     {
         id: 'parkur',

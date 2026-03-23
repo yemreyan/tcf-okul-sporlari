@@ -29,6 +29,10 @@ const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
 const CertificatePage = lazy(() => import('./pages/CertificatePage'));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 
+// ─── Aerobik Cimnastik Pages ───
+const AerobikHomePage = lazy(() => import('./pages/AerobikHomePage'));
+const AerobikScoringPage = lazy(() => import('./pages/AerobikScoringPage'));
+
 // ─── Loading Fallback ───
 const PageLoader = () => (
   <div style={{
@@ -110,6 +114,11 @@ function AppRoutes() {
         <Route path="/artistik/role-management" element={<SuperAdminRoute><RoleManagementPage /></SuperAdminRoute>} />
         {/* E-Panel — public, QR ile erişim */}
         <Route path="/artistik/epanel" element={<EPanelPage />} />
+
+        {/* ═══ AEROBİK CİMNASTİK ═══ */}
+        <Route path="/aerobik" element={<AerobikHomePage />} />
+        <Route path="/aerobik/scoring" element={<ProtectedRoute pageKey="scoring"><AerobikScoringPage /></ProtectedRoute>} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
