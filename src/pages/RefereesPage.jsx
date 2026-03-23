@@ -4,7 +4,7 @@ import { ref, onValue, remove, push, set, update, get } from 'firebase/database'
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
-import * as XLSX from 'xlsx';
+// XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import './RefereesPage.css';
 
 // ─── Hakem Hesap Oluşturma Yardımcı Fonksiyonlar ───
@@ -25,7 +25,7 @@ function generateUsername(adSoyad) {
     // İlk ad + son soyad
     const ad = parts[0].replace(/[^a-z0-9]/g, '');
     const soyad = parts[parts.length - 1].replace(/[^a-z0-9]/g, '');
-    return `${ad}.${soyad}`;
+    return `${ad}_${soyad}`;
 }
 
 // Basit rastgele şifre oluştur (6 karakter: harf + rakam)
@@ -386,6 +386,7 @@ export default function RefereesPage() {
         reader.onload = async (evt) => {
             try {
                 const bstr = evt.target.result;
+                const XLSX = await import('xlsx');
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
@@ -450,7 +451,7 @@ export default function RefereesPage() {
             {/* Header */}
             <header className="page-header--bento premium-header">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

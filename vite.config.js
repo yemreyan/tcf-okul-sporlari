@@ -16,6 +16,18 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         basvuru: resolve(__dirname, 'basvuru.html'),
       },
+      output: {
+        manualChunks: {
+          // React core — her sayfada lazım, ayrı cache'lensin
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Firebase — her sayfada lazım ama büyük
+          'vendor-firebase': ['firebase/app', 'firebase/database'],
+          // Recharts — sadece AnalyticsPage kullanıyor (~160KB)
+          'vendor-recharts': ['recharts'],
+          // XLSX — sadece FinalsPage ve RefereesPage kullanıyor (~165KB)
+          'vendor-xlsx': ['xlsx'],
+        },
+      },
       plugins: [
         obfuscatorPlugin({
           include: ['**/basvuru*.js'],

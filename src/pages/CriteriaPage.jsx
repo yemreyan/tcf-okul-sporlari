@@ -152,6 +152,7 @@ export default function CriteriaPage() {
         // Deep clone for editing
         setEditData(JSON.parse(JSON.stringify(details || {
             hakemSayisi: 4,
+            isActive: true,
             bonus: { maxE: 10, requiredD: 0, value: 0 },
             hareketler: [],
         })));
@@ -332,7 +333,7 @@ export default function CriteriaPage() {
             {/* Header */}
             <header className="page-header page-header--rulebook no-print">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
@@ -396,14 +397,15 @@ export default function CriteriaPage() {
                                 {cat.aletler.map(app => (
                                     <button
                                         key={app.id}
-                                        className="app-pill"
+                                        className={`app-pill ${app.details?.isActive === false ? 'app-pill--inactive' : ''}`}
+                                        style={app.details?.isActive === false ? { opacity: 0.5, filter: 'grayscale(1)' } : {}}
                                         onClick={() => openCriteria(cat.id, cat.name, app.id, app.name, app.details)}
-                                        title={`${app.name} Kriterlerini İncele`}
+                                        title={app.details?.isActive === false ? `${app.name} Kriterleri (Pasif)` : `${app.name} Kriterlerini İncele`}
                                     >
                                         <i className="material-icons-round">{app.icon}</i>
                                         <span>{app.name}</span>
                                         {app.details?.hareketler?.length > 0 && (
-                                            <span className="pill-count">{app.details.hareketler.length}</span>
+                                            <span className="pill-count" style={app.details?.isActive === false ? { background: '#94a3b8', color: '#fff' } : {}}>{app.details.hareketler.length}</span>
                                         )}
                                     </button>
                                 ))}
@@ -432,6 +434,17 @@ export default function CriteriaPage() {
                             <div className="criteria-section">
                                 <h3><i className="material-icons-round">settings</i> Genel Ayarlar</h3>
                                 <div className="criteria-settings-grid">
+                                    <div className="setting-field">
+                                        <label>Alet Aktif mi?</label>
+                                        {canEdit ? (
+                                            <label className="checkbox-label" style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                                <input type="checkbox" checked={editData.isActive !== false} onChange={e => updateEditField('isActive', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                                                <span style={{ fontWeight: 500 }}>{editData.isActive !== false ? 'Evet' : 'Hayır'}</span>
+                                            </label>
+                                        ) : (
+                                            <span className="setting-value">{editData.isActive !== false ? 'Evet' : 'Hayır'}</span>
+                                        )}
+                                    </div>
                                     <div className="setting-field">
                                         <label>Hakem Sayısı</label>
                                         {canEdit ? (

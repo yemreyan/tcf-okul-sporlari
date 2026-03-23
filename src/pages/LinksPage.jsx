@@ -107,7 +107,7 @@ export default function LinksPage() {
     }));
 
     const panelIds = ['e1', 'e2', 'e3', 'e4'];
-    const scoreboardUrl = `${baseUrl}/scoreboard`;
+    const scoreboardUrl = `${baseUrl}/artistik/scoreboard`;
 
     const filteredCategories = activeCategory === 'all'
         ? categoryList
@@ -115,7 +115,7 @@ export default function LinksPage() {
 
     // D Panel URL'i
     const getDPanelUrl = (catId, aletId) => {
-        return `${baseUrl}/scoring?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}`;
+        return `${baseUrl}/artistik/scoring?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}`;
     };
 
     // Tüm linkleri kopyala
@@ -137,7 +137,7 @@ export default function LinksPage() {
                 allLinks += `--- ${cat.name} ---\n`;
                 cat.aletler.forEach(alet => {
                     panelIds.forEach(pid => {
-                        const url = `${baseUrl}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                        const url = `${baseUrl}/artistik/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
                         allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${url}\n`;
                     });
                 });
@@ -154,7 +154,7 @@ export default function LinksPage() {
             <div className="links-page">
                 <div className="page-header">
                     <div className="page-header__left">
-                        <button className="back-btn" onClick={() => navigate('/')}>
+                        <button className="back-btn" onClick={() => navigate('/artistik')}>
                             <i className="material-icons-round">arrow_back</i>
                         </button>
                         <div>
@@ -307,7 +307,7 @@ export default function LinksPage() {
                                         </div>
                                         <div className="panels-grid">
                                             {panelIds.map(pid => {
-                                                const url = `${baseUrl}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                                const url = `${baseUrl}/artistik/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
                                                 const cardId = `${cat.id}-${alet.id}-${pid}`;
                                                 return (
                                                     <div className="panel-card printable-card" key={pid}>
@@ -351,7 +351,7 @@ export default function LinksPage() {
             {/* Sticky Header */}
             <div className="page-header no-print">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/')}>
+                    <button className="back-btn" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

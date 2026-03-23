@@ -946,3 +946,134 @@
         margin: 16px;
     }
 }
+
+/* ============================
+   BULK ASSIGNMENT
+   ============================ */
+
+.btn--outline {
+    background: var(--bg-white);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn--outline:hover {
+    background: var(--bg);
+    border-color: var(--text-muted);
+}
+
+.rm-modal--wide {
+    max-width: 800px;
+}
+
+.rm-bulk-modes {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.rm-bulk-mode-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.rm-bulk-mode-btn i {
+    font-size: 24px;
+    color: var(--text-muted);
+}
+
+.rm-bulk-mode-btn span {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.rm-bulk-mode-btn small {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.rm-bulk-mode-btn.active {
+    border-color: var(--indigo);
+    background: rgba(79, 70, 229, 0.06);
+}
+
+.rm-bulk-mode-btn.active i {
+    color: var(--indigo);
+}
+
+.rm-bulk-users {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.rm-bulk-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 50px;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.rm-bulk-user-chip input[type="checkbox"] {
+    display: none;
+}
+
+.rm-bulk-user-chip.selected {
+    border-color: var(--blue);
+    background: rgba(37, 99, 235, 0.06);
+}
+
+.rm-bulk-user-chip__avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.rm-bulk-user-chip__name {
+    color: var(--text-primary);
+}
+
+.rm-bulk-user-chip__role {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+@media (max-width: 600px) {
+    .rm-bulk-modes {
+        flex-direction: column;
+    }
+    .rm-modal--wide {
+        max-width: 95vw;
+    }
+}

@@ -1,26 +1,28 @@
 import { useState, useEffect, useMemo } from "react";
-
-import { ref, onValue, set, remove, push } from "firebase/database";
+import { useNavigate } from "react-router-dom";
+import { ref, onValue, set, remove, push, get } from "firebase/database";
 import { db } from "../lib/firebase";
-import * as XLSX from "xlsx";
+// XLSX — sadece Excel export sırasında dynamic import ile yüklenir
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import "./FinalsPage.css";
 
-const APPARATUS_NAMES = {
-    yer: 'Yer',
-    atlama: 'Atlama',
-    barfiks: 'Barfiks',
-    denge: 'Denge',
-    asimetrik_paralel: 'As. Paralel',
-    halka: 'Halka',
-    kulplu_beygir: 'Kulplu Beygir',
-    paralel: 'Paralel',
-    sirik: 'Sırık'
+const APPARATUS_INFO = {
+    yer: { tr: 'Yer', en: 'FX', bg: '#fef3c7', color: '#d97706' },
+    atlama: { tr: 'Atlama', en: 'VT', bg: '#fee2e2', color: '#dc2626' },
+    barfiks: { tr: 'Barfiks', en: 'HB', bg: '#e0f2fe', color: '#0284c7' },
+    denge: { tr: 'Denge', en: 'BB', bg: '#f3e8ff', color: '#9333ea' },
+    asimetrik: { tr: 'As. Paralel', en: 'UB', bg: '#fce7f3', color: '#db2777' },
+    halka: { tr: 'Halka', en: 'SR', bg: '#ffedd5', color: '#ea580c' },
+    kulplu: { tr: 'Kulplu Beygir', en: 'PH', bg: '#dcfce7', color: '#16a34a' },
+    paralel: { tr: 'Paralel', en: 'PB', bg: '#e0e7ff', color: '#4f46e5' },
+    sirik: { tr: 'Sırık', en: 'PV', bg: '#f3f4f6', color: '#4b5563' },
+    mantar: { tr: 'Mantar', en: 'MB', bg: '#dcfce7', color: '#16a34a' }
 };
 
 export default function FinalsPage() {
+    const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
     const [competitions, setCompetitions] = useState([]);
@@ -246,7 +248,11 @@ export default function FinalsPage() {
 
     // Teams Processing
     const computeTeamResults = () => {
-        const filteredResults = fullResults.filter(res => !excludedTeams.has(res.kulup));
+        const filteredResults = fullResults.filter(res => {
+            if (excludedTeams.has(res.kulup)) return false;
+            const t = (res.yarismaTuru || res.katilimTuru || '').toLowerCase();
+            return t === 'takim' || t === 'takım';
+        });
         const clubScores = {};
 
         filteredResults.forEach(res => {
@@ -327,68 +333,331 @@ export default function FinalsPage() {
         }
     };
 
-    // Export handlers
-    const handlePrint = () => {
-        window.print();
+    // Export Data Processor Helpers
+    const fetchAllExportData = async () => {
+        const compAthletesRef = ref(db, `competitions/${selectedCompId}/sporcular`);
+        const compScoresRef = ref(db, `competitions/${selectedCompId}/puanlar`);
+        const [athSnap, scoSnap] = await Promise.all([get(compAthletesRef), get(compScoresRef)]);
+        return { compAthletes: athSnap.val() || {}, compScores: scoSnap.val() || {} };
     };
 
-    const handleExportExcel = () => {
-        if (!competitionData) return;
+    const computeCategoryResults = (catId, catData, compAthletes, compScores) => {
+        let apparatusKeysList = [];
+        if (Array.isArray(catData?.aletler)) {
+            apparatusKeysList = catData.aletler.map(a => typeof a === 'object' ? a.id || a.value : a);
+        } else {
+            apparatusKeysList = Object.keys(catData?.aletler || {});
+        }
 
-        const wb = XLSX.utils.book_new();
-        const appKeys = categoryData?.aletler || [];
+        let catAth = compAthletes[catId] || {};
+        let catSco = compScores[catId] || {};
+        let participantIds = Object.keys(catAth);
+        let useGlobalAthletes = false;
 
-        // 1. All-Around
-        const generalData = fullResults.map((r, index) => {
-            const row = { 'S.N.': index + 1, 'Soyadı': r.soyad, 'Adı': r.ad, 'Takım': r.kulup };
-            appKeys.forEach(key => {
-                const detail = r.allScoreDetails[key];
-                const penalty = detail.P + detail.ME;
-                row[`${APPARATUS_NAMES[key] || key}`] = `Final: ${formatScore(detail.final)} (Sıra: ${r.apparatusRanks[key] || '-'}) | D: ${formatScore(detail.D)} | E: ${formatScore(detail.E)} | Ceza: ${penalty > 0 ? '-' + formatScore(penalty) : '0'}`;
-            });
-            row['GENEL TOPLAM'] = formatScore(r.totalScore);
-            return row;
-        });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(generalData), "1-Bireysel Genel Tasnif");
+        if (participantIds.length === 0 && competitionData.katilimcilar) {
+            participantIds = Object.keys(competitionData.katilimcilar);
+            useGlobalAthletes = true;
+        }
 
-        // 2. Team
-        const teamResults = computeTeamResults();
-        const teamData = teamResults.map((t, i) => {
-            const row = { 'S.N.': i + 1, 'Takım': t.name };
-            appKeys.forEach(key => row[APPARATUS_NAMES[key] || key] = formatScore(t.apparatusTotals[key]));
-            row['Toplam'] = formatScore(t.totalScore);
-            row['Kesinti'] = t.deduction > 0 ? '-' + formatScore(t.deduction) : '0.000';
-            row['Son Skor'] = formatScore(t.finalScore);
-            return row;
-        });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(teamData), "2-Takım Sıralaması");
+        let initialResults = participantIds.map(id => {
+            const athlete = useGlobalAthletes ? globalAthletes[id] : catAth[id];
+            if (!athlete) return null;
 
-        // 3. Apparatuses
-        appKeys.forEach(key => {
-            const appResults = fullResults
-                .map(r => ({
-                    ...r,
-                    score: r.scores[key] || 0,
-                    D: r.allScoreDetails[key]?.D || 0,
-                    E: r.allScoreDetails[key]?.E || 0,
-                    TotalPenalty: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0)
-                }))
-                .filter(r => r.score > 0)
-                .sort((a, b) => b.score - a.score);
-
-            const appData = appResults.map((r, index) => ({
-                'S.N.': index + 1, 'Soyadı': r.soyad, 'Adı': r.ad, 'Kulüp': r.kulup,
-                'D Puanı': formatScore(r.D), 'E Puanı': formatScore(r.E),
-                'Ceza Puanı': formatScore(r.TotalPenalty),
-                'FINAL PUAN': formatScore(r.score)
-            }));
-            if (appData.length > 0) {
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData), `3-${APPARATUS_NAMES[key] || key} Final`);
+            if (useGlobalAthletes && athlete.kategori) {
+                const normSelected = (catData.name || catData.ad || catId).toLowerCase().replace(/[^a-z0-9]/g, '');
+                const normAth = athlete.kategori.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (normSelected !== normAth) return null;
             }
+
+            let totalScore = 0;
+            const scores = {};
+            const allScoreDetails = {};
+
+            apparatusKeysList.forEach(key => {
+                let scoreData = catSco[key]?.[id];
+                if (!scoreData && catSco[id]?.[`${key}Puanlari`]) {
+                    const oldData = catSco[id][`${key}Puanlari`];
+                    scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
+                }
+                if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
+                    const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
+                    scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
+                }
+
+                let finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
+                let dScoreVal = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
+                let eScoreVal = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
+                let penVal = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
+
+                const score = parseFloat(finalScoreVal || 0);
+                scores[key] = score;
+
+                allScoreDetails[key] = { final: score, D: parseFloat(dScoreVal || 0), E: parseFloat(eScoreVal || 0), P: parseFloat(penVal || 0), ME: 0 };
+                totalScore += score;
+            });
+
+            return { ...athlete, scores, allScoreDetails, totalScore, id };
+        }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
+
+        const apparatusRanks = {};
+        apparatusKeysList.forEach(key => {
+            const scoredAthletes = [...initialResults].filter(r => r.scores[key] > 0);
+            scoredAthletes.sort((a, b) => b.scores[key] - a.scores[key]);
+            let lastScore = -Infinity;
+            let lastRank = 0;
+            scoredAthletes.forEach((result, index) => {
+                const score = result.scores[key];
+                if (score !== lastScore) { lastRank = index + 1; }
+                if (!apparatusRanks[result.id]) apparatusRanks[result.id] = {};
+                apparatusRanks[result.id][key] = lastRank;
+                lastScore = score;
+            });
         });
 
-        const fName = (competitionData.isim || "Yarisma").replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        XLSX.writeFile(wb, `${fName}_SONUC_RAPORU.xlsx`);
+        const results = initialResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
+        const teamResults = computeCatTeamResults(results, apparatusKeysList);
+        return { results, teamResults, apparatusKeysList, catName: catData.name || catData.ad || catId };
+    };
+
+    const computeCatTeamResults = (resultsArr, appKeys) => {
+        const filtered = resultsArr.filter(res => {
+            if (excludedTeams.has(res.kulup)) return false;
+            const t = (res.yarismaTuru || res.katilimTuru || '').toLowerCase();
+            return t === 'takim' || t === 'takım';
+        });
+        const clubScores = {};
+
+        filtered.forEach(res => {
+            if (!res.kulup) return;
+            if (!clubScores[res.kulup]) {
+                clubScores[res.kulup] = { name: res.kulup, scores: {} };
+                appKeys.forEach(k => clubScores[res.kulup].scores[k] = []);
+            }
+            appKeys.forEach(k => clubScores[res.kulup].scores[k].push(res.scores[k]));
+        });
+
+        return Object.values(clubScores).map(team => {
+            let total = 0;
+            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, 3).reduce((s, x) => s + x, 0);
+            const appTotals = {};
+            appKeys.forEach(k => {
+                const t = topScores(team.scores[k]);
+                appTotals[k] = t;
+                total += t;
+            });
+
+            const dTotal = Object.values(teamDeductions || {})
+                .filter(d => d.teamName === team.name)
+                .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+
+            return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
+        }).sort((a, b) => b.finalScore - a.finalScore);
+    };
+
+    // Export handlers
+    const handleExportPDF = async () => {
+        if (!competitionData) return;
+        toast("PDF hazırlanıyor, lütfen bekleyin...", "info");
+
+        try {
+            const { jsPDF } = await import("jspdf");
+            const autotablePkg = await import("jspdf-autotable");
+            const autoTable = autotablePkg.default || autotablePkg;
+            const doc = new jsPDF("landscape", "mm", "a4");
+            const { compAthletes, compScores } = await fetchAllExportData();
+
+            let titleSuffix = "";
+            if (activeTab === 'all-around') titleSuffix = "Bireysel Genel Tasnif";
+            if (activeTab === 'apparatus') titleSuffix = "Alet Finalleri";
+            if (activeTab === 'team') titleSuffix = "Takım Genel Tasnif";
+
+            const headStyles = { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold', halign: 'center', valign: 'middle', lineWidth: 0.1, lineColor: [226, 232, 240] };
+            const bodyStyles = { textColor: [15, 23, 42], fontSize: 9, valign: 'middle', lineWidth: 0.1, lineColor: [226, 232, 240] };
+            const alternateRowStyles = { fillColor: [248, 250, 252] };
+
+            let pageCount = 0;
+
+            const categoryIds = Object.keys(competitionData.kategoriler || {});
+            
+            categoryIds.forEach((cId) => {
+                const catData = competitionData.kategoriler[cId];
+                const { results, teamResults, apparatusKeysList, catName } = computeCategoryResults(cId, catData, compAthletes, compScores);
+                if (results.length === 0 && teamResults.length === 0) return; // Skip empty categories
+
+                const docTitle = `${competitionData.isim} - ${catName}`;
+
+                const normalizeTR = (text) => {
+                    if (typeof text !== 'string') return text;
+                    return text.replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's')
+                               .replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u')
+                               .replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+                };
+
+                const drawHeader = (title) => {
+                    if (pageCount > 0) doc.addPage();
+                    pageCount++;
+                    doc.setFillColor(227, 6, 19);
+                    doc.rect(0, 0, 297, 24, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(16);
+                    doc.text(normalizeTR("TURKIYE CIMNASTIK FEDERASYONU"), 14, 10);
+                    doc.setFontSize(14);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(normalizeTR(docTitle), 14, 18);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(12);
+                    doc.text(normalizeTR(title), 14, 32);
+                    doc.setTextColor(100, 116, 139);
+                    doc.setFontSize(10);
+                    doc.text(normalizeTR(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`), 250, 32);
+                };
+
+                if (activeTab === 'all-around') {
+                    drawHeader(`${titleSuffix} Sonuclari`);
+                    const tableHead = [['S.N.', 'Sporcu', 'Kulup', ...apparatusKeysList.map(k => normalizeTR(`${APPARATUS_INFO[k]?.tr || k} (${APPARATUS_INFO[k]?.en || k})`)), 'Toplam']];
+                    const tableBody = results.map((r, i) => {
+                        const row = [i + 1, normalizeTR(`${r.soyad}, ${r.ad}`), normalizeTR(r.kulup || '-')];
+                        apparatusKeysList.forEach(k => row.push(`${formatScore(r.allScoreDetails[k]?.final)} (${r.apparatusRanks[k] || '-'})`));
+                        row.push(formatScore(r.totalScore));
+                        return row;
+                    });
+                    autoTable(doc, {
+                        startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        columnStyles: { 0: { halign: 'center', cellWidth: 12 }, 1: { cellWidth: 40 }, 2: { cellWidth: 40 }, [apparatusKeysList.length + 3]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
+                        didParseCell: function(data) { if (data.section === 'body' && data.column.index > 2 && data.column.index < apparatusKeysList.length + 3) data.cell.styles.halign = 'center'; }
+                    });
+                } else if (activeTab === 'apparatus') {
+                    apparatusKeysList.forEach((key) => {
+                        drawHeader(normalizeTR(`${APPARATUS_INFO[key]?.tr || key} Finali`));
+                        const items = results.map(r => ({ ...r, score: r.scores[key] || 0, D: r.allScoreDetails[key]?.D || 0, E: r.allScoreDetails[key]?.E || 0, Pen: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+                        const tableHead = [['S.N.', 'Sporcu', 'Kulup', 'D Puani', 'E Puani', 'Ceza', 'Final Puani']];
+                        const tableBody = items.map((r, i) => [i + 1, normalizeTR(`${r.soyad}, ${r.ad}`), normalizeTR(r.kulup || '-'), formatScore(r.D), formatScore(r.E), r.Pen > 0 ? `-${formatScore(r.Pen)}` : '0.000', formatScore(r.score)]);
+                        autoTable(doc, {
+                            startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', textColor: [220, 38, 38] }, 6: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } }
+                        });
+                    });
+                } else if (activeTab === 'team') {
+                    drawHeader(normalizeTR(`${titleSuffix} Sonuclari`));
+                    const tableHead = [['S.N.', 'Takim', ...apparatusKeysList.map(k => normalizeTR(`${APPARATUS_INFO[k]?.tr || k} (${APPARATUS_INFO[k]?.en || k})`)), 'Alet Top.', 'Kesinti', 'Net Skor']];
+                    const tableBody = teamResults.map((t, i) => {
+                        const row = [i + 1, normalizeTR(t.name)];
+                        apparatusKeysList.forEach(k => row.push(formatScore(t.apparatusTotals[k])));
+                        row.push(formatScore(t.totalScore));
+                        row.push(t.deduction > 0 ? `-${formatScore(t.deduction)}` : '0.000');
+                        row.push(formatScore(t.finalScore));
+                        return row;
+                    });
+                    autoTable(doc, {
+                        startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60, fontStyle: 'bold' }, [apparatusKeysList.length + 2]: { halign: 'right', textColor: [100, 116, 139] }, [apparatusKeysList.length + 3]: { halign: 'center', textColor: [220, 38, 38] }, [apparatusKeysList.length + 4]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
+                        didParseCell: function(data) { if (data.section === 'body' && data.column.index > 1 && data.column.index < apparatusKeysList.length + 2) data.cell.styles.halign = 'center'; }
+                    });
+                }
+            });
+
+            if (pageCount === 0) {
+                toast("Dışa aktarılacak veri bulunamadı.", "warning");
+                return;
+            }
+
+            const fName = `${competitionData.isim}_Tum_${titleSuffix}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`${fName}.pdf`);
+            toast("PDF başarıyla dışa aktarıldı.", "success");
+        } catch (error) {
+            console.error("PDF Export Error:", error);
+            toast("PDF oluşturulurken bir hata oluştu.", "error");
+        }
+    };
+
+    const handleExportExcel = async () => {
+        if (!competitionData) return;
+        toast("Excel hazırlanıyor, lütfen bekleyin...", "info");
+
+        try {
+            const XLSX = await import("xlsx");
+            const { compAthletes, compScores } = await fetchAllExportData();
+            const wb = XLSX.utils.book_new();
+            
+            let hasAnyData = false;
+            const categoryIds = Object.keys(competitionData.kategoriler || {});
+
+            categoryIds.forEach((cId) => {
+                const catData = competitionData.kategoriler[cId];
+                const { results, teamResults, apparatusKeysList, catName } = computeCategoryResults(cId, catData, compAthletes, compScores);
+                if (results.length === 0 && teamResults.length === 0) return;
+                hasAnyData = true;
+
+                // Tabname limits: Max 31 chars
+                const getSheetName = (str) => {
+                    const cleanStr = str.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+                    return cleanStr.substring(0, 31);
+                };
+
+                if (activeTab === 'all-around') {
+                    const exportData = results.map((r, index) => {
+                        const row = {
+                            'S.N.': index + 1,
+                            'Sporcu': `${r.ad} ${r.soyad}`,
+                            'Kulüp/Okul': r.kulup || '-'
+                        };
+                        apparatusKeysList.forEach(key => {
+                            const val = formatScore(r.allScoreDetails[key]?.final);
+                            const rank = r.apparatusRanks[key] || '-';
+                            row[`${APPARATUS_INFO[key]?.tr || key} (${APPARATUS_INFO[key]?.en || key})`] = `${val} (${rank})`;
+                        });
+                        row['Genel Toplam'] = parseFloat(formatScore(r.totalScore));
+                        return row;
+                    });
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), getSheetName(`BG_${catName}`));
+                } else if (activeTab === 'apparatus') {
+                    apparatusKeysList.forEach(key => {
+                        const items = results.map(r => ({ ...r, score: r.scores[key] || 0, D: r.allScoreDetails[key]?.D || 0, E: r.allScoreDetails[key]?.E || 0, Pen: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+                        const appData = items.map((r, index) => ({
+                            'S.N.': index + 1,
+                            'Sporcu': `${r.ad} ${r.soyad}`,
+                            'Kulüp/Okul': r.kulup || '-',
+                            'D Puanı': parseFloat(formatScore(r.D)),
+                            'E Puanı': parseFloat(formatScore(r.E)),
+                            'Ceza': r.Pen > 0 ? -parseFloat(formatScore(r.Pen)) : 0,
+                            'Final Puanı': parseFloat(formatScore(r.score))
+                        }));
+                        if (appData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData), getSheetName(`A_${catName}_${APPARATUS_INFO[key]?.en || key}`));
+                    });
+                } else if (activeTab === 'team') {
+                    const exportTeam = teamResults.map((t, index) => {
+                        const row = {
+                            'S.N.': index + 1,
+                            'Takım': t.name
+                        };
+                        apparatusKeysList.forEach(key => row[`${APPARATUS_INFO[key]?.tr || key} (${APPARATUS_INFO[key]?.en || key})`] = parseFloat(formatScore(t.apparatusTotals[key])));
+                        row['Alet Toplamı'] = parseFloat(formatScore(t.totalScore));
+                        row['Kesinti'] = t.deduction > 0 ? -parseFloat(formatScore(t.deduction)) : 0;
+                        row['Net Skor'] = parseFloat(formatScore(t.finalScore));
+                        return row;
+                    });
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportTeam), getSheetName(`T_${catName}`));
+                }
+            });
+
+            if (!hasAnyData) {
+                toast("Dışa aktarılacak veri bulunamadı.", "warning");
+                return;
+            }
+
+            let titleSuffix = "";
+            if (activeTab === 'all-around') titleSuffix = "bireysel";
+            if (activeTab === 'apparatus') titleSuffix = "alet_finalleri";
+            if (activeTab === 'team') titleSuffix = "takim";
+
+            const fileName = `${competitionData.isim}_Tum_${titleSuffix}.xlsx`.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+            XLSX.writeFile(wb, fileName);
+            toast("Excel başarıyla dışa aktarıldı.", "success");
+        } catch (error) {
+            console.error("Excel Export Error:", error);
+            toast("Excel oluşturulurken bir hata oluştu.", "error");
+        }
     };
 
     return (
@@ -398,6 +667,9 @@ export default function FinalsPage() {
                 {/* Header Section */}
                 <div className="classic-card finals-header">
                     <div className="finals-header-left">
+                        <button type="button" className="back-btn" onClick={() => navigate('/artistik')}>
+                            <i className="material-icons-round">arrow_back</i>
+                        </button>
                         <div className="finals-icon">
                             <i className="material-icons-round">emoji_events</i>
                         </div>
@@ -473,7 +745,7 @@ export default function FinalsPage() {
                                 <button className="action-btn excel-btn" onClick={handleExportExcel}>
                                     <i className="material-icons-round">table_chart</i> Excel Export
                                 </button>
-                                <button className="action-btn pdf-btn" onClick={handlePrint}>
+                                <button className="action-btn pdf-btn" onClick={handleExportPDF}>
                                     <i className="material-icons-round">picture_as_pdf</i> PDF Yazdır
                                 </button>
                             </div>
@@ -493,7 +765,19 @@ export default function FinalsPage() {
                                                 <th className="th-center">S.N.</th>
                                                 <th>Soyadı, Adı</th>
                                                 <th>Kulüp</th>
-                                                {apparatusKeys.map(key => <th key={key} className="th-center">{APPARATUS_NAMES[key] || key}</th>)}
+                                                {apparatusKeys.map(key => {
+                                                    const info = APPARATUS_INFO[key];
+                                                    return (
+                                                        <th key={key} className="th-center">
+                                                            {info ? (
+                                                                <div className="app-header-badge" style={{ backgroundColor: info.bg, color: info.color }}>
+                                                                    <span className="app-en">{info.en}</span>
+                                                                    <span className="app-tr">{info.tr}</span>
+                                                                </div>
+                                                            ) : key}
+                                                        </th>
+                                                    )
+                                                })}
                                                 <th className="th-right th-highlight">Toplam</th>
                                             </tr>
                                         </thead>
@@ -515,11 +799,14 @@ export default function FinalsPage() {
                                                             if (detail.final > 0) {
                                                                 return (
                                                                     <td key={key} className="td-center score-col">
-                                                                        <div className="main-score">{formatScore(detail.final)}</div>
+                                                                        <div className="score-header">
+                                                                            <span className="main-score">{formatScore(detail.final)}</span>
+                                                                            <span className="app-rank-badge" title={`${APPARATUS_INFO[key]?.tr || key} Sıralaması`}>{res.apparatusRanks[key] || '-'}</span>
+                                                                        </div>
                                                                         <div className="score-details">
-                                                                            <span>D:{formatScore(detail.D)}</span>
-                                                                            <span>E:{formatScore(detail.E)}</span>
-                                                                            {penalty > 0 && <span className="penalty">P:-{formatScore(penalty)}</span>}
+                                                                            <span className="d-val">D:{formatScore(detail.D)}</span>
+                                                                            <span className="e-val">E:{formatScore(detail.E)}</span>
+                                                                            {penalty > 0 && <span className="p-val">P:-{formatScore(penalty)}</span>}
                                                                         </div>
                                                                     </td>
                                                                 )
@@ -557,7 +844,16 @@ export default function FinalsPage() {
                                     return (
                                         <div key={key} className="finals-card classic-card apparatus-card">
                                             <div className="card-header">
-                                                <h2>{APPARATUS_NAMES[key] || key} Finali</h2>
+                                                <h2 className="app-final-title">
+                                                    {APPARATUS_INFO[key] ? (
+                                                        <>
+                                                            <span className="app-icon-badge" style={{ backgroundColor: APPARATUS_INFO[key].bg, color: APPARATUS_INFO[key].color }}>
+                                                                {APPARATUS_INFO[key].en}
+                                                            </span>
+                                                            <span style={{ marginLeft: '12px' }}>{APPARATUS_INFO[key].tr} Finali</span>
+                                                        </>
+                                                    ) : `${key} Finali`}
+                                                </h2>
                                             </div>
                                             <div className="table-responsive">
                                                 <table className="classic-table condensed">
@@ -633,7 +929,18 @@ export default function FinalsPage() {
                                             <tr>
                                                 <th className="th-center">S.N.</th>
                                                 <th>Takım</th>
-                                                {apparatusKeys.map(key => <th key={key} className="th-center">{APPARATUS_NAMES[key] || key}</th>)}
+                                                {apparatusKeys.map(key => {
+                                                    const info = APPARATUS_INFO[key];
+                                                    return (
+                                                        <th key={key} className="th-center">
+                                                            {info ? (
+                                                                <div className="app-header-badge" style={{ backgroundColor: info.bg, color: info.color }}>
+                                                                    <span className="app-en">{info.en}</span>
+                                                                </div>
+                                                            ) : key}
+                                                        </th>
+                                                    )
+                                                })}
                                                 <th className="th-right text-muted">Alet Toplamı</th>
                                                 <th className="th-center penalty-text">Kesinti</th>
                                                 <th className="th-right th-highlight">Net Skor</th>
@@ -669,23 +976,20 @@ export default function FinalsPage() {
 
             {/* DEDUCTION MODAL */}
             {isDeductionModalOpen && (
-                <div className="premium-modal-overlay">
-                    <div className="premium-modal-dialog">
-                        <div className="premium-modal-header">
-                            <div className="premium-modal-icon warning">
-                                <i className="material-icons-round">gavel</i>
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>
+                                <h3>Takım Ceza Yönetimi</h3>
+                                <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)'}}>Kural ihlalleri için takımlardan puan düşün</p>
                             </div>
-                            <div className="premium-modal-title">
-                                <h2>Takım Ceza Yönetimi</h2>
-                                <p>Kural ihlalleri için takımlardan puan düşün</p>
-                            </div>
-                            <button className="premium-modal-close" onClick={() => setIsDeductionModalOpen(false)}>
+                            <button className="close-btn" onClick={() => setIsDeductionModalOpen(false)}>
                                 <i className="material-icons-round">close</i>
                             </button>
                         </div>
 
-                        <div className="premium-modal-body">
-                            <form onSubmit={handleAddDeduction} className="premium-form">
+                        <div className="modal-body">
+                            <form onSubmit={handleAddDeduction}>
                                 <div className="form-group">
                                     <label>Takım Seçin</label>
                                     <select
@@ -697,8 +1001,8 @@ export default function FinalsPage() {
                                         {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>
-                                <div className="form-row">
-                                    <div className="form-group">
+                                <div style={{ display: 'flex', gap: '16px' }}>
+                                    <div className="form-group" style={{ flex: 1 }}>
                                         <label>Ceza Puanı</label>
                                         <input
                                             type="number"
@@ -721,8 +1025,8 @@ export default function FinalsPage() {
                                         />
                                     </div>
                                 </div>
-                                <div className="form-actions">
-                                    <button type="submit" className="premium-btn active penalty-submit-btn">Cezayı Kaydet</button>
+                                <div className="modal-footer" style={{ marginTop: '24px' }}>
+                                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>Cezayı Kaydet</button>
                                 </div>
                             </form>
 

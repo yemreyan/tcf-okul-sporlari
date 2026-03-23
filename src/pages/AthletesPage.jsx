@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, remove, push, set, update } from 'firebase/database';
 import { db } from '../lib/firebase';
-import * as XLSX from 'xlsx';
+// XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
@@ -17,12 +17,17 @@ export default function AthletesPage() {
 
     const [athletes, setAthletes] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [filterCity, setFilterCity] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAthlete, setEditingAthlete] = useState(null); // null = new, object = edit
+
+    // Global Search State
+    const [isGlobalModalOpen, setIsGlobalModalOpen] = useState(false);
+    const [globalSearchText, setGlobalSearchText] = useState('');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -184,6 +189,7 @@ export default function AthletesPage() {
         reader.onload = async (evt) => {
             try {
                 const bstr = evt.target.result;
+                const XLSX = await import('xlsx');
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
@@ -235,16 +241,72 @@ export default function AthletesPage() {
         reader.readAsBinaryString(file);
     };
 
+    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compOptions = Object.entries(competitions)
+        .filter(([id, comp]) => !filterCity || (comp.il || comp.city) === filterCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+
+    // Global Search Logic
+    const globalSearchResults = useMemo(() => {
+        if (!globalSearchText || globalSearchText.length < 3) return [];
+        const resultsMap = {};
+        const searchLower = globalSearchText.toLowerCase();
+
+        Object.entries(competitions).forEach(([compId, comp]) => {
+            if (comp.sporcular) {
+                Object.entries(comp.sporcular).forEach(([catId, athletesCat]) => {
+                    Object.entries(athletesCat).forEach(([athId, ath]) => {
+                        const fullName = `${ath.ad || ''} ${ath.soyad || ''}`.toLowerCase();
+                        if (
+                            fullName.includes(searchLower) ||
+                            (ath.tckn && String(ath.tckn).includes(searchLower)) ||
+                            (ath.lisans && String(ath.lisans).includes(searchLower))
+                        ) {
+                            const adSafe = String(ath.ad || '').trim().toLowerCase();
+                            const soyadSafe = String(ath.soyad || '').trim().toLowerCase();
+                            const uniqueKey = `${adSafe}_${soyadSafe}_${ath.dob || ath.tckn || ath.lisans || ''}`;
+                            if (!resultsMap[uniqueKey]) {
+                                resultsMap[uniqueKey] = {
+                                    athlete: ath,
+                                    competitions: []
+                                };
+                            }
+                            if (!resultsMap[uniqueKey].competitions.some(c => c.compId === compId)) {
+                                resultsMap[uniqueKey].competitions.push({
+                                    compId,
+                                    compName: comp.isim,
+                                    date: new Date(comp.tarih || comp.baslangicTarihi || 0),
+                                    catId,
+                                    okul: ath.okul || ath.kulup || '',
+                                    id: athId
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+        });
+
+        const resultsArray = Object.values(resultsMap);
+        resultsArray.forEach(res => {
+            res.competitions.sort((a, b) => b.date - a.date);
+        });
+
+        return resultsArray.sort((a, b) => {
+            const nameA = `${a.athlete.ad} ${a.athlete.soyad}`.toLowerCase();
+            const nameB = `${b.athlete.ad} ${b.athlete.soyad}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+    }, [competitions, globalSearchText]);
 
     const filteredAthletes = athletes.filter(ath => {
         const fullName = `${ath.ad || ''} ${ath.soyad || ''}`.toLowerCase();
         const searchLower = searchTerm.toLowerCase();
 
         const matchesSearch = fullName.includes(searchLower) ||
-            (ath.okul && ath.okul.toLowerCase().includes(searchLower)) ||
-            (ath.tckn && ath.tckn.includes(searchLower));
+            (ath.okul && String(ath.okul).toLowerCase().includes(searchLower)) ||
+            (ath.tckn && String(ath.tckn).includes(searchLower));
 
         const matchesCategory = filterCategory === '' || ath.categoryId === filterCategory;
 
@@ -257,7 +319,7 @@ export default function AthletesPage() {
         <div className="athletes-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/')}>
+                    <button className="back-btn" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
@@ -266,6 +328,14 @@ export default function AthletesPage() {
                     </div>
                 </div>
                 <div className="page-header__right">
+                    <button
+                        className="action-btn-outline"
+                        style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                        onClick={() => { setIsGlobalModalOpen(true); setGlobalSearchText(''); }}
+                    >
+                        <i className="material-icons-round">travel_explore</i>
+                        <span>Tüm Yarışmalarda Ara</span>
+                    </button>
                     <input
                         type="file"
                         accept=".xlsx, .xls"
@@ -300,6 +370,20 @@ export default function AthletesPage() {
 
             <main className="page-content">
                 <div className="athletes-controls">
+                    <div className="control-group">
+                        <i className="material-icons-round control-icon">place</i>
+                        <select
+                            className="control-select"
+                            value={filterCity}
+                            onChange={(e) => { setFilterCity(e.target.value); setSelectedCompId(''); }}
+                        >
+                            <option value="">-- Tüm İller --</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="control-group">
                         <i className="material-icons-round control-icon">emoji_events</i>
                         <select
@@ -410,6 +494,13 @@ export default function AthletesPage() {
                                                 <i className="material-icons-round">place</i>
                                                 <span>{ath.il || '-'} • Tür: {ath.yarismaTuru === 'takim' ? 'TAKIM' : 'FERDİ'}</span>
                                             </div>
+                                            <button
+                                                className="athlete-profile-link"
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/artistik/athlete/${selectedCompId}/${ath.categoryId}/${ath.id}`); }}
+                                            >
+                                                <i className="material-icons-round">person</i>
+                                                Profil & Puanlar
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -482,6 +573,71 @@ export default function AthletesPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Global Search Modal */}
+            {isGlobalModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsGlobalModalOpen(false)}>
+                    <div className="modal modal--large" onClick={e => e.stopPropagation()}>
+                        <div className="modal__header">
+                            <h2>Tüm Yarışmalarda Sporcu Ara</h2>
+                            <button className="modal__close" onClick={() => setIsGlobalModalOpen(false)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="modal__body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}>
+                            <div className="control-group" style={{ margin: 0, width: '100%', maxWidth: 'none' }}>
+                                <i className="material-icons-round control-icon">search</i>
+                                <input
+                                    type="text"
+                                    className="control-input"
+                                    placeholder="Sporcu adı, lisans veya TC yazın (En az 3 harf)..."
+                                    value={globalSearchText}
+                                    onChange={(e) => setGlobalSearchText(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="global-search-results" style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {globalSearchText.length > 0 && globalSearchText.length < 3 && (
+                                    <p style={{ color: 'var(--text-secondary)', textAlign: 'center', margin: '2rem 0' }}>Aramak için en az 3 karakter girin.</p>
+                                )}
+                                {globalSearchText.length >= 3 && globalSearchResults.length === 0 && (
+                                    <div className="empty-state" style={{ margin: '2rem 0' }}>
+                                        <i className="material-icons-round" style={{ fontSize: '3rem', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>person_off</i>
+                                        <p>Eşleşen sporcu bulunamadı.</p>
+                                    </div>
+                                )}
+                                {globalSearchResults.map((res, i) => (
+                                    <div key={i} className="global-search-card" style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{res.athlete.ad} {res.athlete.soyad}</h3>
+                                                <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <i className="material-icons-round" style={{ fontSize: '1rem' }}>badge</i> TC: {res.athlete.tckn || '-'} • Lisans: {res.athlete.lisans || '-'}
+                                                </p>
+                                            </div>
+                                            <div style={{ textAlign: 'right', fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>
+                                                Doğum: {res.athlete.dob || '-'}
+                                            </div>
+                                        </div>
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Katıldığı Yarışmalar ({res.competitions.length})</h4>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                {res.competitions.map((c, j) => (
+                                                    <div key={j} onClick={() => navigate(`/artistik/athlete/${c.compId}/${c.catId}/${c.id}`)} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.2rem' }} className="hover-lift">
+                                                        <strong style={{ color: 'var(--primary)' }}>{c.compName}</strong>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>{c.catId} • {c.okul || 'Okul Yok'}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

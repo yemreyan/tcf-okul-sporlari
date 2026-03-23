@@ -113,6 +113,7 @@ export default function ApplicationsPage() {
     const [applications, setApplications] = useState([]);
     const [competitions, setCompetitions] = useState({});
     const [loading, setLoading] = useState(true);
+    const [filterCity, setFilterCity] = useState(''); // İl filtresi
     const [filterStatus, setFilterStatus] = useState('bekliyor'); // bekliyor, onaylandi, reddedildi, all
     const [filterComp, setFilterComp] = useState(''); // Yarışma filtresi
 
@@ -295,25 +296,29 @@ export default function ApplicationsPage() {
         ...app,
         compName: competitions[app.compId]?.isim || 'Silinmiş Yarışma'
     })).filter(app => {
+        if (filterCity && app.city !== filterCity) return false;
         if (filterComp && app.compId !== filterComp) return false;
         if (filterStatus === 'all') return true;
         return app.status === filterStatus;
     });
 
     const statusConfig = {
-        bekliyor: { label: 'Bekliyor', color: 'var(--warning)', icon: 'schedule' },
-        onaylandi: { label: 'Onaylandı', color: 'var(--success)', icon: 'check_circle' },
-        reddedildi: { label: 'Reddedildi', color: 'var(--red)', icon: 'cancel' },
+        bekliyor: { label: 'Bekliyor', color: '#EA580C', icon: 'schedule' },
+        onaylandi: { label: 'Onaylandı', color: '#16A34A', icon: 'check_circle' },
+        reddedildi: { label: 'Reddedildi', color: '#EF4444', icon: 'cancel' },
     };
 
+    const availableCities = [...new Set(applications.map(app => app.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compOptions = Object.entries(competitions)
+        .filter(([id, comp]) => !filterCity || (comp.il || comp.city) === filterCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     return (
         <div className="applications-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/')}>
+                    <button className="back-btn" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
@@ -324,45 +329,60 @@ export default function ApplicationsPage() {
             </header>
 
             <main className="page-content">
-                <div className="filters">
-                    <select
-                        className="filter-select"
-                        value={filterComp}
-                        onChange={(e) => setFilterComp(e.target.value)}
-                    >
-                        <option value="">-- Tüm Yarışmalar --</option>
-                        {compOptions.map(([id, comp]) => (
-                            <option key={id} value={id}>{comp.isim}</option>
-                        ))}
-                    </select>
+                <div className="filters-bar">
+                    <div className="filters-row filters-row--selects">
+                        <select
+                            className="filter-select"
+                            value={filterCity}
+                            onChange={(e) => { setFilterCity(e.target.value); setFilterComp(''); }}
+                        >
+                            <option value="">-- Tüm İller --</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
 
-                    <button
-                        className={`filter-btn ${filterStatus === 'bekliyor' ? 'filter-btn--active' : ''}`}
-                        onClick={() => setFilterStatus('bekliyor')}
-                    >
-                        <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'bekliyor' ? 'white' : 'var(--warning)' }}>schedule</i>
-                        Onay Bekleyenler
-                    </button>
-                    <button
-                        className={`filter-btn ${filterStatus === 'onaylandi' ? 'filter-btn--active' : ''}`}
-                        onClick={() => setFilterStatus('onaylandi')}
-                    >
-                        <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'onaylandi' ? 'white' : 'var(--success)' }}>check_circle</i>
-                        Onaylananlar
-                    </button>
-                    <button
-                        className={`filter-btn ${filterStatus === 'reddedildi' ? 'filter-btn--active' : ''}`}
-                        onClick={() => setFilterStatus('reddedildi')}
-                    >
-                        <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'reddedildi' ? 'white' : 'var(--red)' }}>cancel</i>
-                        Reddedilenler
-                    </button>
-                    <button
-                        className={`filter-btn ${filterStatus === 'all' ? 'filter-btn--active' : ''}`}
-                        onClick={() => setFilterStatus('all')}
-                    >
-                        Tümü
-                    </button>
+                        <select
+                            className="filter-select"
+                            value={filterComp}
+                            onChange={(e) => setFilterComp(e.target.value)}
+                        >
+                            <option value="">-- Tüm Yarışmalar --</option>
+                            {compOptions.map(([id, comp]) => (
+                                <option key={id} value={id}>{comp.isim}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="filters-row filters-row--status">
+                        <button
+                            className={`filter-btn ${filterStatus === 'bekliyor' ? 'filter-btn--active' : ''}`}
+                            onClick={() => setFilterStatus('bekliyor')}
+                        >
+                            <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'bekliyor' ? 'white' : '#EA580C' }}>schedule</i>
+                            Onay Bekleyenler
+                        </button>
+                        <button
+                            className={`filter-btn ${filterStatus === 'onaylandi' ? 'filter-btn--active' : ''}`}
+                            onClick={() => setFilterStatus('onaylandi')}
+                        >
+                            <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'onaylandi' ? 'white' : '#16A34A' }}>check_circle</i>
+                            Onaylananlar
+                        </button>
+                        <button
+                            className={`filter-btn ${filterStatus === 'reddedildi' ? 'filter-btn--active' : ''}`}
+                            onClick={() => setFilterStatus('reddedildi')}
+                        >
+                            <i className="material-icons-round" style={{ fontSize: 18, color: filterStatus === 'reddedildi' ? 'white' : '#EF4444' }}>cancel</i>
+                            Reddedilenler
+                        </button>
+                        <button
+                            className={`filter-btn ${filterStatus === 'all' ? 'filter-btn--active' : ''}`}
+                            onClick={() => setFilterStatus('all')}
+                        >
+                            Tümü
+                        </button>
+                    </div>
                 </div>
 
                 {loading ? (
@@ -386,7 +406,7 @@ export default function ApplicationsPage() {
                                     const isExpanded = expandedAppId === app.id;
 
                                     return (
-                                        <div className="app-card-wrapper" key={app.id} style={{ animationDelay: `${(index % 10) * 0.04}s` }}>
+                                        <div className="app-card-wrapper" key={app.id} data-status={app.status} style={{ animationDelay: `${(index % 10) * 0.04}s` }}>
                                             <div className="app-card" >
                                                 <div className="app-card__left">
                                                     <button className="expand-btn" onClick={() => setExpandedAppId(isExpanded ? null : app.id)}>

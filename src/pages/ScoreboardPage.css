@@ -1,87 +1,244 @@
 /* ================================================================
-   SCOREBOARD — FIG / Olympic / SmartScoring Inspired
-   ================================================================
-   Referanslar:
-   - SmartScoring (FIG World Cup): #080915, Proxima Nova, mavi/mor
-   - OMEGA Vionardo (Olimpiyat): Temiz tipografi, altın vurgular
-   - NBC Broadcast: Skor kalitesi renklendirmesi
+   SCOREBOARD — Light Theme / Broadcast Paper Look
    ================================================================ */
 
-/* ─── CONFIG SCREEN (değişmedi) ────────────────────────────── */
-.scoreboard-config {
+/* ─── CONFIG SCREEN ───────────────────────────────────────── */
+.sb-config {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 80px);
+    position: relative;
 }
 
-.config-card {
+.sb-config-card {
     width: 100%;
-    max-width: 500px;
-    padding: 3rem;
+    max-width: 540px;
+    padding: 2.5rem;
     text-align: center;
-    background: #111827;
-    border: 1px solid #1F2937;
-    border-radius: 1.5rem;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
-.cc-icon {
-    width: 80px;
-    height: 80px;
+.sb-config-icon {
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    margin: 0 auto 1.5rem;
+    margin: 0 auto 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
 }
 
-.cc-icon i {
-    font-size: 3rem;
-    color: white;
+.sb-config-icon i {
+    font-size: 2.5rem;
+    color: #fff;
 }
 
-.config-card h2 {
-    font-size: 1.8rem;
+.sb-config-title {
+    font-size: 1.6rem;
     font-weight: 800;
-    color: white;
-    margin-bottom: 0.5rem;
+    color: #1E293B;
+    margin: 0 0 0.35rem;
 }
 
-.config-form {
-    margin-top: 2.5rem;
+.sb-config-desc {
+    font-size: 0.95rem;
+    color: #64748B;
+    margin: 0;
+}
+
+.sb-config-form {
+    margin-top: 2rem;
     text-align: left;
 }
 
-.config-preview {
-    margin-top: 1.5rem;
-    padding: 1rem 1.25rem;
-    background: rgba(59, 130, 246, 0.08);
-    border: 1px solid rgba(59, 130, 246, 0.15);
-    border-radius: 0.75rem;
-    color: #94A3B8;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.sb-field {
+    margin-bottom: 1.25rem;
 }
 
-.config-preview i {
-    color: #60A5FA;
+.sb-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.sb-label i {
+    font-size: 16px;
+    color: #6366F1;
+}
+
+.sb-cat-count {
+    margin-left: auto;
+    background: #6366F1;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.sb-select {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 0.625rem;
+    background: #F8FAFC;
+    color: #1E293B;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    appearance: auto;
+}
+
+.sb-select:focus {
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Category multi-select grid */
+.sb-cat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.sb-cat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.6rem 0.85rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 0.5rem;
+    background: #FAFBFC;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.sb-cat-item:hover {
+    border-color: #CBD5E1;
+    background: #F1F5F9;
+}
+
+.sb-cat-item.sb-cat-selected {
+    border-color: #6366F1;
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.sb-cat-item input[type="checkbox"] {
+    display: none;
+}
+
+.sb-cat-check i {
+    font-size: 20px;
+    color: #CBD5E1;
+    transition: color 0.15s;
+}
+
+.sb-cat-selected .sb-cat-check i {
+    color: #6366F1;
+}
+
+.sb-cat-name-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.sb-cat-selected .sb-cat-name-label {
+    color: #1E293B;
+    font-weight: 700;
+}
+
+/* Go Live Button */
+.sb-go-live-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 1.75rem;
+    padding: 0.9rem 1.5rem;
+    background: linear-gradient(135deg, #22C55E, #16A34A);
+    color: #fff;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
+}
+
+.sb-go-live-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35);
+}
+
+.sb-go-live-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.sb-go-live-btn i {
+    font-size: 1.2rem;
+}
+
+.sb-config-info {
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    background: #F0F4FF;
+    border: 1px solid #DBEAFE;
+    border-radius: 0.625rem;
+    color: #475569;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: sbSlideIn 0.3s ease both;
+}
+
+.sb-config-info i {
+    color: #6366F1;
     font-size: 1.1rem;
     flex-shrink: 0;
 }
 
+@keyframes sbSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* ================================================================
-   LIVE SCOREBOARD — Tam Ekran
+   LIVE SCOREBOARD — Light Theme Full Screen
    ================================================================ */
 .sb-live {
     position: fixed;
     inset: 0;
     width: 100vw;
     height: 100vh;
-    background: #060a14;
-    color: #e2e8f0;
+    background: #FFFFFF;
+    color: #1E293B;
     z-index: 9999;
     display: flex;
     flex-direction: column;
@@ -96,8 +253,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.6rem 1.8rem;
-    background: #0a0e1a;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
     flex-shrink: 0;
     z-index: 10;
 }
@@ -119,14 +276,14 @@
     flex: 2;
 }
 
-/* LIVE Badge — kırmızı nokta + "LIVE" */
+/* LIVE Badge */
 .sb-live-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #f87171;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #DC2626;
     font-size: 0.7rem;
     font-weight: 900;
     letter-spacing: 2px;
@@ -139,27 +296,27 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #ef4444;
+    background: #DC2626;
     animation: livePulse 1.5s ease-in-out infinite;
 }
 
 @keyframes livePulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-    50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
 }
 
 .sb-clock {
-    color: #475569;
+    color: #94A3B8;
     font-size: 0.8rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
-/* Yarışma + Kategori */
+/* Competition + Category */
 .sb-comp-name {
     font-size: 1.1rem;
     font-weight: 900;
-    color: #f1f5f9;
+    color: #1E293B;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     white-space: nowrap;
@@ -167,22 +324,22 @@
     text-overflow: ellipsis;
 }
 
-.sb-cat-name {
+.sb-cat-label {
     font-size: 0.72rem;
-    color: #64748b;
+    color: #94A3B8;
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
 }
 
-/* İstatistik Pill */
+/* Stats Pill */
 .sb-stats-pill {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #64748b;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    color: #64748B;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 3px 8px;
@@ -194,7 +351,7 @@
 .sb-exit-btn {
     background: transparent;
     border: none;
-    color: #334155;
+    color: #94A3B8;
     cursor: pointer;
     transition: color 0.2s;
     padding: 4px;
@@ -204,7 +361,7 @@
 }
 
 .sb-exit-btn:hover {
-    color: #ef4444;
+    color: #EF4444;
 }
 
 .sb-exit-btn i {
@@ -216,6 +373,7 @@
     padding: 0.9rem 1.8rem 0;
     flex-shrink: 0;
     position: relative;
+    background: #FFFFFF;
 }
 
 .sb-view-info {
@@ -236,10 +394,21 @@
 
 .sb-view-sub {
     font-size: 0.72rem;
-    color: #475569;
+    color: #94A3B8;
     font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
+}
+
+.sb-page-indicator {
+    font-size: 0.72rem;
+    color: #64748B;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: #F1F5F9;
+    padding: 2px 10px;
+    border-radius: 4px;
+    border: 1px solid #E2E8F0;
 }
 
 /* View Nav Dots */
@@ -256,7 +425,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #1e293b;
+    background: #E2E8F0;
     transition: all 0.3s ease;
 }
 
@@ -268,7 +437,7 @@
 /* Cycle Progress Track */
 .sb-cycle-track {
     height: 2px;
-    background: rgba(255, 255, 255, 0.04);
+    background: #F1F5F9;
     margin-top: 0.75rem;
     border-radius: 1px;
     overflow: hidden;
@@ -277,7 +446,7 @@
 .sb-cycle-fill {
     height: 100%;
     background: var(--view-color, #0ea5e9);
-    opacity: 0.5;
+    opacity: 0.6;
     transition: width 50ms linear;
     border-radius: 1px;
 }
@@ -288,13 +457,14 @@
     padding: 0.65rem 1.8rem;
     align-items: center;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 2px solid #E2E8F0;
+    background: #F8FAFC;
 }
 
 .sb-th {
     font-size: 0.65rem;
     font-weight: 800;
-    color: #475569;
+    color: #64748B;
     letter-spacing: 2px;
     text-transform: uppercase;
 }
@@ -309,6 +479,31 @@
 
 .sb-th-app {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.sb-app-abbr {
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #475569;
+}
+
+.sb-app-img {
+    width: 32px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.sb-app-img svg {
+    width: 100%;
+    height: 100%;
 }
 
 .sb-th-total {
@@ -324,9 +519,10 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+    background: #FFFFFF;
 }
 
-/* Geçiş animasyonları */
+/* Transitions */
 .sb-fade-in {
     animation: sbFadeIn 0.4s ease both;
 }
@@ -345,7 +541,7 @@
 /* Scrollbar */
 .sb-tbody::-webkit-scrollbar { width: 4px; }
 .sb-tbody::-webkit-scrollbar-track { background: transparent; }
-.sb-tbody::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+.sb-tbody::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
 
 /* ─── TABLE ROW ────────────────────────────────────────────── */
 .sb-row {
@@ -353,18 +549,18 @@
     align-items: center;
     padding: 0.55rem 0;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.015);
+    background: #FFFFFF;
     border: 1px solid transparent;
     animation: rowEnter 0.35s ease both;
     transition: background 0.2s;
 }
 
 .sb-row:nth-child(even) {
-    background: rgba(255, 255, 255, 0.03);
+    background: #F8FAFC;
 }
 
 .sb-row:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: #F1F5F9;
 }
 
 @keyframes rowEnter {
@@ -375,17 +571,17 @@
 /* ─── MEDAL ROWS ───────────────────────────────────────────── */
 .sb-medal-1 {
     background: linear-gradient(90deg, rgba(234, 179, 8, 0.08), transparent 60%) !important;
-    border-color: rgba(234, 179, 8, 0.15) !important;
+    border-color: rgba(234, 179, 8, 0.2) !important;
 }
 
 .sb-medal-2 {
-    background: linear-gradient(90deg, rgba(148, 163, 184, 0.06), transparent 60%) !important;
-    border-color: rgba(148, 163, 184, 0.12) !important;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.08), transparent 60%) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
 }
 
 .sb-medal-3 {
-    background: linear-gradient(90deg, rgba(205, 127, 50, 0.06), transparent 60%) !important;
-    border-color: rgba(205, 127, 50, 0.12) !important;
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.08), transparent 60%) !important;
+    border-color: rgba(205, 127, 50, 0.2) !important;
 }
 
 /* ─── CELLS ────────────────────────────────────────────────── */
@@ -403,11 +599,11 @@
 .sb-rank-num {
     font-size: 1.1rem;
     font-weight: 800;
-    color: #475569;
+    color: #94A3B8;
     font-variant-numeric: tabular-nums;
 }
 
-/* Medal Icon — altın/gümüş/bronz daire */
+/* Medal Icon */
 .sb-medal-icon {
     width: 30px;
     height: 30px;
@@ -422,18 +618,18 @@
 
 .sb-medal-icon-1 {
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
 }
 
 .sb-medal-icon-2 {
     background: linear-gradient(135deg, #e2e8f0, #94a3b8);
-    box-shadow: 0 0 10px rgba(148, 163, 184, 0.2);
+    box-shadow: 0 2px 8px rgba(148, 163, 184, 0.2);
 }
 
 .sb-medal-icon-3 {
     background: linear-gradient(135deg, #d97706, #b45309);
     color: #fff;
-    box-shadow: 0 0 10px rgba(217, 119, 6, 0.2);
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
 }
 
 /* Name Cell */
@@ -445,21 +641,28 @@
 .sb-athlete-name {
     font-size: 1.05rem;
     font-weight: 800;
-    color: #f1f5f9;
+    color: #1E293B;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.sb-team-label {
+.sb-team-name-label {
     font-size: 1.1rem;
-    color: #e2e8f0;
+    color: #0F172A;
+}
+
+.sb-rank-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94A3B8;
+    margin-left: 6px;
 }
 
 .sb-athlete-club {
     font-size: 0.7rem;
-    color: #64748b;
+    color: #94A3B8;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -476,28 +679,11 @@
 }
 
 .sb-scored {
-    color: #cbd5e1;
+    color: #334155;
 }
 
 .sb-pending {
-    color: #1e293b;
-}
-
-/* NBC tarzı skor kalitesi renkleri */
-.sq-excellent {
-    color: #4ade80 !important;
-}
-
-.sq-good {
-    color: #a3e635 !important;
-}
-
-.sq-average {
-    color: #fbbf24 !important;
-}
-
-.sq-low {
-    color: #f87171 !important;
+    color: #E2E8F0;
 }
 
 /* Total Cell */
@@ -506,9 +692,8 @@
     padding-right: 0.75rem;
     font-size: 1.4rem;
     font-weight: 900;
-    color: #fbbf24;
+    color: #4338CA;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
 }
 
 /* ─── EMPTY STATE ──────────────────────────────────────────── */
@@ -519,7 +704,7 @@
     justify-content: center;
     gap: 0.75rem;
     padding: 4rem 0;
-    color: #334155;
+    color: #94A3B8;
 }
 
 .sb-empty-state i {
@@ -535,7 +720,7 @@
 }
 
 /* ================================================================
-   FLASH OVERLAY — Olimpiyat Tarzı Sıralı Skor Açılışı
+   FLASH OVERLAY — Light Theme Score Announcement
    ================================================================ */
 .sb-flash {
     position: fixed;
@@ -544,7 +729,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(4, 6, 14, 0.92);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     opacity: 0;
     pointer-events: none;
@@ -577,9 +762,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(14, 165, 233, 0.12);
-    border: 1px solid rgba(14, 165, 233, 0.2);
-    color: #38bdf8;
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    color: #4338CA;
     font-size: 0.72rem;
     font-weight: 900;
     letter-spacing: 3px;
@@ -603,7 +788,7 @@
 .sf-athlete {
     font-size: 3rem;
     font-weight: 900;
-    color: #fff;
+    color: #0F172A;
     margin: 0;
     line-height: 1.1;
     letter-spacing: -0.5px;
@@ -611,7 +796,7 @@
 
 .sf-club {
     font-size: 1.1rem;
-    color: #64748b;
+    color: #64748B;
     font-weight: 700;
     margin: 0.25rem 0 0;
 }
@@ -620,16 +805,16 @@
     display: inline-block;
     margin-top: 1rem;
     padding: 0.35rem 1.2rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
     border-radius: 4px;
     font-size: 0.85rem;
     font-weight: 900;
-    color: #94a3b8;
+    color: #475569;
     letter-spacing: 3px;
 }
 
-/* ─── Sıralı Skor Açılışı ─────────────────────────────────── */
+/* Sequential Score Reveal */
 .sf-scores {
     display: flex;
     align-items: center;
@@ -670,46 +855,45 @@
 
 /* D-Score */
 .sf-d {
-    background: rgba(168, 85, 247, 0.06);
-    border-color: rgba(168, 85, 247, 0.15);
+    background: #FAF5FF;
+    border-color: #E9D5FF;
 }
 
-.sf-d .sf-score-label { color: #a78bfa; }
-.sf-d .sf-score-value { color: #c4b5fd; }
+.sf-d .sf-score-label { color: #7C3AED; }
+.sf-d .sf-score-value { color: #6D28D9; }
 
 /* E-Score */
 .sf-e {
-    background: rgba(16, 185, 129, 0.06);
-    border-color: rgba(16, 185, 129, 0.15);
+    background: #F0FDF4;
+    border-color: #BBF7D0;
 }
 
-.sf-e .sf-score-label { color: #34d399; }
-.sf-e .sf-score-value { color: #6ee7b7; }
+.sf-e .sf-score-label { color: #16A34A; }
+.sf-e .sf-score-value { color: #15803D; }
 
 /* Penalty */
 .sf-pen {
-    background: rgba(239, 68, 68, 0.06);
-    border-color: rgba(239, 68, 68, 0.15);
+    background: #FEF2F2;
+    border-color: #FECACA;
 }
 
-.sf-pen .sf-score-label { color: #f87171; }
-.sf-pen .sf-score-value { color: #fca5a5; }
+.sf-pen .sf-score-label { color: #DC2626; }
+.sf-pen .sf-score-value { color: #B91C1C; }
 
 .sf-score-divider {
     font-size: 1.8rem;
     font-weight: 300;
-    color: #334155;
+    color: #CBD5E1;
     opacity: 0;
     transition: opacity 0.4s ease 0.3s;
 }
 
-/* Divider'lar flash açılınca görünür olur */
 .sb-flash-visible .sf-score-divider {
-    opacity: 0.5;
+    opacity: 0.6;
     transition: opacity 0.5s ease 0.6s;
 }
 
-/* ─── Total Score — Büyük final gösterimi ──────────────────── */
+/* Total Score */
 .sf-total {
     margin-top: 1.5rem;
     opacity: 0;
@@ -725,12 +909,10 @@
 .sf-total-value {
     font-size: 5rem;
     font-weight: 900;
-    color: #fbbf24;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 60px rgba(251, 191, 36, 0.3);
     line-height: 1;
     display: inline-block;
-    background: linear-gradient(180deg, #fde68a, #f59e0b);
+    background: linear-gradient(180deg, #F59E0B, #D97706);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -740,7 +922,7 @@
 .sf-timer {
     margin-top: 2rem;
     height: 3px;
-    background: rgba(255, 255, 255, 0.04);
+    background: #F1F5F9;
     border-radius: 2px;
     overflow: hidden;
     max-width: 50%;
@@ -750,9 +932,9 @@
 
 .sf-timer-bar {
     height: 100%;
-    background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+    background: linear-gradient(90deg, #6366F1, #818CF8);
     border-radius: 2px;
-    animation: timerCountdown 7s linear forwards;
+    animation: timerCountdown 10s linear forwards;
 }
 
 @keyframes timerCountdown {
@@ -781,7 +963,7 @@
     .sb-view-title { font-size: 1.1rem; }
     .sb-comp-name { font-size: 0.9rem; }
     .sb-athlete-name { font-size: 0.85rem; }
-    .sb-team-label { font-size: 0.9rem; }
+    .sb-team-name-label { font-size: 0.9rem; }
     .sb-score-cell { font-size: 0.85rem; }
     .sb-total-cell { font-size: 1.05rem; }
     .sb-medal-icon { width: 26px; height: 26px; font-size: 0.75rem; }
@@ -827,4 +1009,9 @@
     .sf-score-divider { display: none; }
     .sf-total-value { font-size: 2.5rem; }
     .sb-flash-card { width: 96%; }
+
+    .sb-config-card {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
 }

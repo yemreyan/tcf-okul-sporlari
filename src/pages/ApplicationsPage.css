@@ -1,5 +1,5 @@
 /* ============================
-   APPLICATIONS PAGE 
+   APPLICATIONS PAGE
    ============================ */
 
 .applications-page {
@@ -10,12 +10,22 @@
 
 /* Header & Filters inherit from CompetitionsPage CSS/shared variables */
 
-.filters {
+.filters-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.filters-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    gap: 10px;
+}
+
+.filters-row--status {
+    gap: 8px;
 }
 
 .filter-select {
@@ -29,34 +39,60 @@
     background: var(--bg-white);
     outline: none;
     min-width: 200px;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.filter-select:focus {
+    border-color: var(--primary, #6366F1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ── Filter Buttons (Modern Tabs) ── */
+
 .filter-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 18px;
+    padding: 8px 20px;
     border-radius: 50px;
     background: var(--bg-white);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     color: var(--text-secondary);
     font-weight: 700;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.filter-btn i {
+    font-size: 18px;
+    line-height: 1;
 }
 
 .filter-btn:hover {
     background: var(--bg);
-    border-color: #D1D5DB;
+    border-color: #C7C9CF;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-btn--active {
     background: var(--text-primary);
     color: white;
     border-color: var(--text-primary);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* Apps List */
+.filter-btn--active:hover {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Apps List ── */
+
 .apps-container {
     max-width: 1000px;
     margin: 0 auto;
@@ -65,22 +101,39 @@
 .apps-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
+
+/* ── App Card Wrapper ── */
 
 .app-card-wrapper {
     background: var(--bg-white);
     border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
-    transition: all 0.2s;
-    animation: cardIn 0.3s ease both;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: cardIn 0.35s ease both;
     overflow: hidden;
 }
 
 .app-card-wrapper:hover {
     border-color: var(--border-light);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Status-based left border accent colors */
+.app-card-wrapper[data-status="bekliyor"] {
+    border-left-color: #EA580C;
+}
+
+.app-card-wrapper[data-status="onaylandi"] {
+    border-left-color: #16A34A;
+}
+
+.app-card-wrapper[data-status="reddedildi"] {
+    border-left-color: #EF4444;
 }
 
 .app-card {
@@ -102,8 +155,8 @@
 .expand-btn {
     background: none;
     border: none;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -116,6 +169,7 @@
 .expand-btn:hover {
     background: var(--bg);
     color: var(--text-primary);
+    transform: scale(1.1);
 }
 
 .app-card__icon {
@@ -159,7 +213,7 @@
 
 .app-card__meta {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
@@ -183,59 +237,97 @@
 .app-card__right {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     flex-shrink: 0;
+    gap: 8px;
+    min-height: 42px;
 }
 
 .app-card__actions {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
 }
+
+/* ── Action Buttons (Modern Redesign) ── */
 
 .action-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 10px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
+    padding: 9px 18px;
+    border-radius: 50px;
+    font-size: 0.82rem;
     font-weight: 800;
-    transition: all 0.2s;
+    letter-spacing: 0.01em;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    height: 38px;
+    box-sizing: border-box;
 }
 
 .action-btn i {
     font-size: 18px;
+    line-height: 1;
 }
 
 .action-btn--approve {
-    background: rgba(34, 197, 94, 0.1);
-    color: var(--success);
+    background: linear-gradient(135deg, #16A34A, #15803D);
+    color: white;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
 }
 
 .action-btn--approve:hover {
-    background: var(--success);
+    background: linear-gradient(135deg, #15803D, #166534);
     color: white;
-    transform: translateY(-1px);
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+}
+
+.action-btn--approve:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 1px 4px rgba(22, 163, 74, 0.3);
 }
 
 .action-btn--reject {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--red);
+    background: rgba(239, 68, 68, 0.08);
+    color: #DC2626;
+    border: 1.5px solid rgba(239, 68, 68, 0.2);
 }
 
 .action-btn--reject:hover {
-    background: var(--red);
+    background: #EF4444;
     color: white;
-    transform: translateY(-1px);
+    border-color: #EF4444;
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
 }
+
+.action-btn--reject:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.25);
+}
+
+/* ── Status Display Badge (Polished) ── */
 
 .app-card__status-display {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 12px 8px 16px;
+    gap: 10px;
+    padding: 8px 14px 8px 18px;
     border-radius: 50px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 800;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    height: 38px;
+    box-sizing: border-box;
+    white-space: nowrap;
 }
 
 .status-undo-btn {
@@ -245,33 +337,38 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.06);
     color: inherit;
-    transition: 0.2s;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .status-undo-btn:hover {
     background: rgba(0, 0, 0, 0.15);
-    transform: rotate(-30deg);
+    transform: rotate(-45deg) scale(1.1);
 }
 
 .status-undo-btn i {
     font-size: 16px;
 }
 
-/* Expanded Detail View */
+/* ── Expanded Detail View ── */
+
 .app-card__detail {
-    padding: 20px 24px;
+    padding: 24px 28px;
     border-top: 1px solid var(--border);
-    background: var(--bg);
+    background: linear-gradient(180deg, var(--bg) 0%, rgba(255,255,255,0.5) 100%);
     animation: fadeIn 0.3s ease;
 }
 
 .detail-section {
     display: flex;
     flex-wrap: wrap;
-    gap: 24px;
-    margin-bottom: 20px;
+    gap: 28px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
 }
 
 .detail-info-block {
@@ -284,6 +381,10 @@
 .detail-info-block strong {
     color: var(--text-primary);
     font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.7;
 }
 
 .detail-info-block span {
@@ -292,9 +393,9 @@
 
 .detail-athletes strong {
     display: block;
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-primary);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .athlete-grid {
@@ -305,9 +406,15 @@
 
 .athlete-card {
     background: var(--bg-white);
-    padding: 12px 16px;
+    padding: 14px 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.athlete-card:hover {
+    border-color: var(--border-light);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .ath-name {
@@ -323,7 +430,8 @@
     margin-bottom: 2px;
 }
 
-/* Responsive */
+/* ── Responsive ── */
+
 @media (max-width: 768px) {
     .app-card {
         flex-direction: column;
@@ -355,17 +463,33 @@
         white-space: normal;
     }
 
+    .app-card__right {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+
     .app-card__actions {
         width: 100%;
-        margin-top: 6px;
     }
 
     .action-btn {
         flex: 1;
         justify-content: center;
+        padding: 10px 14px;
+        height: 40px;
     }
 
-    .app-card__right {
-        justify-content: flex-end;
+    /* Hide button text on mobile, show icon only */
+    .action-btn span {
+        display: none;
+    }
+
+    .app-card__detail {
+        padding: 16px;
+    }
+
+    .detail-section {
+        gap: 16px;
     }
 }

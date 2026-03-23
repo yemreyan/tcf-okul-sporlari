@@ -1,0 +1,927 @@
+/* ============================
+   ANNOUNCEMENTS PAGE
+   ============================ */
+
+.ann-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+}
+
+.ann-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.ann-loading__spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--indigo);
+    border-radius: 50%;
+    animation: annSpin 0.7s linear infinite;
+}
+
+@keyframes annSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Header ── */
+.ann-header {
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+
+.ann-header__left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ann-header__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ann-back {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.ann-back:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.ann-header__title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ann-header__sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.ann-create-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--indigo);
+    color: white;
+    font-weight: 700;
+    font-size: 0.88rem;
+    transition: 0.2s;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+
+.ann-create-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.ann-create-btn i {
+    font-size: 20px;
+}
+
+/* ── Main ── */
+.ann-main {
+    flex: 1;
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ── Filter bar ── */
+.ann-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+}
+
+.ann-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.ann-filter-group > i {
+    color: var(--text-muted);
+    font-size: 20px;
+}
+
+.ann-filter-select {
+    flex: 1;
+    max-width: 400px;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-white);
+    font-family: var(--font);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: border-color 0.15s;
+}
+
+.ann-filter-select:focus {
+    outline: none;
+    border-color: var(--indigo);
+}
+
+.ann-count {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* ── Tabs (Aktif / Gecmis) ── */
+.ann-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+}
+
+.ann-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: var(--radius-xs);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.ann-tab:hover {
+    color: var(--text-secondary);
+    background: var(--bg);
+}
+
+.ann-tab i {
+    font-size: 18px;
+}
+
+.ann-tab--active {
+    background: var(--indigo);
+    color: white;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.ann-tab--active:hover {
+    background: var(--indigo);
+    color: white;
+}
+
+.ann-tab-count {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.2);
+}
+
+.ann-tab:not(.ann-tab--active) .ann-tab-count {
+    background: var(--border);
+    color: var(--text-muted);
+}
+
+/* ── Expiry Badge ── */
+.ann-expiry-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0891B2;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #F0FDFA;
+}
+
+.ann-expiry-badge i {
+    font-size: 13px;
+}
+
+.ann-expiry-badge--expired {
+    color: #9CA3AF;
+    background: #F3F4F6;
+}
+
+.ann-expiry-badge--forever {
+    color: #7C3AED;
+    background: #F5F3FF;
+}
+
+/* ── Field Hint ── */
+.ann-field-hint {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* ── Empty ── */
+.ann-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+}
+
+.ann-empty i {
+    font-size: 64px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.ann-empty h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.ann-empty p {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ── Announcement List ── */
+.ann-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ann-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: 0.2s;
+    animation: annCardIn 0.3s ease both;
+}
+
+@keyframes annCardIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ann-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.ann-card--urgent {
+    border-left: 4px solid #DC2626;
+    background: linear-gradient(135deg, #FFF5F5, var(--bg-white));
+}
+
+.ann-card__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ann-card__icon i {
+    font-size: 22px;
+    color: white;
+}
+
+.ann-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ann-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.ann-card__title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ann-urgent-badge {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #DC2626;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.ann-card__time {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.ann-card__msg {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+}
+
+.ann-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ann-cat-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.ann-comp-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.ann-comp-badge i {
+    font-size: 14px;
+}
+
+.ann-author {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.ann-author i {
+    font-size: 14px;
+}
+
+.ann-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.ann-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text-muted);
+    transition: 0.15s;
+}
+
+.ann-action i {
+    font-size: 18px;
+}
+
+.ann-action:hover {
+    background: #F3F0FF;
+    color: var(--purple);
+}
+
+.ann-action--del:hover {
+    background: #FEF2F2;
+    color: #DC2626;
+}
+
+/* ── Select Mode Toggle ── */
+.ann-select-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 0.88rem;
+    border: 2px solid var(--border);
+    transition: 0.2s;
+}
+
+.ann-select-toggle:hover {
+    border-color: var(--indigo);
+    color: var(--indigo);
+}
+
+.ann-select-toggle--active {
+    background: #EEF2FF;
+    border-color: var(--indigo);
+    color: var(--indigo);
+}
+
+.ann-select-toggle i {
+    font-size: 20px;
+}
+
+/* ── Select Bar ── */
+.ann-select-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: #EEF2FF;
+    border: 2px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius);
+    animation: annCardIn 0.2s ease both;
+}
+
+.ann-select-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Checkbox ── */
+.ann-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ann-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.ann-checkbox__box {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    background: var(--bg-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ann-checkbox__box::after {
+    content: 'check';
+    font-family: 'Material Icons Round';
+    font-size: 16px;
+    color: white;
+    opacity: 0;
+    transition: 0.15s;
+}
+
+.ann-checkbox input:checked + .ann-checkbox__box {
+    background: var(--indigo);
+    border-color: var(--indigo);
+}
+
+.ann-checkbox input:checked + .ann-checkbox__box::after {
+    opacity: 1;
+}
+
+.ann-checkbox__label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.ann-checkbox--card {
+    flex-shrink: 0;
+}
+
+/* ── Bulk Action Buttons ── */
+.ann-bulk-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.82rem;
+    transition: 0.15s;
+    white-space: nowrap;
+}
+
+.ann-bulk-btn i {
+    font-size: 18px;
+}
+
+.ann-bulk-btn--delete {
+    background: #DC2626;
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.ann-bulk-btn--delete:hover {
+    background: #B91C1C;
+    transform: translateY(-1px);
+}
+
+.ann-bulk-btn--delete-all {
+    background: var(--bg-white);
+    color: #DC2626;
+    border: 2px solid rgba(220, 38, 38, 0.25);
+}
+
+.ann-bulk-btn--delete-all:hover {
+    background: #FEF2F2;
+    border-color: #DC2626;
+}
+
+/* ── Select Count Badge ── */
+.ann-select-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.3);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ── Selected Card State ── */
+.ann-card--selected {
+    border-color: var(--indigo);
+    background: linear-gradient(135deg, #EEF2FF, var(--bg-white));
+    box-shadow: 0 0 0 1px var(--indigo);
+}
+
+/* ══════════════════════════
+   MODAL
+   ══════════════════════════ */
+
+.ann-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: annOverlayIn 0.2s ease;
+}
+
+@keyframes annOverlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.ann-modal {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    box-shadow: var(--shadow-lg);
+    animation: annModalIn 0.25s ease;
+    overflow: hidden;
+}
+
+@keyframes annModalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ann-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ann-modal__header h2 {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.ann-modal__close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text-muted);
+    transition: 0.15s;
+}
+
+.ann-modal__close:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.ann-modal__body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.ann-field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.ann-field input,
+.ann-field select,
+.ann-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-xs);
+    background: var(--bg);
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: border-color 0.15s;
+    resize: vertical;
+}
+
+.ann-field input:focus,
+.ann-field select:focus,
+.ann-field textarea:focus {
+    outline: none;
+    border-color: var(--indigo);
+    background: var(--bg-white);
+}
+
+.ann-char-count {
+    display: block;
+    text-align: right;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.ann-field-row {
+    display: flex;
+    gap: 12px;
+}
+
+.ann-field-row .ann-field {
+    flex: 1;
+}
+
+.ann-priority-toggle {
+    display: flex;
+    gap: 6px;
+}
+
+.ann-pri-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: var(--radius-xs);
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: var(--bg);
+    color: var(--text-secondary);
+    border: 2px solid var(--border);
+    transition: 0.15s;
+}
+
+.ann-pri-btn--active {
+    border-color: var(--indigo);
+    background: #EEF2FF;
+    color: var(--indigo);
+}
+
+.ann-pri-btn--urgent.ann-pri-btn--active {
+    border-color: #DC2626;
+    background: #FEF2F2;
+    color: #DC2626;
+}
+
+.ann-modal__footer {
+    display: flex;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.ann-modal__btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: 0.15s;
+}
+
+.ann-modal__btn i {
+    font-size: 18px;
+}
+
+.ann-modal__btn--cancel {
+    background: var(--bg-white);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.ann-modal__btn--cancel:hover {
+    background: var(--border-light);
+}
+
+.ann-modal__btn--save {
+    background: var(--indigo);
+    color: white;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+
+.ann-modal__btn--save:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* ══════════════════════════
+   RESPONSIVE
+   ══════════════════════════ */
+
+@media (max-width: 640px) {
+    .ann-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+    }
+
+    .ann-header__right {
+        width: 100%;
+    }
+
+    .ann-create-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ann-main {
+        padding: 16px;
+    }
+
+    .ann-filter-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ann-filter-group {
+        width: 100%;
+    }
+
+    .ann-filter-select {
+        max-width: 100%;
+    }
+
+    .ann-card {
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 16px;
+    }
+
+    .ann-card__icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .ann-card__icon i {
+        font-size: 18px;
+    }
+
+    .ann-card__actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .ann-field-row {
+        flex-direction: column;
+    }
+
+    .ann-modal {
+        max-width: 100%;
+    }
+
+    .ann-select-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .ann-select-bar__actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .ann-bulk-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .ann-header__right {
+        display: flex;
+        gap: 8px;
+    }
+
+    .ann-select-toggle {
+        flex: 1;
+        justify-content: center;
+    }
+}

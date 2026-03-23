@@ -6,6 +6,7 @@ import { DEFAULT_CRITERIA } from '../data/criteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { logAction } from '../lib/auditLogger';
 import './ScoringPage.css';
 
 export default function ScoringPage() {
@@ -15,6 +16,7 @@ export default function ScoringPage() {
     const [competitions, setCompetitions] = useState({});
 
     // Selections
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedApparatus, setSelectedApparatus] = useState('');
@@ -45,6 +47,17 @@ export default function ScoringPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
+
+    // Difficulty Mode State (yıldız/genç kategoriler için)
+    const [difficultyMoves, setDifficultyMoves] = useState({});
+    const [crValue, setCrValue] = useState(0);
+    const [cvValue, setCvValue] = useState(0);
+    const [btrsValue, setBtrsValue] = useState(0);
+
+    // Zorluk grubu sabitleri
+    const DIFFICULTY_POINTS = { A: 0.1, B: 0.2, C: 0.3, D: 0.4, E: 0.5, F: 0.6, G: 0.7, H: 0.8, I: 0.9, J: 1.0 };
+    const DIFFICULTY_GROUPS = ['J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A']; // J'den A'ya (yüksekten düşüğe)
+    const MAX_MOVES_PER_GROUP = 8;
 
     // 1. Load Competitions
     useEffect(() => {
@@ -160,8 +173,13 @@ export default function ScoringPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
 
+    // Available Cities for Filtering
+    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     // Dropdown Data & Criteria Options
-    const compOptions = Object.entries(competitions).sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+    const compOptions = Object.entries(competitions)
+        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity)
+        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
     if (selectedCompId && competitions[selectedCompId]?.sporcular) {
@@ -188,14 +206,17 @@ export default function ScoringPage() {
     if (selectedCategory && effectiveCriteria) {
         const allKeys = Object.keys(effectiveCriteria).filter(key => key !== 'metadata' && key !== 'eksikKesintiTiers');
         // compAletler varsa sadece eşleşenleri göster, yoksa tümünü göster
+        // Ek olarak: Aletin "isActive" flag'i false ise gösterme
         apparatusOptions = allKeys
-            .filter(key => compAletler.length === 0 || compAletler.includes(key))
+            .filter(key => (compAletler.length === 0 || compAletler.includes(key)) && effectiveCriteria[key]?.isActive !== false)
             .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
 
-        // Eğer compAletler filtresi sonrası boş kaldıysa, filtresiz göster (veri uyumsuzluğu durumu)
-        if (apparatusOptions.length === 0 && allKeys.length > 0) {
-            console.warn('[ScoringPage] compAletler filtresi tüm aletleri eledi, filtresiz gösteriliyor. compAletler:', compAletler, 'allKeys:', allKeys);
-            apparatusOptions = allKeys.map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
+        // Eğer compAletler filtresi sonrası boş kaldıysa, sadece aktif olanları filtresiz göster
+        if (apparatusOptions.length === 0 && allKeys.some(key => effectiveCriteria[key]?.isActive !== false)) {
+            console.warn('[ScoringPage] compAletler filtresi tüm aletleri eledi, filtresiz aktif aletler gösteriliyor. compAletler:', compAletler, 'allKeys:', allKeys);
+            apparatusOptions = allKeys
+                .filter(key => effectiveCriteria[key]?.isActive !== false)
+                .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
         }
 
         if (selectedApparatus) {
@@ -204,10 +225,22 @@ export default function ScoringPage() {
     }
 
     // D-Score Calculation
-    const hasDynamicSkills = currentCriteria?.hareketler && currentCriteria.hareketler.length > 0;
+    // dScoreMode: Firebase criteria'da varsa onu kullan, yoksa DEFAULT_CRITERIA'dan fallback yap
+    const defaultCriteriaForApparatus = selectedCategory && selectedApparatus ? DEFAULT_CRITERIA[selectedCategory]?.[selectedApparatus] : null;
+    const dScoreMode = currentCriteria?.dScoreMode || defaultCriteriaForApparatus?.dScoreMode || 'skills'; // 'skills' | 'difficulty'
+    // hasDynamicSkills: skills modunda VE en az bir geçerli hareket tanımlıysa (isim veya dValues dolu)
+    const hasDynamicSkills = dScoreMode === 'skills' && currentCriteria?.hareketler && currentCriteria.hareketler.length > 0
+        && currentCriteria.hareketler.some(h => (h.isim && h.isim.trim() !== '') || (h.dValues && String(h.dValues).trim() !== ''));
+    const isDifficultyMode = dScoreMode === 'difficulty';
 
     let calculatedDScore = 0;
-    if (hasDynamicSkills) {
+    if (isDifficultyMode) {
+        // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS
+        const movesTotal = Object.entries(difficultyMoves).reduce((sum, [group, count]) => {
+            return sum + ((parseInt(count) || 0) * (DIFFICULTY_POINTS[group] || 0));
+        }, 0);
+        calculatedDScore = movesTotal + (parseFloat(crValue) || 0) + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0);
+    } else if (hasDynamicSkills) {
         calculatedDScore = Object.values(skillScores).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
     } else {
         calculatedDScore = parseFloat(dScore) || 0;
@@ -315,6 +348,11 @@ export default function ScoringPage() {
             // Kaydedilmiş scoring mode ve combined E değerini geri yükle
             if (prevScore.scoringMode) setScoringMode(prevScore.scoringMode);
             setCombinedEDeduction(prevScore.combinedEDeduction || 0);
+            // Difficulty mode state geri yükle
+            setDifficultyMoves(prevScore.difficultyMoves || {});
+            setCrValue(prevScore.crScore_val || 0);
+            setCvValue(prevScore.cvScore_val || 0);
+            setBtrsValue(prevScore.btrsScore_val || 0);
             const panels = {};
             for (let i = 1; i <= 10; i++) {
                 const key = `e${i}`;
@@ -337,6 +375,11 @@ export default function ScoringPage() {
         setEPanelLocal({});
         setEPanelTouched({});
         setCombinedEDeduction(0);
+        // Difficulty mode reset
+        setDifficultyMoves({});
+        setCrValue(0);
+        setCvValue(0);
+        setBtrsValue(0);
     };
 
     const handleCallAthlete = async () => {
@@ -410,8 +453,20 @@ export default function ScoringPage() {
                 });
             }
 
+            // Difficulty mode ek verileri
+            const difficultyData = isDifficultyMode ? {
+                [scorePath + '/dScoreMode']: 'difficulty',
+                [scorePath + '/difficultyMoves']: difficultyMoves,
+                [scorePath + '/crScore_val']: parseFloat(crValue) || 0,
+                [scorePath + '/cvScore_val']: parseFloat(cvValue) || 0,
+                [scorePath + '/btrsScore_val']: parseFloat(btrsValue) || 0,
+            } : {
+                [scorePath + '/dScoreMode']: 'skills',
+            };
+
             await update(ref(db), {
                 ...ePanelSaveData,
+                ...difficultyData,
                 [scorePath + '/scoringMode']: scoringMode,
                 [scorePath + '/combinedEDeduction']: scoringMode === 'combined' ? parseFloat(combinedEDeduction) || 0 : null,
                 [scorePath + '/dScore']: calculatedDScore,
@@ -425,7 +480,7 @@ export default function ScoringPage() {
                 [scorePath + '/sonuc']: parseFloat(finalScore),
                 [scorePath + '/timestamp']: ts,
                 [scorePath + '/durum']: "tamamlandi",
-                [scorePath + '/hareketler']: skillScores,
+                [scorePath + '/hareketler']: isDifficultyMode ? null : skillScores,
                 [activePath]: null,
                 [flashPath]: {
                     adSoyad: `${savedAthlete.ad} ${savedAthlete.soyad}`,
@@ -437,6 +492,12 @@ export default function ScoringPage() {
                     total: finalScore,
                     timestamp: Date.now()
                 }
+            });
+
+            // Audit log
+            logAction('score_create', `${savedAthlete.ad} ${savedAthlete.soyad} — ${apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus}: ${finalScore}`, {
+                user: currentUser?.kullaniciAdi || 'admin',
+                competitionId: selectedCompId,
             });
 
             // Başarılı — sonraki sporcu modal'ı göster
@@ -467,7 +528,7 @@ export default function ScoringPage() {
         <div className="scoring-page-light">
             <header className="scoring-header-light">
                 <div className="sh-left">
-                    <button className="btn-back-light" onClick={() => navigate('/')}>
+                    <button className="btn-back-light" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">home</i>
                     </button>
                     <div>
@@ -487,6 +548,10 @@ export default function ScoringPage() {
                 {/* Left Sidebar: Controls & Roster */}
                 <aside className="scoring-sidebar-light">
                     <div className="sidebar-controls">
+                        <select className="premium-select" value={selectedCity} onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedCategory(''); setSelectedApparatus(''); setSelectedAthlete(null); }}>
+                            <option value="">Tüm İller</option>
+                            {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
+                        </select>
                         <select className="premium-select" value={selectedCompId} onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); setSelectedApparatus(''); setSelectedAthlete(null); }}>
                             <option value="">Yarışma Seçin</option>
                             {compOptions.map(([id, comp]) => <option key={id} value={id}>{comp.isim}</option>)}
@@ -615,13 +680,120 @@ export default function ScoringPage() {
 
                             <div className="scoring-grid">
                                 {/* D-Score Panel */}
-                                <div className="score-card card-blue">
+                                <div className={`score-card card-blue ${isDifficultyMode ? 'card-difficulty-wide' : ''}`}>
                                     <div className="sc-header card-header-blue">
                                         <h3>D-Puanı (Zorluk)</h3>
+                                        {isDifficultyMode && <span className="mode-indicator-badge difficulty-badge">Zorluk Grubu</span>}
                                         <i className="material-icons-round">emoji_events</i>
                                     </div>
                                     <div className="sc-body">
-                                        {hasDynamicSkills ? (
+                                        {isDifficultyMode ? (
+                                            /* === DIFFICULTY GROUP MODE (Yıldız/Genç) === */
+                                            <div className="difficulty-mode-panel">
+                                                <div className="difficulty-table-wrapper">
+                                                    <table className="difficulty-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Grup</th>
+                                                                <th>Puan</th>
+                                                                {[...Array(MAX_MOVES_PER_GROUP + 1)].map((_, i) => (
+                                                                    <th key={i}>{i}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {DIFFICULTY_GROUPS.map(group => {
+                                                                const selectedCount = difficultyMoves[group] || 0;
+                                                                return (
+                                                                    <tr key={group}>
+                                                                        <td className="diff-group-label"><strong>{group}</strong></td>
+                                                                        <td className="diff-point-label">{DIFFICULTY_POINTS[group].toFixed(1)}</td>
+                                                                        {[...Array(MAX_MOVES_PER_GROUP + 1)].map((_, i) => (
+                                                                            <td key={i}>
+                                                                                <button
+                                                                                    className={`diff-count-btn ${selectedCount === i ? 'diff-selected' : ''}`}
+                                                                                    onClick={() => setDifficultyMoves(prev => ({ ...prev, [group]: i }))}
+                                                                                >
+                                                                                    {i}
+                                                                                </button>
+                                                                            </td>
+                                                                        ))}
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Hareket Puanı Toplamı */}
+                                                {(() => {
+                                                    const movesTotal = Object.entries(difficultyMoves).reduce((sum, [g, c]) => sum + ((parseInt(c) || 0) * (DIFFICULTY_POINTS[g] || 0)), 0);
+                                                    return (
+                                                        <div className="diff-subtotal">
+                                                            Hareket Puanı: <strong>{movesTotal.toFixed(2)}</strong>
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                {/* CR - Kompozisyon Gereksinimi */}
+                                                <div className="diff-component-section">
+                                                    <label className="diff-comp-label">CR (Kompozisyon Gereksinimi)</label>
+                                                    <div className="diff-option-btns">
+                                                        {(currentCriteria?.crOptions || [0, 0.5, 0.6, 1.5, 2.0]).map(val => (
+                                                            <button
+                                                                key={val}
+                                                                className={`diff-opt-btn ${parseFloat(crValue) === val ? 'diff-opt-selected' : ''}`}
+                                                                onClick={() => setCrValue(val)}
+                                                            >
+                                                                {Number(val).toFixed(1)}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* CV - Bağlantı Değeri */}
+                                                <div className="diff-component-section">
+                                                    <label className="diff-comp-label">CV (Bağlantı Değeri)</label>
+                                                    <div className="diff-option-btns cv-scroll">
+                                                        {(currentCriteria?.cvOptions || [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]).map(val => (
+                                                            <button
+                                                                key={val}
+                                                                className={`diff-opt-btn ${parseFloat(cvValue) === val ? 'diff-opt-selected' : ''}`}
+                                                                onClick={() => setCvValue(val)}
+                                                            >
+                                                                {Number(val).toFixed(1)}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* BTRS */}
+                                                <div className="diff-component-section">
+                                                    <label className="diff-comp-label">BTRS</label>
+                                                    <div className="diff-option-btns">
+                                                        {(currentCriteria?.btrsOptions || [0, 0.2]).map(val => (
+                                                            <button
+                                                                key={val}
+                                                                className={`diff-opt-btn ${parseFloat(btrsValue) === val ? 'diff-opt-selected' : ''}`}
+                                                                onClick={() => setBtrsValue(val)}
+                                                            >
+                                                                {Number(val).toFixed(1)}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Toplam D-Puanı */}
+                                                <div className="diff-total-display">
+                                                    <span>Toplam D-Puanı</span>
+                                                    <strong>{calculatedDScore.toFixed(2)}</strong>
+                                                </div>
+
+                                                <button className="btn-quick-blue clear-btn" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => { setDifficultyMoves({}); setCrValue(0); setCvValue(0); setBtrsValue(0); }}>
+                                                    <i className="material-icons-round" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: 4 }}>refresh</i> D-Puanını Sıfırla
+                                                </button>
+                                            </div>
+                                        ) : hasDynamicSkills ? (
                                             <div className="dynamic-skills-list">
                                                 {currentCriteria.hareketler.map(skill => {
                                                     const dVals = String(skill.dValues).split(',').map(v => v.trim()).filter(v => v !== '');

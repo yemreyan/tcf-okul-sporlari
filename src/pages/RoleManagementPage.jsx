@@ -124,6 +124,37 @@ const PERMISSION_PAGES = [
             { key: 'sil', label: 'Sil' },
         ],
     },
+    {
+        key: 'schedule',
+        label: 'Program',
+        icon: 'calendar_month',
+        actions: [
+            { key: 'goruntule', label: 'Görüntüle' },
+            { key: 'olustur', label: 'Oluştur' },
+            { key: 'duzenle', label: 'Düzenle' },
+            { key: 'sil', label: 'Sil' },
+        ],
+    },
+    {
+        key: 'announcements',
+        label: 'Duyurular',
+        icon: 'campaign',
+        actions: [
+            { key: 'goruntule', label: 'Görüntüle' },
+            { key: 'olustur', label: 'Oluştur' },
+            { key: 'duzenle', label: 'Düzenle' },
+            { key: 'sil', label: 'Sil' },
+        ],
+    },
+    {
+        key: 'certificates',
+        label: 'Sertifikalar',
+        icon: 'workspace_premium',
+        actions: [
+            { key: 'goruntule', label: 'Görüntüle' },
+            { key: 'olustur', label: 'Oluştur / İndir' },
+        ],
+    },
 ];
 
 // Boş izin objesi oluştur
@@ -206,6 +237,13 @@ export default function RoleManagementPage() {
 
     // Delete confirmation
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+    // Bulk assignment modal
+    const [bulkModalOpen, setBulkModalOpen] = useState(false);
+    const [bulkSelectedUsers, setBulkSelectedUsers] = useState([]); // usernames
+    const [bulkPermissions, setBulkPermissions] = useState({}); // pageKey -> { actionKey: true/false }
+    const [bulkSaving, setBulkSaving] = useState(false);
+    const [bulkMode, setBulkMode] = useState('add'); // 'add' | 'remove' | 'set'
 
     // Firebase'den kullanıcıları yükle
     useEffect(() => {
@@ -395,6 +433,70 @@ export default function RoleManagementPage() {
         }
     };
 
+    // Toplu izin atama — modal aç
+    const openBulkModal = () => {
+        setBulkSelectedUsers([]);
+        setBulkPermissions(createEmptyPermissions());
+        setBulkMode('add');
+        setBulkModalOpen(true);
+    };
+
+    const toggleBulkUser = (username) => {
+        setBulkSelectedUsers(prev =>
+            prev.includes(username) ? prev.filter(u => u !== username) : [...prev, username]
+        );
+    };
+
+    const selectAllBulkUsers = () => {
+        const allIds = filteredUsers.map(u => u.id);
+        setBulkSelectedUsers(prev => prev.length === allIds.length ? [] : allIds);
+    };
+
+    const toggleBulkPermission = (pageKey, actionKey) => {
+        setBulkPermissions(prev => ({
+            ...prev,
+            [pageKey]: {
+                ...prev[pageKey],
+                [actionKey]: !prev[pageKey]?.[actionKey],
+            },
+        }));
+    };
+
+    const handleBulkSave = async () => {
+        if (bulkSelectedUsers.length === 0) return;
+        setBulkSaving(true);
+        try {
+            const updates = {};
+            for (const username of bulkSelectedUsers) {
+                const existingPerms = users[username]?.izinler || {};
+                const merged = {};
+                PERMISSION_PAGES.forEach(page => {
+                    merged[page.key] = {};
+                    page.actions.forEach(action => {
+                        const existing = existingPerms[page.key]?.[action.key] === true;
+                        const selected = bulkPermissions[page.key]?.[action.key] === true;
+                        if (bulkMode === 'add') {
+                            merged[page.key][action.key] = existing || selected;
+                        } else if (bulkMode === 'remove') {
+                            merged[page.key][action.key] = selected ? false : existing;
+                        } else {
+                            // set — sadece seçileni uygula
+                            merged[page.key][action.key] = selected;
+                        }
+                    });
+                });
+                updates[`kullanicilar/${username}/izinler`] = merged;
+            }
+            const { update: fbUpdate } = await import('firebase/database');
+            await fbUpdate(ref(db), updates);
+            setBulkModalOpen(false);
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Toplu atama hatası:', err);
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
     // Sil
     const handleDelete = async (userId) => {
         try {
@@ -410,7 +512,7 @@ export default function RoleManagementPage() {
             {/* Header */}
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/')}>
+                    <button className="back-btn" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>
@@ -419,6 +521,10 @@ export default function RoleManagementPage() {
                     </div>
                 </div>
                 <div className="page-header__right">
+                    <button className="btn btn--outline" onClick={openBulkModal}>
+                        <i className="material-icons-round">group_add</i>
+                        <span>Toplu İzin Ata</span>
+                    </button>
                     <button className="btn btn--primary" onClick={() => openModal()}>
                         <i className="material-icons-round">person_add</i>
                         <span>Yeni Kullanıcı</span>
@@ -675,6 +781,140 @@ export default function RoleManagementPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Toplu İzin Atama Modal */}
+            {bulkModalOpen && (
+                <div className="modal-overlay" onClick={() => setBulkModalOpen(false)}>
+                    <div className="rm-modal rm-modal--wide" onClick={e => e.stopPropagation()}>
+                        <div className="rm-modal__header">
+                            <h2>Toplu İzin Atama</h2>
+                            <button className="rm-modal__close" onClick={() => setBulkModalOpen(false)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="rm-modal__body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                            {/* Mod Seçimi */}
+                            <div className="rm-section">
+                                <h3 className="rm-section__title">
+                                    <i className="material-icons-round">settings</i>
+                                    Atama Modu
+                                </h3>
+                                <div className="rm-bulk-modes">
+                                    <button type="button" className={`rm-bulk-mode-btn ${bulkMode === 'add' ? 'active' : ''}`} onClick={() => setBulkMode('add')}>
+                                        <i className="material-icons-round">add_circle</i>
+                                        <span>Ekle</span>
+                                        <small>Mevcut izinlere eklenir</small>
+                                    </button>
+                                    <button type="button" className={`rm-bulk-mode-btn ${bulkMode === 'remove' ? 'active' : ''}`} onClick={() => setBulkMode('remove')}>
+                                        <i className="material-icons-round">remove_circle</i>
+                                        <span>Kaldır</span>
+                                        <small>Seçili izinler kaldırılır</small>
+                                    </button>
+                                    <button type="button" className={`rm-bulk-mode-btn ${bulkMode === 'set' ? 'active' : ''}`} onClick={() => setBulkMode('set')}>
+                                        <i className="material-icons-round">swap_horiz</i>
+                                        <span>Değiştir</span>
+                                        <small>Tüm izinler yeniden yazılır</small>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Kullanıcı Seçimi */}
+                            <div className="rm-section">
+                                <div className="rm-section__header">
+                                    <h3 className="rm-section__title">
+                                        <i className="material-icons-round">people</i>
+                                        Kullanıcılar ({bulkSelectedUsers.length} seçili)
+                                    </h3>
+                                    <button type="button" className="rm-quick-btn rm-quick-btn--all" onClick={selectAllBulkUsers}>
+                                        {bulkSelectedUsers.length === filteredUsers.length ? 'Tümünü Kaldır' : 'Tümünü Seç'}
+                                    </button>
+                                </div>
+                                <div className="rm-bulk-users">
+                                    {filteredUsers.map(user => (
+                                        <label key={user.id} className={`rm-bulk-user-chip ${bulkSelectedUsers.includes(user.id) ? 'selected' : ''}`}>
+                                            <input type="checkbox" checked={bulkSelectedUsers.includes(user.id)} onChange={() => toggleBulkUser(user.id)} />
+                                            <span className="rm-bulk-user-chip__avatar" style={{ background: bulkSelectedUsers.includes(user.id) ? '#3B82F6' : '#9CA3AF' }}>
+                                                {(user.id || '?')[0].toUpperCase()}
+                                            </span>
+                                            <span className="rm-bulk-user-chip__name">{user.id}</span>
+                                            <span className="rm-bulk-user-chip__role">{user.rolAdi || ''}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* İzin Seçimi */}
+                            <div className="rm-section">
+                                <div className="rm-section__header">
+                                    <h3 className="rm-section__title">
+                                        <i className="material-icons-round">security</i>
+                                        Atanacak İzinler
+                                    </h3>
+                                    <div className="rm-quick-btns">
+                                        <button type="button" className="rm-quick-btn rm-quick-btn--all" onClick={() => setBulkPermissions(createFullPermissions())}>Tümü</button>
+                                        <button type="button" className="rm-quick-btn rm-quick-btn--view" onClick={() => setBulkPermissions(createViewOnlyPermissions())}>Görüntüle</button>
+                                        <button type="button" className="rm-quick-btn rm-quick-btn--clear" onClick={() => setBulkPermissions(createEmptyPermissions())}>Temizle</button>
+                                    </div>
+                                </div>
+                                <div className="rm-perm-grid">
+                                    {PERMISSION_PAGES.map(page => {
+                                        const allChecked = page.actions.every(a => bulkPermissions[page.key]?.[a.key]);
+                                        return (
+                                            <div key={page.key} className="rm-perm-row">
+                                                <div className="rm-perm-row__label">
+                                                    <button
+                                                        type="button"
+                                                        className={`rm-perm-row__toggle ${allChecked ? 'rm-perm-row__toggle--active' : ''}`}
+                                                        onClick={() => {
+                                                            const newPerms = { ...bulkPermissions };
+                                                            newPerms[page.key] = {};
+                                                            page.actions.forEach(a => { newPerms[page.key][a.key] = !allChecked; });
+                                                            setBulkPermissions(newPerms);
+                                                        }}
+                                                    >
+                                                        <i className="material-icons-round" style={{ fontSize: 18 }}>{page.icon}</i>
+                                                    </button>
+                                                    <span>{page.label}</span>
+                                                </div>
+                                                <div className="rm-perm-row__actions">
+                                                    {page.actions.map(action => (
+                                                        <label key={action.key} className="rm-checkbox">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!bulkPermissions[page.key]?.[action.key]}
+                                                                onChange={() => toggleBulkPermission(page.key, action.key)}
+                                                            />
+                                                            <span className="rm-checkbox__box">
+                                                                <i className="material-icons-round">check</i>
+                                                            </span>
+                                                            <span className="rm-checkbox__text">{action.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="rm-modal__footer">
+                            <button type="button" className="btn btn--cancel" onClick={() => setBulkModalOpen(false)}>İptal</button>
+                            <button
+                                type="button"
+                                className="btn btn--primary"
+                                disabled={bulkSaving || bulkSelectedUsers.length === 0}
+                                onClick={handleBulkSave}
+                            >
+                                {bulkSaving ? (
+                                    <><span className="rm-btn-spinner" /> Uygulanıyor...</>
+                                ) : (
+                                    <><i className="material-icons-round">done_all</i> {bulkSelectedUsers.length} Kullanıcıya Uygula</>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

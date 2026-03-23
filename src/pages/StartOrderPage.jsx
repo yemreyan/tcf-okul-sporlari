@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF ve autoTable — sadece PDF export sırasında dynamic import ile yüklenir (code splitting)
 import { useAuth } from '../lib/AuthContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './StartOrderPage.css';
@@ -557,6 +556,8 @@ export default function StartOrderPage() {
                 return;
             }
 
+            const { jsPDF } = await import('jspdf');
+            const { default: autoTable } = await import('jspdf-autotable');
             const doc = new jsPDF();
             let activeFontName = 'helvetica';
 
@@ -722,7 +723,7 @@ export default function StartOrderPage() {
         <div className="order-page">
             <header className="page-header--bento">
                 <div className="page-header__left">
-                    <button className="back-btn back-btn--light" onClick={() => navigate('/')}>
+                    <button className="back-btn back-btn--light" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">

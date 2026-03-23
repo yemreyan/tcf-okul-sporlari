@@ -323,7 +323,7 @@ const OfficialReportPage = () => {
                 <div className="report-header-card classic-card no-print">
                     <div className="report-header-top">
                         <div className="report-header-left">
-                            <button className="report-back-btn" onClick={() => navigate('/')}>
+                            <button type="button" className="report-back-btn" onClick={() => navigate('/artistik')}>
                                 <i className="material-icons-round">arrow_back</i>
                             </button>
                             <div className="report-icon-box">
@@ -522,7 +522,7 @@ const OfficialReportPage = () => {
             <div className="report-header-card classic-card no-print">
                 <div className="report-header-top">
                     <div className="report-header-left">
-                        <button className="report-back-btn" onClick={backToList}>
+                        <button type="button" className="report-back-btn" onClick={backToList}>
                             <i className="material-icons-round">arrow_back</i>
                         </button>
                         <div className="report-icon-box">

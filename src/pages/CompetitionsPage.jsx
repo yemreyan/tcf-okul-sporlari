@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, push, set, remove, update } from 'firebase/database';
+import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import turkeyData from '../data/turkey_data.json';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults.js';
@@ -8,6 +8,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
+import { logAction } from '../lib/auditLogger';
 import './CompetitionsPage.css';
 
 /* ─── HAKEM PANEL SAYISI SEÇENEKLERI ─── */
@@ -213,13 +214,28 @@ export default function CompetitionsPage() {
         }
         const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il };
 
+        // Criteria'dan aktif aletleri çekmek için get kullanalım
+        let liveCriteriaData = {};
+        try {
+            const activeYearSnap = await get(ref(db, 'criteria/activeYear'));
+            const activeYear = activeYearSnap.val() || new Date().getFullYear();
+            const criteriaSnap = await get(ref(db, `criteria/${activeYear}`));
+            liveCriteriaData = criteriaSnap.val() || DEFAULT_CRITERIA;
+        } catch (err) {
+            console.error("Criteria fetch error", err);
+            liveCriteriaData = DEFAULT_CRITERIA;
+        }
+
         const generateKategoriler = (currentKategoriler = {}) => {
             const nextKategoriler = { ...currentKategoriler };
             formData.selectedCats.forEach(catKey => {
+                const sourceData = liveCriteriaData[catKey] || DEFAULT_CRITERIA[catKey];
+                const activeAletler = Object.keys(sourceData || {}).filter(k => k !== 'metadata' && sourceData[k].isActive !== false);
+
                 if (!nextKategoriler[catKey]) {
-                    const defaultData = DEFAULT_CRITERIA[catKey];
-                    const aletler = Object.keys(defaultData || {}).filter(k => k !== 'metadata');
-                    nextKategoriler[catKey] = { name: getCategoryLabel(catKey), aletler };
+                    nextKategoriler[catKey] = { name: getCategoryLabel(catKey), aletler: activeAletler };
+                } else {
+                    nextKategoriler[catKey].aletler = activeAletler;
                 }
             });
             Object.keys(nextKategoriler).forEach(catKey => {
@@ -231,9 +247,11 @@ export default function CompetitionsPage() {
         try {
             if (editingComp) {
                 await update(ref(db, `competitions/${editingComp.id}`), { ...saveData, kategoriler: generateKategoriler(editingComp.kategoriler || {}) });
+                logAction('competition_update', `Yarışma güncellendi: ${saveData.isim}`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: editingComp.id });
             } else {
                 const newRef = push(ref(db, 'competitions'));
                 await set(newRef, { ...saveData, kategoriler: generateKategoriler({}), sporcular: {}, epanelToken: generateEPanelToken() });
+                logAction('competition_create', `Yeni yarışma: ${saveData.isim} (${saveData.il})`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: newRef.key });
             }
             setIsModalOpen(false);
         } catch (err) {
@@ -497,7 +515,7 @@ export default function CompetitionsPage() {
         <div className="competitions-page">
             <header className="page-header">
                 <div className="page-header__left">
-                    <button className="back-btn" onClick={() => navigate('/')}>
+                    <button className="back-btn" onClick={() => navigate('/artistik')}>
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div>

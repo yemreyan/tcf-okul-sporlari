@@ -1514,3 +1514,201 @@
     color: #fff;
 }
 .modal-btn.next-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* =========================================
+   DIFFICULTY MODE (Zorluk Grubu — Yıldız/Genç)
+   ========================================= */
+
+.card-difficulty-wide {
+    grid-column: 1 / -1;
+}
+
+.difficulty-mode-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.difficulty-table-wrapper {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
+}
+
+.difficulty-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    min-width: 520px;
+}
+.difficulty-table thead th {
+    background: linear-gradient(135deg, #1E40AF, #3B82F6);
+    color: #fff;
+    padding: 0.45rem 0.3rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.difficulty-table thead th:first-child,
+.difficulty-table thead th:nth-child(2) {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+.difficulty-table tbody tr {
+    border-bottom: 1px solid #F1F5F9;
+}
+.difficulty-table tbody tr:hover {
+    background: #F8FAFC;
+}
+.difficulty-table td {
+    text-align: center;
+    padding: 0.25rem 0.2rem;
+}
+
+.diff-group-label {
+    font-weight: 700;
+    color: #1E40AF;
+    font-size: 0.9rem;
+    min-width: 32px;
+    background: #F8FAFC;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+.diff-point-label {
+    color: #64748B;
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-width: 36px;
+    background: #F8FAFC;
+    position: sticky;
+    left: 32px;
+    z-index: 1;
+}
+
+.diff-count-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1.5px solid #E2E8F0;
+    background: #fff;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+}
+.diff-count-btn:hover {
+    border-color: #3B82F6;
+    background: #EFF6FF;
+    color: #1E40AF;
+}
+.diff-count-btn.diff-selected {
+    background: linear-gradient(135deg, #2563EB, #3B82F6);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    transform: scale(1.08);
+}
+
+.diff-subtotal {
+    text-align: center;
+    padding: 0.6rem;
+    background: #EFF6FF;
+    border-radius: 8px;
+    color: #1E40AF;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.diff-subtotal strong {
+    font-size: 1.1rem;
+    margin-left: 0.4rem;
+}
+
+.diff-component-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.diff-comp-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.diff-option-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.diff-option-btns.cv-scroll {
+    flex-wrap: wrap;
+}
+
+.diff-opt-btn {
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    border: 1.5px solid #E2E8F0;
+    background: #fff;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 44px;
+    text-align: center;
+}
+.diff-opt-btn:hover {
+    border-color: #3B82F6;
+    background: #EFF6FF;
+    color: #1E40AF;
+}
+.diff-opt-btn.diff-opt-selected {
+    background: linear-gradient(135deg, #2563EB, #3B82F6);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.diff-total-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    background: linear-gradient(135deg, #1E3A8A, #2563EB);
+    border-radius: 10px;
+    color: #fff;
+}
+.diff-total-display span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.diff-total-display strong {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.difficulty-badge {
+    background: linear-gradient(135deg, #1E40AF, #6366F1) !important;
+    font-size: 0.65rem !important;
+}
+
+/* Responsive — difficulty table on small screens */
+@media (max-width: 768px) {
+    .diff-count-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+    .difficulty-table {
+        font-size: 0.75rem;
+    }
+    .diff-opt-btn {
+        padding: 0.35rem 0.55rem;
+        font-size: 0.75rem;
+        min-width: 38px;
+    }
+}

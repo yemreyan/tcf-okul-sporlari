@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
@@ -6,38 +7,52 @@ import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './ScoreboardPage.css';
 
 /* ================================================================
-   SCOREBOARD — FIG / Olympic Style Live Display
-   ================================================================
-   Tasarım referansları:
-   - SmartScoring (FIG World Cup): #080915 bg, mavi/mor accent
-   - OMEGA Vionardo (Olimpiyat): Temiz tipografi, 4K UHD grafik
-   - NBC Broadcast: Yeşil/Sarı/Kırmızı skor kalitesi göstergesi
+   SCOREBOARD — Light Theme Live Display
    ================================================================ */
 
-// Alet isimlerini Türkçe kısaltmalarla göster (FIG tarzı)
-const APPARATUS_LABELS = {
-    yer: 'YER', atlama: 'ATL', paralel: 'PAR', barfiks: 'BAR',
-    halka: 'HAL', kulplu: 'KUL', mantar: 'MNT', denge: 'DNG',
-    asimetrik: 'ASM', kasa: 'KAS', trampolin: 'TRA', tumbling: 'TUM',
+const PAGE_SIZE = 8;
+
+// Apparatus abbreviations
+const APPARATUS_MAP = {
+    yer: { abbr: 'FX' },
+    atlama: { abbr: 'VT' },
+    paralel: { abbr: 'PB' },
+    barfiks: { abbr: 'HB' },
+    halka: { abbr: 'SR' },
+    kulplu: { abbr: 'PH' },
+    denge: { abbr: 'BB' },
+    asimetrik: { abbr: 'UB' },
+    mantar: { abbr: 'MH' },
+    kasa: { abbr: 'VT' },
+    trampolin: { abbr: 'TR' },
+    tumbling: { abbr: 'TU' },
 };
 
-// NBC tarzı skor kalitesi renklendirmesi (okul sporu seviyeleri)
-function getScoreQualityClass(score) {
-    if (!score || score <= 0) return '';
-    if (score >= 14.0) return 'sq-excellent';  // Olağanüstü
-    if (score >= 12.5) return 'sq-good';       // İyi
-    if (score >= 10.5) return 'sq-average';    // Orta
-    return 'sq-low';                            // Geliştirilmeli
-}
+// Apparatus SVG illustrations
+const APPARATUS_IMAGES = {
+    yer: '<svg viewBox="0 0 40 28" fill="none"><rect x="2" y="18" width="36" height="8" rx="2" fill="#94A3B8"/><rect x="4" y="20" width="32" height="4" rx="1" fill="#CBD5E1"/><path d="M14 8L20 2L26 8" stroke="#64748B" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="13" r="3" fill="#64748B"/></svg>',
+    atlama: '<svg viewBox="0 0 40 28" fill="none"><rect x="8" y="12" width="24" height="14" rx="3" fill="#94A3B8"/><rect x="10" y="14" width="20" height="10" rx="2" fill="#CBD5E1"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
+    paralel: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="6" width="2" height="20" rx="1" fill="#64748B"/><rect x="32" y="6" width="2" height="20" rx="1" fill="#64748B"/><rect x="4" y="6" width="6" height="3" rx="1" fill="#94A3B8"/><rect x="30" y="6" width="6" height="3" rx="1" fill="#94A3B8"/><rect x="8" y="7" width="24" height="2" rx="1" fill="#CBD5E1"/><rect x="8" y="14" width="24" height="2" rx="1" fill="#CBD5E1"/></svg>',
+    barfiks: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="4" width="3" height="22" rx="1" fill="#64748B"/><rect x="31" y="4" width="3" height="22" rx="1" fill="#64748B"/><rect x="5" y="4" width="30" height="3" rx="1.5" fill="#94A3B8"/></svg>',
+    halka: '<svg viewBox="0 0 40 28" fill="none"><rect x="18" y="0" width="4" height="8" rx="1" fill="#64748B"/><line x1="12" y1="8" x2="20" y2="8" stroke="#94A3B8" stroke-width="1.5"/><line x1="20" y1="8" x2="28" y2="8" stroke="#94A3B8" stroke-width="1.5"/><circle cx="12" cy="16" r="5" stroke="#94A3B8" stroke-width="2.5" fill="none"/><circle cx="28" cy="16" r="5" stroke="#94A3B8" stroke-width="2.5" fill="none"/></svg>',
+    kulplu: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="16" width="32" height="8" rx="3" fill="#94A3B8"/><rect x="6" y="18" width="28" height="4" rx="2" fill="#CBD5E1"/><path d="M12 16Q12 10 16 10Q20 10 20 16" stroke="#64748B" stroke-width="2" fill="none"/><path d="M20 16Q20 10 24 10Q28 10 28 16" stroke="#64748B" stroke-width="2" fill="none"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
+    denge: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="10" width="32" height="3" rx="1.5" fill="#94A3B8"/><rect x="6" y="12" width="28" height="2" rx="1" fill="#CBD5E1"/><rect x="8" y="13" width="3" height="13" rx="1" fill="#64748B"/><rect x="29" y="13" width="3" height="13" rx="1" fill="#64748B"/></svg>',
+    asimetrik: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="2" width="3" height="24" rx="1" fill="#64748B"/><rect x="31" y="2" width="3" height="24" rx="1" fill="#64748B"/><rect x="5" y="4" width="30" height="2.5" rx="1" fill="#94A3B8"/><rect x="5" y="16" width="30" height="2.5" rx="1" fill="#94A3B8"/></svg>',
+    mantar: '<svg viewBox="0 0 40 28" fill="none"><ellipse cx="20" cy="18" rx="16" ry="6" fill="#94A3B8"/><ellipse cx="20" cy="17" rx="14" ry="5" fill="#CBD5E1"/><rect x="8" y="22" width="4" height="4" rx="1" fill="#64748B"/><rect x="28" y="22" width="4" height="4" rx="1" fill="#64748B"/></svg>',
+    kasa: '<svg viewBox="0 0 40 28" fill="none"><rect x="8" y="12" width="24" height="14" rx="3" fill="#94A3B8"/><rect x="10" y="14" width="20" height="10" rx="2" fill="#CBD5E1"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
+    trampolin: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="20" width="32" height="6" rx="2" fill="#94A3B8"/><path d="M6 20Q20 10 34 20" stroke="#64748B" stroke-width="2" fill="none"/><rect x="4" y="20" width="2" height="6" rx="1" fill="#64748B"/><rect x="34" y="20" width="2" height="6" rx="1" fill="#64748B"/></svg>',
+    tumbling: '<svg viewBox="0 0 40 28" fill="none"><rect x="2" y="20" width="36" height="6" rx="2" fill="#94A3B8"/><rect x="4" y="22" width="32" height="2" rx="1" fill="#CBD5E1"/><path d="M10 14L16 8L22 14L28 8" stroke="#64748B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+};
 
 export default function ScoreboardPage() {
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedCategories, setSelectedCategories] = useState(new Set());
 
-    const [athletes, setAthletes] = useState([]);
-    const [allScores, setAllScores] = useState({});
+    // Per-category data: { [catId]: { athletes: [], scores: {} } }
+    const [categoryData, setCategoryData] = useState({});
 
     // UI State
     const [isLive, setIsLive] = useState(false);
@@ -45,12 +60,17 @@ export default function ScoreboardPage() {
     const [views, setViews] = useState([]);
     const [viewTransition, setViewTransition] = useState(false);
 
-    // Flash State — Olimpiyat tarzı sıralı skor açılışı
+    // Pagination within each view
+    const [pageIndex, setPageIndex] = useState(0);
+
+    // Flash State
     const [flashData, setFlashData] = useState(null);
     const [isFlashing, setIsFlashing] = useState(false);
-    const [flashPhase, setFlashPhase] = useState(0); // 0=giriş, 1=D, 2=E, 3=Total
+    const [flashPhase, setFlashPhase] = useState(0);
     const flashTimeoutRef = useRef(null);
     const flashPhaseRef = useRef(null);
+    const isFlashingRef = useRef(false);
+    const flashQueue = useRef([]);
 
     // Listener cleanup refs
     const liveUnsubsRef = useRef([]);
@@ -90,6 +110,8 @@ export default function ScoreboardPage() {
             if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
             if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
             if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+            flashQueue.current = [];
+            isFlashingRef.current = false;
         };
     }, []);
 
@@ -98,30 +120,70 @@ export default function ScoreboardPage() {
         liveUnsubsRef.current = [];
     }, []);
 
+    // Toggle category selection
+    const toggleCategory = useCallback((catId) => {
+        setSelectedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(catId)) {
+                next.delete(catId);
+            } else {
+                next.add(catId);
+            }
+            return next;
+        });
+    }, []);
+
+    // Get apparatus list for a given category
+    const getApparatusListForCategory = useCallback((catId) => {
+        if (!selectedCompId) return [];
+        const catOptions = competitions[selectedCompId]?.kategoriler?.[catId] || {};
+        const raw = catOptions.aletler || [];
+        return raw.map(a => typeof a === 'string' ? { id: a, name: a } : a);
+    }, [selectedCompId, competitions]);
+
     // Go Live
     const handleGoLive = useCallback(() => {
-        if (!selectedCompId || !selectedCategory) return;
+        if (!selectedCompId || selectedCategories.size === 0) return;
         cleanupListeners();
         setIsLive(true);
         setViewIndex(0);
+        setPageIndex(0);
         setCycleProgress(0);
+        setCategoryData({});
 
-        // Athletes
-        const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${selectedCategory}`);
-        const unsubAthletes = onValue(athletesRef, (snap) => {
-            const data = snap.val();
-            setAthletes(data ? Object.values(data) : []);
+        const cats = Array.from(selectedCategories);
+
+        // Set up listeners for each category
+        cats.forEach(catId => {
+            // Athletes
+            const athletesRef = ref(db, `competitions/${selectedCompId}/sporcular/${catId}`);
+            const unsubAthletes = onValue(athletesRef, (snap) => {
+                const data = snap.val();
+                setCategoryData(prev => ({
+                    ...prev,
+                    [catId]: {
+                        ...prev[catId],
+                        athletes: data ? Object.values(data) : [],
+                    }
+                }));
+            });
+            liveUnsubsRef.current.push(unsubAthletes);
+
+            // Scores
+            const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${catId}`);
+            const unsubScores = onValue(scoresRef, (snap) => {
+                setCategoryData(prev => ({
+                    ...prev,
+                    [catId]: {
+                        ...prev[catId],
+                        scores: snap.val() || {},
+                    }
+                }));
+            });
+            liveUnsubsRef.current.push(unsubScores);
         });
-        liveUnsubsRef.current.push(unsubAthletes);
 
-        // Scores
-        const scoresRef = ref(db, `competitions/${selectedCompId}/puanlar/${selectedCategory}`);
-        const unsubScores = onValue(scoresRef, (snap) => {
-            setAllScores(snap.val() || {});
-        });
-        liveUnsubsRef.current.push(unsubScores);
-
-        // Flash trigger
+        // Flash trigger (shared across categories)
         const flashRef = ref(db, `competitions/${selectedCompId}/flashTrigger`);
         let isInitialLoad = true;
         const unsubFlash = onValue(flashRef, (snap) => {
@@ -133,117 +195,51 @@ export default function ScoreboardPage() {
         });
         liveUnsubsRef.current.push(unsubFlash);
 
-        // Views
-        const catName = competitions[selectedCompId]?.kategoriler?.[selectedCategory]?.name || '';
-        const lid = selectedCategory.toLowerCase();
-        const lname = catName.toLowerCase();
-        const isErkek = lid.includes('erkek') || lname.includes('erkek');
-        const isKadin = lid.includes('kadin') || lid.includes('kiz') || lname.includes('kadın') || lname.includes('kız');
+        // Build views for all selected categories
+        const newViews = [];
+        cats.forEach(catId => {
+            const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || '';
+            const lid = catId.toLowerCase();
+            const lname = catName.toLowerCase();
+            const isErkek = lid.includes('erkek') || lname.includes('erkek');
+            const isKadin = lid.includes('kadin') || lid.includes('kiz') || lname.includes('kadın') || lname.includes('kız');
 
-        let newViews = [];
-        if (isErkek) {
-            newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: 'ALL-AROUND', color: '#0ea5e9', gender: 'erkek' });
-        } else if (isKadin) {
-            newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: 'ALL-AROUND', color: '#e879a8', gender: 'kadin' });
-        } else {
-            newViews.push({ type: 'ind', gender: 'kadin', title: 'BİREYSEL GENEL TASNİF', subtitle: 'ALL-AROUND KIZLAR', color: '#e879a8' });
-            newViews.push({ type: 'ind', gender: 'erkek', title: 'BİREYSEL GENEL TASNİF', subtitle: 'ALL-AROUND ERKEKLER', color: '#0ea5e9' });
-        }
-        newViews.push({ type: 'team', title: 'TAKIM SIRALAMASI', subtitle: 'TEAM RANKING', color: '#22c55e' });
+            if (isErkek) {
+                newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#0ea5e9', gender: 'erkek', catId });
+            } else if (isKadin) {
+                newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#e879a8', gender: 'kadin', catId });
+            } else {
+                newViews.push({ type: 'ind', gender: 'kadin', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — KIZLAR`, color: '#e879a8', catId });
+                newViews.push({ type: 'ind', gender: 'erkek', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — ERKEKLER`, color: '#0ea5e9', catId });
+            }
+            newViews.push({ type: 'team', title: 'TAKIM SIRALAMASI', subtitle: catName, color: '#22c55e', catId });
+        });
 
         setViews(newViews);
-    }, [selectedCompId, selectedCategory, competitions, cleanupListeners]);
+    }, [selectedCompId, selectedCategories, competitions, cleanupListeners]);
 
-    // Cycle Timer
-    useEffect(() => {
-        if (!isLive || isFlashing || views.length === 0) return;
+    // Current view
+    const currentView = views[viewIndex];
 
-        const CYCLE_DURATION = 12000;
-        const PROGRESS_INTERVAL = 50;
-        let elapsed = 0;
-        setCycleProgress(0);
+    // Get data for the current view's category
+    const currentCatData = useMemo(() => {
+        if (!currentView) return { athletes: [], scores: {} };
+        return categoryData[currentView.catId] || { athletes: [], scores: {} };
+    }, [currentView, categoryData]);
 
-        progressTimerRef.current = setInterval(() => {
-            elapsed += PROGRESS_INTERVAL;
-            setCycleProgress(Math.min((elapsed / CYCLE_DURATION) * 100, 100));
-        }, PROGRESS_INTERVAL);
+    const athletes = currentCatData.athletes || [];
+    const allScores = currentCatData.scores || {};
 
-        cycleTimerRef.current = setInterval(() => {
-            setViewTransition(true);
-            setTimeout(() => {
-                setViewIndex(prev => (prev + 1) % views.length);
-                setViewTransition(false);
-                elapsed = 0;
-                setCycleProgress(0);
-            }, 400);
-        }, CYCLE_DURATION);
-
-        return () => {
-            clearInterval(cycleTimerRef.current);
-            clearInterval(progressTimerRef.current);
-        };
-    }, [isLive, isFlashing, views]);
-
-    // Fullscreen
-    useEffect(() => {
-        if (isLive) {
-            document.documentElement.requestFullscreen?.().catch(() => { });
-        }
-    }, [isLive]);
-
-    const exitLiveMode = useCallback(() => {
-        cleanupListeners();
-        setIsLive(false);
-        setFlashData(null);
-        setIsFlashing(false);
-        setFlashPhase(0);
-        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-        if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
-    }, [cleanupListeners]);
-
-    // Olimpiyat tarzı sıralı flash açılışı: giriş → D → E → Total
-    const triggerFlash = useCallback((data) => {
-        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-        if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
-
-        setFlashData(data);
-        setFlashPhase(0);
-        setIsFlashing(true);
-
-        // Phase 1: D-Score (800ms sonra)
-        const t1 = setTimeout(() => setFlashPhase(1), 600);
-        // Phase 2: E-Score (1600ms sonra)
-        const t2 = setTimeout(() => setFlashPhase(2), 1400);
-        // Phase 3: Total (2400ms sonra)
-        const t3 = setTimeout(() => setFlashPhase(3), 2200);
-
-        flashPhaseRef.current = t3;
-
-        // Kapat (7 saniye sonra)
-        flashTimeoutRef.current = setTimeout(() => {
-            setIsFlashing(false);
-            setTimeout(() => { setFlashData(null); setFlashPhase(0); }, 500);
-        }, 7000);
-
-        // Cleanup ara timer'lar
-        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    }, []);
-
-    // Memoized apparatus list
+    // Apparatus list for current view's category
     const apparatusList = useMemo(() => {
-        if (!isLive || !selectedCompId) return [];
-        const catOptions = competitions[selectedCompId]?.kategoriler?.[selectedCategory] || {};
-        const raw = catOptions.aletler || [];
-        return raw.map(a => typeof a === 'string' ? { id: a, name: a } : a);
-    }, [isLive, selectedCompId, selectedCategory, competitions]);
+        if (!isLive || !currentView) return [];
+        return getApparatusListForCategory(currentView.catId);
+    }, [isLive, currentView, getApparatusListForCategory]);
 
     const gridTemplate = useMemo(() => {
         const appCols = apparatusList.length;
         return `64px 2.8fr repeat(${appCols}, 1fr) 1.4fr`;
     }, [apparatusList.length]);
-
-    const currentView = views[viewIndex];
 
     // Memoized individual ranking
     const individualRanking = useMemo(() => {
@@ -277,7 +273,7 @@ export default function ScoreboardPage() {
         const teamAthletes = {};
         athletes.forEach(a => {
             const club = a.kulup || a.okul;
-            if (a.yarismaTuru !== 'ferdi' && club) {
+            if (club) {
                 if (!teamAthletes[club]) teamAthletes[club] = [];
                 teamAthletes[club].push(String(a.id));
             }
@@ -310,7 +306,119 @@ export default function ScoreboardPage() {
         return teams.sort((a, b) => b.total - a.total);
     }, [athletes, allScores, apparatusList, currentView]);
 
-    // Sporcu sayısı bilgisi (header'da gösterilecek)
+    // Full ranking for current view (used for pagination)
+    const fullRanking = currentView?.type === 'team' ? teamRanking : individualRanking;
+    const totalPages = Math.max(1, Math.ceil(fullRanking.length / PAGE_SIZE));
+    const pagedRanking = fullRanking.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
+
+    // Cycle Timer — handles view cycling and pagination
+    useEffect(() => {
+        if (!isLive || isFlashing || views.length === 0) return;
+
+        const PAGE_DURATION = 8000;
+        const PROGRESS_INTERVAL = 50;
+        let elapsed = 0;
+        setCycleProgress(0);
+
+        progressTimerRef.current = setInterval(() => {
+            elapsed += PROGRESS_INTERVAL;
+            setCycleProgress(Math.min((elapsed / PAGE_DURATION) * 100, 100));
+        }, PROGRESS_INTERVAL);
+
+        cycleTimerRef.current = setInterval(() => {
+            setViewTransition(true);
+            setTimeout(() => {
+                setPageIndex(prevPage => {
+                    const currentTotalPages = Math.max(1, Math.ceil(fullRanking.length / PAGE_SIZE));
+                    if (prevPage + 1 < currentTotalPages) {
+                        // More pages in this view
+                        setViewTransition(false);
+                        elapsed = 0;
+                        setCycleProgress(0);
+                        return prevPage + 1;
+                    } else {
+                        // Move to next view
+                        setViewIndex(prev => (prev + 1) % views.length);
+                        setViewTransition(false);
+                        elapsed = 0;
+                        setCycleProgress(0);
+                        return 0;
+                    }
+                });
+            }, 400);
+        }, PAGE_DURATION);
+
+        return () => {
+            clearInterval(cycleTimerRef.current);
+            clearInterval(progressTimerRef.current);
+        };
+    }, [isLive, isFlashing, views, viewIndex, fullRanking.length]);
+
+    // Reset pageIndex when viewIndex changes
+    useEffect(() => {
+        setPageIndex(0);
+    }, [viewIndex]);
+
+    // Fullscreen
+    useEffect(() => {
+        if (isLive) {
+            document.documentElement.requestFullscreen?.().catch(() => { });
+        }
+    }, [isLive]);
+
+    const exitLiveMode = useCallback(() => {
+        cleanupListeners();
+        setIsLive(false);
+        setFlashData(null);
+        setIsFlashing(false);
+        setFlashPhase(0);
+        isFlashingRef.current = false;
+        flashQueue.current = [];
+        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+        if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+    }, [cleanupListeners]);
+
+    // Flash — show a single score for 10s
+    const showFlash = useCallback((data) => {
+        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+        if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
+
+        isFlashingRef.current = true;
+        setFlashData(data);
+        setFlashPhase(0);
+        setIsFlashing(true);
+
+        const t1 = setTimeout(() => setFlashPhase(1), 800);
+        const t2 = setTimeout(() => setFlashPhase(2), 1800);
+        const t3 = setTimeout(() => setFlashPhase(3), 2800);
+        flashPhaseRef.current = t3;
+
+        flashTimeoutRef.current = setTimeout(() => {
+            setIsFlashing(false);
+            isFlashingRef.current = false;
+            setTimeout(() => {
+                setFlashData(null);
+                setFlashPhase(0);
+                // Check queue for next flash
+                if (flashQueue.current.length > 0) {
+                    const next = flashQueue.current.shift();
+                    setTimeout(() => showFlash(next), 400);
+                }
+            }, 500);
+        }, 10000);
+    }, []);
+
+    // Flash trigger — queues if already flashing
+    const triggerFlash = useCallback((data) => {
+        if (isFlashingRef.current) {
+            flashQueue.current.push(data);
+            return;
+        }
+        showFlash(data);
+    }, [showFlash]);
+
+    // Athlete + score counts for topbar
     const athleteCount = athletes.length;
     const scoredCount = useMemo(() => {
         let count = 0;
@@ -327,60 +435,85 @@ export default function ScoreboardPage() {
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
         const compEntries = Object.entries(competitions);
+        const categories = selectedCompId ? competitions[selectedCompId]?.kategoriler || {} : {};
+        const catEntries = Object.entries(categories);
+
         return (
-            <div className="scoreboard-config page-container">
-                <div className="config-card neon-panel">
-                    <div className="cc-icon cyber-gradient">
+            <div className="sb-config page-container">
+                <button type="button" className="back-btn" onClick={() => navigate('/artistik')}>
+                    <i className="material-icons-round">arrow_back</i>
+                </button>
+
+                <div className="sb-config-card">
+                    <div className="sb-config-icon">
                         <i className="material-icons-round">live_tv</i>
                     </div>
-                    <h2>Canlı Skor Ekranı</h2>
-                    <p className="text-cyber">Seyirciler için dev ekran modunu başlatın</p>
+                    <h2 className="sb-config-title">Canli Skor Ekrani</h2>
+                    <p className="sb-config-desc">Seyirciler icin dev ekran modunu baslatin</p>
 
-                    <div className="config-form">
-                        <div className="input-group">
-                            <label><i className="material-icons-round" style={{ fontSize: 16, verticalAlign: -3 }}>emoji_events</i> Yarisma</label>
+                    <div className="sb-config-form">
+                        {/* Competition Select */}
+                        <div className="sb-field">
+                            <label className="sb-label">
+                                <i className="material-icons-round">emoji_events</i>
+                                Yarisma
+                            </label>
                             <select
-                                className="cyber-input"
+                                className="sb-select"
                                 value={selectedCompId}
-                                onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); }}
+                                onChange={e => { setSelectedCompId(e.target.value); setSelectedCategories(new Set()); }}
                             >
-                                <option value="">— Yarışma Seçiniz —</option>
+                                <option value="">-- Yarisma Seciniz --</option>
                                 {compEntries.map(([id, comp]) => (
                                     <option key={id} value={id}>{comp.isim}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {selectedCompId && competitions[selectedCompId]?.kategoriler && (
-                            <div className="input-group slide-in">
-                                <label><i className="material-icons-round" style={{ fontSize: 16, verticalAlign: -3 }}>category</i> Kategori</label>
-                                <select
-                                    className="cyber-input"
-                                    value={selectedCategory}
-                                    onChange={e => setSelectedCategory(e.target.value)}
-                                >
-                                    <option value="">— Kategori Seçiniz —</option>
-                                    {Object.entries(competitions[selectedCompId].kategoriler).map(([id, cat]) => (
-                                        <option key={id} value={id}>{cat.name}</option>
+                        {/* Multi-category checkboxes */}
+                        {selectedCompId && catEntries.length > 0 && (
+                            <div className="sb-field sb-field-cats">
+                                <label className="sb-label">
+                                    <i className="material-icons-round">category</i>
+                                    Kategoriler
+                                    {selectedCategories.size > 0 && (
+                                        <span className="sb-cat-count">{selectedCategories.size} secili</span>
+                                    )}
+                                </label>
+                                <div className="sb-cat-grid">
+                                    {catEntries.map(([id, cat]) => (
+                                        <label key={id} className={`sb-cat-item ${selectedCategories.has(id) ? 'sb-cat-selected' : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedCategories.has(id)}
+                                                onChange={() => toggleCategory(id)}
+                                            />
+                                            <span className="sb-cat-check">
+                                                <i className="material-icons-round">
+                                                    {selectedCategories.has(id) ? 'check_box' : 'check_box_outline_blank'}
+                                                </i>
+                                            </span>
+                                            <span className="sb-cat-name-label">{cat.name}</span>
+                                        </label>
                                     ))}
-                                </select>
+                                </div>
                             </div>
                         )}
 
                         <button
-                            className="btn-primary giant-btn neon-glow-green"
+                            className="sb-go-live-btn"
                             onClick={handleGoLive}
-                            disabled={!selectedCompId || !selectedCategory}
-                            style={{ marginTop: '2rem', width: '100%' }}
+                            disabled={!selectedCompId || selectedCategories.size === 0}
                         >
-                            <i className="material-icons-round">cast</i> YAYINI BASLAT
+                            <i className="material-icons-round">cast</i>
+                            YAYINI BASLAT
                         </button>
                     </div>
 
-                    {selectedCompId && selectedCategory && (
-                        <div className="config-preview slide-in">
+                    {selectedCompId && selectedCategories.size > 0 && (
+                        <div className="sb-config-info">
                             <i className="material-icons-round">info</i>
-                            Tam ekran modunda açılacaktır. ESC ile çıkabilirsiniz.
+                            {selectedCategories.size} kategori yayinlanacak. Tam ekran modunda acilacaktir. ESC ile cikabilirsiniz.
                         </div>
                     )}
                 </div>
@@ -390,15 +523,13 @@ export default function ScoreboardPage() {
 
     // ─── LIVE VIEW ─────────────────────────────────────────────
     const compOptions = competitions[selectedCompId];
-    const catOptions = compOptions?.kategoriler?.[selectedCategory] || {};
-    const ranking = currentView?.type === 'team' ? teamRanking : individualRanking;
+    const currentCatName = currentView ? (competitions[selectedCompId]?.kategoriler?.[currentView.catId]?.name || '') : '';
 
     return (
         <div className="sb-live">
 
-            {/* ══ TOP BAR — FIG/Olimpiyat tarzı ══ */}
+            {/* TOP BAR */}
             <div className="sb-topbar">
-                {/* Sol: Canlı gösterge + saat */}
                 <div className="sb-topbar-left">
                     <div className="sb-live-badge">
                         <span className="sb-live-dot" />
@@ -407,29 +538,30 @@ export default function ScoreboardPage() {
                     <span className="sb-clock">{clock}</span>
                 </div>
 
-                {/* Orta: Yarışma + Kategori */}
                 <div className="sb-topbar-center">
                     <div className="sb-comp-name">{compOptions?.isim}</div>
-                    <div className="sb-cat-name">{catOptions?.name}</div>
+                    <div className="sb-cat-label">{currentCatName}</div>
                 </div>
 
-                {/* Sağ: İstatistik + Çıkış */}
                 <div className="sb-topbar-right">
                     <div className="sb-stats-pill">
                         <span>{scoredCount}/{athleteCount}</span>
                         <i className="material-icons-round" style={{ fontSize: 16 }}>person</i>
                     </div>
-                    <button className="sb-exit-btn" onClick={exitLiveMode} title="Yayını Kapat">
+                    <button className="sb-exit-btn" onClick={exitLiveMode} title="Yayini Kapat">
                         <i className="material-icons-round">close</i>
                     </button>
                 </div>
             </div>
 
-            {/* ══ VIEW BANNER — Hangi sıralama gösteriliyor ══ */}
+            {/* VIEW BANNER */}
             <div className="sb-view-banner" style={{ '--view-color': currentView?.color }}>
                 <div className="sb-view-info">
                     <h2 className="sb-view-title">{currentView?.title}</h2>
                     <span className="sb-view-sub">{currentView?.subtitle}</span>
+                    {totalPages > 1 && (
+                        <span className="sb-page-indicator">Sayfa {pageIndex + 1}/{totalPages}</span>
+                    )}
                 </div>
                 <div className="sb-view-nav">
                     {views.map((v, i) => (
@@ -440,105 +572,118 @@ export default function ScoreboardPage() {
                         />
                     ))}
                 </div>
-                {/* Progress bar */}
                 <div className="sb-cycle-track">
                     <div className="sb-cycle-fill" style={{ width: `${cycleProgress}%` }} />
                 </div>
             </div>
 
-            {/* ══ TABLE HEADER ══ */}
+            {/* TABLE HEADER */}
             <div className="sb-thead" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="sb-th sb-th-rank">SIRA</div>
                 <div className="sb-th sb-th-name">{currentView?.type === 'team' ? 'TAKIM' : 'SPORCU'}</div>
-                {apparatusList.map(a => (
-                    <div key={a.id} className="sb-th sb-th-app">
-                        {APPARATUS_LABELS[a.id] || a.name.substring(0, 3).toUpperCase()}
-                    </div>
-                ))}
+                {apparatusList.map(a => {
+                    const mapping = APPARATUS_MAP[a.id] || { abbr: a.name.substring(0, 3).toUpperCase() };
+                    return (
+                        <div key={a.id} className="sb-th sb-th-app">
+                            <span className="sb-app-abbr">{mapping.abbr}</span>
+                            <div className="sb-app-img" dangerouslySetInnerHTML={{ __html: APPARATUS_IMAGES[a.id] || '' }} />
+                        </div>
+                    );
+                })}
                 <div className="sb-th sb-th-total">TOPLAM</div>
             </div>
 
-            {/* ══ TABLE BODY ══ */}
+            {/* TABLE BODY */}
             <div className={`sb-tbody ${viewTransition ? 'sb-fade-out' : 'sb-fade-in'}`}>
-                {ranking.length === 0 ? (
+                {pagedRanking.length === 0 ? (
                     <div className="sb-empty-state">
                         <i className="material-icons-round">hourglass_empty</i>
-                        <span>{currentView?.type === 'team' ? 'Takım Puanı Henüz Oluşturulmadı' : 'Henüz Puan Girilmedi'}</span>
+                        <span>{currentView?.type === 'team' ? 'Takim Puani Henuz Olusturulmadi' : 'Henuz Puan Girilmedi'}</span>
                     </div>
                 ) : (
                     currentView?.type === 'team' ? (
-                        teamRanking.map((t, idx) => (
-                            <div
-                                key={t.name}
-                                className={`sb-row ${idx < 3 ? `sb-medal-${idx + 1}` : ''}`}
-                                style={{ gridTemplateColumns: gridTemplate, animationDelay: `${idx * 0.05}s` }}
-                            >
-                                <div className="sb-cell sb-rank">
-                                    {idx < 3 ? (
-                                        <div className={`sb-medal-icon sb-medal-icon-${idx + 1}`}>
-                                            {idx + 1}
-                                        </div>
-                                    ) : (
-                                        <span className="sb-rank-num">{idx + 1}</span>
-                                    )}
-                                </div>
-                                <div className="sb-cell sb-name-cell">
-                                    <div className="sb-athlete-name sb-team-label">{t.name}</div>
-                                    <div className="sb-athlete-club">{t.memberCount} sporcu</div>
-                                </div>
-                                {apparatusList.map(alet => (
-                                    <div key={alet.id} className={`sb-cell sb-score-cell ${t.appTotals[alet.id] > 0 ? 'sb-scored' : 'sb-pending'}`}>
-                                        {t.appTotals[alet.id] > 0 ? t.appTotals[alet.id].toFixed(3) : '—'}
+                        pagedRanking.map((t, localIdx) => {
+                            const globalIdx = pageIndex * PAGE_SIZE + localIdx;
+                            return (
+                                <div
+                                    key={t.name}
+                                    className={`sb-row ${globalIdx < 3 ? `sb-medal-${globalIdx + 1}` : ''}`}
+                                    style={{ gridTemplateColumns: gridTemplate, animationDelay: `${localIdx * 0.05}s` }}
+                                >
+                                    <div className="sb-cell sb-rank">
+                                        {globalIdx < 3 ? (
+                                            <div className={`sb-medal-icon sb-medal-icon-${globalIdx + 1}`}>
+                                                {globalIdx + 1}
+                                            </div>
+                                        ) : (
+                                            <span className="sb-rank-num">{globalIdx + 1}</span>
+                                        )}
                                     </div>
-                                ))}
-                                <div className="sb-cell sb-total-cell">
-                                    {t.total.toFixed(3)}
+                                    <div className="sb-cell sb-name-cell">
+                                        <div className="sb-athlete-name sb-team-name-label">
+                                            {t.name}
+                                            <span className="sb-rank-tag">({globalIdx + 1}.)</span>
+                                        </div>
+                                        <div className="sb-athlete-club">{t.memberCount} sporcu</div>
+                                    </div>
+                                    {apparatusList.map(alet => (
+                                        <div key={alet.id} className={`sb-cell sb-score-cell ${t.appTotals[alet.id] > 0 ? 'sb-scored' : 'sb-pending'}`}>
+                                            {t.appTotals[alet.id] > 0 ? t.appTotals[alet.id].toFixed(3) : '\u2014'}
+                                        </div>
+                                    ))}
+                                    <div className="sb-cell sb-total-cell">
+                                        {t.total.toFixed(3)}
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     ) : (
-                        individualRanking.map((ath, idx) => (
-                            <div
-                                key={ath.id}
-                                className={`sb-row ${idx < 3 && ath.total > 0 ? `sb-medal-${idx + 1}` : ''}`}
-                                style={{ gridTemplateColumns: gridTemplate, animationDelay: `${idx * 0.04}s` }}
-                            >
-                                <div className="sb-cell sb-rank">
-                                    {ath.total > 0 && idx < 3 ? (
-                                        <div className={`sb-medal-icon sb-medal-icon-${idx + 1}`}>
-                                            {idx + 1}
+                        pagedRanking.map((ath, localIdx) => {
+                            const globalIdx = pageIndex * PAGE_SIZE + localIdx;
+                            return (
+                                <div
+                                    key={ath.id}
+                                    className={`sb-row ${globalIdx < 3 && ath.total > 0 ? `sb-medal-${globalIdx + 1}` : ''}`}
+                                    style={{ gridTemplateColumns: gridTemplate, animationDelay: `${localIdx * 0.04}s` }}
+                                >
+                                    <div className="sb-cell sb-rank">
+                                        {ath.total > 0 && globalIdx < 3 ? (
+                                            <div className={`sb-medal-icon sb-medal-icon-${globalIdx + 1}`}>
+                                                {globalIdx + 1}
+                                            </div>
+                                        ) : (
+                                            <span className="sb-rank-num">{ath.total > 0 ? globalIdx + 1 : '\u2014'}</span>
+                                        )}
+                                    </div>
+                                    <div className="sb-cell sb-name-cell">
+                                        <div className="sb-athlete-name">
+                                            {ath.ad} {ath.soyad}
+                                            {ath.total > 0 && <span className="sb-rank-tag">({globalIdx + 1}.)</span>}
                                         </div>
-                                    ) : (
-                                        <span className="sb-rank-num">{ath.total > 0 ? idx + 1 : '—'}</span>
-                                    )}
+                                        <div className="sb-athlete-club">{ath.kulup || ath.okul}</div>
+                                    </div>
+                                    {apparatusList.map(alet => {
+                                        const val = ath.appScores[alet.id];
+                                        return (
+                                            <div key={alet.id} className={`sb-cell sb-score-cell ${val > 0 ? 'sb-scored' : 'sb-pending'}`}>
+                                                {val > 0 ? val.toFixed(3) : '\u2014'}
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="sb-cell sb-total-cell">
+                                        {ath.total > 0 ? ath.total.toFixed(3) : '\u2014'}
+                                    </div>
                                 </div>
-                                <div className="sb-cell sb-name-cell">
-                                    <div className="sb-athlete-name">{ath.ad} {ath.soyad}</div>
-                                    <div className="sb-athlete-club">{ath.kulup || ath.okul}</div>
-                                </div>
-                                {apparatusList.map(alet => {
-                                    const val = ath.appScores[alet.id];
-                                    return (
-                                        <div key={alet.id} className={`sb-cell sb-score-cell ${val > 0 ? `sb-scored ${getScoreQualityClass(val)}` : 'sb-pending'}`}>
-                                            {val > 0 ? val.toFixed(3) : '—'}
-                                        </div>
-                                    );
-                                })}
-                                <div className="sb-cell sb-total-cell">
-                                    {ath.total > 0 ? ath.total.toFixed(3) : '—'}
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )
                 )}
             </div>
 
-            {/* ══ FLASH OVERLAY — Olimpiyat tarzı sıralı açılış ══ */}
+            {/* FLASH OVERLAY */}
             <div className={`sb-flash ${isFlashing ? 'sb-flash-visible' : ''}`}>
                 {flashData && (
                     <div className="sb-flash-card">
-
-                        {/* Üst kısım: Sporcu bilgileri */}
                         <div className="sf-header">
                             <div className="sf-new-score-tag">
                                 <i className="material-icons-round">notifications_active</i>
@@ -551,7 +696,6 @@ export default function ScoreboardPage() {
                             </div>
                         </div>
 
-                        {/* Ortada: D → E → Pen sıralı açılış */}
                         <div className="sf-scores">
                             <div className={`sf-score-item sf-d ${flashPhase >= 1 ? 'sf-reveal' : ''}`}>
                                 <div className="sf-score-label">D SCORE</div>
@@ -573,12 +717,10 @@ export default function ScoreboardPage() {
                             )}
                         </div>
 
-                        {/* Alt: Final skor — büyük gösterim */}
                         <div className={`sf-total ${flashPhase >= 3 ? 'sf-reveal-total' : ''}`}>
                             <span className="sf-total-value">{parseFloat(flashData.total || 0).toFixed(3)}</span>
                         </div>
 
-                        {/* Zamanlayıcı bar */}
                         <div className="sf-timer">
                             <div className="sf-timer-bar" />
                         </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { ref, get } from 'firebase/database';
 import { db } from './firebase';
+import { logAction } from './auditLogger';
 
 const AuthContext = createContext();
 
@@ -155,6 +156,7 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             localStorage.setItem('currentUser', JSON.stringify({ ...user, sessionToken: token, expiresAt }));
             localStorage.setItem('sessionToken', token);
+            logAction('login', `${sanitizedUsername} giriş yaptı (${userData.rolAdi || 'Kullanıcı'})`, { user: sanitizedUsername });
             return user;
         } catch (err) {
             if (import.meta.env.DEV) {
@@ -165,6 +167,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        if (currentUser) logAction('logout', `${currentUser.kullaniciAdi} çıkış yaptı`, { user: currentUser.kullaniciAdi });
         setIsAuthenticated(false);
         setCurrentUser(null);
         localStorage.removeItem('currentUser');

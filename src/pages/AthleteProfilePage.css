@@ -1,0 +1,475 @@
+/* ============================
+   ATHLETE PROFILE PAGE
+   ============================ */
+
+.ath-profile {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+}
+
+.ath-profile__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.ath-profile__spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: athSpin 0.7s linear infinite;
+}
+
+@keyframes athSpin {
+    to { transform: rotate(360deg); }
+}
+
+.ath-profile__empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+}
+
+.ath-profile__empty i {
+    font-size: 64px;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.ath-profile__empty p {
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+/* ── Header ── */
+.ath-header {
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+
+.ath-header__left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ath-back {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.ath-back:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.ath-header__name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ath-header__sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* ── Main ── */
+.ath-main {
+    flex: 1;
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── Profile Card ── */
+.ath-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.ath-card--profile {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 24px;
+}
+
+.ath-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #16A34A, #059669);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 900;
+    flex-shrink: 0;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.3);
+}
+
+.ath-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    flex: 1;
+}
+
+.ath-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ath-info-item > i {
+    font-size: 20px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.ath-info-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.ath-info-value {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ── Stats Row ── */
+.ath-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.ath-stat-box {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    text-align: center;
+    transition: 0.2s;
+}
+
+.ath-stat-box:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.ath-stat-val {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text-primary);
+}
+
+.ath-stat-lbl {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.ath-stat-box--blue { border-left: 4px solid var(--blue); }
+.ath-stat-box--green { border-left: 4px solid var(--green); }
+.ath-stat-box--purple { border-left: 4px solid var(--purple); }
+.ath-stat-box--orange { border-left: 4px solid var(--orange); }
+
+/* ── Card Header ── */
+.ath-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #FAFBFF, var(--bg));
+}
+
+.ath-card__header i {
+    font-size: 24px;
+}
+
+.ath-card__header h3 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ath-card__sub {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.ath-card__empty {
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ── Score Table ── */
+.ath-score-table {
+    padding: 0;
+}
+
+.ath-score-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    padding: 12px 20px;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.ath-score-row:last-child {
+    border-bottom: none;
+}
+
+.ath-score-row--header {
+    background: var(--bg);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 10px 20px;
+}
+
+.ath-score-row--total {
+    background: var(--bg);
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ath-score-alet {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ath-score-total {
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.ath-score-grand {
+    font-weight: 900;
+    color: var(--green);
+    font-size: 0.95rem;
+}
+
+/* ── History ── */
+.ath-history-list {
+    padding: 0;
+}
+
+.ath-history-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.ath-history-item:last-child {
+    border-bottom: none;
+}
+
+.ath-history-top {
+    margin-bottom: 10px;
+}
+
+.ath-history-top strong {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ath-history-meta {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.ath-history-scores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ath-history-score {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg);
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border-light);
+}
+
+.ath-history-alet {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.ath-history-val {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.ath-history-score--total {
+    background: #F0FDF4;
+    border-color: #BBF7D0;
+}
+
+.ath-history-score--total .ath-history-val {
+    color: var(--green);
+}
+
+.ath-history-noscores {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* ── Button ── */
+.ath-btn {
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.88rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.15s;
+}
+
+.ath-btn--back {
+    background: var(--blue);
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.ath-btn--back:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* ══════════════════════════
+   RESPONSIVE
+   ══════════════════════════ */
+
+@media (max-width: 768px) {
+    .ath-card--profile {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .ath-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ath-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ath-main {
+        padding: 16px;
+    }
+
+    .ath-header {
+        padding: 14px 16px;
+    }
+
+    .ath-score-row {
+        grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+        font-size: 0.78rem;
+        padding: 10px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ath-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ath-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .ath-stat-box {
+        padding: 14px 12px;
+    }
+
+    .ath-stat-val {
+        font-size: 1.2rem;
+    }
+
+    .ath-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 1.1rem;
+    }
+
+    .ath-score-row {
+        grid-template-columns: 1.2fr 1fr 1fr 0.8fr 1fr;
+        font-size: 0.72rem;
+        padding: 8px 12px;
+    }
+
+    .ath-history-scores {
+        gap: 6px;
+    }
+
+    .ath-history-score {
+        padding: 4px 8px;
+    }
+}

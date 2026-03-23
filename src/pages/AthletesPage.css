@@ -270,6 +270,31 @@
     text-overflow: ellipsis;
 }
 
+.athlete-profile-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 14px;
+    border-radius: var(--radius-xs);
+    background: #F0FDF4;
+    color: #16A34A;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: 1px solid #BBF7D0;
+    transition: 0.15s;
+    width: fit-content;
+}
+
+.athlete-profile-link i {
+    font-size: 16px;
+}
+
+.athlete-profile-link:hover {
+    background: #DCFCE7;
+    border-color: #86EFAC;
+}
+
 /* Multi-Column Form Modal */
 .modal--large {
     max-width: 600px !important;

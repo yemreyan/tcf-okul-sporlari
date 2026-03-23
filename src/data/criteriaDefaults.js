@@ -1,180 +1,92 @@
 export const DEFAULT_CRITERIA = {
     "genc_erkek": {
         "atlama": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294771040",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4
         },
         "barfiks": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294775134",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "halka": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294769433",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "kulplu": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294763000",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "mantar": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4,
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "metadata": {
             "isActive": true
         },
         "paralel": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294773333",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "yer": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294761243",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         }
     },
     "genc_kiz": {
         "asimetrik": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294747899",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "atlama": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294739328",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4
         },
         "denge": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294749894",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "metadata": {
             "isActive": true
         },
         "yer": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768294752241",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         }
     },
     "kucuk_erkek": {
@@ -1184,180 +1096,92 @@ export const DEFAULT_CRITERIA = {
     },
     "yildiz_erkek": {
         "atlama": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036742207",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4
         },
         "barfiks": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036746857",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "halka": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036740474",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "kulplu": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036738190",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "mantar": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4,
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "metadata": {
             "isActive": true
         },
         "paralel": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036744756",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "yer": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036735907",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         }
     },
     "yildiz_kiz": {
         "asimetrik": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036722990",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "atlama": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
-            "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036719157",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "hakemSayisi": 4
         },
         "denge": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036724890",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         },
         "metadata": {
             "isActive": true
         },
         "yer": {
-            "bonus": {
-                "maxE": 10,
-                "requiredD": 0,
-                "value": 0
-            },
+            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
-            "hareketler": [
-                {
-                    "dValues": "",
-                    "id": "m_1768036726957",
-                    "isim": "",
-                    "puansiz": false
-                }
-            ]
+            "dScoreMode": "difficulty",
+            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+            "btrsOptions": [0, 0.2]
         }
     }
 };

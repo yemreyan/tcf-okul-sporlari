@@ -33,6 +33,13 @@
   --amber: #D97706;
   --cyan: #0891B2;
 
+  --primary: #4F46E5;
+  --success: #16A34A;
+  --warning: #EA580C;
+  --bg-secondary: #F0F2F5;
+  --bg-primary: #FFFFFF;
+  --text-tertiary: #6B7280;
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
@@ -93,4 +100,105 @@ img {
 ::-webkit-scrollbar-thumb {
   background: #D1D5DB;
   border-radius: 10px;
+}
+
+/* ============================
+   SHARED LAYOUT CLASSES
+   Used across multiple pages
+   ============================ */
+
+/* Page Header (sticky top bar) */
+.page-header {
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+
+.page-header__left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.page-header__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Back Button */
+.back-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.back-btn:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+/* Page Title */
+.page-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Shared Button */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn i {
+    font-size: 20px;
+}
+
+.btn--primary {
+    background: var(--red);
+    color: white;
+    box-shadow: 0 4px 12px rgba(227, 6, 19, 0.25);
+}
+
+.btn--primary:hover {
+    background: var(--tcf-red-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(227, 6, 19, 0.35);
+}
+
+/* Page Content Area */
+.page-content {
+    flex: 1;
+    padding: 32px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
 }

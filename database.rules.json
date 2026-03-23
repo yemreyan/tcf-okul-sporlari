@@ -1,9 +1,10 @@
 {
   "rules": {
+    ".read": true,
+    ".write": true,
+
     "competitions": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["tarih", "yil"],
+      ".indexOn": ["tarih", "yil", "baslangicTarihi", "il"],
 
       "$competitionId": {
         ".indexOn": ["tarih"],
@@ -26,54 +27,10 @@
           "$categoryId": {
             "$apparatusId": {
               "$athleteId": {
-                ".indexOn": ["toplam", "durum"],
-                ".validate": "newData.hasChildren()",
-                "sonuc": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
-                },
-                "dScore": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
-                },
-                "calc_D": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30"
-                },
-                "calc_E": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
-                },
-                "combinedEDeduction": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
-                },
-                "e1": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "e2": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "e3": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "e4": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "e5": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "e6": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-                "tarafsiz": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
-                },
-                "neutralDeductions": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
-                },
-                "scoringMode": {
-                  ".validate": "newData.isString() && (newData.val() === 'separate' || newData.val() === 'combined')"
-                },
-                "timestamp": {
-                  ".validate": "newData.isNumber() || newData.isString()"
-                },
-                "hakem": {
-                  ".validate": "newData.isString()"
-                },
-                "eksikEleman": {
-                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
-                }
+                ".indexOn": ["toplam", "durum"]
               }
             }
           }
-        },
-
-        "hakemSayisi": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10"
         },
 
         "hakemler": {
@@ -87,190 +44,58 @@
         "katilimcilar": {},
         "aktifSporcu": {},
         "flashTrigger": {},
-        "epanelToken": {},
-        "siralama": {}
+        "program": {},
+        "siralama": {},
+        "onayli_okullar": {}
+      }
+    },
+
+    "globalSporcular": {
+      ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet"],
+
+      "$athleteKey": {
+        ".indexOn": ["lisansNo"]
       }
     },
 
     "applications": {
-      ".read": true,
-      ".write": true,
       ".indexOn": ["competitionId", "status", "createdAt", "olusturmaTarihi"],
 
       "$applicationId": {
-        ".indexOn": ["competitionId", "status"],
-
-        "competitionId": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
-        },
-        "categoryId": {
-          ".validate": "newData.isString() && newData.val().length <= 100"
-        },
-
-        "yarismaAdi": { ".validate": "newData.isString() && newData.val().length <= 300" },
-        "brans": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "il": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "ilce": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "okul": { ".validate": "newData.isString() && newData.val().length <= 300" },
-        "kategoriId": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "kategoriAdi": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "katilimTuru": { ".validate": "newData.isString()" },
-        "olusturmaTarihi": { ".validate": "newData.isString() && newData.val().length <= 50" },
-        "kvkkOnay": { ".validate": "newData.isBoolean()" },
-
-        "durum": {
-          ".validate": "newData.isString() && (newData.val() === 'bekliyor' || newData.val() === 'onaylandi' || newData.val() === 'reddedildi')"
-        },
-        "status": {
-          ".validate": "newData.isString() && (newData.val() === 'bekliyor' || newData.val() === 'onaylandi' || newData.val() === 'reddedildi')"
-        },
-
-        "schoolName": { ".validate": "newData.isString() && newData.val().length <= 300" },
-        "city": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "district": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "categoryName": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "type": { ".validate": "newData.isString()" },
-        "timestamp": { ".validate": "newData.isNumber() || newData.isString()" },
-        "teacherName": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "teacherPhone": { ".validate": "newData.isString() && newData.val().length <= 20" },
-
-        "antrenorler": {
-          "$coachIdx": {
-            "name": { ".validate": "newData.isString() && newData.val().length <= 200" },
-            "phone": { ".validate": "newData.isString() && newData.val().length <= 20" },
-            "email": { ".validate": "newData.isString() && newData.val().length <= 200" }
-          }
-        },
-        "ogretmenler": {
-          "$teacherIdx": {
-            "name": { ".validate": "newData.isString() && newData.val().length <= 200" },
-            "phone": { ".validate": "newData.isString() && newData.val().length <= 20" },
-            "email": { ".validate": "newData.isString() && newData.val().length <= 200" }
-          }
-        },
-        "coaches": {
-          "$coachIdx": {
-            "ad": { ".validate": "newData.isString()" },
-            "tel": { ".validate": "newData.isString()" },
-            "name": { ".validate": "newData.isString()" },
-            "phone": { ".validate": "newData.isString()" },
-            "email": { ".validate": "newData.isString()" }
-          }
-        },
-        "sporcular": {
-          "$athleteIdx": {
-            "tckn": { ".validate": "newData.isString() && newData.val().length == 11" },
-            "name": { ".validate": "newData.isString() && newData.val().length <= 200" },
-            "dob": { ".validate": "newData.isString() && newData.val().length <= 20" },
-            "license": { ".validate": "newData.isString() && newData.val().length <= 50" }
-          }
-        },
-        "athletes": {
-          "$athleteIdx": {
-            "adSoyad": { ".validate": "newData.isString() && newData.val().length <= 200" },
-            "tckn": { ".validate": "newData.isString()" },
-            "dob": { ".validate": "newData.isString() && newData.val().length <= 20" },
-            "lisans": { ".validate": "newData.isString() && newData.val().length <= 50" }
-          }
-        }
+        ".indexOn": ["competitionId", "status"]
       }
     },
 
     "kullanicilar": {
-      ".read": true,
-      ".write": true,
       "$userId": {
-        ".indexOn": ["email", "role"],
-        "sifreHash": {
-          ".validate": "newData.isString() && newData.val().length == 64"
-        },
-        "rolAdi": {
-          ".validate": "newData.isString() && newData.val().length <= 100"
-        },
-        "il": {
-          ".validate": "newData.isString() && newData.val().length <= 100"
-        },
-        "aktif": {
-          ".validate": "newData.isBoolean()"
-        },
-        "olusturmaTarihi": {
-          ".validate": "newData.isString()"
-        }
+        ".indexOn": ["email", "role", "rolAdi"]
       }
-    },
-
-    "criteria": {
-      ".read": true,
-      ".write": true
-    },
-
-    "globalSporcular": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet"],
-
-      "$athleteKey": {
-        ".indexOn": ["lisansNo"],
-        "tckn": {
-          ".validate": "newData.isString() && newData.val().length <= 11"
-        },
-        "lisansNo": {
-          ".validate": "newData.isString() && newData.val().length <= 50"
-        },
-        "soyadAd": {
-          ".validate": "newData.isString() && newData.val().length <= 200"
-        }
-      }
-    },
-
-    "referees": {
-      ".read": true,
-      ".write": true,
-      "$refereeId": {
-        "adSoyad": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "brans": { ".validate": "newData.isString() && newData.val().length <= 50" },
-        "brove": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "il": { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "email": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "telefon": { ".validate": "newData.isString() && newData.val().length <= 20" },
-        "gorevSayisi": { ".validate": "newData.isNumber()" },
-        "createdAt": { ".validate": "newData.isString()" }
-      }
-    },
-
-    "reports": {
-      ".read": true,
-      ".write": true,
-      ".validate": "newData.hasChildren()"
     },
 
     "broadcasts": {
-      ".read": true,
-      ".write": true,
       ".indexOn": ["competitionId", "createdAt"],
-      "$broadcastId": {
-        "competitionId": { ".validate": "newData.isString()" },
-        "message": { ".validate": "newData.isString() && newData.val().length <= 1000" }
+
+      "$broadcastId": {}
+    },
+
+    "referees": {
+      "$refereeId": {
+        ".indexOn": ["adSoyad", "brans", "il"]
       }
     },
 
     "defaultCriteria": {
-      ".read": true,
-      ".write": true,
       "$criteriaType": {
         ".indexOn": ["name"]
       }
     },
 
+    "criteria": {},
+
+    "reports": {},
+
     "logs": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["timestamp", "type", "competitionId"],
-      "$logId": {
-        "timestamp": { ".validate": "newData.isNumber()" },
-        "type": { ".validate": "newData.isString() && newData.val().length <= 50" },
-        "message": { ".validate": "newData.isString() && newData.val().length <= 500" }
-      }
+      ".indexOn": ["timestamp", "type", "competitionId", "user"]
     }
   }
 }
