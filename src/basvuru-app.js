@@ -215,17 +215,30 @@ async function loadCoaches() {
 async function loadCompetitions() {
   const competitionSelect = document.getElementById('competitionSelect');
   try {
-    const snapshot = await get(ref(db, 'competitions'));
-    if (!snapshot.exists()) {
-      competitionSelect.innerHTML = '<option value="">AKTİF YARIŞMA BULUNAMADI</option>';
-      return;
-    }
     competitionsCache = {};
-    snapshot.forEach(child => {
-      const data = child.val();
-      if (data.durum === 'pasif') return;
-      competitionsCache[child.key] = data;
-    });
+
+    // Artistik yarışmaları yükle
+    const artSnap = await get(ref(db, 'competitions'));
+    if (artSnap.exists()) {
+      artSnap.forEach(child => {
+        const data = child.val();
+        if (data.durum === 'pasif') return;
+        data._firebasePath = 'competitions';
+        competitionsCache[child.key] = data;
+      });
+    }
+
+    // Aerobik yarışmaları yükle
+    const aeroSnap = await get(ref(db, 'aerobik_yarismalar'));
+    if (aeroSnap.exists()) {
+      aeroSnap.forEach(child => {
+        const data = child.val();
+        if (data.durum === 'pasif') return;
+        data._firebasePath = 'aerobik_yarismalar';
+        competitionsCache[child.key] = data;
+      });
+    }
+
     if (Object.keys(competitionsCache).length === 0) {
       competitionSelect.innerHTML = '<option value="">AKTİF YARIŞMA BULUNAMADI</option>';
     } else {
@@ -236,6 +249,12 @@ async function loadCompetitions() {
     competitionSelect.innerHTML = '<option value="">YARIŞMALAR YÜKLENEMEDİ</option>';
     showToast('Yarışmalar yüklenirken hata oluştu', 'error');
   }
+}
+
+// Seçili yarışmanın Firebase path'ini döndürür
+function getCompFirebasePath(competitionId) {
+  const comp = competitionsCache[competitionId];
+  return (comp && comp._firebasePath) || 'competitions';
 }
 
 function filterCompetitions() {
@@ -677,7 +696,8 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
 
   try {
     const categoryId = document.getElementById('categorySelect').value;
-    const approvedSnap = await get(ref(db, `competitions/${competitionId}/sporcular/${categoryId}`));
+    const fbPath = getCompFirebasePath(competitionId);
+    const approvedSnap = await get(ref(db, `${fbPath}/${competitionId}/sporcular/${categoryId}`));
     if (approvedSnap.exists()) {
       const approved = approvedSnap.val();
       Object.values(approved).forEach(sp => {
@@ -708,7 +728,8 @@ async function checkSchoolQuota(competitionId, categoryId, schoolName, newAthlet
         }
       });
     }
-    const approvedSnap = await get(ref(db, `competitions/${competitionId}/sporcular/${categoryId}`));
+    const fbPath = getCompFirebasePath(competitionId);
+    const approvedSnap = await get(ref(db, `${fbPath}/${competitionId}/sporcular/${categoryId}`));
     if (approvedSnap.exists()) {
       Object.values(approvedSnap.val()).forEach(sp => {
         if (sp.okul === schoolName || sp.school === schoolName) {
@@ -761,7 +782,8 @@ async function fetchExistingAthleteCount() {
     }
 
     // 2. Zaten onaylanıp yarışmaya aktarılmış sporcuları say
-    const approvedSnap = await get(ref(db, `competitions/${competitionId}/sporcular/${categoryId}`));
+    const fbPath = getCompFirebasePath(competitionId);
+    const approvedSnap = await get(ref(db, `${fbPath}/${competitionId}/sporcular/${categoryId}`));
     if (approvedSnap.exists()) {
       const approved = approvedSnap.val();
       Object.values(approved).forEach(sp => {
