@@ -570,7 +570,7 @@
 /* 2 columns on desktop:
    Row 1: A Score (purple) | E Score (green)
    Row 2: D Score (blue) — full width
-   Row 3: CJP (indigo) | Penalties (red)
+   Row 3: Penalties (red) — full width
 */
 .as-scoring-grid {
     display: grid;
@@ -621,15 +621,6 @@
 }
 .as-card-header-blue h3 { color: #1E40AF; }
 .as-card-header-blue i { color: #3B82F6; }
-
-/* Indigo — CJP */
-.as-card-indigo { border: 1px solid #C7D2FE; }
-.as-card-header-indigo {
-    background: #EEF2FF;
-    border-bottom: 1px solid #C7D2FE;
-}
-.as-card-header-indigo h3 { color: #3730A3; }
-.as-card-header-indigo i { color: #6366F1; }
 
 /* Red — Penalties */
 .as-card-red { border: 1px solid #FECACA; }
@@ -872,6 +863,30 @@
     background: #FEF2F2;
 }
 
+.as-btn-add-element {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #EFF6FF;
+    border: 1px dashed #93C5FD;
+    color: #2563EB;
+    padding: 0.6rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.as-btn-add-element:hover {
+    background: #DBEAFE;
+    border-color: #60A5FA;
+    transform: translateY(-1px);
+}
+
 /* Element picker */
 .as-element-picker {
     display: flex;
@@ -948,82 +963,106 @@
     font-weight: 700;
 }
 
-/* ─── CJP Panel ─── */
-.as-cjp-input {
-    width: 150px;
-    font-size: 3.5rem;
-    font-weight: 900;
-    text-align: center;
-    border-radius: 1rem;
-    padding: 0.75rem;
-    outline: none;
-    transition: all 0.2s;
-    -moz-appearance: textfield;
-    color: #3730A3;
-    border: 2px solid #C7D2FE;
-    background: #F8FAFC;
-    margin: 0 auto;
-    display: block;
-}
-
-.as-cjp-input::-webkit-outer-spin-button,
-.as-cjp-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.as-cjp-input:focus {
-    border-color: #6366F1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    background: white;
-}
-
-.as-cjp-quick-btns {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.6rem;
-}
-
-.as-btn-quick-indigo {
-    background: #EEF2FF;
-    border: 1px solid #C7D2FE;
-    color: #6366F1;
-    padding: 0.75rem 0;
+/* ─── Score Lock ─── */
+.as-lock-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    border: 1px solid #F59E0B;
     border-radius: 0.75rem;
-    font-weight: 700;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    min-height: 44px;
-}
-
-.as-btn-quick-indigo:hover {
-    background: #6366F1;
-    color: white;
-    border-color: #6366F1;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-}
-
-.as-btn-quick-indigo:active { transform: scale(0.96); }
-
-.as-cjp-clear {
-    grid-column: span 3;
-    background: #F8FAFC;
-    border: 1px dashed #CBD5E1;
-    color: #64748B;
-    padding: 0.6rem 0;
-    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: #92400E;
     font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    font-size: 0.85rem;
+    margin-left: auto;
 }
 
-.as-cjp-clear:hover {
-    background: #F1F5F9;
+.as-lock-banner i {
+    font-size: 1.1rem;
+    color: #D97706;
+}
+
+.as-btn-unlock {
+    background: #F59E0B;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 0.5rem;
+}
+
+.as-btn-unlock:hover {
+    background: #D97706;
+    transform: translateY(-1px);
+}
+
+.as-lock-icon {
+    font-size: 0.85rem !important;
+    color: #D97706;
+    margin-right: 0.25rem;
+    vertical-align: middle;
+}
+
+.as-unlock-form {
+    margin-top: 1rem;
+}
+
+.as-unlock-form label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
     color: #475569;
-    border-color: #94A3B8;
+    margin-bottom: 0.5rem;
+}
+
+.as-unlock-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #E2E8F0;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.as-unlock-input:focus {
+    border-color: #F59E0B;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.as-unlock-error {
+    color: #DC2626;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.as-header-unlock {
+    background: linear-gradient(135deg, #78350F, #92400E) !important;
+}
+
+.as-header-unlock h2 { color: white !important; }
+.as-header-unlock i { color: #FDE68A !important; }
+
+.as-family-full {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.as-family-limit-badge {
+    background: #FEE2E2;
+    color: #991B1B;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.5rem;
+    margin-left: auto;
 }
 
 /* ─── Penalties Panel ─── */
@@ -1388,6 +1427,10 @@
     animation: asModalSlideUp 0.3s ease;
 }
 
+.as-modal.as-modal-wide {
+    max-width: 640px;
+}
+
 .as-modal-header {
     padding: 1.25rem 1.5rem;
     display: flex;
@@ -1664,7 +1707,7 @@
     .as-penalty-btn { padding: 0.5rem 0.85rem; min-height: 44px; min-width: 44px; }
     .as-btn-quick-purple { padding: 0.75rem 0; min-height: 44px; }
     .as-btn-quick-green { padding: 0.65rem 0; min-height: 44px; }
-    .as-btn-quick-indigo { padding: 0.75rem 0; min-height: 44px; }
+
 
     /* Judge panels — larger touch targets */
     .as-judge-panel { padding: 0.85rem 0.6rem; }
@@ -1692,8 +1735,6 @@
     .as-mode-section { padding: 0.5rem 0.75rem; }
     .as-mode-btn { font-size: 0.72rem; padding: 0.45rem 0.35rem; }
 
-    /* CJP input slightly smaller */
-    .as-cjp-input { width: 130px; font-size: 3rem; }
     .as-giant-input { width: 130px; font-size: 3rem; }
 }
 
@@ -1808,10 +1849,6 @@
     }
     .as-card-full-width { grid-column: auto; }
 
-    /* CJP input */
-    .as-cjp-input { width: 120px; font-size: 2.5rem; padding: 0.5rem; }
-    .as-cjp-quick-btns { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-    .as-btn-quick-indigo { padding: 0.6rem 0; font-size: 1rem; }
 
     /* Giant inputs */
     .as-giant-input { width: 120px; font-size: 2.5rem; padding: 0.5rem; }
@@ -1906,10 +1943,7 @@
     .as-btn-call { padding: 0.85rem 1.25rem; font-size: 0.9rem; gap: 0.5rem; }
     .as-btn-call i { font-size: 1.2rem; }
 
-    .as-cjp-input { width: 100px; font-size: 2rem; }
     .as-giant-input { width: 100px; font-size: 2rem; }
-    .as-cjp-quick-btns { gap: 0.4rem; }
-    .as-btn-quick-indigo { padding: 0.5rem 0; font-size: 0.9rem; border-radius: 0.6rem; }
 
     .as-card-header { padding: 0.75rem 1rem; }
     .as-card-header h3 { font-size: 0.75rem; }

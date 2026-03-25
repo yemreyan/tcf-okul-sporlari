@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
-import { AEROBIK_CATEGORIES, ELEMENT_FAMILIES, DIFFICULTY_VALUES, PENALTY_TYPES } from '../data/aerobikCriteriaDefaults';
+import { AEROBIK_CATEGORIES, ELEMENT_FAMILIES, DIFFICULTY_VALUES, PENALTY_TYPES, FAMILY_CONSTRAINTS } from '../data/aerobikCriteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
+import { useDiscipline } from '../lib/DisciplineContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
@@ -11,7 +12,8 @@ import './AerobikScoringPage.css';
 
 export default function AerobikScoringPage() {
     const navigate = useNavigate();
-    const { currentUser, hasPermission } = useAuth();
+    const { currentUser, hasPermission, hashPassword } = useAuth();
+    const { firebasePath } = useDiscipline();
     const { toast } = useNotification();
 
     // Data
@@ -31,10 +33,15 @@ export default function AerobikScoringPage() {
     const [ePanelLocal, setEPanelLocal] = useState({});
     // D Score (Difficulty) — selected elements
     const [selectedElements, setSelectedElements] = useState([]);
-    // CJP — Chair of Judges Panel bonus
-    const [cjpValue, setCjpValue] = useState(0);
     // Penalties
-    const [penalties, setPenalties] = useState({ time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+    const [penalties, setPenalties] = useState({ fall: 0, time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+
+    // Score Lock
+    const [scoreLocked, setScoreLocked] = useState(false);
+    const [unlockModal, setUnlockModal] = useState(null);
+    const [unlockPassword, setUnlockPassword] = useState('');
+    const [unlockError, setUnlockError] = useState('');
+    const [unlockingInProgress, setUnlockingInProgress] = useState(false);
 
     // UI State
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -47,12 +54,12 @@ export default function AerobikScoringPage() {
 
     // ─── Firebase Listeners ───
     useEffect(() => {
-        const unsub = onValue(ref(db, 'aerobik_yarismalar'), (snap) => {
+        const unsub = onValue(ref(db, firebasePath), (snap) => {
             const data = snap.val() || {};
             setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsub();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     useEffect(() => {
         if (!selectedCompId || !selectedCategory) {
@@ -63,7 +70,7 @@ export default function AerobikScoringPage() {
             return;
         }
 
-        const orderRef = ref(db, `aerobik_yarismalar/${selectedCompId}/siralama/${selectedCategory}`);
+        const orderRef = ref(db, `${firebasePath}/${selectedCompId}/siralama/${selectedCategory}`);
         const unsubOrder = onValue(orderRef, (snap) => {
             const orderData = snap.val();
             const rotations = [];
@@ -81,7 +88,7 @@ export default function AerobikScoringPage() {
                 setAthletesByRotation(rotations);
             } else {
                 // Fallback: sporculardan al
-                const fbRef = ref(db, `aerobik_yarismalar/${selectedCompId}/sporcular/${selectedCategory}`);
+                const fbRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategory}`);
                 onValue(fbRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
@@ -93,13 +100,20 @@ export default function AerobikScoringPage() {
             }
         });
 
-        const scoresRef = ref(db, `aerobik_yarismalar/${selectedCompId}/puanlar/${selectedCategory}`);
+        const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}`);
         const unsubScores = onValue(scoresRef, (snap) => {
             setExistingScores(snap.val() || {});
         });
 
         return () => { unsubOrder(); unsubScores(); };
-    }, [selectedCompId, selectedCategory]);
+    }, [selectedCompId, selectedCategory, firebasePath]);
+
+    // Sync lock state reactively when existingScores change
+    useEffect(() => {
+        if (!selectedAthlete) return;
+        const scores = existingScores[selectedAthlete.id];
+        setScoreLocked(scores?.kilitli === true);
+    }, [existingScores, selectedAthlete?.id]);
 
     // ─── Derived Data ───
     const compOptions = Object.entries(competitions)
@@ -113,7 +127,7 @@ export default function AerobikScoringPage() {
     }
 
     const categoryConfig = AEROBIK_CATEGORIES[selectedCategory] || AEROBIK_CATEGORIES['IM'];
-    const maxElements = categoryConfig?.maxElements || 9;
+    const maxElements = categoryConfig?.maxElements || 8;
     const dDivisor = categoryConfig?.dDivisor || 2.0;
 
     // ─── Score Calculations ───
@@ -146,28 +160,28 @@ export default function AerobikScoringPage() {
     const dRawSum = selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
     const dScore = dDivisor > 0 ? dRawSum / dDivisor : 0;
 
-    // CJP
-    const cjp = parseFloat(cjpValue) || 0;
-
     // Penalties
     const totalPenalties = Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
 
-    // Final Score
-    const finalScore = Math.max(0, aScore + eScore + dScore + cjp - totalPenalties).toFixed(3);
+    // Final Score = A + E + D - Penalties
+    const finalScore = Math.max(0, aScore + eScore + dScore - totalPenalties).toFixed(3);
 
     // ─── Handlers ───
     const handleSelectAthlete = (athlete) => {
         if (selectedAthlete?.id === athlete.id) return;
-        setSelectedAthlete(athlete);
-        setIsAthleteCalled(false);
 
         const prev = existingScores[athlete.id];
+        const isLocked = prev?.kilitli === true;
+
+        setSelectedAthlete(athlete);
+        setIsAthleteCalled(false);
+        setScoreLocked(isLocked);
+
         if (prev) {
             setAPanelLocal(prev.aPanel || {});
             setEPanelLocal(prev.ePanel || {});
             setSelectedElements(prev.dElements || []);
-            setCjpValue(prev.cjp || 0);
-            setPenalties(prev.penalties || { time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+            setPenalties(prev.penalties || { fall: 0, time: 0, line: 0, music: 0, lift: 0, costume: 0 });
         } else {
             resetPanel();
         }
@@ -177,15 +191,14 @@ export default function AerobikScoringPage() {
         setAPanelLocal({});
         setEPanelLocal({});
         setSelectedElements([]);
-        setCjpValue(0);
-        setPenalties({ time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+        setPenalties({ fall: 0, time: 0, line: 0, music: 0, lift: 0, costume: 0 });
     };
 
     const handleCallAthlete = async () => {
         setIsAthleteCalled(true);
         try {
             await update(ref(db), {
-                [`aerobik_yarismalar/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id
+                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id
             });
         } catch (e) { console.error('Could not set active athlete', e); }
     };
@@ -201,6 +214,11 @@ export default function AerobikScoringPage() {
     const addElement = (family, value) => {
         if (selectedElements.length >= maxElements) {
             return toast(`Bu kategoride en fazla ${maxElements} element eklenebilir.`, 'warning');
+        }
+        // Max 2 element per family constraint
+        const familyCount = selectedElements.filter(el => el.familyId === family.id).length;
+        if (familyCount >= FAMILY_CONSTRAINTS.maxPerFamily) {
+            return toast(`Aynı aileden en fazla ${FAMILY_CONSTRAINTS.maxPerFamily} element eklenebilir (${family.name}).`, 'warning');
         }
         setSelectedElements(prev => [...prev, {
             id: Date.now(),
@@ -219,12 +237,20 @@ export default function AerobikScoringPage() {
 
     const handleSubmitScore = () => {
         if (!selectedAthlete) return toast('Lütfen bir sporcu seçin.', 'warning');
+        if (scoreLocked) return toast("Bu sporcunun puanı kilitli. Düzenlemek için kilidi açın.", "warning");
+
+        // Min families constraint
+        const uniqueFamilies = new Set(selectedElements.map(el => el.familyId));
+        if (selectedElements.length > 0 && uniqueFamilies.size < FAMILY_CONSTRAINTS.minFamilies) {
+            return toast(`En az ${FAMILY_CONSTRAINTS.minFamilies} farklı element ailesi kullanılmalıdır (şu an: ${uniqueFamilies.size}).`, 'warning');
+        }
+
         const fVal = parseFloat(finalScore);
         if (isNaN(fVal) || fVal < 0 || fVal > 30) return toast('Final puanı geçersiz.', 'error');
 
         setConfirmModal({
             athlete: selectedAthlete,
-            aScore, eScore, dScore, cjp, totalPenalties, finalScore,
+            aScore, eScore, dScore, totalPenalties, finalScore,
             category: selectedCategory
         });
     };
@@ -234,8 +260,8 @@ export default function AerobikScoringPage() {
         setConfirmModal(null);
         setIsSubmitting(true);
         try {
-            const scorePath = `aerobik_yarismalar/${selectedCompId}/puanlar/${selectedCategory}/${savedAthlete.id}`;
-            const activePath = `aerobik_yarismalar/${selectedCompId}/aktifSporcu/${selectedCategory}`;
+            const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${savedAthlete.id}`;
+            const activePath = `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`;
             const ts = new Date().toISOString();
 
             await update(ref(db), {
@@ -244,7 +270,6 @@ export default function AerobikScoringPage() {
                 [scorePath + '/dScore']: dScore,
                 [scorePath + '/dRawSum']: dRawSum,
                 [scorePath + '/dDivisor']: dDivisor,
-                [scorePath + '/cjp']: cjp,
                 [scorePath + '/penalties']: penalties,
                 [scorePath + '/totalPenalties']: totalPenalties,
                 [scorePath + '/aPanel']: aPanelLocal,
@@ -253,6 +278,7 @@ export default function AerobikScoringPage() {
                 [scorePath + '/sonuc']: parseFloat(finalScore),
                 [scorePath + '/timestamp']: ts,
                 [scorePath + '/durum']: 'tamamlandi',
+                [scorePath + '/kilitli']: true,
                 [activePath]: null,
             });
 
@@ -281,6 +307,74 @@ export default function AerobikScoringPage() {
         handleSelectAthlete(nextAth);
     };
 
+    // ─── Score Unlock ───
+    const handleUnlockRequest = () => {
+        if (!selectedAthlete) return;
+        setUnlockModal({
+            athleteId: selectedAthlete.id,
+            athleteName: `${selectedAthlete.ad} ${selectedAthlete.soyad}`
+        });
+        setUnlockPassword('');
+        setUnlockError('');
+    };
+
+    const handleUnlockSubmit = async () => {
+        if (!unlockPassword.trim()) {
+            setUnlockError('Şifre giriniz.');
+            return;
+        }
+        setUnlockingInProgress(true);
+        setUnlockError('');
+        try {
+            // Komite şifresini yarışmadan veya genel ayarlardan kontrol et
+            const compKomiteSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/komiteSifresi`));
+            const globalKomiteSnap = await get(ref(db, 'ayarlar/komiteSifresi'));
+            const komiteSifre = compKomiteSnap.val() || globalKomiteSnap.val();
+
+            // Tüm kullanıcı şifrelerini kontrol et (super admin dahil)
+            const usersSnap = await get(ref(db, 'kullanicilar'));
+            const usersData = usersSnap.val() || {};
+
+            const inputPwd = unlockPassword.trim();
+            const inputHash = await hashPassword(inputPwd);
+
+            // Komite şifresi kontrolü (düz metin)
+            const isKomiteMatch = komiteSifre && inputPwd === komiteSifre;
+
+            // Kullanıcı şifresi kontrolü (hash veya düz metin)
+            let isUserMatch = false;
+            for (const [, userData] of Object.entries(usersData)) {
+                if (userData.sifreHash && inputHash === userData.sifreHash) {
+                    isUserMatch = true;
+                    break;
+                }
+                if (userData.sifre && inputPwd === userData.sifre) {
+                    isUserMatch = true;
+                    break;
+                }
+            }
+
+            if (isKomiteMatch || isUserMatch) {
+                const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}`;
+                await update(ref(db), { [scorePath + '/kilitli']: false });
+                setScoreLocked(false);
+                setUnlockModal(null);
+                toast('Puan kilidi kaldırıldı. Düzenleme yapabilirsiniz.', 'success');
+                logAction('score_unlock', `[Aerobik] ${unlockModal.athleteName} — puan kilidi kaldırıldı`, {
+                    user: currentUser?.kullaniciAdi || 'admin',
+                    competitionId: selectedCompId,
+                });
+            } else {
+                setUnlockError('Şifre hatalı. Süper Admin veya Komite şifresi gereklidir.');
+            }
+        } catch (err) {
+            console.error('Unlock error:', err);
+            setUnlockError('Bir hata oluştu. Tekrar deneyin.');
+        } finally {
+            setUnlockingInProgress(false);
+        }
+    };
+
     // ─── Render ───
     return (
         <div className="as-page">
@@ -291,7 +385,7 @@ export default function AerobikScoringPage() {
                     </button>
                     <div>
                         <h1>Aerobik Puanlama</h1>
-                        <p className="as-subtitle">A + E + D + CJP - Ceza</p>
+                        <p className="as-subtitle">A + E + D - Ceza</p>
                     </div>
                 </div>
                 <div className="as-header-right">
@@ -309,7 +403,7 @@ export default function AerobikScoringPage() {
 
             <div className="as-layout">
                 {/* Sidebar */}
-                <aside className={`as-sidebar ${!sidebarOpen ? 'as-sidebar--collapsed' : ''}`}>
+                <aside className={`as-sidebar ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
                     <div className="as-sidebar-controls">
                         <select className="as-select" value={selectedCompId} onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); setSelectedAthlete(null); }}>
                             <option value="">Yarışma Seçin</option>
@@ -340,6 +434,7 @@ export default function AerobikScoringPage() {
                                                 const isSelected = selectedAthlete?.id === ath.id;
                                                 const scoreData = existingScores[ath.id];
                                                 const hasScore = scoreData && scoreData.durum === 'tamamlandi';
+                                                const isLockedScore = scoreData?.kilitli === true;
                                                 const display = scoreData ? parseFloat(scoreData.sonuc ?? 0).toFixed(3) : '0.000';
                                                 return (
                                                     <div key={ath.id}
@@ -350,9 +445,12 @@ export default function AerobikScoringPage() {
                                                             <span className="as-ra-name">{ath.ad} {ath.soyad}</span>
                                                         </div>
                                                         {hasScore ? (
-                                                            <div className="as-ra-score">{display}</div>
+                                                            <div className="as-ra-score-badge success-glow">
+                                                                {isLockedScore && <i className="material-icons-round as-lock-icon">lock</i>}
+                                                                {display}
+                                                            </div>
                                                         ) : (
-                                                            <div className="as-ra-pending">Bekliyor</div>
+                                                            <div className="as-ra-status-badge pending">Bekliyor</div>
                                                         )}
                                                     </div>
                                                 );
@@ -394,11 +492,17 @@ export default function AerobikScoringPage() {
                             {/* Athlete Header */}
                             <div className="as-athlete-header">
                                 <div className="as-avatar">{selectedAthlete.ad.charAt(0)}{selectedAthlete.soyad.charAt(0)}</div>
-                                <div className="as-ath-details">
+                                <div className="as-athlete-details">
                                     <h2>{selectedAthlete.ad} {selectedAthlete.soyad}</h2>
                                     <p className="as-subtitle">{selectedAthlete.okul || selectedAthlete.kulup} &bull; {AEROBIK_CATEGORIES[selectedCategory]?.label || selectedCategory}</p>
                                 </div>
-                                {existingScores[selectedAthlete.id] && (
+                                {scoreLocked ? (
+                                    <div className="as-lock-banner">
+                                        <i className="material-icons-round">lock</i>
+                                        <span>Puan Kilitli</span>
+                                        <button className="as-btn-unlock" onClick={handleUnlockRequest}>Kilidi Aç</button>
+                                    </div>
+                                ) : existingScores[selectedAthlete.id] && (
                                     <div className="as-override-warning">
                                         <i className="material-icons-round">warning</i> Önceki Puan Değiştiriliyor
                                     </div>
@@ -424,6 +528,7 @@ export default function AerobikScoringPage() {
                                                         <input type="number" step="0.1" min="0" max="10"
                                                             value={hasVal ? val : ''} placeholder="—"
                                                             className="as-judge-input"
+                                                            disabled={scoreLocked}
                                                             onChange={e => setAPanelLocal(p => ({ ...p, [key]: e.target.value }))} />
                                                     </div>
                                                 );
@@ -454,6 +559,7 @@ export default function AerobikScoringPage() {
                                                         <input type="number" step="0.1" min="0" max="10"
                                                             value={hasVal ? val : ''} placeholder="—"
                                                             className="as-judge-input"
+                                                            disabled={scoreLocked}
                                                             onChange={e => setEPanelLocal(p => ({ ...p, [key]: e.target.value }))} />
                                                     </div>
                                                 );
@@ -467,7 +573,7 @@ export default function AerobikScoringPage() {
                                 </div>
 
                                 {/* ═══ D SCORE (Difficulty) ═══ */}
-                                <div className="as-card as-card-blue as-card-wide">
+                                <div className="as-card as-card-blue as-card-full-width">
                                     <div className="as-card-header as-header-blue">
                                         <h3>D Puanı (Zorluk) — {selectedElements.length}/{maxElements} element</h3>
                                         <i className="material-icons-round">emoji_events</i>
@@ -483,14 +589,16 @@ export default function AerobikScoringPage() {
                                                     <span className={`as-group-badge as-group-${el.group}`}>{el.group}</span>
                                                     <span className="as-element-family">{el.familyName}</span>
                                                     <span className="as-element-value">{el.value.toFixed(1)}</span>
-                                                    <button className="as-element-remove" onClick={() => removeElement(el.id)}>
-                                                        <i className="material-icons-round">close</i>
-                                                    </button>
+                                                    {!scoreLocked && (
+                                                        <button className="as-element-remove" onClick={() => removeElement(el.id)}>
+                                                            <i className="material-icons-round">close</i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
 
-                                        {selectedElements.length < maxElements && (
+                                        {!scoreLocked && selectedElements.length < maxElements && (
                                             <button className="as-btn-add-element" onClick={() => setShowElementPicker(true)}>
                                                 <i className="material-icons-round">add_circle</i>
                                                 Element Ekle
@@ -505,27 +613,8 @@ export default function AerobikScoringPage() {
                                     </div>
                                 </div>
 
-                                {/* ═══ CJP ═══ */}
-                                <div className="as-card as-card-indigo">
-                                    <div className="as-card-header as-header-indigo">
-                                        <h3>CJP (Baş Hakem Bonusu)</h3>
-                                        <i className="material-icons-round">star</i>
-                                    </div>
-                                    <div className="as-card-body">
-                                        <div className="as-cjp-btns">
-                                            {[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map(v => (
-                                                <button key={v}
-                                                    className={`as-cjp-btn ${parseFloat(cjpValue) === v ? 'selected' : ''}`}
-                                                    onClick={() => setCjpValue(v)}>
-                                                    {v.toFixed(1)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* ═══ PENALTIES ═══ */}
-                                <div className="as-card as-card-red">
+                                <div className="as-card as-card-red as-card-full-width">
                                     <div className="as-card-header as-header-red">
                                         <h3>Ceza Kesintileri</h3>
                                         <i className="material-icons-round">gavel</i>
@@ -538,6 +627,7 @@ export default function AerobikScoringPage() {
                                                     {penType.options.map(v => (
                                                         <button key={v}
                                                             className={`as-penalty-btn ${parseFloat(penalties[key]) === v ? 'selected' : ''}`}
+                                                            disabled={scoreLocked}
                                                             onClick={() => setPenalties(p => ({ ...p, [key]: v }))}>
                                                             {v.toFixed(1)}
                                                         </button>
@@ -554,21 +644,20 @@ export default function AerobikScoringPage() {
 
                             {/* Final Score Bar */}
                             <div className="as-final-bar">
-                                <div className="as-final-calc">
-                                    <span className="as-chip as-chip-purple">A: {aScore.toFixed(3)}</span>
-                                    <span className="as-math">+</span>
-                                    <span className="as-chip as-chip-green">E: {eScore.toFixed(3)}</span>
-                                    <span className="as-math">+</span>
-                                    <span className="as-chip as-chip-blue">D: {dScore.toFixed(3)}</span>
-                                    {cjp > 0 && (<><span className="as-math">+</span><span className="as-chip as-chip-indigo">CJP: {cjp.toFixed(1)}</span></>)}
-                                    {totalPenalties > 0 && (<><span className="as-math">−</span><span className="as-chip as-chip-red">Ceza: {totalPenalties.toFixed(1)}</span></>)}
-                                    <span className="as-math">=</span>
+                                <div className="as-fs-calc">
+                                    <span className="as-fs-part as-score-chip-purple">A: {aScore.toFixed(3)}</span>
+                                    <span className="as-fs-math">+</span>
+                                    <span className="as-fs-part as-score-chip-green">E: {eScore.toFixed(3)}</span>
+                                    <span className="as-fs-math">+</span>
+                                    <span className="as-fs-part as-score-chip-blue">D: {dScore.toFixed(3)}</span>
+                                    {totalPenalties > 0 && (<><span className="as-fs-math">−</span><span className="as-fs-part as-score-chip-red">Ceza: {totalPenalties.toFixed(1)}</span></>)}
+                                    <span className="as-fs-math">=</span>
                                 </div>
                                 <div className="as-final-score">{finalScore}</div>
                                 {hasPermission('scoring', 'puanla') && (
-                                    <button className="as-btn-save" onClick={handleSubmitScore} disabled={isSubmitting}>
-                                        {isSubmitting ? <div className="as-spinner"></div> : <i className="material-icons-round">publish</i>}
-                                        <span>Kaydet</span>
+                                    <button className="as-btn-save" onClick={handleSubmitScore} disabled={isSubmitting || scoreLocked}>
+                                        {isSubmitting ? <div className="as-spinner"></div> : <i className="material-icons-round">{scoreLocked ? 'lock' : 'publish'}</i>}
+                                        <span>{scoreLocked ? 'Puan Kilitli' : 'Kaydet'}</span>
                                     </button>
                                 )}
                             </div>
@@ -586,22 +675,27 @@ export default function AerobikScoringPage() {
                             <h2>Element Seç ({selectedElements.length}/{maxElements})</h2>
                         </div>
                         <div className="as-modal-body">
-                            {ELEMENT_FAMILIES.map(family => (
-                                <div key={family.id} className="as-family-section">
-                                    <div className="as-family-header">
-                                        <span className={`as-group-badge as-group-${family.group}`}>{family.group}</span>
-                                        <strong>{family.name}</strong>
-                                        <span className="as-family-desc">{family.description}</span>
+                            {ELEMENT_FAMILIES.map(family => {
+                                const familyCount = selectedElements.filter(el => el.familyId === family.id).length;
+                                const isFamilyFull = familyCount >= FAMILY_CONSTRAINTS.maxPerFamily;
+                                return (
+                                    <div key={family.id} className={`as-family-section ${isFamilyFull ? 'as-family-full' : ''}`}>
+                                        <div className="as-family-header">
+                                            <span className={`as-group-badge as-group-${family.group}`}>{family.group}</span>
+                                            <strong>{family.name}</strong>
+                                            <span className="as-family-desc">{family.description}</span>
+                                            {isFamilyFull && <span className="as-family-limit-badge">Dolu ({familyCount}/{FAMILY_CONSTRAINTS.maxPerFamily})</span>}
+                                        </div>
+                                        <div className="as-value-btns">
+                                            {DIFFICULTY_VALUES.map(v => (
+                                                <button key={v} className="as-value-btn" onClick={() => addElement(family, v)} disabled={isFamilyFull}>
+                                                    {v.toFixed(1)}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="as-value-btns">
-                                        {DIFFICULTY_VALUES.map(v => (
-                                            <button key={v} className="as-value-btn" onClick={() => addElement(family, v)}>
-                                                {v.toFixed(1)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         <div className="as-modal-actions">
                             <button className="as-modal-btn as-modal-cancel" onClick={() => setShowElementPicker(false)}>
@@ -632,7 +726,6 @@ export default function AerobikScoringPage() {
                                 <div className="as-modal-score-item purple"><span>A Puanı</span><strong>{confirmModal.aScore.toFixed(3)}</strong></div>
                                 <div className="as-modal-score-item green"><span>E Puanı</span><strong>{confirmModal.eScore.toFixed(3)}</strong></div>
                                 <div className="as-modal-score-item blue"><span>D Puanı</span><strong>{confirmModal.dScore.toFixed(3)}</strong></div>
-                                {confirmModal.cjp > 0 && <div className="as-modal-score-item indigo"><span>CJP</span><strong>+{confirmModal.cjp.toFixed(1)}</strong></div>}
                                 {confirmModal.totalPenalties > 0 && <div className="as-modal-score-item red"><span>Ceza</span><strong>-{confirmModal.totalPenalties.toFixed(1)}</strong></div>}
                             </div>
                             <div className="as-modal-final">
@@ -694,6 +787,49 @@ export default function AerobikScoringPage() {
                                     <i className="material-icons-round">campaign</i> Sporcuyu Çağır
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Unlock Modal */}
+            {unlockModal && (
+                <div className="as-modal-overlay" onClick={() => setUnlockModal(null)}>
+                    <div className="as-modal" onClick={e => e.stopPropagation()}>
+                        <div className="as-modal-header as-header-unlock">
+                            <i className="material-icons-round">lock_open</i>
+                            <h2>Puan Kilidi Aç</h2>
+                        </div>
+                        <div className="as-modal-body">
+                            <div className="as-modal-athlete">
+                                <div className="as-modal-avatar">{unlockModal.athleteName.charAt(0)}</div>
+                                <div>
+                                    <h3>{unlockModal.athleteName}</h3>
+                                    <p>Bu sporcunun puanı kilitlidir. Düzenleme için kilidi açın.</p>
+                                </div>
+                            </div>
+                            <div className="as-unlock-form">
+                                <label>Süper Admin veya Komite Şifresi</label>
+                                <input
+                                    type="password"
+                                    className="as-unlock-input"
+                                    value={unlockPassword}
+                                    onChange={e => setUnlockPassword(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleUnlockSubmit()}
+                                    placeholder="Şifre girin..."
+                                    autoFocus
+                                />
+                                {unlockError && <p className="as-unlock-error">{unlockError}</p>}
+                            </div>
+                        </div>
+                        <div className="as-modal-actions">
+                            <button className="as-modal-btn as-modal-cancel" onClick={() => setUnlockModal(null)}>
+                                <i className="material-icons-round">close</i> Vazgeç
+                            </button>
+                            <button className="as-modal-btn as-modal-confirm" onClick={handleUnlockSubmit} disabled={unlockingInProgress}>
+                                {unlockingInProgress ? <div className="as-spinner"></div> : <i className="material-icons-round">lock_open</i>}
+                                Kilidi Aç
+                            </button>
                         </div>
                     </div>
                 </div>
