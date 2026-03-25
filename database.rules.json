@@ -71,6 +71,76 @@
         "katilimcilar": {},
         "onayli_okullar": {},
         "epanelToken": {},
+        "komiteSifresi": {},
+        "cimnastikVerileri": {}
+      }
+    },
+
+    "aerobik_yarismalar": {
+      ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
+
+      "$competitionId": {
+        ".indexOn": ["tarih", "isim", "il"],
+
+        "kategoriler": {
+          "$categoryId": {
+            ".indexOn": ["name"]
+          }
+        },
+
+        "sporcular": {
+          "$categoryId": {
+            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
+
+            "$athleteId": {
+              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
+            }
+          }
+        },
+
+        "puanlar": {
+          "$categoryId": {
+            "$athleteId": {
+              ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
+            }
+          }
+        },
+
+        "siralama": {
+          "$categoryId": {
+            "$rotationId": {
+              "$athleteId": {
+                ".indexOn": ["sirasi"]
+              }
+            }
+          }
+        },
+
+        "hakemler": {
+          ".indexOn": ["name"],
+          "$categoryId": {}
+        },
+
+        "teamDeductions": {
+          ".indexOn": ["teamName", "team"]
+        },
+
+        "program": {
+          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
+          "$sessionId": {
+            ".indexOn": ["baslangic", "kategori", "durum"]
+          }
+        },
+
+        "aktifSporcu": {
+          "$categoryId": {}
+        },
+
+        "flashTrigger": {},
+        "katilimcilar": {},
+        "onayli_okullar": {},
+        "epanelToken": {},
+        "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
@@ -151,6 +221,10 @@
       "$criteriaType": {
         ".indexOn": ["name"]
       }
+    },
+
+    "ayarlar": {
+      "komiteSifresi": {}
     }
   }
 }
