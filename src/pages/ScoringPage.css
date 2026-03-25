@@ -564,6 +564,94 @@
 
 .score-override-warning i { font-size: 1.1rem; }
 
+/* ─── Score Lock Banner ─── */
+.score-lock-banner {
+    margin-left: auto;
+    background: linear-gradient(135deg, #FEE2E2, #FECACA);
+    color: #991B1B;
+    border: 1px solid #FCA5A5;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+.score-lock-banner > i { font-size: 1.1rem; }
+.btn-unlock {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #991B1B;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-unlock:hover { background: #7F1D1D; }
+.btn-unlock i { font-size: 0.9rem; }
+
+/* Lock icon in roster */
+.ra-lock-icon {
+    font-size: 0.7rem !important;
+    margin-right: 2px;
+}
+.ra-score-badge.locked {
+    background: linear-gradient(135deg, #D1D5DB, #9CA3AF) !important;
+    color: #374151 !important;
+    box-shadow: none !important;
+    animation: none !important;
+}
+
+/* Unlock Modal */
+.unlock-header {
+    background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
+}
+.unlock-form {
+    margin-top: 1rem;
+}
+.unlock-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+.unlock-label i { font-size: 1rem; color: #7C3AED; }
+.unlock-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.unlock-input:focus {
+    border-color: #7C3AED;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+.unlock-error {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    color: #DC2626;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+.unlock-error i { font-size: 1rem; }
+
 /* ─── Scoring Grid ─── */
 .scoring-grid {
     display: grid;

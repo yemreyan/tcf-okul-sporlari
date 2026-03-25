@@ -120,12 +120,10 @@ export default function RefereesPage() {
                 });
             }
 
-            // A-Z Sort by Name default
-            loadedReferees.sort((a, b) => {
-                const nameA = (a.adSoyad || '').toLowerCase();
-                const nameB = (b.adSoyad || '').toLowerCase();
-                return nameA.localeCompare(nameB);
-            });
+            // A-Z Sort by Name default (Turkish locale)
+            loadedReferees.sort((a, b) =>
+                (a.adSoyad || '').localeCompare(b.adSoyad || '', 'tr')
+            );
 
             setReferees(loadedReferees);
 

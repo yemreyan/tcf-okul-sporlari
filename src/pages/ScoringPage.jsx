@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
@@ -12,7 +12,7 @@ import './ScoringPage.css';
 
 export default function ScoringPage() {
     const navigate = useNavigate();
-    const { currentUser, hasPermission } = useAuth();
+    const { currentUser, hasPermission, hashPassword } = useAuth();
     const { toast } = useNotification();
     const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
@@ -50,6 +50,13 @@ export default function ScoringPage() {
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    // Score Lock State
+    const [scoreLocked, setScoreLocked] = useState(false);
+    const [unlockModal, setUnlockModal] = useState(null); // { athleteId, athleteName }
+    const [unlockPassword, setUnlockPassword] = useState('');
+    const [unlockError, setUnlockError] = useState('');
+    const [unlockingInProgress, setUnlockingInProgress] = useState(false);
 
     // Difficulty Mode State (yıldız/genç kategoriler için)
     const [difficultyMoves, setDifficultyMoves] = useState({});
@@ -159,6 +166,13 @@ export default function ScoringPage() {
 
     }, [selectedCompId, selectedCategory, selectedApparatus]);
 
+    // 5a. Sync lock state reactively when existingScores change
+    useEffect(() => {
+        if (!selectedAthlete) return;
+        const scores = existingScores[selectedAthlete.id];
+        setScoreLocked(scores?.kilitli === true);
+    }, [existingScores, selectedAthlete?.id]);
+
     // 5. Sync remote E-panel scores to local state
     useEffect(() => {
         if (!selectedAthlete) return;
@@ -216,7 +230,6 @@ export default function ScoringPage() {
 
         // Eğer compAletler filtresi sonrası boş kaldıysa, sadece aktif olanları filtresiz göster
         if (apparatusOptions.length === 0 && allKeys.some(key => effectiveCriteria[key]?.isActive !== false)) {
-            console.warn('[ScoringPage] compAletler filtresi tüm aletleri eledi, filtresiz aktif aletler gösteriliyor. compAletler:', compAletler, 'allKeys:', allKeys);
             apparatusOptions = allKeys
                 .filter(key => effectiveCriteria[key]?.isActive !== false)
                 .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
@@ -335,14 +348,18 @@ export default function ScoringPage() {
     const handleSelectAthlete = (athlete) => {
         if (selectedAthlete?.id === athlete.id) return;
 
+        // Check if this athlete's score is locked
+        const prevScore = existingScores[athlete.id];
+        const isLocked = prevScore?.kilitli === true;
+
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
+        setScoreLocked(isLocked);
 
         if (selectedAthlete && isAthleteCalled) {
             update(ref(db, `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`), null);
         }
 
-        const prevScore = existingScores[athlete.id];
         if (prevScore) {
             setDScore(prevScore.dScore || prevScore.calc_D || 0);
             setNeutralDeductions(prevScore.tarafsiz || prevScore.neutralDeductions || 0);
@@ -378,11 +395,85 @@ export default function ScoringPage() {
         setEPanelLocal({});
         setEPanelTouched({});
         setCombinedEDeduction(0);
+        setScoreLocked(false);
         // Difficulty mode reset
         setDifficultyMoves({});
         setCrValue(0);
         setCvValue(0);
         setBtrsValue(0);
+    };
+
+    // Kilit açma — super admin veya komite şifresi ile
+    const handleUnlockRequest = () => {
+        if (!selectedAthlete) return;
+        setUnlockModal({
+            athleteId: selectedAthlete.id,
+            athleteName: `${selectedAthlete.ad} ${selectedAthlete.soyad}`
+        });
+        setUnlockPassword('');
+        setUnlockError('');
+    };
+
+    const handleUnlockSubmit = async () => {
+        if (!unlockPassword.trim()) {
+            setUnlockError('Şifre giriniz.');
+            return;
+        }
+        setUnlockingInProgress(true);
+        setUnlockError('');
+        try {
+            // Komite şifresini yarışmadan veya genel ayarlardan kontrol et
+            const compKomiteSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/komiteSifresi`));
+            const globalKomiteSnap = await get(ref(db, 'ayarlar/komiteSifresi'));
+            const komiteSifre = compKomiteSnap.val() || globalKomiteSnap.val();
+
+            // Tüm kullanıcı şifrelerini kontrol et (super admin dahil)
+            const usersSnap = await get(ref(db, 'kullanicilar'));
+            const usersData = usersSnap.val() || {};
+
+            const inputPwd = unlockPassword.trim();
+            const inputHash = await hashPassword(inputPwd);
+
+            // Komite şifresi kontrolü (düz metin)
+            const isKomiteMatch = komiteSifre && inputPwd === komiteSifre;
+
+            // Kullanıcı şifresi kontrolü (hash veya düz metin)
+            let isUserMatch = false;
+            for (const [, userData] of Object.entries(usersData)) {
+                if (userData.sifreHash && inputHash === userData.sifreHash) {
+                    isUserMatch = true;
+                    break;
+                }
+                if (userData.sifre && inputPwd === userData.sifre) {
+                    isUserMatch = true;
+                    break;
+                }
+            }
+
+            if (isKomiteMatch || isUserMatch) {
+                // Kilidi kaldır
+                const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${unlockModal.athleteId}`;
+                await update(ref(db), { [scorePath + '/kilitli']: false });
+                setScoreLocked(false);
+                setUnlockModal(null);
+                toast('Puan kilidi kaldırıldı. Düzenleme yapabilirsiniz.', 'success');
+                logAction('score_unlock', `${unlockModal.athleteName} — puan kilidi kaldırıldı`, {
+                    user: currentUser?.kullaniciAdi || 'admin',
+                    competitionId: selectedCompId,
+                });
+            } else {
+                setUnlockError('Şifre hatalı. Süper Admin veya Komite şifresi gereklidir.');
+            }
+        } catch (err) {
+            console.error('Unlock error:', err);
+            setUnlockError('Bir hata oluştu. Tekrar deneyin.');
+        } finally {
+            setUnlockingInProgress(false);
+        }
+    };
+
+    const isSuperAdminUser = () => {
+        return currentUser?.rolAdi === 'Super Admin' || currentUser?.kullaniciAdi === 'admin';
     };
 
     const handleCallAthlete = async () => {
@@ -405,6 +496,7 @@ export default function ScoringPage() {
 
     const handleSubmitScore = async () => {
         if (!selectedAthlete) return toast("Lütfen puanlamak için bir sporcu seçin.", "warning");
+        if (scoreLocked) return toast("Bu sporcunun puanı kilitli. Düzenlemek için kilidi açın.", "warning");
 
         // Skor sınır doğrulaması
         const dVal = calculatedDScore;
@@ -483,6 +575,7 @@ export default function ScoringPage() {
                 [scorePath + '/sonuc']: parseFloat(finalScore),
                 [scorePath + '/timestamp']: ts,
                 [scorePath + '/durum']: "tamamlandi",
+                [scorePath + '/kilitli']: true,
                 [scorePath + '/hareketler']: isDifficultyMode ? null : skillScores,
                 [activePath]: null,
                 [flashPath]: {
@@ -614,6 +707,7 @@ export default function ScoringPage() {
                                                 const isSelected = selectedAthlete?.id === ath.id;
                                                 const scoreData = existingScores[ath.id];
                                                 const hasScore = scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
+                                                const isLockedScore = scoreData?.kilitli === true;
                                                 const finalDisplay = scoreData ? parseFloat(scoreData.sonuc ?? scoreData.finalScore ?? 0).toFixed(3) : "0.000";
 
                                                 return (
@@ -627,7 +721,8 @@ export default function ScoringPage() {
                                                             <span className="ra-name">{ath.ad} {ath.soyad}</span>
                                                         </div>
                                                         {hasScore ? (
-                                                            <div className="ra-score-badge success-glow">
+                                                            <div className={`ra-score-badge success-glow ${isLockedScore ? 'locked' : ''}`}>
+                                                                {isLockedScore && <i className="material-icons-round ra-lock-icon">lock</i>}
                                                                 {finalDisplay}
                                                             </div>
                                                         ) : (
@@ -680,9 +775,19 @@ export default function ScoringPage() {
                                     <p className="text-subtitle">{selectedAthlete.okul || selectedAthlete.kulup} &bull; Alet: {apparatusOptions.find(a => a.id === selectedApparatus)?.name}</p>
                                 </div>
                                 {existingScores[selectedAthlete.id] && (
-                                    <div className="score-override-warning">
-                                        <i className="material-icons-round">warning</i> Önceki Puan Değiştiriliyor
-                                    </div>
+                                    scoreLocked ? (
+                                        <div className="score-lock-banner">
+                                            <i className="material-icons-round">lock</i>
+                                            <span>Puan Kilitli</span>
+                                            <button className="btn-unlock" onClick={handleUnlockRequest}>
+                                                <i className="material-icons-round">lock_open</i> Kilidi Aç
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="score-override-warning">
+                                            <i className="material-icons-round">warning</i> Önceki Puan Değiştiriliyor
+                                        </div>
+                                    )
                                 )}
                             </div>
 
@@ -1048,10 +1153,10 @@ export default function ScoringPage() {
                                     <button
                                         className="btn-save-score"
                                         onClick={handleSubmitScore}
-                                        disabled={isSubmitting}
+                                        disabled={isSubmitting || scoreLocked}
                                     >
-                                        {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">publish</i>}
-                                        <span>Puanı Kaydet</span>
+                                        {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">{scoreLocked ? 'lock' : 'publish'}</i>}
+                                        <span>{scoreLocked ? 'Puan Kilitli' : 'Puanı Kaydet'}</span>
                                     </button>
                                 )}
                             </div>
@@ -1177,6 +1282,56 @@ export default function ScoringPage() {
                                     Sporcuyu Çağır
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Kilit Açma Modal */}
+            {unlockModal && (
+                <div className="scoring-modal-overlay" onClick={() => setUnlockModal(null)}>
+                    <div className="scoring-modal unlock-modal" onClick={e => e.stopPropagation()}>
+                        <div className="scoring-modal-header unlock-header">
+                            <i className="material-icons-round">lock_open</i>
+                            <h2>Puan Kilidi Aç</h2>
+                        </div>
+                        <div className="scoring-modal-body">
+                            <div className="modal-athlete-info">
+                                <div className="modal-avatar">{unlockModal.athleteName.charAt(0)}</div>
+                                <div>
+                                    <h3>{unlockModal.athleteName}</h3>
+                                    <p>Bu sporcunun puanı kilitlidir. Düzenleme için kilidi açın.</p>
+                                </div>
+                            </div>
+                            <div className="unlock-form">
+                                <label className="unlock-label">
+                                    <i className="material-icons-round">vpn_key</i>
+                                    Süper Admin veya Komite Şifresi
+                                </label>
+                                <input
+                                    type="password"
+                                    className="unlock-input"
+                                    placeholder="Şifre giriniz..."
+                                    value={unlockPassword}
+                                    onChange={e => { setUnlockPassword(e.target.value); setUnlockError(''); }}
+                                    onKeyDown={e => e.key === 'Enter' && handleUnlockSubmit()}
+                                    autoFocus
+                                />
+                                {unlockError && (
+                                    <div className="unlock-error">
+                                        <i className="material-icons-round">error</i> {unlockError}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="scoring-modal-actions">
+                            <button className="modal-btn cancel" onClick={() => setUnlockModal(null)}>
+                                <i className="material-icons-round">close</i> Vazgeç
+                            </button>
+                            <button className="modal-btn confirm" onClick={handleUnlockSubmit} disabled={unlockingInProgress}>
+                                {unlockingInProgress ? <div className="spinner-small"></div> : <i className="material-icons-round">lock_open</i>}
+                                Kilidi Aç
+                            </button>
                         </div>
                     </div>
                 </div>

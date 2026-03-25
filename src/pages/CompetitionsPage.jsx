@@ -89,6 +89,7 @@ export default function CompetitionsPage() {
         baslangicTarihi: todayStr,
         bitisTarihi: todayStr,
         il: '',
+        komiteSifresi: '',
         selectedCats: []
     });
 
@@ -146,7 +147,11 @@ export default function CompetitionsPage() {
         const unsub = onValue(refsRef, (snap) => {
             const data = snap.val();
             if (data) {
-                setReferees(Object.entries(data).map(([id, r]) => ({ id, ...r })));
+                setReferees(
+                    Object.entries(data)
+                        .map(([id, r]) => ({ id, ...r }))
+                        .sort((a, b) => (a.adSoyad || '').localeCompare(b.adSoyad || '', 'tr'))
+                );
             } else {
                 setReferees([]);
             }
@@ -191,11 +196,12 @@ export default function CompetitionsPage() {
                 baslangicTarihi: comp.baslangicTarihi || '',
                 bitisTarihi: comp.bitisTarihi || '',
                 il: comp.city || '',
+                komiteSifresi: comp.komiteSifresi || '',
                 selectedCats: comp.kategoriler ? Object.keys(comp.kategoriler) : []
             });
         } else {
             setEditingComp(null);
-            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', selectedCats: [] });
+            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', komiteSifresi: '', selectedCats: [] });
         }
         setIsModalOpen(true);
     };
@@ -214,7 +220,7 @@ export default function CompetitionsPage() {
             toast("Bitiş tarihi başlangıç tarihinden önce olamaz!", "warning");
             return;
         }
-        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il };
+        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il, komiteSifresi: formData.komiteSifresi || null };
 
         // Criteria'dan aktif aletleri çekmek için get kullanalım
         let liveCriteriaData = {};
@@ -755,6 +761,11 @@ export default function CompetitionsPage() {
                                     <label>Bitiş Tarihi *</label>
                                     <input type="date" required value={formData.bitisTarihi} onChange={e => setFormData({ ...formData, bitisTarihi: e.target.value })} />
                                 </div>
+                            </div>
+                            <div className="form-group form-group--full">
+                                <label><i className="material-icons-round" style={{fontSize:'1rem',verticalAlign:'middle',marginRight:4}}>lock</i>Komite Şifresi (Puan Kilidi)</label>
+                                <input type="text" placeholder="Puan kilidini açmak için kullanılacak şifre" value={formData.komiteSifresi} onChange={e => setFormData({ ...formData, komiteSifresi: e.target.value })} />
+                                <p className="help-text">Kaydedilen puanları düzenlemek için bu şifre veya süper admin şifresi gerekir.</p>
                             </div>
                             <div className="form-group form-group--full category-selection-box">
                                 <label>Yarışma Kategorileri</label>
