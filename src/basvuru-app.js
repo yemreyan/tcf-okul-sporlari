@@ -56,9 +56,103 @@ function showToast(message, type = 'info') {
 }
 
 function showErrorModal(title, message) {
+  showModal({ title, message, type: 'error' });
+}
+
+// Maskeli isim: ilk 2 karakter açık, geri kalanı yıldız
+function maskName(name) {
+  if (!name) return '***';
+  const parts = name.split(' ');
+  return parts.map(p => {
+    if (p.length <= 2) return p;
+    return p.substring(0, 2) + '*'.repeat(p.length - 2);
+  }).join(' ');
+}
+
+// Genel popup — type: error, warning, success, info
+function showModal({ title, message, type = 'error', html = '', buttons = null }) {
+  const iconMap = { error: 'error_outline', warning: 'warning', success: 'check_circle', info: 'info' };
+  const iconEl = document.getElementById('modalIcon');
+  const iconWrap = document.getElementById('modalIconWrap');
+  iconEl.textContent = iconMap[type] || 'info';
+  iconWrap.className = 'modal-icon ' + type;
   document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalMessage').textContent = message;
+  const msgEl = document.getElementById('modalMessage');
+  if (html) {
+    msgEl.innerHTML = html;
+  } else {
+    msgEl.textContent = message || '';
+  }
+  const actionsEl = document.getElementById('modalActions');
+  actionsEl.innerHTML = '';
+  if (buttons && buttons.length > 0) {
+    buttons.forEach(btn => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = btn.primary ? 'btn btn-primary' : 'btn btn-secondary';
+      b.textContent = btn.label;
+      b.onclick = () => {
+        document.getElementById('errorModal').classList.remove('show');
+        if (btn.action) btn.action();
+      };
+      actionsEl.appendChild(b);
+    });
+  } else {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn-primary';
+    b.textContent = 'TAMAM';
+    b.onclick = () => document.getElementById('errorModal').classList.remove('show');
+    actionsEl.appendChild(b);
+  }
   document.getElementById('errorModal').classList.add('show');
+}
+
+// Yarışmada mevcut tüm başvuruları sporcu isimleriyle çek
+async function getExistingAthletes(competitionId, categoryId) {
+  const athletes = [];
+  try {
+    const appsSnap = await get(query(ref(db, 'applications'), orderByChild('competitionId'), equalTo(competitionId)));
+    if (appsSnap.exists()) {
+      appsSnap.forEach(child => {
+        const appData = child.val();
+        if (appData.kategoriId !== categoryId) return;
+        const status = appData.durum || appData.status || 'bekliyor';
+        if (status === 'reddedildi') return;
+        const school = appData.okul || '';
+        if (appData.sporcular && Array.isArray(appData.sporcular)) {
+          appData.sporcular.forEach(sp => {
+            athletes.push({ name: sp.name || '', school, source: 'başvuru', status });
+          });
+        }
+      });
+    }
+    const fbPath = getCompFirebasePath(competitionId);
+    const approvedSnap = await get(ref(db, `${fbPath}/${competitionId}/sporcular/${categoryId}`));
+    if (approvedSnap.exists()) {
+      Object.values(approvedSnap.val()).forEach(sp => {
+        const name = sp.ad ? `${sp.ad} ${sp.soyad || ''}` : (sp.name || '');
+        athletes.push({ name, school: sp.okul || sp.school || '', source: 'onaylı', status: 'onaylandi' });
+      });
+    }
+  } catch (e) {
+    console.warn('Mevcut sporcu listesi alınamadı:', e);
+  }
+  return athletes;
+}
+
+// Maskeli sporcu listesi HTML oluştur
+function buildAthleteListHTML(athletes) {
+  if (athletes.length === 0) return '';
+  let html = '<ul class="modal-athlete-list">';
+  athletes.forEach(a => {
+    const badge = a.status === 'onaylandi'
+      ? '<span class="ath-badge approved">ONAYLI</span>'
+      : '<span class="ath-badge pending">BEKLEMEDE</span>';
+    html += `<li><span><span class="ath-name">${maskName(a.name)}</span><span class="ath-school">${maskName(a.school)}</span></span>${badge}</li>`;
+  });
+  html += '</ul>';
+  return html;
 }
 
 function updateStepIndicators() {
@@ -684,7 +778,7 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
         if (appData.sporcular && Array.isArray(appData.sporcular)) {
           appData.sporcular.forEach(sp => {
             if (tcknList.includes(sp.tckn)) {
-              duplicates.push({ tckn: sp.tckn, source: 'başvuru', status: appData.durum || appData.status });
+              duplicates.push({ tckn: sp.tckn, name: sp.name || '', school: appData.okul || '', source: 'başvuru', status: appData.durum || appData.status });
             }
           });
         }
@@ -702,7 +796,8 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
       const approved = approvedSnap.val();
       Object.values(approved).forEach(sp => {
         if (tcknList.includes(sp.tckn)) {
-          duplicates.push({ tckn: sp.tckn, source: 'onaylı sporcu' });
+          const name = sp.ad ? `${sp.ad} ${sp.soyad || ''}` : (sp.name || '');
+          duplicates.push({ tckn: sp.tckn, name, school: sp.okul || sp.school || '', source: 'onaylı sporcu', status: 'onaylandi' });
         }
       });
     }
@@ -806,9 +901,17 @@ async function fetchExistingAthleteCount() {
   // Eğer halihazırda eklenen sporcu sayısı kalan kontenjandan fazlaysa uyar
   const currentFormCount = document.getElementById('athleteRows').querySelectorAll('.dynamic-row').length;
   if (currentFormCount > remainingQuota && remainingQuota > 0) {
-    showToast(`⚠ FORMDA ${currentFormCount} SPORCU VAR AMA KALAN KONTENJAN ${remainingQuota}. LÜTFEN FAZLA SPORCULARI ÇIKARINIZ.`, 'warning');
+    showModal({
+      title: 'KONTENJAN UYARISI',
+      message: `Formda ${currentFormCount} sporcu var ama kalan kontenjan ${remainingQuota}. Lütfen fazla sporcuları çıkarınız.`,
+      type: 'warning'
+    });
   } else if (remainingQuota === 0) {
-    showToast(`✗ BU OKUL VE KATEGORİ İÇİN KONTENJAN DOLMUŞTUR (${existingAthleteCount}/${categoryLimits.max})`, 'error');
+    showModal({
+      title: 'KONTENJAN DOLU',
+      message: `Bu okul ve kategori için kontenjan dolmuştur (${existingAthleteCount}/${categoryLimits.max}).`,
+      type: 'error'
+    });
   }
 }
 
@@ -1185,8 +1288,8 @@ function validateForm(data) {
         errors.push(`✗ ${i + 1}. SPORCU ${dobResult.message}`);
         if (dobInput) { dobInput.classList.remove('valid'); dobInput.classList.add('invalid'); }
       } else if (dobResult.warning) {
-        // Uyarı — hata değil, toast ile bildir
-        showToast(`⚠ ${i + 1}. SPORCU: ${dobResult.warning}`, 'warning');
+        // Uyarı — hata değil, popup ile bilgilendirme
+        showModal({ title: 'YAŞ UYARISI', message: `${i + 1}. Sporcu: ${dobResult.warning}`, type: 'warning' });
       }
     }
     if (a.license && !validateLicenseNo(a.license)) {
@@ -1217,7 +1320,7 @@ async function handleSubmit(e) {
   e.preventDefault();
 
   if (submitCooldown) {
-    showToast('Lütfen birkaç saniye bekleyiniz', 'warning');
+    showModal({ title: 'LÜTFEN BEKLEYİNİZ', message: 'Birkaç saniye bekleyip tekrar deneyiniz.', type: 'warning' });
     return;
   }
 
@@ -1226,7 +1329,11 @@ async function handleSubmit(e) {
 
   const errors = validateForm(data);
   if (errors.length > 0) {
-    errors.forEach(err => showToast(err, 'error'));
+    showModal({
+      title: 'FORM HATALARI',
+      type: 'error',
+      html: '<ul style="text-align:left;padding-left:1rem;margin:0">' + errors.map(e => `<li style="margin-bottom:.35rem;font-size:.82rem">${e}</li>`).join('') + '</ul>'
+    });
     return;
   }
 
@@ -1237,19 +1344,16 @@ async function handleSubmit(e) {
       hasInvalidCoach = true;
     }
   });
-  if (hasInvalidCoach) {
-    showToast('⚠ KAYITSIZ ANTRENÖR TESPİT EDİLDİ — BAŞVURU YİNE DE GÖNDERİLEBİLİR', 'warning');
-  }
 
   submitBtn.classList.add('loading');
   submitBtn.disabled = true;
   submitCooldown = true;
 
   try {
+    // Mükerrer kontrol
     const tcknList = data.sporcular.map(a => a.tckn);
     const duplicates = await checkDuplicateTCKNs(data.competitionId, tcknList);
     if (duplicates.length > 0) {
-      const dupInfo = duplicates.map(d => `T.C. ${d.tckn} (${d.source})`).join(', ');
       const athleteRows = document.querySelectorAll('#athleteRows .dynamic-row');
       duplicates.forEach(d => {
         athleteRows.forEach(row => {
@@ -1260,26 +1364,36 @@ async function handleSubmit(e) {
           }
         });
       });
-      showErrorModal('MÜKERRER SPORCU TESPİT EDİLDİ', `ŞU SPORCULAR BU YARIŞMADA ZATEN KAYITLI: ${dupInfo}`);
+      const dupListHTML = buildAthleteListHTML(duplicates.map(d => ({ name: d.name, school: d.school, status: d.status })));
+      showModal({
+        title: 'MÜKERRER SPORCU TESPİT EDİLDİ',
+        type: 'error',
+        html: '<p style="margin-bottom:.5rem">Aşağıdaki sporcular bu yarışmada zaten kayıtlı:</p>' + dupListHTML
+      });
       submitBtn.classList.remove('loading');
       submitBtn.disabled = false;
       setTimeout(() => { submitCooldown = false; }, 5000);
       return;
     }
 
-    // Son dakika kontenjan kontrolü (birden fazla kişi aynı anda başvuru yapıyor olabilir)
+    // Son dakika kontenjan kontrolü
     const quota = await checkSchoolQuota(data.competitionId, data.kategoriId, data.okul, data.sporcular.length);
     if (quota.exceeded) {
       const kalanGercek = Math.max(0, categoryLimits.max - quota.existing);
-      showErrorModal('KONTENJAN AŞILDI',
-        `BU OKUL VE KATEGORİ İÇİN KONTENJAN DOLMUŞTUR.\n\n` +
-        `MEVCUT KAYITLI SPORCU: ${quota.existing}\n` +
-        `KATEGORİ LİMİTİ: ${categoryLimits.max}\n` +
-        `EKLENEBİLECEK SPORCU: ${kalanGercek}\n` +
-        `SİZİN BAŞVURUNUZ: ${data.sporcular.length} SPORCU\n\n` +
-        `LÜTFEN SPORCU SAYINIZI ${kalanGercek} VEYA DAHA AZ YAPINIZ.`
-      );
-      // Güncel veriyle arayüzü de güncelle
+      const existingAthletes = await getExistingAthletes(data.competitionId, data.kategoriId);
+      const listHTML = buildAthleteListHTML(existingAthletes);
+      showModal({
+        title: 'KONTENJAN AŞILDI',
+        type: 'error',
+        html:
+          `<p style="margin-bottom:.75rem">Bu okul ve kategori için kontenjan dolmuştur.</p>` +
+          `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.82rem;text-align:left">` +
+          `<strong>Mevcut kayıtlı:</strong> ${quota.existing} sporcu<br>` +
+          `<strong>Kategori limiti:</strong> ${categoryLimits.max}<br>` +
+          `<strong>Eklenebilecek:</strong> ${kalanGercek}<br>` +
+          `<strong>Başvurunuz:</strong> ${data.sporcular.length} sporcu</div>` +
+          (existingAthletes.length > 0 ? '<p style="font-weight:700;margin-bottom:.35rem;font-size:.82rem">Mevcut kayıtlı sporcular:</p>' + listHTML : '')
+      });
       existingAthleteCount = quota.existing;
       remainingQuota = kalanGercek;
       updateQuotaInfoBox();
@@ -1289,40 +1403,77 @@ async function handleSubmit(e) {
       return;
     }
 
-    await push(ref(db, 'applications'), data);
-    showToast('✓ BAŞVURUNUZ BAŞARIYLA GÖNDERİLDİ!', 'success');
+    // Mevcut sporcuları göster ve onay al
+    const existingAthletes = await getExistingAthletes(data.competitionId, data.kategoriId);
+    const coachWarning = hasInvalidCoach ? '<p style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:.5rem;font-size:.8rem;margin-bottom:.75rem">⚠ Kayıtsız antrenör tespit edildi — başvuru yine de gönderilebilir.</p>' : '';
 
-    document.getElementById('applicationForm').reset();
-    document.getElementById('coachRows').innerHTML = '';
-    document.getElementById('teacherRows').innerHTML = '';
-    document.getElementById('athleteRows').innerHTML = '';
-    document.getElementById('schoolName').value = '';
-    document.getElementById('schoolSelect').style.display = 'none';
-    document.getElementById('schoolFilter').style.display = 'none';
-    document.getElementById('schoolName').style.display = 'none';
-    document.getElementById('schoolSelect').innerHTML = '<option value="">ÖNCE İLÇE SEÇİNİZ</option>';
-    document.getElementById('participationType').value = 'Ferdi';
-    participationType = 'Ferdi';
-    document.getElementById('btnFerdi').classList.add('active');
-    document.getElementById('btnTakim').classList.remove('active');
-    document.getElementById('teamWarning').classList.remove('show');
-    document.getElementById('categorySelect').innerHTML = '<option value="">ÖNCE YARIŞMA SEÇİNİZ</option>';
-    document.getElementById('districtSelect').innerHTML = '<option value="">ÖNCE İL SEÇİNİZ</option>';
-    document.getElementById('competitionSelect').innerHTML = '<option value="">ÖNCE İL SEÇİNİZ</option>';
-    updateStepIndicators();
+    const confirmHTML =
+      coachWarning +
+      `<p style="margin-bottom:.5rem;font-size:.85rem"><strong>${data.okul}</strong> okulundan <strong>${data.sporcular.length}</strong> sporcu başvurusu gönderilecek.</p>` +
+      `<p style="margin-bottom:.5rem;font-size:.82rem;color:#64748b">Kategori: <strong>${data.kategoriAdi}</strong></p>` +
+      (existingAthletes.length > 0
+        ? '<p style="font-weight:700;margin-bottom:.35rem;font-size:.82rem;margin-top:.75rem">Bu kategoride daha önce başvuru yapılmış sporcular:</p>' + buildAthleteListHTML(existingAthletes)
+        : '<p style="color:#059669;font-size:.82rem;margin-top:.5rem">Bu kategoride daha önce başvuru yapılmış sporcu bulunmamaktadır.</p>');
 
-    addCoachRow();
-    addTeacherRow();
+    showModal({
+      title: 'BAŞVURU ONAYI',
+      type: 'info',
+      html: confirmHTML,
+      buttons: [
+        { label: 'VAZGEÇ', primary: false, action: () => {
+          submitBtn.classList.remove('loading');
+          submitBtn.disabled = false;
+          submitCooldown = false;
+        }},
+        { label: 'BAŞVURUYU GÖNDER', primary: true, action: async () => {
+          submitBtn.classList.add('loading');
+          submitBtn.disabled = true;
+          try {
+            await push(ref(db, 'applications'), data);
+            showModal({
+              title: 'BAŞVURU BAŞARILI',
+              type: 'success',
+              html: '<p style="font-size:.9rem">Başvurunuz başarıyla gönderildi. Onay sürecinden sonra sporcularınız yarışmaya eklenecektir.</p>'
+            });
+
+            document.getElementById('applicationForm').reset();
+            document.getElementById('coachRows').innerHTML = '';
+            document.getElementById('teacherRows').innerHTML = '';
+            document.getElementById('athleteRows').innerHTML = '';
+            document.getElementById('schoolName').value = '';
+            document.getElementById('schoolSelect').style.display = 'none';
+            document.getElementById('schoolFilter').style.display = 'none';
+            document.getElementById('schoolName').style.display = 'none';
+            document.getElementById('schoolSelect').innerHTML = '<option value="">ÖNCE İLÇE SEÇİNİZ</option>';
+            document.getElementById('participationType').value = 'Ferdi';
+            participationType = 'Ferdi';
+            document.getElementById('btnFerdi').classList.add('active');
+            document.getElementById('btnTakim').classList.remove('active');
+            document.getElementById('teamWarning').classList.remove('show');
+            document.getElementById('categorySelect').innerHTML = '<option value="">ÖNCE YARIŞMA SEÇİNİZ</option>';
+            document.getElementById('districtSelect').innerHTML = '<option value="">ÖNCE İL SEÇİNİZ</option>';
+            document.getElementById('competitionSelect').innerHTML = '<option value="">ÖNCE İL SEÇİNİZ</option>';
+            updateStepIndicators();
+            addCoachRow();
+            addTeacherRow();
+          } catch (err) {
+            console.error('Gönderme hatası:', err);
+            showModal({ title: 'HATA', message: 'Başvuru gönderilirken bir hata oluştu. Lütfen tekrar deneyiniz.', type: 'error' });
+          } finally {
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+            setTimeout(() => { submitCooldown = false; }, 5000);
+          }
+        }}
+      ]
+    });
 
   } catch (err) {
     console.error('Gönderme hatası:', err);
-    showToast('✗ BAŞVURU GÖNDERİLİRKEN BİR HATA OLUŞTU. LÜTFEN TEKRAR DENEYİNİZ.', 'error');
-  } finally {
+    showModal({ title: 'HATA', message: 'Başvuru gönderilirken bir hata oluştu. Lütfen tekrar deneyiniz.', type: 'error' });
     submitBtn.classList.remove('loading');
-    setTimeout(() => {
-      submitCooldown = false;
-      submitBtn.disabled = false;
-    }, 5000);
+    submitBtn.disabled = false;
+    setTimeout(() => { submitCooldown = false; }, 5000);
   }
 }
 
@@ -1410,8 +1561,9 @@ function initEventListeners() {
 
   document.getElementById('applicationForm').addEventListener('submit', handleSubmit);
 
-  document.getElementById('modalCloseBtn').addEventListener('click', function() {
-    document.getElementById('errorModal').classList.remove('show');
+  // Modal kapatma — overlay tıklama
+  document.getElementById('errorModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
   });
 
   document.getElementById('errorModal').addEventListener('click', function(e) {
