@@ -775,10 +775,13 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
     if (appsSnap.exists()) {
       appsSnap.forEach(child => {
         const appData = child.val();
+        const durum = appData.durum || appData.status || '';
+        // Reddedilmiş başvurulardaki sporcuları mükerrer sayma
+        if (durum === 'reddedildi') return;
         if (appData.sporcular && Array.isArray(appData.sporcular)) {
           appData.sporcular.forEach(sp => {
             if (tcknList.includes(sp.tckn)) {
-              duplicates.push({ tckn: sp.tckn, name: sp.name || '', school: appData.okul || '', source: 'başvuru', status: appData.durum || appData.status });
+              duplicates.push({ tckn: sp.tckn, name: sp.name || '', school: appData.okul || '', source: 'başvuru', status: durum });
             }
           });
         }
