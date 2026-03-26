@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
@@ -94,15 +94,13 @@ export default function ScoreboardPage() {
         return () => clearInterval(id);
     }, []);
 
-    // Initial Data Fetch
+    // Initial Data Fetch — tek seferlik okuma (puanlar dahil tüm node'u sürekli dinlemek gereksiz)
     useEffect(() => {
-        const compRef = ref(db, firebasePath);
-        const unsubscribe = onValue(compRef, (snapshot) => {
+        get(ref(db, firebasePath)).then(snapshot => {
             const data = snapshot.val();
             if (data) setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
-        return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -266,7 +264,7 @@ export default function ScoreboardPage() {
                 return { ...ath, total, appScores, completedCount };
             })
             .sort((a, b) => b.total - a.total);
-    }, [athletes, allScores, apparatusList, currentView]);
+    }, [athletes, allScores, apparatusList, currentView, categoryData]);
 
     // Memoized team ranking
     const teamRanking = useMemo(() => {
@@ -306,7 +304,7 @@ export default function ScoreboardPage() {
         });
 
         return teams.sort((a, b) => b.total - a.total);
-    }, [athletes, allScores, apparatusList, currentView]);
+    }, [athletes, allScores, apparatusList, currentView, categoryData]);
 
     // Full ranking for current view (used for pagination)
     const fullRanking = currentView?.type === 'team' ? teamRanking : individualRanking;
@@ -432,7 +430,7 @@ export default function ScoreboardPage() {
             if (hasAny) count++;
         });
         return count;
-    }, [athletes, allScores, apparatusList]);
+    }, [athletes, allScores, apparatusList, categoryData]);
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
