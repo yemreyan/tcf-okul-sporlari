@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, remove, push, set, update } from 'firebase/database';
+import { ref, onValue, remove, push, set, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { useAuth } from '../lib/AuthContext';
@@ -153,11 +153,34 @@ export default function AthletesPage() {
             if (editingAthlete) {
                 // Kategori değiştiyse eski yerden sil, yeni yere ekle
                 if (editingAthlete.categoryId !== formData.categoryId) {
-                    await remove(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${editingAthlete.categoryId}/${editingAthlete.id}`));
-                    await set(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), {
+                    const oldCatId = editingAthlete.categoryId;
+                    const newCatId = formData.categoryId;
+                    const athId = editingAthlete.id;
+
+                    // Sporcuyu eski kategoriden sil, yeni kategoriye ekle
+                    const updates = {};
+                    updates[`${firebasePath}/${selectedCompId}/sporcular/${oldCatId}/${athId}`] = null;
+                    updates[`${firebasePath}/${selectedCompId}/sporcular/${newCatId}/${athId}`] = {
                         ...formData,
+                        id: athId,
+                        adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
+                        soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
                         sirasi: editingAthlete.sirasi || 999
-                    });
+                    };
+
+                    // Eski kategorideki puanları da taşı
+                    const oldScoresSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${oldCatId}`));
+                    if (oldScoresSnap.exists()) {
+                        const oldScores = oldScoresSnap.val();
+                        Object.keys(oldScores).forEach(aletId => {
+                            if (oldScores[aletId]?.[athId]) {
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${oldCatId}/${aletId}/${athId}`] = null;
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${newCatId}/${aletId}/${athId}`] = oldScores[aletId][athId];
+                            }
+                        });
+                    }
+
+                    await update(ref(db), updates);
                 } else {
                     // Sadece güncelle
                     await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), formData);
@@ -167,6 +190,9 @@ export default function AthletesPage() {
                 const newRef = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}`));
                 await set(newRef, {
                     ...formData,
+                    id: newRef.key,
+                    adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
+                    soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
                     sirasi: 999
                 });
             }
