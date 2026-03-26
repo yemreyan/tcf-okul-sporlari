@@ -272,6 +272,8 @@ export default function ScoreboardPage() {
 
         const teamAthletes = {};
         athletes.forEach(a => {
+            const t = (a.yarismaTuru || a.katilimTuru || '').toLowerCase();
+            if (t !== 'takim' && t !== 'takım') return;
             const club = a.kulup || a.okul;
             if (club) {
                 if (!teamAthletes[club]) teamAthletes[club] = [];
