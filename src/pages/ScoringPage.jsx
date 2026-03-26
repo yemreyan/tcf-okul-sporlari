@@ -366,7 +366,7 @@ export default function ScoringPage() {
             setManualEksikSayisi(prevScore.eksikSayisi || 0);
             setSkillScores(prevScore.hareketler || {});
             // Kaydedilmiş scoring mode ve combined E değerini geri yükle
-            if (prevScore.scoringMode) setScoringMode(prevScore.scoringMode);
+            setScoringMode(prevScore.scoringMode || 'separate');
             setCombinedEDeduction(prevScore.combinedEDeduction || 0);
             // Difficulty mode state geri yükle
             setDifficultyMoves(prevScore.difficultyMoves || {});
@@ -394,6 +394,7 @@ export default function ScoringPage() {
         setManualEksikSayisi(0);
         setEPanelLocal({});
         setEPanelTouched({});
+        setScoringMode('separate');
         setCombinedEDeduction(0);
         setScoreLocked(false);
         // Difficulty mode reset
@@ -618,6 +619,11 @@ export default function ScoringPage() {
     const handleNextAthlete = (nextAth) => {
         setSuccessModal(null);
         handleSelectAthlete(nextAth);
+        // Otomatik çağır — kullanıcı tekrar "Çağır" butonuna basmasın
+        setIsAthleteCalled(true);
+        update(ref(db), {
+            [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: nextAth.id
+        }).catch(e => console.error("Could not set active athlete", e));
     };
 
     return (
