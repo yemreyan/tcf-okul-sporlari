@@ -206,10 +206,14 @@ export default function ScoringPage() {
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
-    if (selectedCompId && competitions[selectedCompId]?.sporcular) {
-        categoryOptions = Object.keys(competitions[selectedCompId].sporcular);
-    } else if (selectedCompId && competitions[selectedCompId]?.kategoriler) {
-        categoryOptions = Object.keys(competitions[selectedCompId].kategoriler);
+    if (selectedCompId) {
+        const comp = competitions[selectedCompId];
+        // kategoriler ve sporcular'dan gelen kategorileri birleştir
+        const catSet = new Set();
+        if (comp?.kategoriler) Object.keys(comp.kategoriler).forEach(k => catSet.add(k));
+        if (comp?.sporcular) Object.keys(comp.sporcular).forEach(k => catSet.add(k));
+        // "undefined" gibi geçersiz key'leri filtrele
+        categoryOptions = [...catSet].filter(k => k && k !== 'undefined');
     }
 
     // Yarışma bazlı alet filtreleme
