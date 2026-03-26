@@ -468,109 +468,240 @@ export default function FinalsPage() {
             const doc = new jsPDF("landscape", "mm", "a4");
             const { compAthletes, compScores } = await fetchAllExportData();
 
-            let titleSuffix = "";
-            if (activeTab === 'all-around') titleSuffix = "Bireysel Genel Tasnif";
-            if (activeTab === 'apparatus') titleSuffix = "Alet Finalleri";
-            if (activeTab === 'team') titleSuffix = "Takım Genel Tasnif";
+            // Load logo
+            let logoData = null;
+            try {
+                const resp = await fetch('/logo.png');
+                const blob = await resp.blob();
+                logoData = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) { /* logo optional */ }
 
-            const headStyles = { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold', halign: 'center', valign: 'middle', lineWidth: 0.1, lineColor: [226, 232, 240] };
-            const bodyStyles = { textColor: [15, 23, 42], fontSize: 9, valign: 'middle', lineWidth: 0.1, lineColor: [226, 232, 240] };
-            const alternateRowStyles = { fillColor: [248, 250, 252] };
+            const normalizeTR = (text) => {
+                if (typeof text !== 'string') return String(text || '');
+                return text.replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's')
+                           .replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u')
+                           .replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+            };
 
+            const fmtScore = (s) => {
+                const score = Number(s);
+                if (s === null || s === undefined || isNaN(score)) return '0,000';
+                return score.toFixed(3).replace('.', ',');
+            };
+
+            const pageW = 297;
+            const pageH = 210;
+            const mg = 10;
             let pageCount = 0;
 
+            // Competition info
+            const compName = normalizeTR(competitionData.isim || '');
+            const compCity = normalizeTR(competitionData.il || '');
+            const compDateRaw = competitionData.tarih || competitionData.baslangicTarihi || '';
+            const compEndRaw = competitionData.bitisTarihi || '';
+            let dateStr = '';
+            try {
+                if (compDateRaw) {
+                    const d1 = new Date(compDateRaw);
+                    const d2 = compEndRaw ? new Date(compEndRaw) : null;
+                    const fmt = (d) => `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+                    dateStr = d2 && d2.getTime() !== d1.getTime() ? `${fmt(d1)} - ${fmt(d2)}` : fmt(d1);
+                }
+            } catch(e) { dateStr = compDateRaw; }
+
+            const drawHeader = (catName, subtitle) => {
+                if (pageCount > 0) doc.addPage();
+                pageCount++;
+
+                const headerH = 40;
+                const centerX = pageW / 2;
+
+                // Border box
+                doc.setDrawColor(0, 56, 117);
+                doc.setLineWidth(0.6);
+                doc.rect(mg, 5, pageW - 2 * mg, headerH, 'S');
+
+                // Thin inner line separating logo area
+                doc.setDrawColor(200, 210, 220);
+                doc.setLineWidth(0.2);
+                doc.line(mg + 30, 5, mg + 30, 5 + headerH);
+                doc.line(pageW - mg - 30, 5, pageW - mg - 30, 5 + headerH);
+
+                // Logo left
+                if (logoData) {
+                    try { doc.addImage(logoData, 'PNG', mg + 4, 9, 22, 22); } catch(e) {}
+                }
+
+                // Center text
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.setTextColor(0, 56, 117);
+                doc.text(normalizeTR("TURKIYE CIMNASTIK FEDERASYONU"), centerX, 14, { align: 'center' });
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(30, 41, 59);
+                doc.text(compName, centerX, 20, { align: 'center' });
+
+                if (dateStr || compCity) {
+                    doc.text(normalizeTR(`${dateStr}${compCity ? ' / ' + compCity : ''}`), centerX, 25, { align: 'center' });
+                }
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(0, 56, 117);
+                doc.text(normalizeTR(catName.toUpperCase()), centerX, 32, { align: 'center' });
+
+                doc.setFontSize(10);
+                doc.text(normalizeTR(subtitle), centerX, 38, { align: 'center' });
+
+                // Logo right (same logo mirrored)
+                if (logoData) {
+                    try { doc.addImage(logoData, 'PNG', pageW - mg - 26, 9, 22, 22); } catch(e) {}
+                }
+            };
+
+            // Table styles matching screenshot
+            const headStyles = {
+                fillColor: [0, 56, 117],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle',
+                fontSize: 8,
+                cellPadding: 3,
+                lineWidth: 0.2,
+                lineColor: [0, 56, 117]
+            };
+            const bodyStyles = {
+                textColor: [15, 23, 42],
+                fontSize: 8.5,
+                valign: 'middle',
+                lineWidth: 0.1,
+                lineColor: [200, 210, 220],
+                cellPadding: 2.5
+            };
+            const alternateRowStyles = { fillColor: [240, 244, 248] };
+
+            const medalRowStyle = (data) => {
+                if (data.section === 'body' && data.row.index < 3) {
+                    const medals = [[255, 215, 0, 0.15], [192, 192, 192, 0.18], [205, 127, 50, 0.14]];
+                    const [r, g, b, a] = medals[data.row.index];
+                    data.cell.styles.fillColor = [Math.round(255 - (255 - r) * a), Math.round(255 - (255 - g) * a), Math.round(255 - (255 - b) * a)];
+                }
+            };
+
             const categoryIds = Object.keys(competitionData.kategoriler || {});
-            
+
             categoryIds.forEach((cId) => {
                 const catData = competitionData.kategoriler[cId];
                 const { results, teamResults, apparatusKeysList, catName } = computeCategoryResults(cId, catData, compAthletes, compScores);
-                if (results.length === 0 && teamResults.length === 0) return; // Skip empty categories
 
-                const docTitle = `${competitionData.isim} - ${catName}`;
+                // Skip if no athlete has any score
+                const scoredResults = results.filter(r => r.totalScore > 0);
+                if (scoredResults.length === 0) return;
 
-                const normalizeTR = (text) => {
-                    if (typeof text !== 'string') return text;
-                    return text.replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's')
-                               .replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u')
-                               .replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+                const appCount = apparatusKeysList.length;
+
+                // ── BIREYSEL GENEL TASNIF ──
+                drawHeader(catName, 'GENEL TASNIF');
+
+                const indHead = [[
+                    'Sira', 'Adi', 'Soyadi', 'Okul',
+                    ...apparatusKeysList.map(k => {
+                        const info = APPARATUS_INFO[k];
+                        return info ? normalizeTR(info.en) : normalizeTR(k);
+                    }),
+                    'Toplam'
+                ]];
+
+                const indBody = scoredResults.map((r, i) => {
+                    const row = [
+                        `${i + 1}-`,
+                        normalizeTR((r.ad || '').toUpperCase()),
+                        normalizeTR((r.soyad || '').toUpperCase()),
+                        normalizeTR(r.kulup || r.okul || '-')
+                    ];
+                    apparatusKeysList.forEach(k => {
+                        const score = r.allScoreDetails[k]?.final || 0;
+                        row.push(fmtScore(score));
+                    });
+                    row.push(fmtScore(r.totalScore));
+                    return row;
+                });
+
+                const indColStyles = {
+                    0: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
+                    1: { cellWidth: 30, fontStyle: 'bold' },
+                    2: { cellWidth: 30, fontStyle: 'bold' },
+                    3: { cellWidth: 42 }
                 };
+                for (let i = 0; i < appCount; i++) {
+                    indColStyles[4 + i] = { halign: 'center' };
+                }
+                indColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold', cellWidth: 18 };
 
-                const drawHeader = (title) => {
-                    if (pageCount > 0) doc.addPage();
-                    pageCount++;
-                    // Red header bar
-                    doc.setFillColor(227, 6, 19);
-                    doc.rect(0, 0, 297, 28, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(15);
-                    doc.text(normalizeTR("TURKIYE CIMNASTIK FEDERASYONU"), 14, 10);
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(normalizeTR(docTitle), 14, 18);
-                    doc.setFontSize(10);
-                    doc.text(normalizeTR(title), 14, 25);
-                    doc.text(normalizeTR(new Date().toLocaleDateString("tr-TR")), 297 - 14, 25, { align: 'right' });
-                };
+                autoTable(doc, {
+                    startY: 50,
+                    head: indHead,
+                    body: indBody,
+                    theme: 'grid',
+                    headStyles,
+                    bodyStyles,
+                    alternateRowStyles,
+                    margin: { left: mg, right: mg },
+                    columnStyles: indColStyles,
+                    didParseCell: function(data) { medalRowStyle(data); }
+                });
 
-                const medalRowStyle = (data) => {
-                    if (data.section === 'body' && data.row.index < 3) {
-                        const medals = [[255, 215, 0, 0.12], [192, 192, 192, 0.15], [205, 127, 50, 0.12]];
-                        const [r, g, b, a] = medals[data.row.index];
-                        data.cell.styles.fillColor = [Math.round(255 - (255 - r) * a), Math.round(255 - (255 - g) * a), Math.round(255 - (255 - b) * a)];
+                // ── TAKIM GENEL TASNIF ──
+                if (teamResults.length > 0) {
+                    drawHeader(catName, 'TAKIM TASNIF');
+
+                    const teamHead = [[
+                        'Sira', 'Takim',
+                        ...apparatusKeysList.map(k => {
+                            const info = APPARATUS_INFO[k];
+                            return info ? normalizeTR(info.en) : normalizeTR(k);
+                        }),
+                        'Alet Top.', 'Kesinti', 'Net Skor'
+                    ]];
+
+                    const teamBody = teamResults.map((t, i) => {
+                        const row = [`${i + 1}-`, normalizeTR(t.name)];
+                        apparatusKeysList.forEach(k => row.push(fmtScore(t.apparatusTotals[k])));
+                        row.push(fmtScore(t.totalScore));
+                        row.push(t.deduction > 0 ? `-${fmtScore(t.deduction)}` : '0,000');
+                        row.push(fmtScore(t.finalScore));
+                        return row;
+                    });
+
+                    const teamColStyles = {
+                        0: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
+                        1: { cellWidth: 55, fontStyle: 'bold' }
+                    };
+                    for (let i = 0; i < appCount; i++) {
+                        teamColStyles[2 + i] = { halign: 'center' };
                     }
-                };
+                    teamColStyles[2 + appCount] = { halign: 'center' };
+                    teamColStyles[3 + appCount] = { halign: 'center', textColor: [220, 38, 38] };
+                    teamColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold' };
 
-                if (activeTab === 'all-around') {
-                    drawHeader(`${titleSuffix} Sonuclari`);
-                    const tableHead = [['S.N.', 'Sporcu', 'Kulup', ...apparatusKeysList.map(k => normalizeTR(`${APPARATUS_INFO[k]?.tr || k} (${APPARATUS_INFO[k]?.en || k})`)), 'Toplam']];
-                    const tableBody = results.map((r, i) => {
-                        const row = [i + 1, normalizeTR(`${r.soyad}, ${r.ad}`), normalizeTR(r.kulup || '-')];
-                        apparatusKeysList.forEach(k => row.push(`${formatScore(r.allScoreDetails[k]?.final)} (${r.apparatusRanks[k] || '-'})`));
-                        row.push(formatScore(r.totalScore));
-                        return row;
-                    });
                     autoTable(doc, {
-                        startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
-                        margin: { left: 10, right: 10 },
-                        columnStyles: { 0: { halign: 'center', cellWidth: 12 }, 1: { cellWidth: 40 }, 2: { cellWidth: 40 }, [apparatusKeysList.length + 3]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
-                        didParseCell: function(data) {
-                            if (data.section === 'body' && data.column.index > 2 && data.column.index < apparatusKeysList.length + 3) data.cell.styles.halign = 'center';
-                            medalRowStyle(data);
-                        }
-                    });
-                } else if (activeTab === 'apparatus') {
-                    apparatusKeysList.forEach((key) => {
-                        drawHeader(normalizeTR(`${APPARATUS_INFO[key]?.tr || key} Finali`));
-                        const items = results.map(r => ({ ...r, score: r.scores[key] || 0, D: r.allScoreDetails[key]?.D || 0, E: r.allScoreDetails[key]?.E || 0, Pen: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
-                        const tableHead = [['S.N.', 'Sporcu', 'Kulup', 'D Puani', 'E Puani', 'Ceza', 'Final Puani']];
-                        const tableBody = items.map((r, i) => [i + 1, normalizeTR(`${r.soyad}, ${r.ad}`), normalizeTR(r.kulup || '-'), formatScore(r.D), formatScore(r.E), r.Pen > 0 ? `-${formatScore(r.Pen)}` : '0.000', formatScore(r.score)]);
-                        autoTable(doc, {
-                            startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
-                            margin: { left: 10, right: 10 },
-                            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', textColor: [220, 38, 38] }, 6: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
-                            didParseCell: function(data) { medalRowStyle(data); }
-                        });
-                    });
-                } else if (activeTab === 'team') {
-                    drawHeader(normalizeTR(`${titleSuffix} Sonuclari`));
-                    const tableHead = [['S.N.', 'Takim', ...apparatusKeysList.map(k => normalizeTR(`${APPARATUS_INFO[k]?.tr || k} (${APPARATUS_INFO[k]?.en || k})`)), 'Alet Top.', 'Kesinti', 'Net Skor']];
-                    const tableBody = teamResults.map((t, i) => {
-                        const row = [i + 1, normalizeTR(t.name)];
-                        apparatusKeysList.forEach(k => row.push(formatScore(t.apparatusTotals[k])));
-                        row.push(formatScore(t.totalScore));
-                        row.push(t.deduction > 0 ? `-${formatScore(t.deduction)}` : '0.000');
-                        row.push(formatScore(t.finalScore));
-                        return row;
-                    });
-                    autoTable(doc, {
-                        startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
-                        margin: { left: 10, right: 10 },
-                        columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60, fontStyle: 'bold' }, [apparatusKeysList.length + 2]: { halign: 'right', textColor: [100, 116, 139] }, [apparatusKeysList.length + 3]: { halign: 'center', textColor: [220, 38, 38] }, [apparatusKeysList.length + 4]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
-                        didParseCell: function(data) {
-                            if (data.section === 'body' && data.column.index > 1 && data.column.index < apparatusKeysList.length + 2) data.cell.styles.halign = 'center';
-                            medalRowStyle(data);
-                        }
+                        startY: 50,
+                        head: teamHead,
+                        body: teamBody,
+                        theme: 'grid',
+                        headStyles,
+                        bodyStyles,
+                        alternateRowStyles,
+                        margin: { left: mg, right: mg },
+                        columnStyles: teamColStyles,
+                        didParseCell: function(data) { medalRowStyle(data); }
                     });
                 }
             });
@@ -580,17 +711,17 @@ export default function FinalsPage() {
                 return;
             }
 
-            // Add page numbers
+            // Page numbers
             const totalPages = doc.internal.getNumberOfPages();
             for (let i = 1; i <= totalPages; i++) {
                 doc.setPage(i);
                 doc.setFontSize(8);
                 doc.setTextColor(150, 150, 150);
-                doc.text(`Sayfa ${i} / ${totalPages}`, 297 - 14, 210 - 6, { align: 'right' });
+                doc.text(`Sayfa ${i} / ${totalPages}`, pageW - mg, pageH - 6, { align: 'right' });
             }
 
-            const fName = `${competitionData.isim}_${titleSuffix}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            doc.save(`${fName}.pdf`);
+            const fName = normalizeTR(competitionData.isim || 'sonuclar').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`${fName}_sonuclar.pdf`);
             toast("PDF başarıyla indirildi.", "success");
         } catch (error) {
             console.error("PDF Export Error:", error);
