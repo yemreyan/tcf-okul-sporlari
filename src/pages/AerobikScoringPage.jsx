@@ -18,6 +18,7 @@ export default function AerobikScoringPage() {
 
     // Data
     const [competitions, setCompetitions] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -116,7 +117,10 @@ export default function AerobikScoringPage() {
     }, [existingScores, selectedAthlete?.id]);
 
     // ─── Derived Data ───
+    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compOptions = Object.entries(competitions)
+        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
@@ -405,6 +409,10 @@ export default function AerobikScoringPage() {
                 {/* Sidebar */}
                 <aside className={`as-sidebar ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
                     <div className="as-sidebar-controls">
+                        <select className="as-select" value={selectedCity} onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedCategory(''); setSelectedAthlete(null); }}>
+                            <option value="">Tüm İller</option>
+                            {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
+                        </select>
                         <select className="as-select" value={selectedCompId} onChange={e => { setSelectedCompId(e.target.value); setSelectedCategory(''); setSelectedAthlete(null); }}>
                             <option value="">Yarışma Seçin</option>
                             {compOptions.map(([id, comp]) => <option key={id} value={id}>{comp.isim}</option>)}

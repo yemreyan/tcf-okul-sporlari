@@ -58,6 +58,7 @@ export default function CompetitionSchedulePage() {
     const canDelete = hasPermission('schedule', 'sil');
 
     const [competitions, setCompetitions] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [sessions, setSessions] = useState({});
     const [loading, setLoading] = useState(true);
@@ -101,11 +102,14 @@ export default function CompetitionSchedulePage() {
         [competitions, currentUser]
     );
 
+    const availableCities = [...new Set(Object.values(filteredComps).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compList = useMemo(
         () => Object.entries(filteredComps)
+            .filter(([, c]) => !selectedCity || (c.il || c.city) === selectedCity)
             .map(([id, c]) => ({ id, ...c }))
             .sort((a, b) => (b.baslangicTarihi || '').localeCompare(a.baslangicTarihi || '')),
-        [filteredComps]
+        [filteredComps, selectedCity]
     );
 
     const selectedComp = selectedCompId ? filteredComps[selectedCompId] : null;
@@ -416,21 +420,39 @@ export default function CompetitionSchedulePage() {
 
             <main className="sched-main">
                 {/* Yarışma Seçici */}
-                <div className="sched-selector">
-                    <label className="sched-selector__label">
-                        <i className="material-icons-round">emoji_events</i>
-                        Yarışma Seçin
-                    </label>
-                    <select
-                        className="sched-selector__select"
-                        value={selectedCompId}
-                        onChange={e => setSelectedCompId(e.target.value)}
-                    >
-                        <option value="">— Yarışma seçin —</option>
-                        {compList.map(c => (
-                            <option key={c.id} value={c.id}>{c.isim} ({c.il || 'Bilinmiyor'})</option>
-                        ))}
-                    </select>
+                <div className="sched-selector" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <div>
+                        <label className="sched-selector__label">
+                            <i className="material-icons-round">location_city</i>
+                            İl
+                        </label>
+                        <select
+                            className="sched-selector__select"
+                            value={selectedCity}
+                            onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); }}
+                        >
+                            <option value="">— Tüm İller —</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="sched-selector__label">
+                            <i className="material-icons-round">emoji_events</i>
+                            Yarışma Seçin
+                        </label>
+                        <select
+                            className="sched-selector__select"
+                            value={selectedCompId}
+                            onChange={e => setSelectedCompId(e.target.value)}
+                        >
+                            <option value="">— Yarışma seçin —</option>
+                            {compList.map(c => (
+                                <option key={c.id} value={c.id}>{c.isim} ({c.il || 'Bilinmiyor'})</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {!selectedCompId && (

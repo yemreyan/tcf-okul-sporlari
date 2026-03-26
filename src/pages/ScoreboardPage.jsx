@@ -50,6 +50,7 @@ export default function ScoreboardPage() {
     const { currentUser } = useAuth();
     const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCategories, setSelectedCategories] = useState(new Set());
 
@@ -436,7 +437,9 @@ export default function ScoreboardPage() {
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
-        const compEntries = Object.entries(competitions);
+        const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        const compEntries = Object.entries(competitions)
+            .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity);
         const categories = selectedCompId ? competitions[selectedCompId]?.kategoriler || {} : {};
         const catEntries = Object.entries(categories);
 
@@ -454,6 +457,24 @@ export default function ScoreboardPage() {
                     <p className="sb-config-desc">Seyirciler icin dev ekran modunu baslatin</p>
 
                     <div className="sb-config-form">
+                        {/* City Select */}
+                        <div className="sb-field">
+                            <label className="sb-label">
+                                <i className="material-icons-round">location_city</i>
+                                Il
+                            </label>
+                            <select
+                                className="sb-select"
+                                value={selectedCity}
+                                onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedCategories(new Set()); }}
+                            >
+                                <option value="">-- Tum Iller --</option>
+                                {availableCities.map(city => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         {/* Competition Select */}
                         <div className="sb-field">
                             <label className="sb-label">

@@ -44,6 +44,7 @@ export default function CertificatePage() {
     const canGenerate = hasPermission('certificates', 'olustur');
 
     const [competitions, setCompetitions] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [selectedCat, setSelectedCat] = useState('');
     const [certType, setCertType] = useState('katilim');
@@ -66,11 +67,14 @@ export default function CertificatePage() {
         [competitions, currentUser]
     );
 
+    const availableCities = [...new Set(Object.values(filteredComps).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compList = useMemo(
         () => Object.entries(filteredComps)
+            .filter(([, c]) => !selectedCity || (c.il || c.city) === selectedCity)
             .map(([id, c]) => ({ id, ...c }))
             .sort((a, b) => (b.baslangicTarihi || '').localeCompare(a.baslangicTarihi || '')),
-        [filteredComps]
+        [filteredComps, selectedCity]
     );
 
     const selectedComp = selectedCompId ? filteredComps[selectedCompId] : null;
@@ -503,6 +507,18 @@ export default function CertificatePage() {
 
                 {/* Seçimler */}
                 <div className="cert-controls">
+                    <div className="cert-field">
+                        <label>İl</label>
+                        <select
+                            value={selectedCity}
+                            onChange={e => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedCat(''); setPreviewData(null); }}
+                        >
+                            <option value="">— Tüm İller —</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="cert-field">
                         <label>Yarışma</label>
                         <select

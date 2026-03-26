@@ -14,6 +14,7 @@ export default function LinksPage() {
     const { currentUser } = useAuth();
     const { firebasePath, routePrefix } = useDiscipline();
     const [competitions, setCompetitions] = useState([]);
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
     const [competitionData, setCompetitionData] = useState(null);
     const [baseUrl, setBaseUrl] = useState('');
@@ -37,6 +38,7 @@ export default function LinksPage() {
                         isim: data[key].isim || 'İsimsiz Yarışma',
                         tarih: data[key].tarih || '',
                         arsiv: data[key].arsiv || false,
+                        il: data[key].il || data[key].city || '',
                     }))
                     .filter(c => !c.arsiv)
                     .sort((a, b) => a.isim.localeCompare(b.isim, 'tr-TR')); // İsim sırasına göre
@@ -88,6 +90,21 @@ export default function LinksPage() {
     useEffect(() => {
         setActiveCategory('all');
     }, [selectedPanel]);
+
+    // Available cities from competitions
+    const availableCities = [...new Set(competitions.map(c => c.il).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
+    // Filter competitions by selected city
+    const filteredCompetitions = selectedCity
+        ? competitions.filter(c => c.il === selectedCity)
+        : competitions;
+
+    // Auto-select first competition from filtered list when selectedCompId is empty
+    useEffect(() => {
+        if (!selectedCompId && filteredCompetitions.length > 0) {
+            setSelectedCompId(filteredCompetitions[0].id);
+        }
+    }, [selectedCity, competitions]);
 
     const copyToClipboard = useCallback((text, id) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -363,13 +380,26 @@ export default function LinksPage() {
                 </div>
                 <div className="page-header__right">
                     <div className="header-select-wrapper">
+                        <i className="material-icons-round header-select-icon">location_city</i>
+                        <select
+                            className="header-select"
+                            value={selectedCity}
+                            onChange={(e) => { setSelectedCity(e.target.value); setSelectedCompId(''); setSelectedPanel(null); }}
+                        >
+                            <option value="">Tüm İller</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="header-select-wrapper">
                         <i className="material-icons-round header-select-icon">emoji_events</i>
                         <select
                             className="header-select"
                             value={selectedCompId}
                             onChange={(e) => setSelectedCompId(e.target.value)}
                         >
-                            {competitions.map(c => (
+                            {filteredCompetitions.map(c => (
                                 <option key={c.id} value={c.id}>{c.isim}</option>
                             ))}
                         </select>

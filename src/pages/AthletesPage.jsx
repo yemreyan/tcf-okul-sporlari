@@ -31,6 +31,21 @@ export default function AthletesPage() {
     const [isGlobalModalOpen, setIsGlobalModalOpen] = useState(false);
     const [globalSearchText, setGlobalSearchText] = useState('');
 
+    // Bulk Edit State
+    const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+    const [bulkEditTab, setBulkEditTab] = useState('okul'); // 'okul' | 'tur' | 'transfer'
+    const [bulkOldValue, setBulkOldValue] = useState('');
+    const [bulkNewValue, setBulkNewValue] = useState('');
+    const [bulkSaving, setBulkSaving] = useState(false);
+    const [bulkCustomSchool, setBulkCustomSchool] = useState(false);
+    const [bulkAthleteOverrides, setBulkAthleteOverrides] = useState({}); // { athId: { categoryId: 'new_cat' } }
+
+    // Transfer State
+    const [transferTargetCompId, setTransferTargetCompId] = useState('');
+    const [transferCategory, setTransferCategory] = useState('');
+    const [transferSelectedIds, setTransferSelectedIds] = useState(new Set());
+    const [transferSelectAll, setTransferSelectAll] = useState(false);
+
     // Form State
     const [formData, setFormData] = useState({
         ad: '',
@@ -354,6 +369,351 @@ export default function AthletesPage() {
 
     const uniqueCategories = [...new Set(athletes.map(a => a.categoryId))];
 
+    // Benzersiz okul isimleri ve yarışma türleri
+    const uniqueSchools = [...new Set(athletes.map(a => a.okul || a.kulup || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const uniqueTurTypes = [...new Set(athletes.map(a => (a.yarismaTuru || 'ferdi').toLowerCase()))].sort();
+
+    // Transfer: aynı il altındaki diğer yarışmalar
+    const currentComp = selectedCompId ? competitions[selectedCompId] : null;
+    const transferableComps = Object.entries(competitions)
+        .filter(([id, c]) => {
+            if (id === selectedCompId) return false;
+            // Aynı il
+            if ((c.il || c.city) !== (currentComp?.il || currentComp?.city)) return false;
+            return true;
+        })
+        .sort((a, b) => (b[1].baslangicTarihi || '').localeCompare(a[1].baslangicTarihi || ''));
+
+    // Transfer: hedef yarışmanın kategorileri
+    const transferTargetComp = transferTargetCompId ? competitions[transferTargetCompId] : null;
+    const transferTargetCategories = transferTargetComp?.kategoriler ? Object.keys(transferTargetComp.kategoriler) : [];
+
+    // Transfer: filtrelenmiş sporcular (kategori bazlı)
+    const transferFilteredAthletes = transferCategory
+        ? athletes.filter(a => a.categoryId === transferCategory)
+        : athletes;
+
+    // Toplu okul ismi veya yarışma türü değiştirme (+ kategori düzeltme)
+    const handleBulkEdit = async () => {
+        if (!selectedCompId || !bulkOldValue || !bulkNewValue) {
+            toast('Lütfen eski ve yeni değerleri seçin/girin.', 'warning');
+            return;
+        }
+        if (bulkOldValue === bulkNewValue) {
+            toast('Eski ve yeni değer aynı olamaz.', 'warning');
+            return;
+        }
+
+        const field = bulkEditTab === 'okul' ? 'okul' : 'yarismaTuru';
+        const matchAthletes = athletes.filter(a => {
+            const val = (a[field] || (field === 'yarismaTuru' ? 'ferdi' : '')).toLowerCase();
+            return val === bulkOldValue.toLowerCase();
+        });
+
+        if (matchAthletes.length === 0) {
+            toast('Eşleşen sporcu bulunamadı.', 'warning');
+            return;
+        }
+
+        // Kategori değişen sporcuları belirle
+        const catChanges = matchAthletes.filter(a => bulkAthleteOverrides[a.id]?.categoryId && bulkAthleteOverrides[a.id].categoryId !== a.categoryId);
+        const catChangeText = catChanges.length > 0 ? `\n${catChanges.length} sporcunun kategorisi de değişecek.` : '';
+
+        const confirmed = await confirm(
+            `${matchAthletes.length} sporcu için "${bulkOldValue}" → "${bulkNewValue}" olarak güncellenecek.${catChangeText} Devam?`,
+            { title: 'Toplu Güncelleme', type: 'warning' }
+        );
+        if (!confirmed) return;
+
+        setBulkSaving(true);
+        try {
+            const updates = {};
+            const matchIds = new Set(matchAthletes.map(a => a.id));
+
+            // Kategori değişecek sporcular için Firebase'den orijinal veri al
+            const catsToRead = new Set(matchAthletes.map(a => a.categoryId));
+            catChanges.forEach(a => catsToRead.add(bulkAthleteOverrides[a.id].categoryId));
+            const srcAthCache = {};
+            const siraCache = {};
+            const scoresCache = {};
+
+            for (const catId of catsToRead) {
+                const [athSnap, siraSnap, scSnap] = await Promise.all([
+                    get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${catId}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${catId}`))
+                ]);
+                srcAthCache[catId] = athSnap.exists() ? athSnap.val() : {};
+                siraCache[catId] = siraSnap.exists() ? siraSnap.val() : {};
+                scoresCache[catId] = scSnap.exists() ? scSnap.val() : {};
+            }
+
+            for (const ath of matchAthletes) {
+                const override = bulkAthleteOverrides[ath.id];
+                const newCatId = override?.categoryId && override.categoryId !== ath.categoryId ? override.categoryId : null;
+
+                if (newCatId) {
+                    // Kategori de değişiyor — sporcu verisini taşı
+                    const firebaseAth = srcAthCache[ath.categoryId]?.[ath.id] || {};
+                    updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}`] = null;
+                    updates[`${firebasePath}/${selectedCompId}/sporcular/${newCatId}/${ath.id}`] = {
+                        ...firebaseAth,
+                        [field]: bulkNewValue,
+                        kulup: field === 'okul' ? bulkNewValue : (firebaseAth.kulup || firebaseAth.okul || ''),
+                        id: ath.id,
+                        adSoyad: `${firebaseAth.ad || ''} ${firebaseAth.soyad || ''}`.trim(),
+                        soyadAd: `${firebaseAth.soyad || ''} ${firebaseAth.ad || ''}`.trim(),
+                        sirasi: firebaseAth.sirasi || 999
+                    };
+
+                    // Puanları taşı
+                    const catScores = scoresCache[ath.categoryId];
+                    if (catScores) {
+                        Object.keys(catScores).forEach(aletId => {
+                            if (catScores[aletId]?.[ath.id]) {
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${ath.categoryId}/${aletId}/${ath.id}`] = null;
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${newCatId}/${aletId}/${ath.id}`] = catScores[aletId][ath.id];
+                            }
+                        });
+                    }
+
+                    // Eski sıralamadan sil
+                    const catSira = siraCache[ath.categoryId];
+                    if (catSira) {
+                        Object.keys(catSira).forEach(rotKey => {
+                            if (catSira[rotKey]?.[ath.id]) {
+                                updates[`${firebasePath}/${selectedCompId}/siralama/${ath.categoryId}/${rotKey}/${ath.id}`] = null;
+                            }
+                        });
+                    }
+                } else {
+                    // Sadece alan güncelleme (kategori aynı)
+                    const basePath = `${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}`;
+                    updates[`${basePath}/${field}`] = bulkNewValue;
+                    if (field === 'okul') {
+                        updates[`${basePath}/kulup`] = bulkNewValue;
+                    }
+
+                    // Siralama verisini güncelle
+                    const siraField = field === 'okul' ? 'okul' : 'yarismaTuru';
+                    const catSira = siraCache[ath.categoryId];
+                    if (catSira) {
+                        Object.keys(catSira).forEach(rotKey => {
+                            if (catSira[rotKey]?.[ath.id]) {
+                                updates[`${firebasePath}/${selectedCompId}/siralama/${ath.categoryId}/${rotKey}/${ath.id}/${siraField}`] = bulkNewValue;
+                            }
+                        });
+                    }
+                }
+            }
+
+            await update(ref(db), updates);
+            toast(`${matchAthletes.length} sporcu başarıyla güncellendi.${catChanges.length > 0 ? ` ${catChanges.length} sporcunun kategorisi değiştirildi.` : ''}`, 'success');
+            setBulkOldValue('');
+            setBulkNewValue('');
+            setBulkAthleteOverrides({});
+        } catch (err) {
+            console.error('Toplu güncelleme hatası:', err);
+            toast('Güncelleme sırasında hata oluştu: ' + err.message, 'error');
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
+    // Toplu kategori değişikliği
+    const handleBulkCategoryChange = async () => {
+        if (!selectedCompId || !bulkOldValue || !bulkNewValue) {
+            toast('Eski ve yeni kategori seçilmelidir.', 'warning');
+            return;
+        }
+        if (bulkOldValue === bulkNewValue) {
+            toast('Eski ve yeni kategori aynı olamaz.', 'warning');
+            return;
+        }
+
+        const matchAthletes = athletes.filter(a => a.categoryId === bulkOldValue);
+        if (matchAthletes.length === 0) {
+            toast('Bu kategoride sporcu bulunamadı.', 'warning');
+            return;
+        }
+
+        const confirmed = await confirm(
+            `${matchAthletes.length} sporcu "${bulkOldValue}" → "${bulkNewValue}" kategorisine taşınacak. Puanlar ve sıralama da taşınacak. Devam?`,
+            { title: 'Toplu Kategori Değişikliği', type: 'warning' }
+        );
+        if (!confirmed) return;
+
+        setBulkSaving(true);
+        try {
+            const updates = {};
+
+            // Firebase'den güncel sporcu verisini oku (client-side eklenen alanlar olmasın)
+            const srcAthSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${bulkOldValue}`));
+            const srcAthData = srcAthSnap.exists() ? srcAthSnap.val() : {};
+            const matchIds = new Set(matchAthletes.map(a => a.id));
+
+            for (const ath of matchAthletes) {
+                const athId = ath.id;
+                // Firebase'deki orijinal veriyi kullan (categoryId gibi client alanları olmadan)
+                const firebaseAth = srcAthData[athId] || {};
+
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${bulkOldValue}/${athId}`] = null;
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${bulkNewValue}/${athId}`] = {
+                    ...firebaseAth,
+                    id: athId,
+                    adSoyad: `${firebaseAth.ad || ''} ${firebaseAth.soyad || ''}`.trim(),
+                    soyadAd: `${firebaseAth.soyad || ''} ${firebaseAth.ad || ''}`.trim(),
+                    sirasi: firebaseAth.sirasi || 999
+                };
+            }
+
+            // Puanları taşı (tek okuma)
+            const oldScoresSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${bulkOldValue}`));
+            if (oldScoresSnap.exists()) {
+                const oldScores = oldScoresSnap.val();
+                Object.keys(oldScores).forEach(aletId => {
+                    if (oldScores[aletId]) {
+                        Object.keys(oldScores[aletId]).forEach(athId => {
+                            if (matchIds.has(athId)) {
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${bulkOldValue}/${aletId}/${athId}`] = null;
+                                updates[`${firebasePath}/${selectedCompId}/puanlar/${bulkNewValue}/${aletId}/${athId}`] = oldScores[aletId][athId];
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Sıralamadan sil (tek okuma)
+            const oldOrderSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${bulkOldValue}`));
+            if (oldOrderSnap.exists()) {
+                const oldOrder = oldOrderSnap.val();
+                Object.keys(oldOrder).forEach(rotKey => {
+                    if (oldOrder[rotKey]) {
+                        Object.keys(oldOrder[rotKey]).forEach(athId => {
+                            if (matchIds.has(athId)) {
+                                updates[`${firebasePath}/${selectedCompId}/siralama/${bulkOldValue}/${rotKey}/${athId}`] = null;
+                            }
+                        });
+                    }
+                });
+            }
+
+            await update(ref(db), updates);
+            toast(`${matchAthletes.length} sporcu "${bulkNewValue}" kategorisine taşındı.`, 'success');
+            setBulkOldValue('');
+            setBulkNewValue('');
+        } catch (err) {
+            console.error('Toplu kategori değişikliği hatası:', err);
+            toast('Kategori değişikliği sırasında hata oluştu: ' + err.message, 'error');
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
+    // Yarışmalar arası sporcu transferi
+    const handleTransfer = async () => {
+        if (!selectedCompId || !transferTargetCompId) {
+            toast('Hedef yarışma seçilmelidir.', 'warning');
+            return;
+        }
+        if (transferSelectedIds.size === 0) {
+            toast('Transfer edilecek sporcu seçin.', 'warning');
+            return;
+        }
+
+        const selectedAthletes = athletes.filter(a => transferSelectedIds.has(a.id));
+        const targetCompName = competitions[transferTargetCompId]?.isim || transferTargetCompId;
+
+        const confirmed = await confirm(
+            `${selectedAthletes.length} sporcu "${targetCompName}" yarışmasına transfer edilecek. Kaynak yarışmadan silinecek. Devam?`,
+            { title: 'Sporcu Transferi', type: 'warning' }
+        );
+        if (!confirmed) return;
+
+        setBulkSaving(true);
+        try {
+            const updates = {};
+            const selectedIds = new Set(selectedAthletes.map(a => a.id));
+
+            // Etkilenen kategorileri belirle
+            const affectedCats = [...new Set(selectedAthletes.map(a => a.categoryId))];
+
+            // Kategoriye göre Firebase verisini cache'le (tek okuma per kategori)
+            const srcAthCache = {};
+            const scoresCache = {};
+            const siraCache = {};
+
+            for (const catId of affectedCats) {
+                const [athSnap, scSnap, siSnap] = await Promise.all([
+                    get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${catId}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${catId}`))
+                ]);
+                srcAthCache[catId] = athSnap.exists() ? athSnap.val() : {};
+                scoresCache[catId] = scSnap.exists() ? scSnap.val() : {};
+                siraCache[catId] = siSnap.exists() ? siSnap.val() : {};
+
+                // Hedef yarışmada aynı kategori yoksa oluştur
+                if (transferTargetComp && !transferTargetComp.kategoriler?.[catId]) {
+                    const sourceCatData = currentComp?.kategoriler?.[catId];
+                    if (sourceCatData) {
+                        updates[`${firebasePath}/${transferTargetCompId}/kategoriler/${catId}`] = sourceCatData;
+                    }
+                }
+            }
+
+            for (const ath of selectedAthletes) {
+                const catId = ath.categoryId;
+                const athId = ath.id;
+                // Firebase'deki orijinal veriyi kullan
+                const firebaseAth = srcAthCache[catId]?.[athId] || {};
+
+                // Kaynak yarışmadan sil
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`] = null;
+
+                // Hedef yarışmaya ekle
+                updates[`${firebasePath}/${transferTargetCompId}/sporcular/${catId}/${athId}`] = {
+                    ...firebaseAth,
+                    id: athId,
+                    adSoyad: `${firebaseAth.ad || ''} ${firebaseAth.soyad || ''}`.trim(),
+                    soyadAd: `${firebaseAth.soyad || ''} ${firebaseAth.ad || ''}`.trim(),
+                    sirasi: firebaseAth.sirasi || 999
+                };
+
+                // Puanları taşı
+                const catScores = scoresCache[catId];
+                if (catScores) {
+                    Object.keys(catScores).forEach(aletId => {
+                        if (catScores[aletId]?.[athId]) {
+                            updates[`${firebasePath}/${selectedCompId}/puanlar/${catId}/${aletId}/${athId}`] = null;
+                            updates[`${firebasePath}/${transferTargetCompId}/puanlar/${catId}/${aletId}/${athId}`] = catScores[aletId][athId];
+                        }
+                    });
+                }
+
+                // Sıralamadan sil
+                const catSira = siraCache[catId];
+                if (catSira) {
+                    Object.keys(catSira).forEach(rotKey => {
+                        if (catSira[rotKey]?.[athId]) {
+                            updates[`${firebasePath}/${selectedCompId}/siralama/${catId}/${rotKey}/${athId}`] = null;
+                        }
+                    });
+                }
+            }
+
+            await update(ref(db), updates);
+            toast(`${selectedAthletes.length} sporcu başarıyla transfer edildi.`, 'success');
+            setTransferSelectedIds(new Set());
+            setTransferSelectAll(false);
+        } catch (err) {
+            console.error('Transfer hatası:', err);
+            toast('Transfer sırasında hata oluştu: ' + err.message, 'error');
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
     return (
         <div className="athletes-page">
             <header className="page-header">
@@ -382,6 +742,18 @@ export default function AthletesPage() {
                         ref={fileInputRef}
                         onChange={handleExcelImport}
                     />
+                    {hasPermission('athletes', 'duzenle') && (
+                        <button
+                            className="action-btn-outline"
+                            style={{ borderColor: '#D97706', color: '#D97706' }}
+                            onClick={() => { setIsBulkEditOpen(true); setBulkOldValue(''); setBulkNewValue(''); setBulkEditTab('okul'); }}
+                            disabled={!selectedCompId || athletes.length === 0}
+                            title="Toplu okul ismi veya yarışma türü düzelt"
+                        >
+                            <i className="material-icons-round">find_replace</i>
+                            <span>Toplu Düzenle</span>
+                        </button>
+                    )}
                     {hasPermission('athletes', 'ekle') && (
                         <button
                             className="action-btn-outline"
@@ -676,6 +1048,378 @@ export default function AthletesPage() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Edit Modal */}
+            {isBulkEditOpen && (
+                <div className="modal-overlay" onClick={() => setIsBulkEditOpen(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: bulkEditTab === 'transfer' ? '700px' : '560px' }}>
+                        <div className="modal__header">
+                            <h2>Toplu Düzenleme</h2>
+                            <button className="modal__close" onClick={() => setIsBulkEditOpen(false)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="modal__body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {/* Tab seçimi */}
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {[
+                                    { key: 'okul', icon: 'school', label: 'Okul İsmi' },
+                                    { key: 'tur', icon: 'groups', label: 'Yarışma Türü' },
+                                    { key: 'kategori', icon: 'category', label: 'Kategori' },
+                                    { key: 'transfer', icon: 'swap_horiz', label: 'Transfer' }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        style={{
+                                            flex: 1,
+                                            background: bulkEditTab === tab.key ? 'var(--primary)' : 'transparent',
+                                            color: bulkEditTab === tab.key ? '#fff' : 'var(--text-primary)',
+                                            border: `1px solid ${bulkEditTab === tab.key ? 'var(--primary)' : 'var(--border)'}`,
+                                            borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem'
+                                        }}
+                                        onClick={() => { setBulkEditTab(tab.key); setBulkOldValue(''); setBulkNewValue(''); setBulkCustomSchool(false); setTransferSelectedIds(new Set()); setTransferSelectAll(false); setTransferTargetCompId(''); setTransferCategory(''); setBulkAthleteOverrides({}); }}
+                                    >
+                                        <i className="material-icons-round" style={{ fontSize: '18px' }}>{tab.icon}</i>
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* ── OKUL İSMİ DÜZELT ── */}
+                            {bulkEditTab === 'okul' && (
+                                <>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mevcut Okul İsmi (Yanlış)</label>
+                                        <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                            value={bulkOldValue} onChange={e => { setBulkOldValue(e.target.value); setBulkAthleteOverrides({}); }}>
+                                            <option value="">-- Okul seçin --</option>
+                                            {uniqueSchools.map(s => {
+                                                const count = athletes.filter(a => (a.okul || a.kulup || '') === s).length;
+                                                return <option key={s} value={s}>{s} ({count} sporcu)</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                                        <i className="material-icons-round" style={{ fontSize: '24px' }}>arrow_downward</i>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Doğru Okul İsmi</label>
+                                            <button type="button" onClick={() => { setBulkCustomSchool(!bulkCustomSchool); setBulkNewValue(''); }}
+                                                style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: bulkCustomSchool ? 'var(--primary)' : 'var(--bg-secondary)', color: bulkCustomSchool ? '#fff' : 'var(--text-secondary)', cursor: 'pointer' }}>
+                                                {bulkCustomSchool ? 'Listeden Seç' : 'Özel İsim Yaz'}
+                                            </button>
+                                        </div>
+                                        {bulkCustomSchool ? (
+                                            <input type="text" className="control-input" style={{ width: '100%', padding: '10px 12px' }}
+                                                placeholder="Doğru okul ismini yazın..." value={bulkNewValue} onChange={e => setBulkNewValue(e.target.value)} />
+                                        ) : (
+                                            <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                                value={bulkNewValue} onChange={e => setBulkNewValue(e.target.value)}>
+                                                <option value="">-- Birleştirilecek okul seçin --</option>
+                                                {uniqueSchools.filter(s => s !== bulkOldValue).map(s => {
+                                                    const count = athletes.filter(a => (a.okul || a.kulup || '') === s).length;
+                                                    return <option key={s} value={s}>{s} ({count} sporcu)</option>;
+                                                })}
+                                            </select>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── YARIŞMA TÜRÜ DEĞİŞTİR ── */}
+                            {bulkEditTab === 'tur' && (
+                                <>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mevcut Yarışma Türü</label>
+                                        <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                            value={bulkOldValue} onChange={e => setBulkOldValue(e.target.value)}>
+                                            <option value="">-- Tür seçin --</option>
+                                            {uniqueTurTypes.map(t => {
+                                                const count = athletes.filter(a => (a.yarismaTuru || 'ferdi').toLowerCase() === t).length;
+                                                return <option key={t} value={t}>{t.toUpperCase()} ({count} sporcu)</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                                        <i className="material-icons-round" style={{ fontSize: '24px' }}>arrow_downward</i>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Yeni Yarışma Türü</label>
+                                        <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                            value={bulkNewValue} onChange={e => setBulkNewValue(e.target.value)}>
+                                            <option value="">-- Yeni tür seçin --</option>
+                                            <option value="ferdi">FERDİ</option>
+                                            <option value="takim">TAKIM</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── KATEGORİ DEĞİŞTİR ── */}
+                            {bulkEditTab === 'kategori' && (
+                                <>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mevcut Kategori</label>
+                                        <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                            value={bulkOldValue} onChange={e => setBulkOldValue(e.target.value)}>
+                                            <option value="">-- Kategori seçin --</option>
+                                            {uniqueCategories.map(c => {
+                                                const count = athletes.filter(a => a.categoryId === c).length;
+                                                return <option key={c} value={c}>{c} ({count} sporcu)</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                                        <i className="material-icons-round" style={{ fontSize: '24px' }}>arrow_downward</i>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Hedef Kategori</label>
+                                        <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                            value={bulkNewValue} onChange={e => setBulkNewValue(e.target.value)}>
+                                            <option value="">-- Hedef kategori seçin --</option>
+                                            {(() => {
+                                                const comp = competitions[selectedCompId];
+                                                const allCats = new Set();
+                                                if (comp?.kategoriler) Object.keys(comp.kategoriler).forEach(k => allCats.add(k));
+                                                if (comp?.sporcular) Object.keys(comp.sporcular).forEach(k => allCats.add(k));
+                                                return [...allCats].filter(c => c && c !== 'undefined' && c !== bulkOldValue).sort().map(c => (
+                                                    <option key={c} value={c}>{c}</option>
+                                                ));
+                                            })()}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── TRANSFER ── */}
+                            {bulkEditTab === 'transfer' && (
+                                <>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Hedef Yarışma</label>
+                                            <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                                value={transferTargetCompId} onChange={e => setTransferTargetCompId(e.target.value)}>
+                                                <option value="">-- Hedef yarışma seçin --</option>
+                                                {transferableComps.map(([id, c]) => (
+                                                    <option key={id} value={id}>{c.isim} ({c.il})</option>
+                                                ))}
+                                            </select>
+                                            {transferableComps.length === 0 && (
+                                                <p style={{ fontSize: '0.8rem', color: '#EA580C', margin: '4px 0 0' }}>
+                                                    Aynı ildeki başka yarışma bulunamadı.
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Kategori Filtresi</label>
+                                            <select className="control-select" style={{ width: '100%', padding: '10px 12px' }}
+                                                value={transferCategory} onChange={e => { setTransferCategory(e.target.value); setTransferSelectedIds(new Set()); setTransferSelectAll(false); }}>
+                                                <option value="">Tüm Kategoriler</option>
+                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Sporcu listesi */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}>
+                                            <input type="checkbox" checked={transferSelectAll}
+                                                onChange={e => {
+                                                    setTransferSelectAll(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        setTransferSelectedIds(new Set(transferFilteredAthletes.map(a => a.id)));
+                                                    } else {
+                                                        setTransferSelectedIds(new Set());
+                                                    }
+                                                }}
+                                            />
+                                            Tümünü Seç
+                                        </label>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            {transferSelectedIds.size} / {transferFilteredAthletes.length} seçili
+                                        </span>
+                                    </div>
+
+                                    <div style={{
+                                        maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)',
+                                        borderRadius: '10px', background: 'var(--bg-secondary)'
+                                    }}>
+                                        {transferFilteredAthletes.length === 0 ? (
+                                            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>Sporcu bulunamadı.</p>
+                                        ) : (
+                                            transferFilteredAthletes.map(ath => (
+                                                <label key={ath.id} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px',
+                                                    borderBottom: '1px solid var(--border)', cursor: 'pointer',
+                                                    background: transferSelectedIds.has(ath.id) ? 'rgba(37,99,235,0.06)' : 'transparent'
+                                                }}>
+                                                    <input type="checkbox" checked={transferSelectedIds.has(ath.id)}
+                                                        onChange={e => {
+                                                            const newSet = new Set(transferSelectedIds);
+                                                            if (e.target.checked) newSet.add(ath.id); else newSet.delete(ath.id);
+                                                            setTransferSelectedIds(newSet);
+                                                            setTransferSelectAll(newSet.size === transferFilteredAthletes.length);
+                                                        }}
+                                                    />
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{ath.ad} {ath.soyad}</div>
+                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                                            {ath.categoryId} • {ath.okul || '-'} • {(ath.yarismaTuru || 'ferdi').toUpperCase()}
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Etkilenecek sporcu önizleme — okul sekmesi: per-athlete kategori dropdown */}
+                            {bulkEditTab === 'okul' && bulkOldValue && (() => {
+                                const matchedAthletes = athletes.filter(a => {
+                                    const field = a.okul || a.kulup || '';
+                                    return field.toLowerCase() === bulkOldValue.toLowerCase();
+                                });
+                                const comp = competitions[selectedCompId];
+                                const allCats = new Set();
+                                if (comp?.kategoriler) Object.keys(comp.kategoriler).forEach(k => allCats.add(k));
+                                if (comp?.sporcular) Object.keys(comp.sporcular).forEach(k => allCats.add(k));
+                                const catList = [...allCats].filter(c => c && c !== 'undefined').sort();
+                                return (
+                                    <div style={{
+                                        background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px',
+                                        border: '1px solid var(--border)', maxHeight: '320px', overflowY: 'auto'
+                                    }}>
+                                        <p style={{ margin: '0 0 8px 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            Etkilenecek sporcular ({matchedAthletes.length}) — Kategori değişikliği gerekiyorsa seçin:
+                                        </p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {matchedAthletes.map(a => {
+                                                const override = bulkAthleteOverrides[a.id]?.categoryId || '';
+                                                const changed = override && override !== a.categoryId;
+                                                return (
+                                                    <div key={a.id} style={{
+                                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px',
+                                                        borderRadius: '8px', background: changed ? 'rgba(124, 58, 237, 0.08)' : 'var(--bg-primary)',
+                                                        border: `1px solid ${changed ? 'rgba(124, 58, 237, 0.3)' : 'var(--border)'}`
+                                                    }}>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 600, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {a.ad} {a.soyad}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                                                                Mevcut: {a.categoryId} • {(a.yarismaTuru || 'ferdi').toUpperCase()}
+                                                            </div>
+                                                        </div>
+                                                        <select
+                                                            style={{
+                                                                padding: '4px 8px', borderRadius: '6px', fontSize: '0.78rem',
+                                                                border: `1px solid ${changed ? 'rgba(124, 58, 237, 0.5)' : 'var(--border)'}`,
+                                                                background: changed ? 'rgba(124, 58, 237, 0.12)' : 'var(--bg-secondary)',
+                                                                color: 'var(--text-primary)', minWidth: '140px'
+                                                            }}
+                                                            value={override || a.categoryId}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setBulkAthleteOverrides(prev => {
+                                                                    const next = { ...prev };
+                                                                    if (val === a.categoryId) {
+                                                                        delete next[a.id];
+                                                                    } else {
+                                                                        next[a.id] = { categoryId: val };
+                                                                    }
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        >
+                                                            {catList.map(c => (
+                                                                <option key={c} value={c}>{c}{c === a.categoryId ? ' (mevcut)' : ''}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {Object.keys(bulkAthleteOverrides).length > 0 && (
+                                            <p style={{ margin: '8px 0 0 0', fontSize: '0.78rem', color: '#7C3AED', fontWeight: 600 }}>
+                                                <i className="material-icons-round" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>info</i>
+                                                {Object.keys(bulkAthleteOverrides).length} sporcunun kategorisi değiştirilecek
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Etkilenecek sporcu önizleme — tür/kategori sekmeleri (basit badge) */}
+                            {(bulkEditTab === 'tur' || bulkEditTab === 'kategori') && bulkOldValue && (() => {
+                                const matchedAthletes = athletes.filter(a => {
+                                    if (bulkEditTab === 'kategori') return a.categoryId === bulkOldValue;
+                                    const field = a.yarismaTuru || 'ferdi';
+                                    return field.toLowerCase() === bulkOldValue.toLowerCase();
+                                });
+                                return (
+                                    <div style={{
+                                        background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px',
+                                        border: '1px solid var(--border)', maxHeight: '200px', overflowY: 'auto'
+                                    }}>
+                                        <p style={{ margin: '0 0 8px 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            Etkilenecek sporcular ({matchedAthletes.length}):
+                                        </p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            {matchedAthletes.slice(0, 20).map(a => (
+                                                <span key={a.id} style={{
+                                                    fontSize: '0.78rem', padding: '3px 8px', borderRadius: '6px',
+                                                    background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)'
+                                                }}>{a.ad} {a.soyad}</span>
+                                            ))}
+                                            {matchedAthletes.length > 20 && (
+                                                <span style={{ fontSize: '0.78rem', padding: '3px 8px', color: 'var(--text-tertiary)' }}>
+                                                    +{matchedAthletes.length - 20} sporcu daha...
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Aksiyon butonu */}
+                            {bulkEditTab === 'kategori' ? (
+                                <button className="create-btn"
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '1rem', background: '#7C3AED' }}
+                                    onClick={handleBulkCategoryChange}
+                                    disabled={bulkSaving || !bulkOldValue || !bulkNewValue}>
+                                    {bulkSaving
+                                        ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: '8px' }}>drive_file_move</i>Kategori Değiştir</>
+                                    }
+                                </button>
+                            ) : bulkEditTab !== 'transfer' ? (
+                                <button className="create-btn"
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '1rem' }}
+                                    onClick={handleBulkEdit}
+                                    disabled={bulkSaving || !bulkOldValue || !bulkNewValue}>
+                                    {bulkSaving
+                                        ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Güncelleniyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: '8px' }}>check_circle</i>Toplu Güncelle</>
+                                    }
+                                </button>
+                            ) : (
+                                <button className="create-btn"
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '1rem', background: '#D97706' }}
+                                    onClick={handleTransfer}
+                                    disabled={bulkSaving || !transferTargetCompId || transferSelectedIds.size === 0}>
+                                    {bulkSaving
+                                        ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Transfer Ediliyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: '8px' }}>swap_horiz</i>{transferSelectedIds.size} Sporcuyu Transfer Et</>
+                                    }
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

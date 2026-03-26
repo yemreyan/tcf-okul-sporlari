@@ -85,6 +85,7 @@ export default function AnnouncementsPage() {
     const { firebasePath, routePrefix } = useDiscipline();
 
     const [competitions, setCompetitions] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('all');
     const [announcements, setAnnouncements] = useState({});
     const [loading, setLoading] = useState(true);
@@ -124,11 +125,14 @@ export default function AnnouncementsPage() {
         [competitions, currentUser]
     );
 
+    const availableCities = [...new Set(Object.values(filteredComps).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
     const compList = useMemo(
         () => Object.entries(filteredComps)
+            .filter(([, c]) => !selectedCity || (c.il || c.city) === selectedCity)
             .map(([id, c]) => ({ id, ...c }))
             .sort((a, b) => (b.baslangicTarihi || '').localeCompare(a.baslangicTarihi || '')),
-        [filteredComps]
+        [filteredComps, selectedCity]
     );
 
     // Duyuruları filtrele ve sırala
@@ -324,6 +328,19 @@ export default function AnnouncementsPage() {
             <main className="ann-main">
                 {/* Filtre */}
                 <div className="ann-filter-bar">
+                    <div className="ann-filter-group">
+                        <i className="material-icons-round">location_city</i>
+                        <select
+                            className="ann-filter-select"
+                            value={selectedCity}
+                            onChange={e => { setSelectedCity(e.target.value); setSelectedCompId('all'); }}
+                        >
+                            <option value="">Tüm İller</option>
+                            {availableCities.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="ann-filter-group">
                         <i className="material-icons-round">filter_list</i>
                         <select

@@ -51,6 +51,7 @@ export default function AnalyticsPage() {
     const [loading, setLoading] = useState(true);
     const [rawCompetitions, setRawCompetitions] = useState({});
     const [refereesData, setRefereesData] = useState({});
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('all');
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedReportComp, setSelectedReportComp] = useState('');
@@ -70,10 +71,17 @@ export default function AnalyticsPage() {
         return {};
     }, [rawCompetitions, currentUser, selectedCompId]);
 
+    const availableCities = useMemo(() => {
+        const all = filterCompetitionsByUser(rawCompetitions, currentUser);
+        return [...new Set(Object.values(all).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    }, [rawCompetitions, currentUser]);
+
     const competitionsList = useMemo(() => {
         const all = filterCompetitionsByUser(rawCompetitions, currentUser);
-        return Object.entries(all).map(([id, c]) => ({ id, isim: c.isim || 'İsimsiz' }));
-    }, [rawCompetitions, currentUser]);
+        return Object.entries(all)
+            .filter(([id, c]) => !selectedCity || (c.il || c.city) === selectedCity)
+            .map(([id, c]) => ({ id, isim: c.isim || 'İsimsiz' }));
+    }, [rawCompetitions, currentUser, selectedCity]);
 
     // ─── CORE ANALYTICS ───
     const analytics = useMemo(() => {
