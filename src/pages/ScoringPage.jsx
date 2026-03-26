@@ -148,8 +148,10 @@ export default function ScoringPage() {
                         const arr = Object.keys(fbData).map(id => ({ id, ...fbData[id] }));
                         arr.sort((a, b) => (a.cikisSirasi || 999) - (b.cikisSirasi || 999));
                         setAthletesByRotation([arr]);
+                    } else {
+                        setAthletesByRotation([]);
                     }
-                }, { onlyOnce: true });
+                });
             }
         });
 

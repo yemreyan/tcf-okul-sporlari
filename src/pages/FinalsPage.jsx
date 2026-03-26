@@ -498,21 +498,27 @@ export default function FinalsPage() {
                 const drawHeader = (title) => {
                     if (pageCount > 0) doc.addPage();
                     pageCount++;
+                    // Red header bar
                     doc.setFillColor(227, 6, 19);
-                    doc.rect(0, 0, 297, 24, 'F');
+                    doc.rect(0, 0, 297, 28, 'F');
                     doc.setTextColor(255, 255, 255);
                     doc.setFont("helvetica", "bold");
-                    doc.setFontSize(16);
+                    doc.setFontSize(15);
                     doc.text(normalizeTR("TURKIYE CIMNASTIK FEDERASYONU"), 14, 10);
-                    doc.setFontSize(14);
+                    doc.setFontSize(12);
                     doc.setFont("helvetica", "normal");
                     doc.text(normalizeTR(docTitle), 14, 18);
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(12);
-                    doc.text(normalizeTR(title), 14, 32);
-                    doc.setTextColor(100, 116, 139);
                     doc.setFontSize(10);
-                    doc.text(normalizeTR(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`), 250, 32);
+                    doc.text(normalizeTR(title), 14, 25);
+                    doc.text(normalizeTR(new Date().toLocaleDateString("tr-TR")), 297 - 14, 25, { align: 'right' });
+                };
+
+                const medalRowStyle = (data) => {
+                    if (data.section === 'body' && data.row.index < 3) {
+                        const medals = [[255, 215, 0, 0.12], [192, 192, 192, 0.15], [205, 127, 50, 0.12]];
+                        const [r, g, b, a] = medals[data.row.index];
+                        data.cell.styles.fillColor = [Math.round(255 - (255 - r) * a), Math.round(255 - (255 - g) * a), Math.round(255 - (255 - b) * a)];
+                    }
                 };
 
                 if (activeTab === 'all-around') {
@@ -525,9 +531,13 @@ export default function FinalsPage() {
                         return row;
                     });
                     autoTable(doc, {
-                        startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        margin: { left: 10, right: 10 },
                         columnStyles: { 0: { halign: 'center', cellWidth: 12 }, 1: { cellWidth: 40 }, 2: { cellWidth: 40 }, [apparatusKeysList.length + 3]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
-                        didParseCell: function(data) { if (data.section === 'body' && data.column.index > 2 && data.column.index < apparatusKeysList.length + 3) data.cell.styles.halign = 'center'; }
+                        didParseCell: function(data) {
+                            if (data.section === 'body' && data.column.index > 2 && data.column.index < apparatusKeysList.length + 3) data.cell.styles.halign = 'center';
+                            medalRowStyle(data);
+                        }
                     });
                 } else if (activeTab === 'apparatus') {
                     apparatusKeysList.forEach((key) => {
@@ -536,8 +546,10 @@ export default function FinalsPage() {
                         const tableHead = [['S.N.', 'Sporcu', 'Kulup', 'D Puani', 'E Puani', 'Ceza', 'Final Puani']];
                         const tableBody = items.map((r, i) => [i + 1, normalizeTR(`${r.soyad}, ${r.ad}`), normalizeTR(r.kulup || '-'), formatScore(r.D), formatScore(r.E), r.Pen > 0 ? `-${formatScore(r.Pen)}` : '0.000', formatScore(r.score)]);
                         autoTable(doc, {
-                            startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
-                            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', textColor: [220, 38, 38] }, 6: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } }
+                            startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                            margin: { left: 10, right: 10 },
+                            columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', textColor: [220, 38, 38] }, 6: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
+                            didParseCell: function(data) { medalRowStyle(data); }
                         });
                     });
                 } else if (activeTab === 'team') {
@@ -552,9 +564,13 @@ export default function FinalsPage() {
                         return row;
                     });
                     autoTable(doc, {
-                        startY: 40, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        startY: 36, head: tableHead, body: tableBody, theme: 'grid', headStyles, bodyStyles, alternateRowStyles,
+                        margin: { left: 10, right: 10 },
                         columnStyles: { 0: { halign: 'center', cellWidth: 15 }, 1: { cellWidth: 60, fontStyle: 'bold' }, [apparatusKeysList.length + 2]: { halign: 'right', textColor: [100, 116, 139] }, [apparatusKeysList.length + 3]: { halign: 'center', textColor: [220, 38, 38] }, [apparatusKeysList.length + 4]: { halign: 'right', fontStyle: 'bold', textColor: [227, 6, 19] } },
-                        didParseCell: function(data) { if (data.section === 'body' && data.column.index > 1 && data.column.index < apparatusKeysList.length + 2) data.cell.styles.halign = 'center'; }
+                        didParseCell: function(data) {
+                            if (data.section === 'body' && data.column.index > 1 && data.column.index < apparatusKeysList.length + 2) data.cell.styles.halign = 'center';
+                            medalRowStyle(data);
+                        }
                     });
                 }
             });
@@ -564,9 +580,18 @@ export default function FinalsPage() {
                 return;
             }
 
-            const fName = `${competitionData.isim}_Tum_${titleSuffix}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            // Add page numbers
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`Sayfa ${i} / ${totalPages}`, 297 - 14, 210 - 6, { align: 'right' });
+            }
+
+            const fName = `${competitionData.isim}_${titleSuffix}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
             doc.save(`${fName}.pdf`);
-            toast("PDF başarıyla dışa aktarıldı.", "success");
+            toast("PDF başarıyla indirildi.", "success");
         } catch (error) {
             console.error("PDF Export Error:", error);
             toast("PDF oluşturulurken bir hata oluştu.", "error");
@@ -748,7 +773,7 @@ export default function FinalsPage() {
                                     <i className="material-icons-round">table_chart</i> Excel Export
                                 </button>
                                 <button className="action-btn pdf-btn" onClick={handleExportPDF}>
-                                    <i className="material-icons-round">picture_as_pdf</i> PDF Yazdır
+                                    <i className="material-icons-round">picture_as_pdf</i> PDF İndir
                                 </button>
                             </div>
                         </div>

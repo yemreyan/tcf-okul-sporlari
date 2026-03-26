@@ -180,6 +180,17 @@ export default function AthletesPage() {
                         });
                     }
 
+                    // Eski kategorideki çıkış sırası (siralama) verisinden de sil
+                    const oldOrderSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${oldCatId}`));
+                    if (oldOrderSnap.exists()) {
+                        const oldOrder = oldOrderSnap.val();
+                        Object.keys(oldOrder).forEach(rotKey => {
+                            if (oldOrder[rotKey]?.[athId]) {
+                                updates[`${firebasePath}/${selectedCompId}/siralama/${oldCatId}/${rotKey}/${athId}`] = null;
+                            }
+                        });
+                    }
+
                     await update(ref(db), updates);
                 } else {
                     // Sadece güncelle
