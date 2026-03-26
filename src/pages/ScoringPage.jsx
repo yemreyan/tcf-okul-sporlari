@@ -120,20 +120,26 @@ export default function ScoringPage() {
         let fallbackUnsub = null;
 
         const orderRef = ref(db, `${firebasePath}/${selectedCompId}/siralama/${selectedCategory}`);
-        const unsubOrder = onValue(orderRef, (orderSnap) => {
+        const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategory}`);
+
+        const unsubOrder = onValue(orderRef, async (orderSnap) => {
             const orderData = orderSnap.val();
             const formattedRotations = [];
 
             if (orderData) {
+                // Güncel sporcu listesini al — kategorisi değişmiş sporcuları filtrele
+                const athSnap = await get(athletesRef);
+                const validIds = new Set(athSnap.exists() ? Object.keys(athSnap.val()) : []);
+
                 const maxRots = Math.max(...Object.keys(orderData).map(k => parseInt(k.replace('rotation_', ''))).filter(n => !isNaN(n)));
 
                 for (let i = 0; i <= maxRots; i++) {
                     const rotData = orderData[`rotation_${i}`];
                     if (rotData) {
-                        const athArr = Object.keys(rotData).map(id => ({
-                            id,
-                            ...rotData[id]
-                        })).sort((a, b) => a.sirasi - b.sirasi);
+                        const athArr = Object.keys(rotData)
+                            .filter(id => validIds.size === 0 || validIds.has(id))
+                            .map(id => ({ id, ...rotData[id] }))
+                            .sort((a, b) => a.sirasi - b.sirasi);
                         formattedRotations.push(athArr);
                     } else {
                         formattedRotations.push([]);
@@ -141,8 +147,7 @@ export default function ScoringPage() {
                 }
                 setAthletesByRotation(formattedRotations);
             } else {
-                const fallbackRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategory}`);
-                fallbackUnsub = onValue(fallbackRef, (fbSnap) => {
+                fallbackUnsub = onValue(athletesRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
                         const arr = Object.keys(fbData).map(id => ({ id, ...fbData[id] }));
