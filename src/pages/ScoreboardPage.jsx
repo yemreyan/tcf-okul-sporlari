@@ -163,7 +163,7 @@ export default function ScoreboardPage() {
                     ...prev,
                     [catId]: {
                         ...prev[catId],
-                        athletes: data ? Object.values(data) : [],
+                        athletes: data ? Object.entries(data).map(([key, val]) => ({ ...val, id: key })) : [],
                     }
                 }));
             });
