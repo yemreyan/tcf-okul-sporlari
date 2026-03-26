@@ -353,6 +353,27 @@
     font-size: 16px;
 }
 
+.status-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.status-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    transform: scale(1.1);
+}
+.status-delete-btn i {
+    font-size: 16px;
+}
+
 /* ── Expanded Detail View ── */
 
 .app-card__detail {

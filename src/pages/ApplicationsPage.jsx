@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, update, get, push } from 'firebase/database';
+import { ref, onValue, update, get, push, remove } from 'firebase/database';
 import { db } from '../lib/firebase';
 import './ApplicationsPage.css';
 import { useAuth } from '../lib/AuthContext';
@@ -294,6 +294,21 @@ export default function ApplicationsPage() {
         }
     };
 
+    const handleDeleteApplication = async (app) => {
+        const proceed = await confirm(
+            `"${app.schoolName}" okulunun başvurusunu kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+            { title: 'Başvuru Silme', type: 'warning' }
+        );
+        if (!proceed) return;
+        try {
+            await remove(ref(db, `applications/${app.id}`));
+            toast('Başvuru başarıyla silindi.', 'success');
+        } catch (err) {
+            console.error('Delete failed:', err);
+            toast('Başvuru silinirken bir hata oluştu.', 'error');
+        }
+    };
+
     const filteredApps = applications.map(app => ({
         ...app,
         compName: competitions[app.compId]?.isim || 'Silinmiş Yarışma'
@@ -474,6 +489,15 @@ export default function ApplicationsPage() {
                                                                     title="Geri Al"
                                                                 >
                                                                     <i className="material-icons-round">undo</i>
+                                                                </button>
+                                                            )}
+                                                            {app.status === 'reddedildi' && hasPermission('applications', 'reddet') && (
+                                                                <button
+                                                                    className="status-delete-btn"
+                                                                    onClick={() => handleDeleteApplication(app)}
+                                                                    title="Başvuruyu Sil"
+                                                                >
+                                                                    <i className="material-icons-round">delete_forever</i>
                                                                 </button>
                                                             )}
                                                         </div>
