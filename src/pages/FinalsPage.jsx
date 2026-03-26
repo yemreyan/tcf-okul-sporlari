@@ -132,24 +132,21 @@ export default function FinalsPage() {
         if (Array.isArray(rawAletler)) {
             apparatusKeys = rawAletler.map(a => typeof a === 'object' ? a.id || a.value : a);
         } else {
-            // Legacy schema: aletler is an object { yer: {id: 'yer'}, atlama: {...} }
             apparatusKeys = Object.keys(rawAletler);
         }
 
         let participantIds = Object.keys(categoryAthletes);
         let useGlobalAthletes = false;
 
-        // Fallback for legacy competitions that map directly to global athletes
         if (participantIds.length === 0 && competitionData.katilimcilar) {
             participantIds = Object.keys(competitionData.katilimcilar);
             useGlobalAthletes = true;
         }
 
-        let initialResults = participantIds.map(id => {
+        const sortedResults = participantIds.map(id => {
             const athlete = useGlobalAthletes ? globalAthletes[id] : categoryAthletes[id];
             if (!athlete) return null;
 
-            // If using global athletes, we must filter if this athlete actually belongs to the selected category
             if (useGlobalAthletes && athlete.kategori) {
                 const normSelected = (catData.name || catData.ad || selectedCategoryId).toLowerCase().replace(/[^a-z0-9]/g, '');
                 const normAth = athlete.kategori.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -161,28 +158,14 @@ export default function FinalsPage() {
             const allScoreDetails = {};
 
             apparatusKeys.forEach(key => {
-                let scoreData = categoryScores[key]?.[id]; // New schema: puanlar/[category]/[apparatus]/[athleteId]
-
-                // Legacy schema check: puanlar/[category]/[athleteId]/[apparatusPuanlari]
+                let scoreData = categoryScores[key]?.[id];
                 if (!scoreData && categoryScores[id]?.[`${key}Puanlari`]) {
                     const oldData = categoryScores[id][`${key}Puanlari`];
-                    scoreData = {
-                        finalScore: oldData.sonuc || oldData.sonPuan || 0,
-                        dScore: oldData.dToplami || oldData.dPuani || 0,
-                        eScore: oldData.ePuani || 0,
-                        neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0
-                    };
+                    scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
                 }
-
-                // Super Legacy check: cimnastikVerileri/[apparatusPuanlari]/[athleteId]
                 if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
                     const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
-                    scoreData = {
-                        finalScore: superOldData.sonPuan || superOldData.sonuc || 0,
-                        dScore: superOldData.dToplami || superOldData.dPuani || 0,
-                        eScore: superOldData.ePuani || 0,
-                        neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0
-                    };
+                    scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
                 }
 
                 let finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
@@ -207,25 +190,31 @@ export default function FinalsPage() {
             return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, id };
         }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
 
-        // Calculate Apparatus Ranks
+        let lastS = -1;
+        let lastR = 0;
+        const rankedResults = sortedResults.map((res, index) => {
+            if (res.totalScore !== lastS) { lastR = index + 1; }
+            lastS = res.totalScore;
+            return { ...res, totalRank: lastR };
+        });
+
+        // Apparatus Ranks
         const apparatusRanks = {};
         apparatusKeys.forEach(key => {
-            const scoredAthletes = [...initialResults].filter(r => r.scores[key] > 0);
+            const scoredAthletes = [...rankedResults].filter(r => r.scores[key] > 0);
             scoredAthletes.sort((a, b) => b.scores[key] - a.scores[key]);
-
-            let lastScore = -Infinity;
-            let lastRank = 0;
-
-            scoredAthletes.forEach((result, index) => {
-                const score = result.scores[key];
-                if (score !== lastScore) { lastRank = index + 1; }
+            let lsVal = -Infinity;
+            let lrVal = 0;
+            scoredAthletes.forEach((result, idx) => {
+                const sVal = result.scores[key];
+                if (sVal !== lsVal) { lrVal = idx + 1; }
                 if (!apparatusRanks[result.id]) apparatusRanks[result.id] = {};
-                apparatusRanks[result.id][key] = lastRank;
-                lastScore = score;
+                apparatusRanks[result.id][key] = lrVal;
+                lsVal = sVal;
             });
         });
 
-        return initialResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
+        return rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
     }, [competitionData, selectedCategoryId, categoryAthletes, categoryScores, globalAthletes]);
 
     const formatScore = (s) => {
@@ -270,7 +259,7 @@ export default function FinalsPage() {
             apparatusKeys.forEach(key => clubScores[res.okul].scores[key].push(res.scores[key]));
         });
 
-        return Object.values(clubScores).map(team => {
+        const teamList = Object.values(clubScores).map(team => {
             let totalScore = 0;
             const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, 3).reduce((sum, s) => sum + s, 0);
             const apparatusTotals = {};
@@ -295,6 +284,16 @@ export default function FinalsPage() {
                 finalScore
             };
         }).sort((a, b) => b.finalScore - a.finalScore);
+
+        let lastTS = -1;
+        let lastTR = 0;
+        return teamList.map((team, index) => {
+            if (team.finalScore !== lastTS) {
+                lastTR = index + 1;
+            }
+            lastTS = team.finalScore;
+            return { ...team, rank: lastTR };
+        });
     };
 
     const uniqueTeams = [...new Set(fullResults.map(r => r.okul).filter(Boolean))].sort();
@@ -365,7 +364,7 @@ export default function FinalsPage() {
             useGlobalAthletes = true;
         }
 
-        let initialResults = participantIds.map(id => {
+        const sortedC = participantIds.map(id => {
             const athlete = useGlobalAthletes ? globalAthletes[id] : catAth[id];
             if (!athlete) return null;
 
@@ -405,22 +404,32 @@ export default function FinalsPage() {
             return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, id };
         }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
 
+        let ls = -1;
+        let lr = 0;
+        const rankedResults = sortedC.map((res, index) => {
+            if (res.totalScore !== ls) {
+                lr = index + 1;
+            }
+            ls = res.totalScore;
+            return { ...res, totalRank: lr };
+        });
+
         const apparatusRanks = {};
         apparatusKeysList.forEach(key => {
-            const scoredAthletes = [...initialResults].filter(r => r.scores[key] > 0);
+            const scoredAthletes = [...rankedResults].filter(r => r.scores[key] > 0);
             scoredAthletes.sort((a, b) => b.scores[key] - a.scores[key]);
-            let lastScore = -Infinity;
-            let lastRank = 0;
-            scoredAthletes.forEach((result, index) => {
-                const score = result.scores[key];
-                if (score !== lastScore) { lastRank = index + 1; }
+            let lScore = -Infinity;
+            let lRank = 0;
+            scoredAthletes.forEach((result, idx) => {
+                const sVal = result.scores[key];
+                if (sVal !== lScore) { lRank = idx + 1; }
                 if (!apparatusRanks[result.id]) apparatusRanks[result.id] = {};
-                apparatusRanks[result.id][key] = lastRank;
-                lastScore = score;
+                apparatusRanks[result.id][key] = lRank;
+                lScore = sVal;
             });
         });
 
-        const results = initialResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
+        const results = rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
         const teamResults = computeCatTeamResults(results, apparatusKeysList);
         return { results, teamResults, apparatusKeysList, catName: catData.name || catData.ad || catId };
     };
@@ -442,7 +451,7 @@ export default function FinalsPage() {
             appKeys.forEach(k => clubScores[res.okul].scores[k].push(res.scores[k]));
         });
 
-        return Object.values(clubScores).map(team => {
+        const teamsList = Object.values(clubScores).map(team => {
             let total = 0;
             const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, 3).reduce((s, x) => s + x, 0);
             const appTotals = {};
@@ -455,9 +464,19 @@ export default function FinalsPage() {
             const dTotal = Object.values(teamDeductions || {})
                 .filter(d => d.teamName === team.name)
                 .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-
+            
             return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
         }).sort((a, b) => b.finalScore - a.finalScore);
+
+        let ctLastS = -1;
+        let ctLastR = 0;
+        return teamsList.map((team, index) => {
+            if (team.finalScore !== ctLastS) {
+                ctLastR = index + 1;
+            }
+            ctLastS = team.finalScore;
+            return { ...team, rank: ctLastR };
+        });
     };
 
     // Export handlers
@@ -623,9 +642,9 @@ export default function FinalsPage() {
                     'Toplam'
                 ]];
 
-                const indBody = scoredResults.map((r, i) => {
+                const indBody = scoredResults.map((r) => {
                     const row = [
-                        `${i + 1}-`,
+                        `${r.totalRank}-`,
                         normalizeTR((r.ad || '').toUpperCase()),
                         normalizeTR((r.soyad || '').toUpperCase()),
                         normalizeTR(r.okul || r.kulup || '-')
@@ -675,8 +694,8 @@ export default function FinalsPage() {
                         'Alet Top.', 'Kesinti', 'Net Skor'
                     ]];
 
-                    const teamBody = teamResults.map((t, i) => {
-                        const row = [`${i + 1}-`, normalizeTR(t.name)];
+                    const teamBody = teamResults.map((t) => {
+                        const row = [`${t.rank}-`, normalizeTR(t.name)];
                         apparatusKeysList.forEach(k => row.push(fmtScore(t.apparatusTotals[k])));
                         row.push(fmtScore(t.totalScore));
                         row.push(t.deduction > 0 ? `-${fmtScore(t.deduction)}` : '0,000');
@@ -758,9 +777,9 @@ export default function FinalsPage() {
                 };
 
                 if (activeTab === 'all-around') {
-                    const exportData = results.map((r, index) => {
+                    const exportData = results.map((r) => {
                         const row = {
-                            'S.N.': index + 1,
+                            'S.N.': r.totalRank,
                             'Sporcu': `${r.ad} ${r.soyad}`,
                             'Kulüp/Okul': r.okul || '-'
                         };
@@ -776,8 +795,8 @@ export default function FinalsPage() {
                 } else if (activeTab === 'apparatus') {
                     apparatusKeysList.forEach(key => {
                         const items = results.map(r => ({ ...r, score: r.scores[key] || 0, D: r.allScoreDetails[key]?.D || 0, E: r.allScoreDetails[key]?.E || 0, Pen: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
-                        const appData = items.map((r, index) => ({
-                            'S.N.': index + 1,
+                        const appData = items.map((r) => ({
+                            'S.N.': r.apparatusRanks[key] || '-',
                             'Sporcu': `${r.ad} ${r.soyad}`,
                             'Kulüp/Okul': r.okul || '-',
                             'D Puanı': parseFloat(formatScore(r.D)),
@@ -788,9 +807,9 @@ export default function FinalsPage() {
                         if (appData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData), getSheetName(`A_${catName}_${APPARATUS_INFO[key]?.en || key}`));
                     });
                 } else if (activeTab === 'team') {
-                    const exportTeam = teamResults.map((t, index) => {
+                    const exportTeam = teamResults.map((t) => {
                         const row = {
-                            'S.N.': index + 1,
+                            'S.N.': t.rank,
                             'Takım': t.name
                         };
                         apparatusKeysList.forEach(key => row[`${APPARATUS_INFO[key]?.tr || key} (${APPARATUS_INFO[key]?.en || key})`] = parseFloat(formatScore(t.apparatusTotals[key])));
@@ -959,8 +978,8 @@ export default function FinalsPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {fullResults.map((res, index) => {
-                                                const rank = index + 1;
+                                            {fullResults.map((res) => {
+                                                const rank = res.totalRank;
                                                 return (
                                                     <tr key={res.id} className={getMedalClass(rank)}>
                                                         <td className="td-center rank-col">
@@ -1045,8 +1064,8 @@ export default function FinalsPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {items.map((item, index) => {
-                                                            const rank = index + 1;
+                                                        {items.map((item) => {
+                                                            const rank = item.apparatusRanks[key];
                                                             return (
                                                                 <tr key={item.id} className={getMedalClass(rank)}>
                                                                     <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
@@ -1124,8 +1143,8 @@ export default function FinalsPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {computeTeamResults().map((team, index) => {
-                                                const rank = index + 1;
+                                            {computeTeamResults().map((team) => {
+                                                const rank = team.rank;
                                                 return (
                                                     <tr key={team.name} className={getMedalClass(rank)}>
                                                         <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
