@@ -93,8 +93,12 @@ export default function AerobikScoringPage() {
                 onValue(fbRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
-                        const arr = Object.keys(fbData).map(id => ({ id, ...fbData[id] }));
-                        arr.sort((a, b) => (a.cikisSirasi || 999) - (b.cikisSirasi || 999));
+                        const arr = Object.keys(fbData).map((id, idx) => ({ id, ...fbData[id], _kayitSirasi: idx + 1 }));
+                        arr.sort((a, b) => {
+                            const sortA = (a.cikisSirasi !== undefined && a.cikisSirasi !== null && a.cikisSirasi !== 999) ? a.cikisSirasi : a._kayitSirasi;
+                            const sortB = (b.cikisSirasi !== undefined && b.cikisSirasi !== null && b.cikisSirasi !== 999) ? b.cikisSirasi : b._kayitSirasi;
+                            return sortA - sortB;
+                        });
                         setAthletesByRotation([arr]);
                     }
                 }, { onlyOnce: true });
