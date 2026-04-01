@@ -134,12 +134,55 @@ export default function AthletesPage() {
         return () => unsubscribe();
     }, [selectedCompId]);
 
+    // Belirtilen kategorilerde okul bazlı takım türünü otomatik hesapla ve güncelle
+    const autoSyncTeamStatus = async (compId, catIdList) => {
+        const catNames = competitions[compId]?.kategoriler || {};
+        const uniqueCats = [...new Set(catIdList)].filter(Boolean);
+
+        for (const catId of uniqueCats) {
+            const catObj = catNames[catId] || {};
+            const catName = catObj.isim || catObj.name || catObj.ad || catId;
+            const rules = getTeamRules(catName);
+            if (!rules) continue;
+
+            const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
+            if (!snap.exists()) continue;
+
+            const allAthletes = snap.val();
+
+            // Okul bazlı gruplama
+            const schoolGroups = {};
+            Object.entries(allAthletes).forEach(([id, ath]) => {
+                const okul = (ath.okul || ath.kulup || '').trim();
+                if (!okul) return;
+                if (!schoolGroups[okul]) schoolGroups[okul] = [];
+                schoolGroups[okul].push({ id, ...ath });
+            });
+
+            const updates = {};
+            Object.values(schoolGroups).forEach(group => {
+                const newTur = group.length >= rules.min ? 'takim' : 'ferdi';
+                group.forEach(ath => {
+                    if ((ath.yarismaTuru || 'ferdi') !== newTur) {
+                        updates[`${firebasePath}/${compId}/sporcular/${catId}/${ath.id}/yarismaTuru`] = newTur;
+                    }
+                });
+            });
+
+            if (Object.keys(updates).length > 0) {
+                await update(ref(db), updates);
+            }
+        }
+    };
+
     const handleDelete = async (catId, athId, name) => {
         const confirmed = await confirm(`${name} isimli sporcuyu silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
         if (confirmed) {
             try {
                 const athRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`);
                 await remove(athRef);
+                // Sporcu silindi — okulun kalan sporcuları için takım türünü güncelle
+                await autoSyncTeamStatus(selectedCompId, [catId]);
             } catch (err) {
                 console.error("Delete failed", err);
                 toast("Silme işlemi başarısız.", "error");
@@ -226,9 +269,13 @@ export default function AthletesPage() {
                     }
 
                     await update(ref(db), updates);
+                    // Eski ve yeni kategori için takım türünü güncelle
+                    await autoSyncTeamStatus(selectedCompId, [oldCatId, newCatId]);
                 } else {
                     // Sadece güncelle
                     await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), formData);
+                    // Aynı kategorideki okul takım türünü güncelle
+                    await autoSyncTeamStatus(selectedCompId, [formData.categoryId]);
                 }
             } else {
                 // Yeni Ekle
@@ -240,6 +287,8 @@ export default function AthletesPage() {
                     soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
                     sirasi: 999
                 });
+                // Yeni sporcu eklendi — okulun takım eşiğine ulaşıp ulaşmadığını kontrol et
+                await autoSyncTeamStatus(selectedCompId, [formData.categoryId]);
             }
             setIsModalOpen(false);
         } catch (err) {
@@ -354,6 +403,9 @@ export default function AthletesPage() {
                 if (Object.keys(updates).length > 0) {
                     await update(ref(db), updates);
                     toast(`${addedCount} sporcu başarıyla içeri aktarıldı!`, "success");
+                    // Excel'den eklenen kategorilerde takım türünü otomatik hesapla
+                    const affectedCats = [...new Set(data.map(r => r['Kategori'] || r['KATEGORİ'] || '').filter(Boolean))];
+                    if (affectedCats.length > 0) await autoSyncTeamStatus(selectedCompId, affectedCats);
                 } else {
                     toast("Geçerli veri bulunamadı. Lütfen Excel sütun başlıklarını kontrol edin (Ad, Soyad, Kategori zorunlu).", "warning");
                 }
