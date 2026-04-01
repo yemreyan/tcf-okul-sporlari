@@ -9,6 +9,72 @@ import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './AthletesPage.css';
 
+// ─── Okul Benzerlik Algılama ───
+function normalizeSchoolName(name) {
+    return (name || '')
+        .toLocaleUpperCase('tr-TR')
+        .replace(/İ/g, 'I').replace(/Ş/g, 'S').replace(/Ğ/g, 'G')
+        .replace(/Ü/g, 'U').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
+        .replace(/[.,\-'"/()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+    for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    return dp[m][n];
+}
+
+// schoolList: [{ name, count }]
+// Döner: [{ id, names:[{name,count}], canonical, dismissed }]
+function findSimilarSchoolGroups(schoolList) {
+    // 1. Normalize et ve grupla
+    const byNorm = {};
+    schoolList.forEach(s => {
+        const key = normalizeSchoolName(s.name);
+        if (!byNorm[key]) byNorm[key] = [];
+        byNorm[key].push(s);
+    });
+
+    const groups = [];
+    const usedNames = new Set();
+
+    // Kesin eşleşme grupları (normalize → aynı)
+    Object.values(byNorm).forEach(group => {
+        if (group.length >= 2) {
+            group.forEach(s => usedNames.add(s.name));
+            const canonical = [...group].sort((a, b) => b.count - a.count)[0].name;
+            groups.push({ id: `g${groups.length}`, names: group, canonical, dismissed: false, type: 'normalize' });
+        }
+    });
+
+    // Levenshtein benzerliği (normalize edilmiş isimler arası mesafe ≤ 4)
+    const remaining = schoolList.filter(s => !usedNames.has(s.name));
+    const paired = new Set();
+    for (let i = 0; i < remaining.length; i++) {
+        for (let j = i + 1; j < remaining.length; j++) {
+            const na = normalizeSchoolName(remaining[i].name);
+            const nb = normalizeSchoolName(remaining[j].name);
+            const shorter = Math.min(na.length, nb.length);
+            const threshold = shorter <= 8 ? 1 : shorter <= 15 ? 2 : shorter <= 25 ? 3 : 4;
+            if (levenshtein(na, nb) <= threshold && !paired.has(i) && !paired.has(j)) {
+                paired.add(i); paired.add(j);
+                const pair = [remaining[i], remaining[j]];
+                const canonical = [...pair].sort((a, b) => b.count - a.count)[0].name;
+                groups.push({ id: `g${groups.length}`, names: pair, canonical, dismissed: false, type: 'similar' });
+            }
+        }
+    }
+
+    return groups;
+}
+
 // ─── Takım Kontenjan Kuralları ───
 const TEAM_RULES = {
     minik:  { min: 4, max: 7 },
@@ -64,6 +130,10 @@ export default function AthletesPage() {
     const [transferCategory, setTransferCategory] = useState('');
     const [transferSelectedIds, setTransferSelectedIds] = useState(new Set());
     const [transferSelectAll, setTransferSelectAll] = useState(false);
+
+    // Benzer Okul Birleştirme State
+    const [similarGroups, setSimilarGroups] = useState([]); // bulunan gruplar
+    const [isFindingSchools, setIsFindingSchools] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -517,6 +587,66 @@ export default function AthletesPage() {
     const transferFilteredAthletes = transferCategory
         ? athletes.filter(a => a.categoryId === transferCategory)
         : athletes;
+
+    // Benzer okul isimlerini tara
+    const handleFindSimilarSchools = () => {
+        setIsFindingSchools(true);
+        const schoolList = uniqueSchools.map(name => ({
+            name,
+            count: athletes.filter(a => (a.okul || a.kulup || '') === name).length
+        }));
+        const groups = findSimilarSchoolGroups(schoolList);
+        setSimilarGroups(groups);
+        setIsFindingSchools(false);
+    };
+
+    // Seçilen birleştirme kararlarını uygula
+    const handleMergeSchools = async () => {
+        const activeGroups = similarGroups.filter(g => !g.dismissed && g.names.some(n => n.name !== g.canonical));
+        if (activeGroups.length === 0) {
+            toast('Birleştirilecek okul çifti yok.', 'info');
+            return;
+        }
+
+        const totalAthletes = activeGroups.reduce((sum, g) =>
+            sum + g.names.filter(n => n.name !== g.canonical).reduce((s, n) => s + n.count, 0), 0);
+
+        const confirmed = await confirm(
+            `${activeGroups.length} grupta toplam ${totalAthletes} sporcunun okul ismi "${activeGroups.map(g => g.canonical).join('", "')}" gibi standart isimlere güncellenecek. Devam?`,
+            { title: 'Okul İsimlerini Birleştir', type: 'warning' }
+        );
+        if (!confirmed) return;
+
+        setBulkSaving(true);
+        try {
+            const updates = {};
+            const affectedCats = new Set();
+
+            activeGroups.forEach(group => {
+                const nonCanonicals = new Set(group.names.filter(n => n.name !== group.canonical).map(n => n.name));
+                athletes.forEach(ath => {
+                    const athOkul = ath.okul || ath.kulup || '';
+                    if (nonCanonicals.has(athOkul)) {
+                        updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}/okul`] = group.canonical;
+                        updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}/kulup`] = group.canonical;
+                        affectedCats.add(ath.categoryId);
+                    }
+                });
+            });
+
+            if (Object.keys(updates).length > 0) {
+                await update(ref(db), updates);
+                await autoSyncTeamStatus(selectedCompId, [...affectedCats]);
+                toast(`${Object.keys(updates).length / 2} sporcu güncellendi, takım türleri yeniden hesaplandı.`, 'success');
+                setSimilarGroups([]);
+            }
+        } catch (err) {
+            console.error('Okul birleştirme hatası:', err);
+            toast('Birleştirme sırasında hata oluştu.', 'error');
+        } finally {
+            setBulkSaving(false);
+        }
+    };
 
     // Toplu okul ismi veya yarışma türü değiştirme (+ kategori düzeltme)
     const handleBulkEdit = async () => {
@@ -1439,7 +1569,7 @@ export default function AthletesPage() {
             {/* Bulk Edit Modal */}
             {isBulkEditOpen && (
                 <div className="modal-overlay" onClick={() => setIsBulkEditOpen(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: bulkEditTab === 'transfer' ? '700px' : '560px' }}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: bulkEditTab === 'transfer' ? '700px' : bulkEditTab === 'birleştir' ? '640px' : '560px' }}>
                         <div className="modal__header">
                             <h2>Toplu Düzenleme</h2>
                             <button className="modal__close" onClick={() => setIsBulkEditOpen(false)}>
@@ -1453,7 +1583,8 @@ export default function AthletesPage() {
                                     { key: 'okul', icon: 'school', label: 'Okul İsmi' },
                                     { key: 'tur', icon: 'groups', label: 'Yarışma Türü' },
                                     { key: 'kategori', icon: 'category', label: 'Kategori' },
-                                    { key: 'transfer', icon: 'swap_horiz', label: 'Transfer' }
+                                    { key: 'transfer', icon: 'swap_horiz', label: 'Transfer' },
+                                    { key: 'birleştir', icon: 'merge', label: 'Benzer Okul' },
                                 ].map(tab => (
                                     <button
                                         key={tab.key}
@@ -1465,7 +1596,7 @@ export default function AthletesPage() {
                                             borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600,
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem'
                                         }}
-                                        onClick={() => { setBulkEditTab(tab.key); setBulkOldValue(''); setBulkNewValue(''); setBulkCustomSchool(false); setTransferSelectedIds(new Set()); setTransferSelectAll(false); setTransferTargetCompId(''); setTransferCategory(''); setBulkAthleteOverrides({}); }}
+                                        onClick={() => { setBulkEditTab(tab.key); setBulkOldValue(''); setBulkNewValue(''); setBulkCustomSchool(false); setTransferSelectedIds(new Set()); setTransferSelectAll(false); setTransferTargetCompId(''); setTransferCategory(''); setBulkAthleteOverrides({}); setSimilarGroups([]); }}
                                     >
                                         <i className="material-icons-round" style={{ fontSize: '18px' }}>{tab.icon}</i>
                                         {tab.label}
@@ -1771,6 +1902,91 @@ export default function AthletesPage() {
                                 );
                             })()}
 
+                            {/* ── BENZER OKUL BİRLEŞTİR ── */}
+                            {bulkEditTab === 'birleştir' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                        Yazım farkı olan aynı okul isimlerini tespit eder. Her grup için hangi ismin esas alınacağını siz seçersiniz.
+                                    </p>
+                                    <button
+                                        className="action-btn-outline"
+                                        style={{ borderColor: '#6366F1', color: '#6366F1', justifyContent: 'center' }}
+                                        onClick={handleFindSimilarSchools}
+                                        disabled={isFindingSchools || athletes.length === 0}
+                                    >
+                                        <i className="material-icons-round">manage_search</i>
+                                        {isFindingSchools ? 'Taranıyor...' : 'Benzer Okulları Tara'}
+                                    </button>
+
+                                    {similarGroups.length === 0 && !isFindingSchools && athletes.length > 0 && (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
+                                            Tarama yapılmadı veya benzer okul bulunamadı.
+                                        </p>
+                                    )}
+
+                                    {similarGroups.map((group, gi) => (
+                                        <div key={group.id} style={{
+                                            border: `1.5px solid ${group.dismissed ? 'var(--border)' : '#F59E0B'}`,
+                                            borderRadius: '10px', padding: '12px', opacity: group.dismissed ? 0.45 : 1,
+                                            background: group.dismissed ? 'var(--bg-secondary)' : 'rgba(245,158,11,0.05)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
+                                                    {group.names.map(n => (
+                                                        <span key={n.name} style={{
+                                                            fontSize: '0.8rem', padding: '3px 10px', borderRadius: '6px',
+                                                            background: n.name === group.canonical ? '#D1FAE5' : 'var(--bg-primary)',
+                                                            border: `1px solid ${n.name === group.canonical ? '#34D399' : 'var(--border)'}`,
+                                                            color: n.name === group.canonical ? '#065F46' : 'var(--text-primary)',
+                                                            fontWeight: n.name === group.canonical ? 700 : 400
+                                                        }}>
+                                                            {n.name} <span style={{ opacity: 0.6 }}>({n.count})</span>
+                                                        </span>
+                                                    ))}
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', alignSelf: 'center' }}>
+                                                        {group.type === 'normalize' ? '• yazım farkı' : '• benzer isim'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    title={group.dismissed ? 'Geri Al' : 'Farklı Okul — Atla'}
+                                                    onClick={() => setSimilarGroups(prev => prev.map((g, i) => i === gi ? { ...g, dismissed: !g.dismissed } : g))}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', flexShrink: 0 }}
+                                                >
+                                                    <i className="material-icons-round" style={{ fontSize: '20px' }}>
+                                                        {group.dismissed ? 'undo' : 'close'}
+                                                    </i>
+                                                </button>
+                                            </div>
+                                            {!group.dismissed && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', flexShrink: 0 }}>Esas isim:</span>
+                                                    <select
+                                                        className="control-select"
+                                                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.85rem' }}
+                                                        value={group.canonical}
+                                                        onChange={e => setSimilarGroups(prev => prev.map((g, i) => i === gi ? { ...g, canonical: e.target.value } : g))}
+                                                    >
+                                                        {group.names.map(n => (
+                                                            <option key={n.name} value={n.name}>{n.name}</option>
+                                                        ))}
+                                                        <option value="__custom__">— Özel isim yaz —</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {!group.dismissed && group.canonical === '__custom__' && (
+                                                <input
+                                                    type="text"
+                                                    className="control-input"
+                                                    style={{ marginTop: '6px', width: '100%', padding: '6px 10px', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                                                    placeholder="Standart okul adını yazın..."
+                                                    onBlur={e => { if (e.target.value.trim()) setSimilarGroups(prev => prev.map((g, i) => i === gi ? { ...g, canonical: e.target.value.trim() } : g)); }}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {/* Aksiyon butonu */}
                             {bulkEditTab === 'kategori' ? (
                                 <button className="create-btn"
@@ -1780,6 +1996,17 @@ export default function AthletesPage() {
                                     {bulkSaving
                                         ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
                                         : <><i className="material-icons-round" style={{ marginRight: '8px' }}>drive_file_move</i>Kategori Değiştir</>
+                                    }
+                                </button>
+                            ) : bulkEditTab === 'birleştir' ? (
+                                <button className="create-btn"
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '1rem', background: '#F59E0B' }}
+                                    onClick={handleMergeSchools}
+                                    disabled={bulkSaving || similarGroups.filter(g => !g.dismissed).length === 0}>
+                                    {bulkSaving
+                                        ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Birleştiriliyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: '8px' }}>merge</i>
+                                            {similarGroups.filter(g => !g.dismissed).length} Grubu Birleştir</>
                                     }
                                 </button>
                             ) : bulkEditTab !== 'transfer' ? (
