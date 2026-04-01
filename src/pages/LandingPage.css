@@ -357,3 +357,121 @@
         display: none;
     }
 }
+
+/* ─── Araçlar Bölümü ─── */
+.landing-tools {
+    padding-top: 0;
+    padding-bottom: 2rem;
+}
+
+.landing-tools-grid {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    max-width: 520px;
+}
+
+.landing-tool-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.landing-tool-card:hover {
+    border-color: #38BDF8;
+    box-shadow: 0 6px 20px rgba(14,165,233,.15);
+    transform: translateY(-1px);
+}
+.landing-tool-card__icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.landing-tool-card__icon .material-icons-round {
+    font-size: 1.5rem;
+    color: #fff;
+}
+.landing-tool-card__content {
+    flex: 1;
+}
+.landing-tool-card__content h3 {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0 0 .15rem;
+}
+.landing-tool-card__content span {
+    font-size: .78rem;
+    color: #64748B;
+}
+.landing-tool-card__arrow {
+    font-size: 1.1rem;
+    color: #CBD5E1;
+    transition: color .2s;
+}
+.landing-tool-card:hover .landing-tool-card__arrow {
+    color: #38BDF8;
+}
+
+/* ─── Feature Toggle (Süper Admin) ─── */
+.landing-section-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.landing-feature-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: .3rem .5rem;
+    border-radius: 8px;
+    transition: background .15s;
+    font-family: inherit;
+    font-size: .75rem;
+    font-weight: 700;
+    color: #94A3B8;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.landing-feature-toggle:hover:not(:disabled) { background: #F1F5F9; }
+.landing-feature-toggle.active { color: #10B981; }
+.landing-feature-toggle.toggling { opacity: .6; cursor: not-allowed; }
+
+.lft-track {
+    width: 36px;
+    height: 20px;
+    background: #CBD5E1;
+    border-radius: 99px;
+    position: relative;
+    transition: background .2s;
+    flex-shrink: 0;
+}
+.landing-feature-toggle.active .lft-track { background: #10B981; }
+
+.lft-thumb {
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.landing-feature-toggle.active .lft-thumb { transform: translateX(16px); }

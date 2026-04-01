@@ -295,6 +295,42 @@
     border-color: #86EFAC;
 }
 
+/* ─── Modal Overlay (popup) ─── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+    backdrop-filter: blur(2px);
+    animation: overlayFadeIn .15s ease;
+}
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px;
+    animation: modalSlideIn .18s ease;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-12px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Multi-Column Form Modal */
 .modal--large {
     max-width: 600px !important;
@@ -415,6 +451,147 @@
 
 .btn--primary:hover {
     background: #C40410;
+}
+
+/* ─── Okul Kontenjan Paneli ─── */
+.quota-panel {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.quota-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.quota-panel__header .material-icons-round { font-size: 18px; color: #6366F1; }
+.quota-category { margin-bottom: 10px; }
+.quota-category:last-child { margin-bottom: 0; }
+.quota-category__title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #F3F4F6;
+}
+.quota-schools { display: flex; flex-direction: column; gap: 8px; }
+.quota-school-row { display: flex; flex-direction: column; gap: 4px; }
+.quota-school-row__info { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.quota-school-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #111827;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.quota-school-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.quota-count { font-size: 0.82rem; font-weight: 700; min-width: 36px; text-align: right; }
+.quota-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.quota-badge--team      { background: #DCFCE7; color: #166534; }
+.quota-badge--full      { background: #FEE2E2; color: #991B1B; }
+.quota-badge--remaining { background: #F3F4F6; color: #374151; }
+.quota-bar-track {
+    position: relative;
+    height: 6px;
+    background: #F3F4F6;
+    border-radius: 99px;
+    overflow: visible;
+}
+.quota-bar-fill { height: 100%; border-radius: 99px; transition: width .3s ease; }
+.quota-school-row { border-radius: 8px; padding: 4px 6px; margin: -4px -6px; transition: background .15s; }
+.quota-school-row:hover { background: #F9FAFB; }
+.quota-school-row--active { background: #EEF2FF !important; }
+
+/* Accordion sporcu tablosu */
+.quota-accordion {
+    margin-top: 8px;
+    border-top: 1px solid #E5E7EB;
+    padding-top: 8px;
+    animation: quotaOpen .15s ease;
+}
+@keyframes quotaOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.quota-accordion__empty { font-size: .78rem; color: #9CA3AF; padding: 4px 0; margin: 0; }
+
+.quota-athlete-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .78rem;
+}
+.quota-athlete-table th {
+    text-align: left;
+    font-weight: 600;
+    color: #6B7280;
+    padding: 4px 6px;
+    border-bottom: 1px solid #F3F4F6;
+    white-space: nowrap;
+}
+.quota-athlete-table td {
+    padding: 5px 6px;
+    color: #111827;
+    border-bottom: 1px solid #F9FAFB;
+    vertical-align: middle;
+}
+.quota-athlete-table tr:last-child td { border-bottom: none; }
+.quota-athlete-table tr:hover td { background: #F9FAFB; }
+
+.quota-athlete-table__num  { color: #9CA3AF; width: 28px; text-align: center; }
+.quota-athlete-table__name { font-weight: 600; }
+.quota-athlete-table__tckn { font-family: monospace; color: #6B7280; }
+.quota-athlete-table__dob  { color: #6B7280; white-space: nowrap; }
+
+.quota-tur-badge {
+    display: inline-block;
+    font-size: .68rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+}
+.quota-tur-badge--takim  { background: #DCFCE7; color: #166534; }
+.quota-tur-badge--ferdi  { background: #F3F4F6; color: #374151; }
+
+.quota-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    padding: 3px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: color .15s, background .15s;
+}
+.quota-edit-btn:hover { color: #4F46E5; background: #EEF2FF; }
+.quota-edit-btn .material-icons-round { font-size: 15px; }
+
+.quota-bar-min {
+    position: absolute;
+    top: -3px;
+    width: 2px;
+    height: 12px;
+    background: #9CA3AF;
+    border-radius: 2px;
+    transform: translateX(-50%);
 }
 
 @media (max-width: 768px) {

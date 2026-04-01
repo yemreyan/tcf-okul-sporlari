@@ -12,7 +12,7 @@ import './LinksPage.css';
 export default function LinksPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const [competitions, setCompetitions] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -24,10 +24,21 @@ export default function LinksPage() {
     const [epanelToken, setEpanelToken] = useState('');
     const [selectedPanel, setSelectedPanel] = useState(null); // null | 'd' | 'e'
 
+    // baseUrl: sadece bir kez hesapla
     useEffect(() => {
         const parsedUrl = new URL(window.location.href);
         setBaseUrl(`${parsedUrl.protocol}//${parsedUrl.host}`);
+    }, []);
 
+    // Disiplin değişince seçimleri sıfırla
+    useEffect(() => {
+        setSelectedCompId('');
+        setSelectedPanel(null);
+        setCompetitionData(null);
+    }, [firebasePath]);
+
+    // Yarışmaları yükle — firebasePath veya currentUser değişince yeniden yükle
+    useEffect(() => {
         const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snapshot) => {
             const data = snapshot.val();
@@ -36,24 +47,21 @@ export default function LinksPage() {
                     .map(key => ({
                         id: key,
                         isim: data[key].isim || 'İsimsiz Yarışma',
-                        tarih: data[key].tarih || '',
+                        tarih: data[key].tarih || data[key].baslangicTarihi || '',
                         arsiv: data[key].arsiv || false,
                         il: data[key].il || data[key].city || '',
                     }))
                     .filter(c => !c.arsiv)
-                    .sort((a, b) => a.isim.localeCompare(b.isim, 'tr-TR')); // İsim sırasına göre
+                    .sort((a, b) => a.isim.localeCompare(b.isim, 'tr-TR'));
 
                 const filtered = filterCompetitionsArrayByUser(compsList, currentUser);
                 setCompetitions(filtered);
-                if (filtered.length > 0 && !selectedCompId) {
-                    setSelectedCompId(filtered[0].id);
-                }
             } else {
                 setCompetitions([]);
             }
         });
         return () => unsubscribe();
-    }, [selectedCompId, currentUser]);
+    }, [currentUser, firebasePath]);
 
     // E-Panel token yönetimi: yoksa oluştur, varsa yükle
     useEffect(() => {
@@ -92,11 +100,11 @@ export default function LinksPage() {
     }, [selectedPanel]);
 
     // Available cities from competitions
-    const availableCities = [...new Set(competitions.map(c => c.il).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = [...new Set(competitions.map(c => (c.il || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
     // Filter competitions by selected city
     const filteredCompetitions = selectedCity
-        ? competitions.filter(c => c.il === selectedCity)
+        ? competitions.filter(c => (c.il || '').toLocaleUpperCase('tr-TR') === selectedCity)
         : competitions;
 
     // Auto-select first competition from filtered list when selectedCompId is empty
@@ -154,12 +162,19 @@ export default function LinksPage() {
             allLinks += `=== E-PANEL LİNKLERİ ===\n\n`;
             filteredCategories.forEach(cat => {
                 allLinks += `--- ${cat.name} ---\n`;
-                cat.aletler.forEach(alet => {
-                    panelIds.forEach(pid => {
-                        const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
-                        allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${url}\n`;
+                if (hasApparatus) {
+                    cat.aletler.forEach(alet => {
+                        panelIds.forEach(pid => {
+                            const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                            allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${url}\n`;
+                        });
                     });
-                });
+                } else {
+                    panelIds.forEach(pid => {
+                        const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                        allLinks += `${cat.name} | ${pid.toUpperCase()}: ${url}\n`;
+                    });
+                }
                 allLinks += '\n';
             });
         }
@@ -167,8 +182,8 @@ export default function LinksPage() {
         copyToClipboard(allLinks, 'all-links');
     };
 
-    // Loading state
-    if (!competitionData) {
+    // Loading state — sadece seçili yarışma varken veri bekleniyor
+    if (selectedCompId && !competitionData) {
         return (
             <div className="links-page">
                 <div className="page-header">
@@ -201,20 +216,22 @@ export default function LinksPage() {
                 <p>QR kod ve linkleri oluşturmak istediğiniz panel türünü seçin</p>
             </div>
             <div className="panel-selector__cards">
-                {/* D Panel Card */}
-                <button className="panel-type-card panel-type-card--d" onClick={() => setSelectedPanel('d')}>
-                    <div className="panel-type-card__icon">
-                        <i className="material-icons-round">gavel</i>
-                    </div>
-                    <div className="panel-type-card__badge">D</div>
-                    <h3 className="panel-type-card__title">D-Panel</h3>
-                    <p className="panel-type-card__subtitle">Başhakem Paneli</p>
-                    <p className="panel-type-card__desc">Zorluk puanı (D-Score) girişi, sporcu çağırma, E-puanları yönetme ve ana puanlama kontrolü</p>
-                    <div className="panel-type-card__footer">
-                        <span><i className="material-icons-round">category</i>{categoryList.length} kategori</span>
-                        <span><i className="material-icons-round">arrow_forward</i>Linkleri Gör</span>
-                    </div>
-                </button>
+                {/* D Panel Card — sadece alet gerektiren disiplinlerde (artistik) */}
+                {hasApparatus && (
+                    <button className="panel-type-card panel-type-card--d" onClick={() => setSelectedPanel('d')}>
+                        <div className="panel-type-card__icon">
+                            <i className="material-icons-round">gavel</i>
+                        </div>
+                        <div className="panel-type-card__badge">D</div>
+                        <h3 className="panel-type-card__title">D-Panel</h3>
+                        <p className="panel-type-card__subtitle">Başhakem Paneli</p>
+                        <p className="panel-type-card__desc">Zorluk puanı (D-Score) girişi, sporcu çağırma, E-puanları yönetme ve ana puanlama kontrolü</p>
+                        <div className="panel-type-card__footer">
+                            <span><i className="material-icons-round">category</i>{categoryList.length} kategori</span>
+                            <span><i className="material-icons-round">arrow_forward</i>Linkleri Gör</span>
+                        </div>
+                    </button>
+                )}
 
                 {/* E Panel Card */}
                 <button className="panel-type-card panel-type-card--e" onClick={() => setSelectedPanel('e')}>
@@ -224,9 +241,13 @@ export default function LinksPage() {
                     <div className="panel-type-card__badge">E</div>
                     <h3 className="panel-type-card__title">E-Panel</h3>
                     <p className="panel-type-card__subtitle">Uygulama Hakemleri</p>
-                    <p className="panel-type-card__desc">Uygulama kesintileri (E-Score) girişi. Her alet için 4 hakem paneli (E1–E4) QR kodları</p>
+                    <p className="panel-type-card__desc">
+                        {hasApparatus
+                            ? 'Uygulama kesintileri (E-Score) girişi. Her alet için 4 hakem paneli (E1–E4) QR kodları'
+                            : 'Uygulama kesintileri (E-Score) girişi. Her kategori için 4 hakem paneli (E1–E4) QR kodları'}
+                    </p>
                     <div className="panel-type-card__footer">
-                        <span><i className="material-icons-round">groups</i>4 hakem / alet</span>
+                        <span><i className="material-icons-round">groups</i>4 hakem / {hasApparatus ? 'alet' : 'kategori'}</span>
                         <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
                     </div>
                 </button>
@@ -295,7 +316,7 @@ export default function LinksPage() {
         </div>
     );
 
-    // E Panel QR Kartları (mevcut yapı)
+    // E Panel QR Kartları
     const renderEPanelContent = () => (
         <div className="categories-container">
             {filteredCategories.length === 0 ? (
@@ -310,7 +331,9 @@ export default function LinksPage() {
                             <div className="category-section__title-group">
                                 <i className="material-icons-round category-section__icon">sports_gymnastics</i>
                                 <h3 className="category-section__title">{cat.name}</h3>
-                                <span className="category-section__badge">{cat.aletler.length} alet</span>
+                                {hasApparatus && (
+                                    <span className="category-section__badge">{cat.aletler.length} alet</span>
+                                )}
                             </div>
                             <button className="category-section__toggle">
                                 <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
@@ -318,45 +341,81 @@ export default function LinksPage() {
                         </div>
                         {expandedCats[cat.id] && (
                             <div className="category-section__content">
-                                {cat.aletler.map(alet => (
-                                    <div className="apparatus-group" key={alet.id}>
-                                        <div className="apparatus-group__header">
-                                            <span className="apparatus-group__name">{alet.name}</span>
-                                            <div className="apparatus-group__line"></div>
+                                {hasApparatus ? (
+                                    /* Alet gerektiren disiplin (artistik): alet → hakem QR */
+                                    cat.aletler.map(alet => (
+                                        <div className="apparatus-group" key={alet.id}>
+                                            <div className="apparatus-group__header">
+                                                <span className="apparatus-group__name">{alet.name}</span>
+                                                <div className="apparatus-group__line"></div>
+                                            </div>
+                                            <div className="panels-grid">
+                                                {panelIds.map(pid => {
+                                                    const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                                    const cardId = `${cat.id}-${alet.id}-${pid}`;
+                                                    return (
+                                                        <div className="panel-card printable-card" key={pid}>
+                                                            <div className="panel-card__badge-row">
+                                                                <span className="panel-card__badge">{pid.toUpperCase()}</span>
+                                                                <span className="panel-card__meta">{cat.name}</span>
+                                                            </div>
+                                                            <div className="panel-card__alet">{alet.name}</div>
+                                                            <div className="panel-card__qr">
+                                                                <QRCode value={url} size={100} level="M" />
+                                                            </div>
+                                                            <div className="panel-card__actions no-print">
+                                                                <button
+                                                                    className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                                    onClick={() => copyToClipboard(url, cardId)}
+                                                                    title="Linki kopyala"
+                                                                >
+                                                                    <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                                </button>
+                                                                <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                    <i className="material-icons-round">open_in_new</i>
+                                                                </a>
+                                                            </div>
+                                                            <div className="panel-card__print-label print-only">Okut & Puanla</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                        <div className="panels-grid">
-                                            {panelIds.map(pid => {
-                                                const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
-                                                const cardId = `${cat.id}-${alet.id}-${pid}`;
-                                                return (
-                                                    <div className="panel-card printable-card" key={pid}>
-                                                        <div className="panel-card__badge-row">
-                                                            <span className="panel-card__badge">{pid.toUpperCase()}</span>
-                                                            <span className="panel-card__meta">{cat.name}</span>
-                                                        </div>
-                                                        <div className="panel-card__alet">{alet.name}</div>
-                                                        <div className="panel-card__qr">
-                                                            <QRCode value={url} size={100} level="M" />
-                                                        </div>
-                                                        <div className="panel-card__actions no-print">
-                                                            <button
-                                                                className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
-                                                                onClick={() => copyToClipboard(url, cardId)}
-                                                                title="Linki kopyala"
-                                                            >
-                                                                <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
-                                                            </button>
-                                                            <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
-                                                                <i className="material-icons-round">open_in_new</i>
-                                                            </a>
-                                                        </div>
-                                                        <div className="panel-card__print-label print-only">Okut & Puanla</div>
+                                    ))
+                                ) : (
+                                    /* Aletsiz disiplin (aerobik, trampolin, parkur, ritmik): doğrudan hakem QR */
+                                    <div className="panels-grid">
+                                        {panelIds.map(pid => {
+                                            const url = `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${cat.id}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                            const cardId = `${cat.id}-${pid}`;
+                                            return (
+                                                <div className="panel-card printable-card" key={pid}>
+                                                    <div className="panel-card__badge-row">
+                                                        <span className="panel-card__badge">{pid.toUpperCase()}</span>
+                                                        <span className="panel-card__meta">{cat.name}</span>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                                    <div className="panel-card__alet">{cat.name}</div>
+                                                    <div className="panel-card__qr">
+                                                        <QRCode value={url} size={100} level="M" />
+                                                    </div>
+                                                    <div className="panel-card__actions no-print">
+                                                        <button
+                                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                            onClick={() => copyToClipboard(url, cardId)}
+                                                            title="Linki kopyala"
+                                                        >
+                                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                        </button>
+                                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                            <i className="material-icons-round">open_in_new</i>
+                                                        </a>
+                                                    </div>
+                                                    <div className="panel-card__print-label print-only">Okut & Puanla</div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                ))}
+                                )}
                             </div>
                         )}
                     </div>

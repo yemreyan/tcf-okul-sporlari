@@ -8,22 +8,32 @@ import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import './HomePage.css';
 
 const MENU_ITEMS_BASE = [
-    { id: 'competitions', icon: 'emoji_events', label: 'Yarışmalar', desc: 'Yarışma oluştur ve yönet', color: '#E30613', subpath: '/competitions', permKey: 'competitions' },
-    { id: 'applications', icon: 'assignment_turned_in', label: 'Başvurular', desc: 'Başvuruları incele ve onayla', color: '#2563EB', subpath: '/applications', permKey: 'applications' },
-    { id: 'athletes', icon: 'groups', label: 'Sporcular', desc: 'Sporcu kayıt ve yönetimi', color: '#16A34A', subpath: '/athletes', permKey: 'athletes' },
-    { id: 'scoring', icon: 'scoreboard', label: 'Puanlama', desc: 'Canlı puan girişi', color: '#EA580C', subpath: '/scoring', permKey: 'scoring' },
-    { id: 'criteria', icon: 'tune', label: 'Kriterler', desc: 'Puanlama kuralları', color: '#7C3AED', subpath: '/criteria', permKey: 'criteria' },
-    { id: 'judges', icon: 'gavel', label: 'Hakem Listesi', desc: 'Hakem ekleme ve excel yükleme', color: '#0D9488', subpath: '/referees', permKey: 'referees' },
-    { id: 'scoreboard', icon: 'live_tv', label: 'Canlı Skor', desc: 'Canlı skorboard ekranı', color: '#DB2777', subpath: '/scoreboard', permKey: 'scoreboard' },
-    { id: 'finals', icon: 'military_tech', label: 'Finaller', desc: 'Final sonuçları', color: '#D97706', subpath: '/finals', permKey: 'finals' },
-    { id: 'analytics', icon: 'analytics', label: 'Raporlar', desc: 'İstatistik ve analiz', color: '#4F46E5', subpath: '/analytics', permKey: 'analytics' },
-    { id: 'order', icon: 'format_list_numbered', label: 'Çıkış Sırası', desc: 'Sporcu sıralama ve rotasyon', color: '#0891B2', subpath: '/start-order', permKey: 'start_order' },
-    { id: 'schedule', icon: 'calendar_month', label: 'Program', desc: 'Yarışma gün programı', color: '#8B5CF6', subpath: '/schedule', permKey: 'schedule' },
-    { id: 'links', icon: 'qr_code_2', label: 'QR & Linkler', desc: 'Link ve QR oluştur', color: '#059669', subpath: '/links', permKey: 'links' },
-    { id: 'report', icon: 'description', label: 'Yarışma Raporu', desc: 'Resmi müsabaka raporu oluştur', color: '#475569', subpath: '/official-report', permKey: 'official_report' },
-    { id: 'announcements', icon: 'campaign', label: 'Duyurular', desc: 'Yarışma duyuruları yönetimi', color: '#4F46E5', subpath: '/announcements', permKey: 'announcements' },
-    { id: 'certificates', icon: 'card_membership', label: 'Sertifikalar', desc: 'Katılım ve derece belgeleri', color: '#D97706', subpath: '/certificates', permKey: 'certificates' },
+    { id: 'competitions', icon: 'emoji_events',          label: 'Yarışmalar',     desc: 'Yarışma oluştur ve yönet',          color: '#E30613', subpath: '/competitions',    permKey: 'competitions',    disciplines: null },
+    { id: 'applications', icon: 'assignment_turned_in',  label: 'Başvurular',     desc: 'Başvuruları incele ve onayla',      color: '#2563EB', subpath: '/applications',   permKey: 'applications',    disciplines: null },
+    { id: 'athletes',     icon: 'groups',                label: 'Sporcular',      desc: 'Sporcu kayıt ve yönetimi',          color: '#16A34A', subpath: '/athletes',        permKey: 'athletes',        disciplines: null },
+    { id: 'scoring',      icon: 'scoreboard',            label: 'Puanlama',       desc: 'Canlı puan girişi',                 color: '#EA580C', subpath: '/scoring',         permKey: 'scoring',         disciplines: null },
+    // Kriterler: sadece artistik (aerobik/trampolin puanlama kriterleri hardcoded — resmi talimatname)
+    { id: 'criteria',     icon: 'tune',                  label: 'Kriterler',      desc: 'Puanlama kuralları',                color: '#7C3AED', subpath: '/criteria',        permKey: 'criteria',        disciplines: ['artistik'] },
+    { id: 'judges',       icon: 'gavel',                 label: 'Hakem Listesi',  desc: 'Hakem ekleme ve excel yükleme',     color: '#0D9488', subpath: '/referees',        permKey: 'referees',        disciplines: null },
+    { id: 'scoreboard',   icon: 'live_tv',               label: 'Canlı Skor',     desc: 'Canlı skorboard ekranı',            color: '#DB2777', subpath: '/scoreboard',      permKey: 'scoreboard',      disciplines: null },
+    { id: 'finals',       icon: 'military_tech',         label: 'Finaller',       desc: 'Final sonuçları',                   color: '#D97706', subpath: '/finals',          permKey: 'finals',          disciplines: null },
+    { id: 'analytics',    icon: 'analytics',             label: 'Raporlar',       desc: 'İstatistik ve analiz',              color: '#4F46E5', subpath: '/analytics',       permKey: 'analytics',       disciplines: null },
+    { id: 'order',        icon: 'format_list_numbered',  label: 'Çıkış Sırası',  desc: 'Sporcu sıralama ve rotasyon',       color: '#0891B2', subpath: '/start-order',     permKey: 'start_order',     disciplines: null },
+    { id: 'schedule',     icon: 'calendar_month',        label: 'Program',        desc: 'Yarışma gün programı',              color: '#8B5CF6', subpath: '/schedule',        permKey: 'schedule',        disciplines: null },
+    { id: 'links',        icon: 'qr_code_2',             label: 'QR & Linkler',   desc: 'Link ve QR oluştur',                color: '#059669', subpath: '/links',           permKey: 'links',           disciplines: null },
+    { id: 'report',       icon: 'description',           label: 'Yarışma Raporu', desc: 'Resmi müsabaka raporu oluştur',     color: '#475569', subpath: '/official-report', permKey: 'official_report', disciplines: null },
+    { id: 'announcements',icon: 'campaign',              label: 'Duyurular',      desc: 'Yarışma duyuruları yönetimi',       color: '#4F46E5', subpath: '/announcements',   permKey: 'announcements',   disciplines: null },
+    { id: 'certificates', icon: 'card_membership',       label: 'Sertifikalar',   desc: 'Katılım ve derece belgeleri',       color: '#D97706', subpath: '/certificates',    permKey: 'certificates',    disciplines: null },
 ];
+
+// Branşa göre ikon
+const DISCIPLINE_ICONS = {
+    artistik:  'sports_gymnastics',
+    aerobik:   'directions_run',
+    trampolin: 'height',
+    parkur:    'terrain',
+    ritmik:    'self_improvement',
+};
 
 // Yarışma durumu hesapla
 function computeCompStatus(comp) {
@@ -43,12 +53,14 @@ function computeCompStatus(comp) {
 export default function HomePage() {
     const navigate = useNavigate();
     const { login, isAuthenticated, logout, currentUser, isSuperAdmin, hasPermission } = useAuth();
-    const { id: disciplineId, label: disciplineLabel, firebasePath, routePrefix, theme } = useDiscipline();
+    const { id: disciplineId, label: disciplineLabel, firebasePath, routePrefix, theme, brans: disciplineBrans, hasApparatus } = useDiscipline();
 
-    // Menu items — route prefix'i discipline'e göre ayarla
+    // Menu items — discipline'e göre filtrele ve route prefix'i ayarla
     const MENU_ITEMS = useMemo(() =>
-        MENU_ITEMS_BASE.map(item => ({ ...item, path: `${routePrefix}${item.subpath}` })),
-        [routePrefix]
+        MENU_ITEMS_BASE
+            .filter(item => !item.disciplines || item.disciplines.includes(disciplineId))
+            .map(item => ({ ...item, path: `${routePrefix}${item.subpath}` })),
+        [routePrefix, disciplineId]
     );
 
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -107,23 +119,33 @@ export default function HomePage() {
             } else if (status === 'completed') completedCount++;
 
             // Toplam puan girişi
+            // Artistik: puanlar/{catId}/{apparatusId}/{athleteId} — 3 seviye
+            // Aerobik/Trampolin: puanlar/{catId}/{athleteId} — 2 seviye
             if (comp.puanlar) {
                 Object.values(comp.puanlar).forEach(cat => {
                     if (cat && typeof cat === 'object') {
-                        Object.values(cat).forEach(app => {
-                            if (app && typeof app === 'object') {
-                                totalScoreEntries += Object.keys(app).length;
-                            }
-                        });
+                        if (hasApparatus) {
+                            // Artistik: 3. seviyedeki athlete key'lerini say
+                            Object.values(cat).forEach(apparatus => {
+                                if (apparatus && typeof apparatus === 'object') {
+                                    totalScoreEntries += Object.keys(apparatus).length;
+                                }
+                            });
+                        } else {
+                            // Aerobik / Trampolin: 2. seviyedeki athlete key'lerini say
+                            totalScoreEntries += Object.keys(cat).length;
+                        }
                     }
                 });
             }
         });
 
-        // Bekleyen başvuru sayısı
+        // Bekleyen başvuru sayısı — sadece bu disipline ait
+        const disciplineBransUpper = (disciplineBrans || 'Artistik').toLocaleUpperCase('tr-TR');
         let pendingApps = 0;
         Object.values(rawApps).forEach(app => {
-            if ((app.durum === 'bekliyor' || app.status === 'bekliyor')) pendingApps++;
+            const appBrans = (app.brans || app.branch || 'Artistik').toLocaleUpperCase('tr-TR');
+            if (appBrans === disciplineBransUpper && (app.durum === 'bekliyor' || app.status === 'bekliyor')) pendingApps++;
         });
 
         return {
@@ -131,7 +153,7 @@ export default function HomePage() {
             totalComps: Object.keys(comps).length,
             pendingApps, nextComp, nextDate, totalScoreEntries
         };
-    }, [rawComps, rawApps, currentUser]);
+    }, [rawComps, rawApps, currentUser, hasApparatus, disciplineBrans]);
 
     // Menüyü izinlere göre filtrele
     const visibleMenuItems = isAuthenticated
@@ -213,7 +235,7 @@ export default function HomePage() {
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header__logo" style={{ background: theme.primary }}>
-                        <i className="material-icons-round">{disciplineId === 'aerobik' ? 'directions_run' : 'sports_gymnastics'}</i>
+                        <i className="material-icons-round">{DISCIPLINE_ICONS[disciplineId] || 'sports_gymnastics'}</i>
                     </div>
                     <div>
                         <h1 className="header__title">{disciplineLabel}</h1>
@@ -352,11 +374,11 @@ export default function HomePage() {
                         </button>
                     ))}
 
-                    {/* Rol Yönetimi — Sadece Super Admin */}
+                    {/* Rol Yönetimi — Sadece Super Admin (her zaman artistik route'u) */}
                     {isAuthenticated && isSuperAdmin() && (
                         <button
                             className="menu-card"
-                            onClick={() => navigate(`${routePrefix}/role-management`)}
+                            onClick={() => navigate('/artistik/role-management')}
                             style={{ '--card-color': '#6B7280', animationDelay: `${visibleMenuItems.length * 0.04}s` }}
                         >
                             <div className="menu-card__icon">
@@ -369,11 +391,11 @@ export default function HomePage() {
                         </button>
                     )}
 
-                    {/* İşlem Geçmişi — Sadece Super Admin */}
+                    {/* İşlem Geçmişi — Sadece Super Admin (her zaman artistik route'u) */}
                     {isAuthenticated && isSuperAdmin() && (
                         <button
                             className="menu-card"
-                            onClick={() => navigate(`${routePrefix}/audit-log`)}
+                            onClick={() => navigate('/artistik/audit-log')}
                             style={{ '--card-color': '#475569', animationDelay: `${(visibleMenuItems.length + 1) * 0.04}s` }}
                         >
                             <div className="menu-card__icon">

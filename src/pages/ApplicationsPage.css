@@ -374,6 +374,27 @@
     font-size: 16px;
 }
 
+.status-resync-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.status-resync-btn:hover {
+    background: rgba(16, 185, 129, 0.25);
+    transform: scale(1.1);
+}
+.status-resync-btn i {
+    font-size: 16px;
+}
+
 /* ── Expanded Detail View ── */
 
 .app-card__detail {

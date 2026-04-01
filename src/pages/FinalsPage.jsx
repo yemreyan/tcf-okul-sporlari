@@ -67,10 +67,10 @@ export default function FinalsPage() {
             unsubscribeComps();
             unsubscribeGlobal();
         };
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
-    const availableCities = [...new Set(competitions.map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
-    const filteredCompetitions = selectedCity ? competitions.filter(c => (c.il || c.city) === selectedCity) : competitions;
+    const availableCities = [...new Set(competitions.map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const filteredCompetitions = selectedCity ? competitions.filter(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR') === selectedCity) : competitions;
 
     // 2. Load Selected Competition Data
     useEffect(() => {
@@ -886,7 +886,7 @@ export default function FinalsPage() {
                             <option value="">-- Yarışma Seçiniz --</option>
                             {filteredCompetitions.map((comp) => (
                                 <option key={comp.id} value={comp.id}>
-                                    {comp.isim} ({new Date(comp.tarih).toLocaleDateString("tr-TR")})
+                                    {comp.isim} ({new Date(comp.tarih || comp.baslangicTarihi || 0).toLocaleDateString("tr-TR")})
                                 </option>
                             ))}
                         </select>

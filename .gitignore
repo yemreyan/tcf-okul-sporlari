@@ -32,4 +32,11 @@ dist-ssr
 
 # Credential files
 il-temsilcileri-sifreler.txt
+hakem_hesaplari.csv
 .vercel
+
+# Firebase CLI cache
+.firebase/
+
+# Debug / temp scripts
+debug_login.mjs

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="refresh" content="6;url=https://tcfokullar.vercel.app/basvuru.html" />
+    <title>Başvuru — TCF Okul Sporları</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1A1035 50%, #0C1A2E 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            color: #fff;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 2rem;
+            padding: 3.5rem 2.75rem;
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+            animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #3B82F6, #6366F1);
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            box-shadow: 0 8px 28px rgba(99, 102, 241, 0.45);
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            text-align: left;
+        }
+
+        .logo-text strong {
+            display: block;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            color: #fff;
+        }
+
+        .logo-text span {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .divider {
+            width: 40px;
+            height: 3px;
+            background: linear-gradient(90deg, #3B82F6, #6366F1);
+            border-radius: 99px;
+            margin: 0 auto 2rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: #93C5FD;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 0.35rem 0.9rem;
+            border-radius: 99px;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.03em;
+        }
+
+        h1 em {
+            font-style: normal;
+            background: linear-gradient(135deg, #60A5FA, #818CF8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .desc {
+            color: rgba(255, 255, 255, 0.60);
+            font-size: 0.97rem;
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        .desc strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Countdown */
+        .progress-wrap {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            height: 5px;
+            overflow: hidden;
+            margin-bottom: 0.65rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3B82F6, #6366F1);
+            border-radius: 99px;
+            animation: shrink 6s linear forwards;
+        }
+
+        @keyframes shrink {
+            from { width: 100%; }
+            to   { width: 0%; }
+        }
+
+        .countdown-text {
+            font-size: 0.80rem;
+            color: rgba(255, 255, 255, 0.38);
+            margin-bottom: 2rem;
+        }
+
+        .countdown-text span {
+            color: #93C5FD;
+            font-weight: 700;
+        }
+
+        /* Main CTA */
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            background: linear-gradient(135deg, #3B82F6, #6366F1);
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.05rem;
+            font-weight: 700;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 28px rgba(99, 102, 241, 0.4);
+            letter-spacing: 0.01em;
+            margin-bottom: 0.85rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 36px rgba(99, 102, 241, 0.55);
+            background: linear-gradient(135deg, #60A5FA, #818CF8);
+        }
+
+        .btn-primary svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        /* Info chips */
+        .chips {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.7rem;
+            border-radius: 99px;
+        }
+
+        .chip svg { width: 13px; height: 13px; opacity: 0.7; }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo-wrap">
+        <div class="logo-icon">🏅</div>
+        <div class="logo-text">
+            <strong>TCF Okul Sporları</strong>
+            <span>Cimnastik Başvuru Sistemi</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="badge">
+        <svg viewBox="0 0 20 20" fill="currentColor" style="width:11px;height:11px"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9V9h2v4zm0-6H9V5h2v2z"/></svg>
+        Başvurular Açık
+    </div>
+
+    <h1>Sporcu Başvuruları<br/><em>Yeni Sistemimizde</em></h1>
+
+    <p class="desc">
+        Başvurular artık <strong>tcfokullar.vercel.app</strong> adresindeki
+        yeni sistemimiz üzerinden alınmaktadır.<br/>
+        Birkaç saniye içinde otomatik olarak yönlendirileceksiniz.
+    </p>
+
+    <div class="chips">
+        <span class="chip">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Artistik Cimnastik
+        </span>
+        <span class="chip">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Aerobik Cimnastik
+        </span>
+        <span class="chip">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Güvenli &amp; Hızlı
+        </span>
+    </div>
+
+    <div class="progress-wrap">
+        <div class="progress-bar"></div>
+    </div>
+    <p class="countdown-text">Otomatik yönlendirme: <span id="sec">6</span> saniye</p>
+
+    <a class="btn-primary" href="https://tcfokullar.vercel.app/basvuru.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        Başvuru Sayfasına Git
+    </a>
+
+    <p class="footer-note">TCF Okul Sporları — Türkiye Cimnastik Federasyonu</p>
+</div>
+
+<script>
+    let s = 6;
+    const el = document.getElementById('sec');
+    const timer = setInterval(() => {
+        s--;
+        if (el) el.textContent = s;
+        if (s <= 0) {
+            clearInterval(timer);
+            window.location.href = 'https://tcfokullar.vercel.app/basvuru.html';
+        }
+    }, 1000);
+</script>
+
+</body>
+</html>

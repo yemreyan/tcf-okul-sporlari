@@ -121,10 +121,10 @@ export default function AerobikScoringPage() {
     }, [existingScores, selectedAthlete?.id]);
 
     // ─── Derived Data ───
-    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
     const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity)
+        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
@@ -134,7 +134,7 @@ export default function AerobikScoringPage() {
         categoryOptions = Object.keys(competitions[selectedCompId].kategoriler);
     }
 
-    const categoryConfig = AEROBIK_CATEGORIES[selectedCategory] || AEROBIK_CATEGORIES['IM'];
+    const categoryConfig = AEROBIK_CATEGORIES[selectedCategory] || Object.values(AEROBIK_CATEGORIES)[0];
     const maxElements = categoryConfig?.maxElements || 8;
     const dDivisor = categoryConfig?.dDivisor || 2.0;
 
@@ -172,7 +172,10 @@ export default function AerobikScoringPage() {
     const totalPenalties = Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
 
     // Final Score = A + E + D - Penalties
-    const finalScore = Math.max(0, aScore + eScore + dScore - totalPenalties).toFixed(3);
+    // D puanı 0 ise sporcu puanı 0 olmalı (güçlük elementi girilmemişse geçersiz performans)
+    const finalScore = dScore === 0
+        ? '0.000'
+        : Math.max(0, aScore + eScore + dScore - totalPenalties).toFixed(3);
 
     // ─── Handlers ───
     const handleSelectAthlete = (athlete) => {
@@ -246,6 +249,23 @@ export default function AerobikScoringPage() {
     const handleSubmitScore = () => {
         if (!selectedAthlete) return toast('Lütfen bir sporcu seçin.', 'warning');
         if (scoreLocked) return toast("Bu sporcunun puanı kilitli. Düzenlemek için kilidi açın.", "warning");
+
+        // A paneli kontrolü: en az bir hakem girilmiş olmalı
+        const filledA = Object.values(aPanelLocal).filter(v => v !== undefined && v !== null && v !== '' && !isNaN(parseFloat(v)));
+        if (filledA.length === 0) {
+            return toast('A puanı girilmeden kayıt yapılamaz. En az bir artistik hakem notu giriniz.', 'warning');
+        }
+
+        // E paneli kontrolü: en az bir hakem girilmiş olmalı
+        const filledE = Object.values(ePanelLocal).filter(v => v !== undefined && v !== null && v !== '' && !isNaN(parseFloat(v)));
+        if (filledE.length === 0) {
+            return toast('E puanı girilmeden kayıt yapılamaz. En az bir uygulama kesintisi giriniz.', 'warning');
+        }
+
+        // D puanı 0 kontrolü: element girilmemişse uyarı ver (puan 0 olarak kaydedilir)
+        if (dScore === 0 || selectedElements.length === 0) {
+            return toast('D puanı (güçlük) 0 — hiç element seçilmemiş. Sporcu puanı 0.000 olarak kaydedilecektir. Devam etmek için önce element ekleyiniz.', 'warning');
+        }
 
         // Min families constraint
         const uniqueFamilies = new Set(selectedElements.map(el => el.familyId));
@@ -503,7 +523,7 @@ export default function AerobikScoringPage() {
                         <div className="as-scoring-panel">
                             {/* Athlete Header */}
                             <div className="as-athlete-header">
-                                <div className="as-avatar">{selectedAthlete.ad.charAt(0)}{selectedAthlete.soyad.charAt(0)}</div>
+                                <div className="as-avatar">{(selectedAthlete.ad || selectedAthlete.name || '?').charAt(0)}{(selectedAthlete.soyad || '').charAt(0)}</div>
                                 <div className="as-athlete-details">
                                     <h2>{selectedAthlete.ad} {selectedAthlete.soyad}</h2>
                                     <p className="as-subtitle">{selectedAthlete.okul || selectedAthlete.kulup} &bull; {AEROBIK_CATEGORIES[selectedCategory]?.label || selectedCategory}</p>
@@ -541,7 +561,13 @@ export default function AerobikScoringPage() {
                                                             value={hasVal ? val : ''} placeholder="—"
                                                             className="as-judge-input"
                                                             disabled={scoreLocked}
-                                                            onChange={e => setAPanelLocal(p => ({ ...p, [key]: e.target.value }))} />
+                                                            onChange={e => {
+                                                                let v = e.target.value;
+                                                                if (v !== '' && !isNaN(parseFloat(v))) {
+                                                                    v = Math.min(10, Math.max(0, parseFloat(v))).toString();
+                                                                }
+                                                                setAPanelLocal(p => ({ ...p, [key]: v }));
+                                                            }} />
                                                     </div>
                                                 );
                                             })}
@@ -572,7 +598,13 @@ export default function AerobikScoringPage() {
                                                             value={hasVal ? val : ''} placeholder="—"
                                                             className="as-judge-input"
                                                             disabled={scoreLocked}
-                                                            onChange={e => setEPanelLocal(p => ({ ...p, [key]: e.target.value }))} />
+                                                            onChange={e => {
+                                                                let v = e.target.value;
+                                                                if (v !== '' && !isNaN(parseFloat(v))) {
+                                                                    v = Math.min(10, Math.max(0, parseFloat(v))).toString();
+                                                                }
+                                                                setEPanelLocal(p => ({ ...p, [key]: v }));
+                                                            }} />
                                                     </div>
                                                 );
                                             })}

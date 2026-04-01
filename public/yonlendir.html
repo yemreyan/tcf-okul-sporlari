@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="refresh" content="5;url=https://tcfokullar.vercel.app/basvuru.html" />
+    <title>Yönlendiriliyor — TCF Okul Sporları</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 60%, #0F172A 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            color: #fff;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1.75rem;
+            padding: 3rem 2.5rem;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #6366F1, #4F46E5);
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #A5B4FC;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 0.35rem 0.85rem;
+            border-radius: 99px;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        p strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Progress bar */
+        .progress-wrap {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6366F1, #818CF8);
+            border-radius: 99px;
+            animation: shrink 5s linear forwards;
+        }
+
+        @keyframes shrink {
+            from { width: 100%; }
+            to   { width: 0%; }
+        }
+
+        .countdown-text {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 2rem;
+        }
+
+        .countdown-text span {
+            color: #A5B4FC;
+            font-weight: 700;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            background: linear-gradient(135deg, #6366F1, #4F46E5);
+            color: #fff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.9rem 2rem;
+            border-radius: 0.875rem;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+            letter-spacing: 0.01em;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+            background: linear-gradient(135deg, #818CF8, #6366F1);
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo">🏅</div>
+    <div class="badge">&#128279; Yönlendirme</div>
+
+    <h1>Başvuru Sayfamız<br/>Taşındı!</h1>
+
+    <p>
+        Sporcu başvuruları artık <strong>yeni sistemimiz</strong> üzerinden alınmaktadır.
+        Birkaç saniye içinde yeni başvuru sayfasına yönlendirileceksiniz.
+    </p>
+
+    <div class="progress-wrap">
+        <div class="progress-bar"></div>
+    </div>
+    <p class="countdown-text">Otomatik yönlendirme: <span id="sec">5</span> saniye</p>
+
+    <a class="btn" href="https://tcfokullar.vercel.app/basvuru.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        Hemen Başvur
+    </a>
+
+    <p class="footer-note">TCF Okul Sporları Başvuru Sistemi</p>
+</div>
+
+<script>
+    let s = 5;
+    const el = document.getElementById('sec');
+    const timer = setInterval(() => {
+        s--;
+        if (el) el.textContent = s;
+        if (s <= 0) {
+            clearInterval(timer);
+            window.location.href = 'https://tcfokullar.vercel.app/basvuru.html';
+        }
+    }, 1000);
+</script>
+
+</body>
+</html>

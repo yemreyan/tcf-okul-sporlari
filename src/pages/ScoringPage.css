@@ -74,7 +74,7 @@
 }
 
 .btn-toggle-sidebar {
-    display: none;
+    display: flex;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.15);
     width: 44px;
@@ -131,12 +131,24 @@
 /* ─── Sidebar ─── */
 .scoring-sidebar-light {
     width: 380px;
+    min-width: 380px;
     background: white;
     border-right: 1px solid #E2E8F0;
     display: flex;
     flex-direction: column;
     z-index: 5;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+    transition: width 0.3s ease, min-width 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.scoring-sidebar-light.sidebar-collapsed {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    pointer-events: none;
+    border-right: none;
+    box-shadow: none;
 }
 
 .sidebar-controls {
@@ -265,6 +277,60 @@
     color: #64748B;
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+/* ─── Athlete Search Box ─── */
+.athlete-search-box {
+    position: relative;
+    margin-bottom: 0.75rem;
+}
+.athlete-search-icon {
+    position: absolute;
+    left: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #94A3B8;
+    pointer-events: none;
+}
+.athlete-search-input {
+    width: 100%;
+    padding: 0.5rem 2rem 0.5rem 2.2rem;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    background: #F1F5F9;
+    color: #1E293B;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+.athlete-search-input:focus {
+    outline: none;
+    border-color: #3B82F6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.athlete-search-input::placeholder {
+    color: #94A3B8;
+}
+.athlete-search-clear {
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+}
+.athlete-search-clear:hover {
+    color: #EF4444;
+}
+.athlete-search-clear .material-icons-round {
+    font-size: 1rem;
 }
 
 .roster-group { margin-bottom: 1.5rem; }
@@ -655,12 +721,8 @@
 /* ─── Scoring Grid ─── */
 .scoring-grid {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
-}
-
-@media (max-width: 1200px) {
-    .scoring-grid { grid-template-columns: 1fr; }
 }
 
 /* ─── Score Cards ─── */
@@ -817,62 +879,76 @@
 /* ─── Dynamic Skills List ─── */
 .dynamic-skills-list {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 0.25rem;
-    scrollbar-width: thin;
-    scrollbar-color: #CBD5E1 transparent;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.25rem 0;
 }
 
 .skill-row {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
+    gap: 0.45rem;
     background: #F8FAFC;
-    padding: 0.6rem 0.75rem;
-    border-radius: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.875rem;
     border: 1px solid #E2E8F0;
-    border-left: 3px solid #BFDBFE;
+    border-top: 3px solid #BFDBFE;
+    min-width: 90px;
+    flex: 0 0 auto;
+    transition: box-shadow 0.15s;
+}
+
+.skill-row:has(.skill-val-btn.selected) {
+    border-top-color: #3B82F6;
+    background: #EFF6FF;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.12);
 }
 
 .skill-name {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #1E293B;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+    text-align: center;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .skill-btn-group {
     display: flex;
-    gap: 0.4rem;
+    flex-direction: row;
+    gap: 0.3rem;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .skill-val-btn {
     background: white;
     color: #3B82F6;
-    border: 1px solid #E2E8F0;
-    padding: 0.4rem 0.75rem;
+    border: 1.5px solid #E2E8F0;
+    padding: 0.35rem 0.6rem;
     border-radius: 0.5rem;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
+    min-width: 42px;
+    text-align: center;
 }
 
 .skill-val-btn:hover {
     background: #EFF6FF;
-    border-color: #BFDBFE;
+    border-color: #93C5FD;
 }
 
 .skill-val-btn.selected {
     background: #3B82F6;
     color: white;
     border-color: #3B82F6;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+    transform: scale(1.07);
 }
 
 .dynamic-score-display {
@@ -1400,19 +1476,14 @@
 
 @media (max-width: 1024px) {
     /* Tablet landscape & small laptops */
-    .btn-toggle-sidebar { display: flex; }
-
     .scoring-sidebar-light {
         width: 320px;
-        transition: margin-left 0.3s ease, opacity 0.3s ease;
+        min-width: 320px;
     }
 
     .scoring-sidebar-light.sidebar-collapsed {
-        margin-left: -320px;
-        opacity: 0;
-        pointer-events: none;
-        position: absolute;
-        z-index: -1;
+        width: 0;
+        min-width: 0;
     }
 
     .sidebar-controls { padding: 1rem; gap: 0.6rem; }
@@ -1475,7 +1546,8 @@
     }
 
     .scoring-sidebar-light {
-        width: 100%;
+        width: 100% !important;
+        min-width: 0 !important;
         max-height: none;
         border-right: none;
         border-bottom: 1px solid #E2E8F0;
@@ -1484,12 +1556,11 @@
     }
 
     .scoring-sidebar-light.sidebar-collapsed {
-        margin-left: 0;
+        width: 0 !important;
         max-height: 0;
         overflow: hidden;
         opacity: 0;
         border-bottom: none;
-        position: static;
         pointer-events: none;
     }
 
@@ -1571,15 +1642,10 @@
     .quick-d-buttons { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
     .btn-quick-blue { padding: 0.6rem 0; font-size: 1rem; }
 
-    /* Skills list */
-    .dynamic-skills-list { max-height: 300px; }
-    .skill-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-        padding: 0.5rem 0.6rem;
-    }
-    .skill-btn-group { width: 100%; }
+    /* Skills list — mobilde de yatay kal, sadece biraz küçül */
+    .dynamic-skills-list { gap: 0.4rem; }
+    .skill-row { min-width: 76px; padding: 0.5rem 0.5rem; }
+    .skill-btn-group { gap: 0.25rem; }
     .skill-val-btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 
     /* E-Panel */

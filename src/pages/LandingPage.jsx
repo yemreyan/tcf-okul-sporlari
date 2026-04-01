@@ -1,4 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ref, onValue, set } from 'firebase/database';
+import { db } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
 import './LandingPage.css';
 
 const DISCIPLINES = [
@@ -20,7 +24,7 @@ const DISCIPLINES = [
         color: '#EC4899',
         gradient: 'linear-gradient(135deg, #EC4899, #F472B6)',
         path: '/ritmik',
-        active: false,
+        active: true,
     },
     {
         id: 'aerobik',
@@ -40,28 +44,55 @@ const DISCIPLINES = [
         color: '#F59E0B',
         gradient: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
         path: '/parkur',
-        active: false,
+        active: true,
     },
     {
         id: 'trampolin',
         title: 'Trampolin Cimnastik',
         subtitle: 'Trampoline Gymnastics',
         icon: 'height',
-        color: '#EF4444',
-        gradient: 'linear-gradient(135deg, #EF4444, #F87171)',
+        color: '#F97316',
+        gradient: 'linear-gradient(135deg, #F97316, #FB923C)',
         path: '/trampolin',
-        active: false,
+        active: true,
     },
 ];
 
+const SETTING_PATH = 'system_settings/gorevli_kartlari_aktif';
+
 export default function LandingPage() {
     const navigate = useNavigate();
+    const { isAuthenticated, isSuperAdmin } = useAuth();
+    const superAdmin = isAuthenticated && isSuperAdmin();
+
+    const [gorevliAktif, setGorevliAktif] = useState(false);
+    const [toggling, setToggling] = useState(false);
+
+    // Firebase'den ayarı dinle
+    useEffect(() => {
+        const unsub = onValue(ref(db, SETTING_PATH), (snap) => {
+            setGorevliAktif(snap.val() === true);
+        });
+        return () => unsub();
+    }, []);
+
+    const handleToggle = async () => {
+        if (!superAdmin || toggling) return;
+        setToggling(true);
+        try {
+            await set(ref(db, SETTING_PATH), !gorevliAktif);
+        } catch (e) {
+            console.error('Ayar güncellenemedi:', e);
+        }
+        setToggling(false);
+    };
 
     const handleClick = (disc) => {
-        if (disc.active) {
-            navigate(disc.path);
-        }
+        if (disc.active) navigate(disc.path);
     };
+
+    // Araçlar bölümü: süper admin her zaman görür, diğerleri sadece aktifse
+    const showTools = superAdmin || gorevliAktif;
 
     return (
         <div className="landing">
@@ -123,6 +154,45 @@ export default function LandingPage() {
                     ))}
                 </div>
             </main>
+
+            {/* Araçlar — sadece aktifse veya süper admin ise göster */}
+            {showTools && (
+                <section className="landing-main landing-tools">
+                    <h2 className="landing-section-title">
+                        <i className="material-icons-round">build_circle</i>
+                        Araçlar
+                        {/* Süper admin toggle */}
+                        {superAdmin && (
+                            <button
+                                className={`landing-feature-toggle ${gorevliAktif ? 'active' : ''} ${toggling ? 'toggling' : ''}`}
+                                onClick={handleToggle}
+                                title={gorevliAktif ? 'Araçları kapat' : 'Araçları aç'}
+                                disabled={toggling}
+                            >
+                                <div className="lft-track">
+                                    <div className="lft-thumb" />
+                                </div>
+                                <span>{gorevliAktif ? 'Açık' : 'Kapalı'}</span>
+                            </button>
+                        )}
+                    </h2>
+                    <div className="landing-tools-grid">
+                        <button
+                            className="landing-tool-card"
+                            onClick={() => navigate('/gorevli-kartlari')}
+                        >
+                            <div className="landing-tool-card__icon" style={{ background: 'linear-gradient(135deg, #0EA5E9, #38BDF8)' }}>
+                                <i className="material-icons-round">badge</i>
+                            </div>
+                            <div className="landing-tool-card__content">
+                                <h3>Görevli Yaka Kartları</h3>
+                                <span>Antrenör &amp; öğretmen kart çıktısı</span>
+                            </div>
+                            <i className="material-icons-round landing-tool-card__arrow">arrow_forward</i>
+                        </button>
+                    </div>
+                </section>
+            )}
 
             {/* Footer */}
             <footer className="landing-footer">

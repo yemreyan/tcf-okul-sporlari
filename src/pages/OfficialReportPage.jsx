@@ -89,7 +89,7 @@ const OfficialReportPage = () => {
             }
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // Fetch all reports — handles both old nested format and new flat format
     useEffect(() => {

@@ -4,6 +4,10 @@ import { ref, onValue, push, set, remove, update, get } from 'firebase/database'
 import { db } from '../lib/firebase';
 import turkeyData from '../data/turkey_data.json';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults.js';
+import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults.js';
+import { TRAMPOLIN_CATEGORIES } from '../data/trampolinCriteriaDefaults.js';
+import { PARKUR_CATEGORIES } from '../data/parkurCriteriaDefaults.js';
+import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults.js';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
@@ -60,11 +64,31 @@ function formatDateTR(dateStr) {
     return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Artistik kategorileri için Türkçe etiket haritası
+const ARTISTIK_CATEGORY_LABELS = {
+    genc_erkek: 'Genç Erkek',       genc_kiz: 'Genç Kız',
+    kucuk_erkek: 'Küçük Erkek',     kucuk_kiz: 'Küçük Kız',
+    minik_a_erkek: 'Minik A Erkek', minik_a_kiz: 'Minik A Kız',
+    minik_b_erkek: 'Minik B Erkek', minik_b_kiz: 'Minik B Kız',
+    yildiz_erkek: 'Yıldız Erkek',   yildiz_kiz: 'Yıldız Kız',
+};
+
 export default function CompetitionsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, shortLabel: disciplineLabel, theme, id: disciplineId } = useDiscipline();
+
+    // Disipline göre kategori listesi (her branşın kendi criteria'sından)
+    const disciplineCategoryMap = disciplineId === 'aerobik'
+        ? AEROBIK_CATEGORIES
+        : disciplineId === 'trampolin'
+            ? TRAMPOLIN_CATEGORIES
+            : disciplineId === 'parkur'
+                ? PARKUR_CATEGORIES
+                : disciplineId === 'ritmik'
+                    ? RITMIK_CATEGORIES
+                    : {}; // Artistik: ayrı DEFAULT_CRITERIA ile işleniyor
     const [competitions, setCompetitions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -90,6 +114,8 @@ export default function CompetitionsPage() {
         bitisTarihi: todayStr,
         il: '',
         komiteSifresi: '',
+        basvuruKapanmaGunu: 2,
+        basvuruKapaliMi: false,
         selectedCats: []
     });
 
@@ -108,7 +134,7 @@ export default function CompetitionsPage() {
                     return {
                         id: key,
                         ...compData,
-                        name: compData.isim || 'İsimsiz Yarışma',
+                        name: compData.isim || '',
                         baslangicTarihi: baslangic,
                         bitisTarihi: bitis,
                         city: compData.il || '',
@@ -116,6 +142,9 @@ export default function CompetitionsPage() {
                         daysUntilStart: daysUntil(baslangic),
                         categoryCount: compData.kategoriler ? Object.keys(compData.kategoriler).length : 0,
                         athleteCount: countAthletes(compData.sporcular),
+                        basvuruKapaliMi: compData.basvuruKapaliMi || false,
+                        // İsim ya da tarih yoksa sahipsiz (orphan) kayıt
+                        orphan: !compData.isim || !compData.baslangicTarihi,
                     };
                 });
 
@@ -173,8 +202,9 @@ export default function CompetitionsPage() {
         });
     }, [competitions, filterCity, search]);
 
-    const activeComps = filtered.filter(c => c.status === 'active' || c.status === 'upcoming');
-    const pastComps = filtered.filter(c => c.status === 'completed');
+    const orphanComps = filtered.filter(c => c.orphan);
+    const activeComps = filtered.filter(c => !c.orphan && (c.status === 'active' || c.status === 'upcoming'));
+    const pastComps = filtered.filter(c => !c.orphan && c.status === 'completed');
 
     const handleDelete = async (id, name) => {
         const confirmed = await confirm(`"${name}" isimli yarışmayı silmek istediğinize emin misiniz? Tüm başvuru ve sporcu verileri kalıcı olarak silinecektir!`, { title: 'Silme Onayı', type: 'danger' });
@@ -188,6 +218,17 @@ export default function CompetitionsPage() {
         }
     };
 
+    const handleToggleBasvuru = async (comp) => {
+        const newVal = !comp.basvuruKapaliMi;
+        try {
+            await update(ref(db, `${firebasePath}/${comp.id}`), { basvuruKapaliMi: newVal });
+            toast(newVal ? 'Başvurular kapatıldı.' : 'Başvurular açıldı.', newVal ? 'warning' : 'success');
+            logAction('competition_update', `Başvuru durumu değiştirildi: ${comp.name} → ${newVal ? 'Kapalı' : 'Açık'}`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: comp.id });
+        } catch {
+            toast('Güncelleme başarısız!', 'error');
+        }
+    };
+
     const openModal = (comp = null) => {
         if (comp) {
             setEditingComp(comp);
@@ -197,11 +238,13 @@ export default function CompetitionsPage() {
                 bitisTarihi: comp.bitisTarihi || '',
                 il: comp.city || '',
                 komiteSifresi: comp.komiteSifresi || '',
+                basvuruKapanmaGunu: comp.basvuruKapanmaGunu != null ? comp.basvuruKapanmaGunu : 2,
+                basvuruKapaliMi: comp.basvuruKapaliMi || false,
                 selectedCats: comp.kategoriler ? Object.keys(comp.kategoriler) : []
             });
         } else {
             setEditingComp(null);
-            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', komiteSifresi: '', selectedCats: [] });
+            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', komiteSifresi: '', basvuruKapanmaGunu: 2, basvuruKapaliMi: false, selectedCats: [] });
         }
         setIsModalOpen(true);
     };
@@ -220,7 +263,7 @@ export default function CompetitionsPage() {
             toast("Bitiş tarihi başlangıç tarihinden önce olamaz!", "warning");
             return;
         }
-        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il, komiteSifresi: formData.komiteSifresi || null };
+        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il, komiteSifresi: formData.komiteSifresi || null, basvuruKapanmaGunu: Number(formData.basvuruKapanmaGunu) || 0, basvuruKapaliMi: formData.basvuruKapaliMi || false };
 
         // Criteria'dan aktif aletleri çekmek için get kullanalım
         let liveCriteriaData = {};
@@ -237,11 +280,20 @@ export default function CompetitionsPage() {
         const generateKategoriler = (currentKategoriler = {}) => {
             const nextKategoriler = { ...currentKategoriler };
             formData.selectedCats.forEach(catKey => {
-                const sourceData = liveCriteriaData[catKey] || DEFAULT_CRITERIA[catKey];
-                const activeAletler = Object.keys(sourceData || {}).filter(k => k !== 'metadata' && sourceData[k].isActive !== false);
-
+                // Artistik: alet listesini criteria'dan al; Aerobik/Trampolin: alet yok
+                let activeAletler = [];
+                if (disciplineId === 'artistik') {
+                    const sourceData = liveCriteriaData[catKey] || DEFAULT_CRITERIA[catKey];
+                    activeAletler = Object.keys(sourceData || {}).filter(k => k !== 'metadata' && sourceData[k].isActive !== false);
+                }
+                const catConfig = disciplineCategoryMap[catKey] || {};
                 if (!nextKategoriler[catKey]) {
-                    nextKategoriler[catKey] = { name: getCategoryLabel(catKey), aletler: activeAletler };
+                    nextKategoriler[catKey] = {
+                        name: catConfig.label || getCategoryLabel(catKey),
+                        aletler: activeAletler,
+                        athleteCount: catConfig.athleteCount || 1,
+                        tip: catConfig.tip || 'ferdi',
+                    };
                 } else {
                     nextKategoriler[catKey].aletler = activeAletler;
                 }
@@ -403,7 +455,7 @@ export default function CompetitionsPage() {
         } catch { return 0; }
     };
 
-    const getCategoryLabel = (catKey) => catKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const getCategoryLabel = (catKey) => ARTISTIK_CATEGORY_LABELS[catKey] || catKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     const getAletDisplayName = (comp, catId, aletId) => {
         try {
@@ -436,6 +488,15 @@ export default function CompetitionsPage() {
                         <span className="comp-card__countdown">{daysLabel}</span>
                     )}
                     <div className="comp-card__actions">
+                        {hasPermission('competitions', 'duzenle') && comp.status !== 'completed' && (
+                            <button
+                                className={`icon-btn ${comp.basvuruKapaliMi ? 'icon-btn--warning' : ''}`}
+                                onClick={() => handleToggleBasvuru(comp)}
+                                title={comp.basvuruKapaliMi ? 'Başvuruya Aç' : 'Başvuruyu Kapat'}
+                            >
+                                <i className="material-icons-round">{comp.basvuruKapaliMi ? 'lock_open' : 'lock'}</i>
+                            </button>
+                        )}
                         {hasPermission('competitions', 'duzenle') && (
                             <button className="icon-btn" onClick={() => openModal(comp)} title="Düzenle"><i className="material-icons-round">edit</i></button>
                         )}
@@ -444,7 +505,13 @@ export default function CompetitionsPage() {
                         )}
                     </div>
                 </div>
-                <h2 className="comp-card__title">{comp.name}</h2>
+                <h2 className="comp-card__title">
+                    {comp.name}
+                    <span className="comp-discipline-badge" style={{ background: `${theme?.primary || '#4F46E5'}18`, color: theme?.primary || '#4F46E5' }}>
+                        <i className="material-icons-round" style={{ fontSize: 13 }}>sports_gymnastics</i>
+                        {disciplineLabel}
+                    </span>
+                </h2>
                 <div className="comp-card__details">
                     <div className="detail-item">
                         <i className="material-icons-round">calendar_month</i>
@@ -489,7 +556,13 @@ export default function CompetitionsPage() {
                     {conf.label}
                 </div>
                 <div className="comp-row__main">
-                    <span className="comp-row__name">{comp.name}</span>
+                    <span className="comp-row__name">
+                        {comp.name}
+                        <span className="comp-discipline-badge" style={{ background: `${theme?.primary || '#4F46E5'}18`, color: theme?.primary || '#4F46E5' }}>
+                            <i className="material-icons-round" style={{ fontSize: 12 }}>sports_gymnastics</i>
+                            {disciplineLabel}
+                        </span>
+                    </span>
                     <div className="comp-row__meta">
                         <span><i className="material-icons-round">location_on</i>{comp.city || '—'}</span>
                         <span><i className="material-icons-round">calendar_month</i>{formatDateTR(comp.baslangicTarihi)}</span>
@@ -501,6 +574,15 @@ export default function CompetitionsPage() {
                     <span className="comp-row__countdown">{daysLabel}</span>
                 )}
                 <div className="comp-row__actions">
+                    {hasPermission('competitions', 'duzenle') && comp.status !== 'completed' && (
+                        <button
+                            className={`icon-btn ${comp.basvuruKapaliMi ? 'icon-btn--warning' : ''}`}
+                            onClick={() => handleToggleBasvuru(comp)}
+                            title={comp.basvuruKapaliMi ? 'Başvuruya Aç' : 'Başvuruyu Kapat'}
+                        >
+                            <i className="material-icons-round">{comp.basvuruKapaliMi ? 'lock_open' : 'lock'}</i>
+                        </button>
+                    )}
                     {hasPermission('competitions', 'duzenle') && (
                         <button className="icon-btn" onClick={() => openModal(comp)} title="Düzenle"><i className="material-icons-round">edit</i></button>
                     )}
@@ -594,6 +676,45 @@ export default function CompetitionsPage() {
                             <div className="empty-state">
                                 <div className="empty-state__icon"><i className="material-icons-round">event_available</i></div>
                                 <p>{search ? 'Aramanızla eşleşen aktif yarışma bulunamadı.' : 'Aktif veya yaklaşan yarışma bulunmuyor.'}</p>
+                            </div>
+                        )}
+
+                        {orphanComps.length > 0 && (
+                            <div className="orphan-section">
+                                <div className="orphan-section__header">
+                                    <i className="material-icons-round" style={{color:'#ef4444'}}>warning</i>
+                                    <span>Geçersiz Kayıtlar ({orphanComps.length})</span>
+                                    <span className="orphan-section__desc">İsim veya tarih bilgisi eksik olan kayıtlar. Muhtemelen silinmiş yarışmalardan kalan sporcu verileri.</span>
+                                </div>
+                                <div className="comp-list">
+                                    {orphanComps.map(comp => (
+                                        <div key={comp.id} className="comp-card comp-card--orphan">
+                                            <div className="comp-card__header">
+                                                <div className="comp-card__status" style={{backgroundColor:'#fee2e2',color:'#ef4444'}}>
+                                                    <span className="status-dot" style={{backgroundColor:'#ef4444'}}></span>
+                                                    Geçersiz Kayıt
+                                                </div>
+                                                <div className="comp-card__actions">
+                                                    {hasPermission('competitions', 'sil') && (
+                                                        <button className="icon-btn icon-btn--danger" onClick={() => handleDelete(comp.id, comp.id)} title="Sil">
+                                                            <i className="material-icons-round">delete_forever</i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <h2 className="comp-card__title" style={{color:'#9ca3af'}}>
+                                                <i className="material-icons-round" style={{fontSize:16,marginRight:4}}>help_outline</i>
+                                                İsimsiz Kayıt (ID: {comp.id.slice(0,8)}…)
+                                            </h2>
+                                            <div className="comp-card__stats">
+                                                <div className="stat-box">
+                                                    <span className="stat-value" style={{color:'#ef4444'}}>{comp.athleteCount}</span>
+                                                    <span className="stat-label">Sahipsiz Sporcu</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
@@ -763,24 +884,80 @@ export default function CompetitionsPage() {
                                 </div>
                             </div>
                             <div className="form-group form-group--full">
+                                <label><i className="material-icons-round" style={{fontSize:'1rem',verticalAlign:'middle',marginRight:4}}>event_busy</i>Başvuru Kapanma Süresi (Gün)</label>
+                                <input type="number" min="0" max="30" value={formData.basvuruKapanmaGunu} onChange={e => setFormData({ ...formData, basvuruKapanmaGunu: e.target.value })} />
+                                <p className="help-text">Yarışma başlangıç tarihinden kaç gün önce başvurular kapanır. Örn: 2 → başlangıçtan 2 gün önce başvuru kapanır.</p>
+                            </div>
+                            <div className="form-group form-group--full">
+                                <label><i className="material-icons-round" style={{fontSize:'1rem',verticalAlign:'middle',marginRight:4}}>how_to_reg</i>Başvuru Durumu (Manuel Kontrol)</label>
+                                <button
+                                    type="button"
+                                    className={`basvuru-toggle-btn ${formData.basvuruKapaliMi ? 'basvuru-toggle-btn--kapali' : 'basvuru-toggle-btn--acik'}`}
+                                    onClick={() => setFormData({ ...formData, basvuruKapaliMi: !formData.basvuruKapaliMi })}
+                                >
+                                    <i className="material-icons-round">{formData.basvuruKapaliMi ? 'lock' : 'lock_open'}</i>
+                                    {formData.basvuruKapaliMi ? 'Başvurular Kapalı — Açmak için tıkla' : 'Başvurular Açık — Kapatmak için tıkla'}
+                                </button>
+                                <p className="help-text">Bu seçenek tarih hesabından bağımsız olarak başvuruları anında açar veya kapatır.</p>
+                            </div>
+                            <div className="form-group form-group--full">
                                 <label><i className="material-icons-round" style={{fontSize:'1rem',verticalAlign:'middle',marginRight:4}}>lock</i>Komite Şifresi (Puan Kilidi)</label>
                                 <input type="text" placeholder="Puan kilidini açmak için kullanılacak şifre" value={formData.komiteSifresi} onChange={e => setFormData({ ...formData, komiteSifresi: e.target.value })} />
                                 <p className="help-text">Kaydedilen puanları düzenlemek için bu şifre veya süper admin şifresi gerekir.</p>
                             </div>
                             <div className="form-group form-group--full category-selection-box">
                                 <label>Yarışma Kategorileri</label>
-                                <p className="help-text">Seçilen kategoriler 2026 sezonu aletleriyle birlikte otomatik olarak eklenecektir.</p>
-                                <div className="category-checkbox-grid">
-                                    {Object.keys(DEFAULT_CRITERIA).map(catKey => {
-                                        const isChecked = formData.selectedCats.includes(catKey);
-                                        return (
-                                            <div key={catKey} className={`cat-checkbox ${isChecked ? 'cat-checkbox--checked' : ''}`} onClick={() => handleCatToggle(catKey)}>
-                                                <div className={`checkbox-indicator ${isChecked ? 'checked' : ''}`}>{isChecked && <i className="material-icons-round">check</i>}</div>
-                                                <span>{getCategoryLabel(catKey)}</span>
+                                <p className="help-text">
+                                    {disciplineId === 'artistik'
+                                        ? 'Seçilen kategoriler 2026 sezonu aletleriyle birlikte otomatik olarak eklenecektir.'
+                                        : `${disciplineLabel} branşı için resmi 2025-2026 kategorileri (GSB talimatnamesi).`}
+                                </p>
+                                {/* Aerobik/Trampolin: gruplu gösterim */}
+                                {disciplineId !== 'artistik' ? (
+                                    (() => {
+                                        const groups = {};
+                                        Object.entries(disciplineCategoryMap).forEach(([key, cat]) => {
+                                            const g = cat.group || 'Diğer';
+                                            if (!groups[g]) groups[g] = [];
+                                            groups[g].push({ key, cat });
+                                        });
+                                        return Object.entries(groups).map(([groupName, items]) => (
+                                            <div key={groupName} style={{ marginBottom: '12px' }}>
+                                                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '6px' }}>
+                                                    {groupName}
+                                                </div>
+                                                <div className="category-checkbox-grid">
+                                                    {items.map(({ key: catKey, cat }) => {
+                                                        const isChecked = formData.selectedCats.includes(catKey);
+                                                        return (
+                                                            <div key={catKey} className={`cat-checkbox ${isChecked ? 'cat-checkbox--checked' : ''}`} onClick={() => handleCatToggle(catKey)}>
+                                                                <div className={`checkbox-indicator ${isChecked ? 'checked' : ''}`}>{isChecked && <i className="material-icons-round">check</i>}</div>
+                                                                <span>{cat.label || getCategoryLabel(catKey)}</span>
+                                                                {cat.athleteCount > 1 && (
+                                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: 4 }}>
+                                                                        ({cat.athleteCount} kişi)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        ));
+                                    })()
+                                ) : (
+                                    <div className="category-checkbox-grid">
+                                        {Object.keys(DEFAULT_CRITERIA).map(catKey => {
+                                            const isChecked = formData.selectedCats.includes(catKey);
+                                            return (
+                                                <div key={catKey} className={`cat-checkbox ${isChecked ? 'cat-checkbox--checked' : ''}`} onClick={() => handleCatToggle(catKey)}>
+                                                    <div className={`checkbox-indicator ${isChecked ? 'checked' : ''}`}>{isChecked && <i className="material-icons-round">check</i>}</div>
+                                                    <span>{getCategoryLabel(catKey)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className="modal__footer">
                                 <button type="button" className="btn btn--secondary" onClick={() => setIsModalOpen(false)}>İptal</button>

@@ -73,13 +73,13 @@ export default function AnalyticsPage() {
 
     const availableCities = useMemo(() => {
         const all = filterCompetitionsByUser(rawCompetitions, currentUser);
-        return [...new Set(Object.values(all).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        return [...new Set(Object.values(all).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
     }, [rawCompetitions, currentUser]);
 
     const competitionsList = useMemo(() => {
         const all = filterCompetitionsByUser(rawCompetitions, currentUser);
         return Object.entries(all)
-            .filter(([id, c]) => !selectedCity || (c.il || c.city) === selectedCity)
+            .filter(([id, c]) => !selectedCity || (c.il || c.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
             .map(([id, c]) => ({ id, isim: c.isim || 'İsimsiz' }));
     }, [rawCompetitions, currentUser, selectedCity]);
 

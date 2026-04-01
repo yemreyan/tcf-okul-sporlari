@@ -212,6 +212,89 @@
     color: var(--red);
 }
 
+.icon-btn--warning {
+    color: #D97706;
+}
+.icon-btn--warning:hover {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+/* Başvuru toggle butonu (form içi) */
+.basvuru-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 2px solid;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+}
+.basvuru-toggle-btn--acik {
+    background: #f0fdf4;
+    border-color: #22c55e;
+    color: #15803d;
+}
+.basvuru-toggle-btn--acik:hover {
+    background: #dcfce7;
+}
+.basvuru-toggle-btn--kapali {
+    background: #fff7ed;
+    border-color: #f97316;
+    color: #c2410c;
+}
+.basvuru-toggle-btn--kapali:hover {
+    background: #ffedd5;
+}
+
+/* Orphan (geçersiz) yarışma bölümü */
+.orphan-section {
+    margin-top: 40px;
+    border: 2px dashed #fca5a5;
+    border-radius: 16px;
+    padding: 20px;
+    background: #fff5f5;
+}
+.orphan-section__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #ef4444;
+}
+.orphan-section__desc {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: #9ca3af;
+    margin-left: 4px;
+}
+.comp-card--orphan {
+    opacity: 0.8;
+    border: 1px dashed #fca5a5;
+    background: #fff;
+}
+
+.comp-discipline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+    vertical-align: middle;
+    white-space: nowrap;
+    letter-spacing: .03em;
+}
+
 .comp-card__title {
     font-size: 1.15rem;
     font-weight: 800;

@@ -25,6 +25,7 @@ export default function StartOrderPage() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [pdfGenerating, setPdfGenerating] = useState(false);
+    const [excelGenerating, setExcelGenerating] = useState(false);
     const [bulkAssigning, setBulkAssigning] = useState(false);
 
     // Toast System
@@ -105,10 +106,14 @@ export default function StartOrderPage() {
                         if (!isNaN(rotIndex)) {
                             if (rotIndex > maxRotIndex) maxRotIndex = rotIndex;
                             const athletesInRot = orderData[rotKey];
+                            // athletesInRot null veya object değilse bu rotasyonu atla
+                            if (!athletesInRot || typeof athletesInRot !== 'object') return;
                             const sortedAthletes = Object.keys(athletesInRot).map(id => {
                                 const athDetails = loadedAthletes.find(a => a.id === id);
-                                return athDetails ? { ...athDetails, sirasi: athletesInRot[id].sirasi } : null;
-                            }).filter(a => a !== null).sort((a, b) => a.sirasi - b.sirasi);
+                                const rotEntry = athletesInRot[id];
+                                const sirasi = rotEntry && typeof rotEntry === 'object' ? rotEntry.sirasi : 999;
+                                return athDetails ? { ...athDetails, sirasi } : null;
+                            }).filter(a => a !== null).sort((a, b) => (a.sirasi || 999) - (b.sirasi || 999));
 
                             rotationsMap[rotIndex] = sortedAthletes;
                             sortedAthletes.forEach(a => {
@@ -127,7 +132,7 @@ export default function StartOrderPage() {
                 setRotations(currentRotations);
                 setUnassigned(currentUnassigned);
             } catch (err) {
-                if (import.meta.env.DEV) console.error('Load error:', err);
+                console.error('StartOrder loadData error:', err);
             } finally {
                 setLoading(false);
             }
@@ -135,6 +140,55 @@ export default function StartOrderPage() {
 
         loadData();
     }, [selectedCompId, filterCategory]);
+
+    // -- Firebase ID Sırasına Göre Atama (Kayıt Sırası) --
+    const handleSortByFirebaseId = async () => {
+        if (!selectedCompId || !filterCategory) {
+            showToast('Lütfen yarışma ve kategori seçin.', 'warning');
+            return;
+        }
+
+        let allAthletes = [...unassigned, ...rotations.flat()];
+
+        if (allAthletes.length === 0) {
+            const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+            const data = snap.val();
+            if (data) {
+                allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+            }
+        }
+
+        if (allAthletes.length === 0) {
+            showToast('Bu kategoride sporcu bulunamadı.', 'warning');
+            return;
+        }
+
+        if (rotations.some(r => r.length > 0)) {
+            const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
+            if (!confirmed) return;
+            allAthletes = [...unassigned, ...rotations.flat()];
+            if (allAthletes.length === 0) {
+                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+                const data = snap.val();
+                if (data) {
+                    allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+                }
+            }
+        }
+
+        // Firebase ID'ye göre küçükten büyüğe sırala (= kayıt/başvuru sırası)
+        allAthletes.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+        // Gruplara böl (max MAX_PER_ROTATION)
+        const newRotations = [];
+        for (let i = 0; i < allAthletes.length; i += MAX_PER_ROTATION) {
+            newRotations.push(allAthletes.slice(i, i + MAX_PER_ROTATION));
+        }
+
+        setRotations(newRotations);
+        setUnassigned([]);
+        showToast(`Kayıt sırasına göre atama yapıldı. ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+    };
 
     // -- Random Assignment Logic --
     // Kural: Takım grupları ayrı, ferdi grupları ayrı. Dengeli dağılım. Max 8/grup.
@@ -639,6 +693,7 @@ export default function StartOrderPage() {
 
             if (allCategories.length === 0) {
                 showToast("Bu yarışma için kategori bulunamadı.", 'warning');
+                setPdfGenerating(false);
                 return;
             }
 
@@ -774,7 +829,7 @@ export default function StartOrderPage() {
                         margin: { left: 14 },
                     });
 
-                    startY = doc.lastAutoTable.finalY + 12;
+                    startY = (doc.lastAutoTable?.finalY ?? (startY + tableData.length * 8 + 15)) + 12;
 
                     if (startY > doc.internal.pageSize.getHeight() - 30) {
                         doc.addPage();
@@ -785,6 +840,7 @@ export default function StartOrderPage() {
 
             if (pageCount === 0) {
                 showToast("Henüz hiçbir kategoride sıralama yapılmamış.", 'warning');
+                setPdfGenerating(false);
                 return;
             }
 
@@ -799,13 +855,163 @@ export default function StartOrderPage() {
     };
 
 
-    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    // ===== EXCEL EXPORT =====
+    const CATEGORY_LABELS = {
+        'genc_erkek': 'GENÇ ERKEKLER', 'genc_kiz': 'GENÇ KIZLAR',
+        'kucuk_erkek': 'KÜÇÜK ERKEKLER', 'kucuk_kiz': 'KÜÇÜK KIZLAR',
+        'minik_a_erkek': 'MİNİK A ERKEKLER', 'minik_a_kiz': 'MİNİK A KIZLAR',
+        'minik_b_erkek': 'MİNİK B ERKEKLER', 'minik_b_kiz': 'MİNİK B KIZLAR',
+        'yildiz_erkek': 'YILDIZ ERKEKLER', 'yildiz_kiz': 'YILDIZ KIZLAR'
+    };
+
+    const handleExportExcel = async () => {
+        if (!selectedCompId) { showToast("Dışa aktarmak için yarışma seçiniz.", 'warning'); return; }
+        if (excelGenerating) return;
+        setExcelGenerating(true);
+
+        try {
+            const XLSX = await import('xlsx');
+            const comp = competitions[selectedCompId];
+            const compName = comp?.isim || 'Yarışma';
+            const compTarih = comp?.tarih || '';
+
+            // Tarih formatla
+            let tarihStr = '';
+            if (compTarih) {
+                try {
+                    const d = new Date(compTarih);
+                    tarihStr = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+                } catch { tarihStr = compTarih; }
+            }
+
+            const allCategories = Object.keys(comp?.sporcular || {}).sort();
+            if (allCategories.length === 0) {
+                showToast("Bu yarışma için kategori bulunamadı.", 'warning');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            for (const category of allCategories) {
+                // Sporcuları ve sıralamayı çek
+                const [athletesSnap, siraSnap] = await Promise.all([
+                    get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${category}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${category}`))
+                ]);
+
+                const athletesData = athletesSnap.val() || {};
+                const athletes = Object.entries(athletesData).map(([id, data]) => ({ ...data, id }));
+                const siraData = siraSnap.val();
+
+                // Rotasyonları oluştur
+                const catRotations = [];
+                if (siraData) {
+                    let maxIdx = -1;
+                    Object.keys(siraData).forEach(rotKey => {
+                        const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                        if (!isNaN(rotIndex) && rotIndex > maxIdx) maxIdx = rotIndex;
+                    });
+                    for (let i = 0; i <= maxIdx; i++) catRotations.push([]);
+                    Object.keys(siraData).forEach(rotKey => {
+                        const rotIndex = parseInt(rotKey.replace('rotation_', ''));
+                        if (!isNaN(rotIndex)) {
+                            const athletesInRot = siraData[rotKey];
+                            catRotations[rotIndex] = Object.keys(athletesInRot)
+                                .map(id => {
+                                    const ath = athletes.find(a => a.id === id);
+                                    return ath ? { ...ath, sirasi: athletesInRot[id].sirasi } : null;
+                                })
+                                .filter(Boolean)
+                                .sort((a, b) => a.sirasi - b.sirasi);
+                        }
+                    });
+                }
+
+                if (!catRotations.some(r => r.length > 0)) continue;
+
+                const catLabel = CATEGORY_LABELS[category] || category.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const sheetTitle = `${tarihStr ? tarihStr + ' ' : ''}${catLabel} YARIŞMA LİSTESİ`;
+
+                // Sheet verisi oluştur
+                const rows = [];
+                // Boş satır + Başlık
+                rows.push([]);
+                rows.push([]);
+                rows.push(['', '', sheetTitle, '', '']);
+
+                let globalOrder = 0;
+
+                catRotations.forEach((rotation, groupIndex) => {
+                    if (rotation.length === 0) return;
+                    // Grup başlığı
+                    rows.push(['SIRA', '', 'GENEL ISINMA', '', '']);
+
+                    rotation.forEach(ath => {
+                        globalOrder++;
+                        rows.push([
+                            globalOrder,
+                            '',
+                            ath.okul || '',
+                            ath.ad || '',
+                            ath.soyad || ''
+                        ]);
+                    });
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+
+                // Sütun genişlikleri
+                ws['!cols'] = [
+                    { wch: 6 },   // A: SIRA
+                    { wch: 4 },   // B: boş
+                    { wch: 45 },  // C: Okul
+                    { wch: 20 },  // D: Ad
+                    { wch: 20 },  // E: Soyad
+                ];
+
+                // Başlık satırını birleştir
+                ws['!merges'] = [
+                    { s: { r: 2, c: 1 }, e: { r: 2, c: 4 } } // Başlık birleştirme
+                ];
+
+                // Grup başlık satırlarını birleştir (GENEL ISINMA)
+                let rowIdx = 3;
+                catRotations.forEach(rotation => {
+                    if (rotation.length === 0) return;
+                    ws['!merges'].push({ s: { r: rowIdx, c: 2 }, e: { r: rowIdx, c: 4 } });
+                    rowIdx += 1 + rotation.length;
+                });
+
+                // Sheet adını kısalt (max 31 karakter)
+                let sheetName = catLabel;
+                if (sheetName.length > 31) sheetName = sheetName.substring(0, 31);
+
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
+
+            if (wb.SheetNames.length === 0) {
+                showToast("Henüz hiçbir kategoride sıralama yapılmamış.", 'warning');
+                return;
+            }
+
+            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
+            XLSX.writeFile(wb, `${safeCompName}_Cikis_Sirasi.xlsx`);
+            showToast("Excel başarıyla oluşturuldu.", 'success');
+        } catch (err) {
+            console.error('Excel oluşturma hatası:', err);
+            showToast('Excel oluşturulurken bir hata oluştu: ' + err.message, 'error');
+        } finally {
+            setExcelGenerating(false);
+        }
+    };
+
+    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
     const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity)
+        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
         .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih));
     let uniqueCategories = [];
     if (selectedCompId && competitions[selectedCompId]?.sporcular) {
-        uniqueCategories = Object.keys(competitions[selectedCompId].sporcular);
+        uniqueCategories = Object.keys(competitions[selectedCompId].sporcular).filter(k => k && k !== 'undefined');
     }
 
     return (
@@ -835,17 +1041,30 @@ export default function StartOrderPage() {
                         </button>
                     )}
                     {hasPermission('start_order', 'pdf') && (
-                        <button
-                            className="btn-bento-secondary"
-                            onClick={handleExportPDF}
-                            title="Tüm kategorileri PDF olarak indir"
-                            disabled={!selectedCompId || pdfGenerating}
-                        >
-                            {pdfGenerating
-                                ? <><div className="spinner-small"></div><span>Hazırlanıyor...</span></>
-                                : <><i className="material-icons-round">picture_as_pdf</i><span>PDF İndir</span></>
-                            }
-                        </button>
+                        <>
+                            <button
+                                className="btn-bento-secondary"
+                                onClick={handleExportExcel}
+                                title="Tüm kategorileri Excel olarak indir"
+                                disabled={!selectedCompId || excelGenerating}
+                            >
+                                {excelGenerating
+                                    ? <><div className="spinner-small"></div><span>Hazırlanıyor...</span></>
+                                    : <><i className="material-icons-round">table_view</i><span>Excel İndir</span></>
+                                }
+                            </button>
+                            <button
+                                className="btn-bento-secondary"
+                                onClick={handleExportPDF}
+                                title="Tüm kategorileri PDF olarak indir"
+                                disabled={!selectedCompId || pdfGenerating}
+                            >
+                                {pdfGenerating
+                                    ? <><div className="spinner-small"></div><span>Hazırlanıyor...</span></>
+                                    : <><i className="material-icons-round">picture_as_pdf</i><span>PDF İndir</span></>
+                                }
+                            </button>
+                        </>
                     )}
                     {hasPermission('start_order', 'duzenle') && (
                         <button
@@ -900,14 +1119,25 @@ export default function StartOrderPage() {
                     </div>
 
                     {hasPermission('start_order', 'duzenle') && (
-                        <button
-                            className="btn-random-assign"
-                            onClick={handleRandomAssign}
-                            disabled={!selectedCompId || !filterCategory}
-                        >
-                            <i className="material-icons-round">auto_awesome</i>
-                            Rastgele Atama Yap
-                        </button>
+                        <>
+                            <button
+                                className="btn-random-assign"
+                                onClick={handleSortByFirebaseId}
+                                disabled={!selectedCompId || !filterCategory}
+                                title="Sporcuları başvuru/kayıt sırasına göre (Firebase ID küçükten büyüğe) gruplara ata"
+                            >
+                                <i className="material-icons-round">format_list_numbered</i>
+                                Kayıt Sırasına Göre Ata
+                            </button>
+                            <button
+                                className="btn-random-assign"
+                                onClick={handleRandomAssign}
+                                disabled={!selectedCompId || !filterCategory}
+                            >
+                                <i className="material-icons-round">auto_awesome</i>
+                                Rastgele Atama Yap
+                            </button>
+                        </>
                     )}
                 </div>
 

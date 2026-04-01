@@ -1,0 +1,534 @@
+/* ═══════════════════════════════════════════════════
+   Trampolin Cimnastik — Puanlama Sayfası
+   Tema: Turuncu (#F97316)
+   ═══════════════════════════════════════════════════ */
+
+:root {
+    --tra-primary:        #F97316;
+    --tra-primary-dark:   #C2410C;
+    --tra-primary-light:  #FFF7ED;
+    --tra-primary-muted:  rgba(249,115,22,0.12);
+    --tra-bg:             #0f1117;
+    --tra-surface:        #161b27;
+    --tra-surface2:       #1e2535;
+    --tra-border:         rgba(255,255,255,0.08);
+    --tra-text:           #F1F5F9;
+    --tra-text-sec:       #94A3B8;
+    --tra-green:          #22C55E;
+    --tra-red:            #EF4444;
+    --tra-blue:           #60A5FA;
+    --tra-amber:          #FBBF24;
+    --tra-sidebar-w:      280px;
+}
+
+/* ── Layout ── */
+.tra-page {
+    display: flex;
+    min-height: 100vh;
+    background: var(--tra-bg);
+    color: var(--tra-text);
+    font-family: 'Inter', system-ui, sans-serif;
+    position: relative;
+}
+
+/* ── Sidebar Toggle ── */
+.tra-sidebar-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    background: var(--tra-primary);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(249,115,22,0.4);
+    transition: background 0.2s, transform 0.2s;
+}
+.tra-sidebar-toggle:hover { background: var(--tra-primary-dark); transform: scale(1.05); }
+.tra-page--collapsed .tra-sidebar-toggle { left: 16px; }
+
+/* ── Sidebar ── */
+.tra-sidebar {
+    width: var(--tra-sidebar-w);
+    min-height: 100vh;
+    background: var(--tra-surface);
+    border-right: 1px solid var(--tra-border);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.tra-sidebar--collapsed {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+.tra-sidebar-inner {
+    width: var(--tra-sidebar-w);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 2rem;
+}
+
+/* Sidebar Header */
+.tra-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--tra-border);
+    padding-top: 64px;
+}
+.tra-back-btn {
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--tra-text-sec);
+    display: flex;
+    align-items: center;
+    transition: color 0.2s, border-color 0.2s;
+}
+.tra-back-btn:hover { color: var(--tra-primary); border-color: var(--tra-primary); }
+.tra-sidebar-title { font-weight: 700; font-size: 14px; color: var(--tra-text); }
+.tra-sidebar-sub   { font-size: 11px; color: var(--tra-primary); margin-top: 2px; }
+
+/* Filters */
+.tra-filters { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.tra-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.tra-filter-group label { font-size: 11px; color: var(--tra-text-sec); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.tra-filter-group select {
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 8px;
+    color: var(--tra-text);
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.tra-filter-group select:focus { outline: none; border-color: var(--tra-primary); }
+
+/* Athlete List */
+.tra-athlete-list { padding: 0 16px; flex: 1; }
+.tra-athlete-list-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--tra-text-sec);
+    margin-bottom: 10px;
+}
+.tra-athlete-list-title .material-icons-round { font-size: 14px; color: var(--tra-primary); }
+
+.tra-rotation-group { margin-bottom: 12px; }
+.tra-rotation-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--tra-text-sec); margin-bottom: 6px; padding-left: 4px; }
+
+.tra-athlete-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--tra-text);
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 3px;
+    text-align: left;
+}
+.tra-athlete-item:hover { background: var(--tra-surface2); border-color: var(--tra-border); }
+.tra-athlete-item--active { background: var(--tra-primary-muted) !important; border-color: var(--tra-primary) !important; }
+
+.tra-ath-num { font-size: 11px; color: var(--tra-text-sec); min-width: 18px; font-weight: 600; }
+.tra-ath-name { flex: 1; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tra-ath-badge .material-icons-round { font-size: 16px; }
+.tra-ath-badge--bekliyor .material-icons-round    { color: var(--tra-text-sec); }
+.tra-ath-badge--tamamlandi .material-icons-round  { color: var(--tra-green); }
+.tra-ath-badge--kilitli .material-icons-round     { color: var(--tra-amber); }
+
+/* ── Main ── */
+.tra-main {
+    flex: 1;
+    padding: 72px 24px 40px;
+    overflow-y: auto;
+    max-width: 860px;
+}
+
+/* Empty State */
+.tra-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 12px;
+    color: var(--tra-text-sec);
+}
+.tra-empty-state .material-icons-round { font-size: 56px; color: var(--tra-primary); opacity: .4; }
+.tra-empty-state p { font-size: 15px; }
+.tra-empty-sub { font-size: 13px; opacity: .7; }
+.tra-empty { font-size: 12px; color: var(--tra-text-sec); padding: 8px 0; text-align: center; }
+
+/* ── Scoring Wrap ── */
+.tra-scoring-wrap { display: flex; flex-direction: column; gap: 16px; }
+
+/* Athlete Header */
+.tra-athlete-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--tra-surface);
+    border: 1px solid var(--tra-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+}
+.tra-athlete-name { font-size: 20px; font-weight: 700; color: var(--tra-text); }
+.tra-athlete-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.tra-athlete-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--tra-text-sec);
+}
+.tra-athlete-meta .material-icons-round { font-size: 14px; color: var(--tra-primary); }
+.tra-athlete-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Buttons */
+.tra-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+}
+.tra-btn:disabled { opacity: .45; cursor: not-allowed; }
+.tra-btn--call    { background: var(--tra-primary); color: #fff; }
+.tra-btn--call:hover { background: var(--tra-primary-dark); }
+.tra-btn--lock    { background: rgba(34,197,94,0.15); color: var(--tra-green); border: 1px solid rgba(34,197,94,0.3); }
+.tra-btn--unlock  { background: rgba(251,191,36,0.15); color: var(--tra-amber); border: 1px solid rgba(251,191,36,0.3); }
+.tra-btn--submit  { background: var(--tra-primary); color: #fff; font-size: 15px; padding: 12px 28px; }
+.tra-btn--submit:hover { background: var(--tra-primary-dark); }
+.tra-btn--cancel  { background: var(--tra-surface2); color: var(--tra-text-sec); border: 1px solid var(--tra-border); }
+.tra-btn--confirm { background: var(--tra-primary); color: #fff; }
+.tra-btn--confirm:hover { background: var(--tra-primary-dark); }
+.tra-btn--next    { background: rgba(96,165,250,0.15); color: var(--tra-blue); border: 1px solid rgba(96,165,250,0.3); }
+
+.tra-called-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--tra-green);
+    background: rgba(34,197,94,0.1); border-radius: 8px; padding: 6px 12px;
+    border: 1px solid rgba(34,197,94,0.2);
+}
+.tra-called-badge .material-icons-round { font-size: 15px; }
+
+.tra-locked-banner {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 10px; padding: 10px 16px; font-size: 13px; color: var(--tra-amber);
+}
+.tra-locked-banner .material-icons-round { font-size: 18px; }
+
+/* ── Cards ── */
+.tra-card {
+    background: var(--tra-surface);
+    border: 1px solid var(--tra-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.tra-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--tra-border);
+    background: rgba(255,255,255,0.02);
+}
+.tra-card-label {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800;
+    flex-shrink: 0;
+}
+.tra-card-label--d   { background: rgba(96,165,250,0.15); color: var(--tra-blue); }
+.tra-card-label--e   { background: rgba(34,197,94,0.15);  color: var(--tra-green); }
+.tra-card-label--t   { background: rgba(249,115,22,0.15); color: var(--tra-primary); }
+.tra-card-label--s   { background: rgba(251,191,36,0.15); color: var(--tra-amber); }
+.tra-card-label--ded { background: rgba(239,68,68,0.15);  color: var(--tra-red); }
+
+.tra-card-title { font-size: 14px; font-weight: 700; }
+.tra-card-desc  { font-size: 12px; color: var(--tra-text-sec); flex: 1; }
+.tra-score-chip {
+    font-size: 16px; font-weight: 800;
+    padding: 4px 12px; border-radius: 20px;
+    margin-left: auto;
+}
+.tra-score-chip--d   { background: rgba(96,165,250,0.12); color: var(--tra-blue); }
+.tra-score-chip--e   { background: rgba(34,197,94,0.12);  color: var(--tra-green); }
+.tra-score-chip--t   { background: rgba(249,115,22,0.12); color: var(--tra-primary); }
+.tra-score-chip--s   { background: rgba(251,191,36,0.12); color: var(--tra-amber); }
+.tra-score-chip--ded { background: rgba(239,68,68,0.12);  color: var(--tra-red); }
+
+/* ── D Skills Grid ── */
+.tra-skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    padding: 14px 18px;
+}
+.tra-skill-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.tra-skill-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--tra-text-sec);
+    background: var(--tra-surface2);
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+}
+.tra-skill-select {
+    width: 100%;
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 8px;
+    color: var(--tra-text);
+    padding: 6px 4px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.tra-skill-select:focus { outline: none; border-color: var(--tra-blue); }
+.tra-skill-select:not([value=""]) { color: var(--tra-blue); border-color: rgba(96,165,250,0.4); }
+
+/* ── E Judges Row ── */
+.tra-judges-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 18px;
+}
+.tra-judge-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 72px;
+}
+.tra-judge-cell label { font-size: 11px; font-weight: 700; color: var(--tra-text-sec); }
+.tra-judge-cell input {
+    width: 72px;
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 8px;
+    color: var(--tra-text);
+    padding: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+.tra-judge-cell input:focus { outline: none; border-color: var(--tra-green); }
+.tra-judge-result { font-size: 11px; color: var(--tra-green); font-weight: 600; }
+
+/* ── ToF ── */
+.tra-tof-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+}
+.tra-tof-input {
+    width: 160px;
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 10px;
+    color: var(--tra-primary);
+    padding: 12px 16px;
+    font-size: 20px;
+    font-weight: 800;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+.tra-tof-input:focus { outline: none; border-color: var(--tra-primary); }
+.tra-tof-unit { font-size: 13px; color: var(--tra-text-sec); }
+
+/* ── Deductions ── */
+.tra-ded-section { padding: 12px 18px; border-top: 1px solid var(--tra-border); }
+.tra-ded-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; color: var(--tra-text-sec);
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 10px;
+}
+.tra-ded-label .material-icons-round { font-size: 15px; color: var(--tra-red); }
+
+/* HD Options */
+.tra-hd-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.tra-hd-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--tra-border);
+    background: var(--tra-surface2);
+    color: var(--tra-text-sec);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.tra-hd-btn:hover { border-color: var(--tra-red); color: var(--tra-red); }
+.tra-hd-btn--active { background: rgba(239,68,68,0.15); border-color: var(--tra-red); color: var(--tra-red); }
+.tra-hd-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Penalties */
+.tra-penalties-grid { display: flex; flex-direction: column; gap: 10px; }
+.tra-penalty-item { display: flex; align-items: center; gap: 12px; }
+.tra-penalty-item label { font-size: 13px; color: var(--tra-text); min-width: 140px; }
+.tra-penalty-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.tra-pen-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--tra-border);
+    background: var(--tra-surface2);
+    color: var(--tra-text-sec);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.tra-pen-btn:hover { border-color: var(--tra-red); color: var(--tra-red); }
+.tra-pen-btn--active { background: rgba(239,68,68,0.15); border-color: var(--tra-red); color: var(--tra-red); }
+.tra-pen-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Final Bar ── */
+.tra-final-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--tra-surface);
+    border: 1px solid var(--tra-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
+    flex-wrap: wrap;
+}
+.tra-final-breakdown {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    font-size: 13px;
+    color: var(--tra-text-sec);
+}
+.tra-final-breakdown strong { color: var(--tra-text); font-weight: 700; }
+.tra-final-score {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--tra-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 100px;
+    text-align: right;
+}
+
+/* ── Modals ── */
+.tra-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    backdrop-filter: blur(4px);
+}
+.tra-modal {
+    background: var(--tra-surface);
+    border: 1px solid var(--tra-border);
+    border-radius: 18px;
+    padding: 28px 32px;
+    min-width: 320px;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.tra-modal--success { border-color: rgba(34,197,94,0.3); }
+.tra-modal-icon { font-size: 48px; color: var(--tra-green); text-align: center; }
+.tra-modal-title { font-size: 18px; font-weight: 700; text-align: center; }
+.tra-modal-athlete { font-size: 15px; font-weight: 600; text-align: center; color: var(--tra-text-sec); }
+.tra-modal-breakdown { display: flex; flex-direction: column; gap: 6px; background: var(--tra-surface2); border-radius: 10px; padding: 14px; }
+.tra-modal-breakdown div { display: flex; justify-content: space-between; font-size: 14px; }
+.tra-modal-breakdown span { color: var(--tra-text-sec); }
+.tra-modal-breakdown strong { color: var(--tra-text); font-weight: 700; }
+.tra-modal-final { font-size: 36px; font-weight: 900; color: var(--tra-primary); text-align: center; }
+.tra-modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+.tra-unlock-input {
+    width: 100%;
+    background: var(--tra-surface2);
+    border: 1px solid var(--tra-border);
+    border-radius: 8px;
+    color: var(--tra-text);
+    padding: 10px 14px;
+    font-size: 16px;
+}
+.tra-unlock-input:focus { outline: none; border-color: var(--tra-primary); }
+.tra-unlock-error { color: var(--tra-red); font-size: 13px; text-align: center; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .tra-page { flex-direction: column; }
+    .tra-sidebar {
+        width: 100%;
+        min-height: auto;
+        max-height: 45vh;
+    }
+    .tra-sidebar--collapsed { max-height: 0; }
+    .tra-sidebar-inner { width: 100%; }
+    .tra-main { padding: 16px 12px 80px; }
+    .tra-final-bar { flex-direction: column; align-items: stretch; }
+    .tra-final-score { text-align: center; }
+    .tra-btn--submit { width: 100%; justify-content: center; }
+    .tra-skills-grid { grid-template-columns: repeat(5, 1fr); }
+    .tra-judges-row { gap: 8px; }
+    .tra-penalty-item { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+    .tra-skills-grid { grid-template-columns: repeat(4, 1fr); }
+    .tra-athlete-header { flex-direction: column; }
+}

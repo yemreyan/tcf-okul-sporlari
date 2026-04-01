@@ -50,6 +50,7 @@ export default function ScoringPage() {
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [athleteSearch, setAthleteSearch] = useState('');
 
     // Score Lock State
     const [scoreLocked, setScoreLocked] = useState(false);
@@ -77,7 +78,7 @@ export default function ScoringPage() {
             setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, firebasePath]);
 
     // 2. Load active year from Firebase
     useEffect(() => {
@@ -129,7 +130,9 @@ export default function ScoringPage() {
             if (orderData) {
                 // Güncel sporcu listesini al — kategorisi değişmiş sporcuları filtrele
                 const athSnap = await get(athletesRef);
-                const validIds = new Set(athSnap.exists() ? Object.keys(athSnap.val()) : []);
+                const allAthData = athSnap.exists() ? athSnap.val() : {};
+                const validIds = new Set(Object.keys(allAthData));
+                const assignedIds = new Set();
 
                 const maxRots = Math.max(...Object.keys(orderData).map(k => parseInt(k.replace('rotation_', ''))).filter(n => !isNaN(n)));
 
@@ -138,24 +141,34 @@ export default function ScoringPage() {
                     if (rotData) {
                         const athArr = Object.keys(rotData)
                             .filter(id => validIds.size === 0 || validIds.has(id))
-                            .map(id => ({ id, ...rotData[id] }))
+                            .map(id => {
+                                assignedIds.add(id);
+                                return { id, ...rotData[id] };
+                            })
                             .sort((a, b) => a.sirasi - b.sirasi);
                         formattedRotations.push(athArr);
                     } else {
                         formattedRotations.push([]);
                     }
                 }
+
+                // Siralama dışında kalan yeni sporcuları son gruba ekle
+                const unassignedNew = Object.entries(allAthData)
+                    .filter(([id]) => !assignedIds.has(id))
+                    .map(([id, data]) => ({ id, ...data }))
+                    .sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+                if (unassignedNew.length > 0) {
+                    formattedRotations.push(unassignedNew);
+                }
+
                 setAthletesByRotation(formattedRotations);
             } else {
                 fallbackUnsub = onValue(athletesRef, (fbSnap) => {
                     const fbData = fbSnap.val();
                     if (fbData) {
-                        const arr = Object.keys(fbData).map((id, idx) => ({ id, ...fbData[id], _kayitSirasi: idx + 1 }));
-                        arr.sort((a, b) => {
-                            const sortA = (a.cikisSirasi !== undefined && a.cikisSirasi !== null && a.cikisSirasi !== 999) ? a.cikisSirasi : a._kayitSirasi;
-                            const sortB = (b.cikisSirasi !== undefined && b.cikisSirasi !== null && b.cikisSirasi !== 999) ? b.cikisSirasi : b._kayitSirasi;
-                            return sortA - sortB;
-                        });
+                        // Firebase push key'leri kronolojik sıralıdır — ID'ye göre sırala = kayıt sırası
+                        const ids = Object.keys(fbData).sort();
+                        const arr = ids.map((id, idx) => ({ id, ...fbData[id], _kayitSirasi: idx + 1 }));
                         setAthletesByRotation([arr]);
                     } else {
                         setAthletesByRotation([]);
@@ -202,11 +215,11 @@ export default function ScoringPage() {
     }, [existingScores, selectedAthlete?.id]);
 
     // Available Cities for Filtering
-    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
     // Dropdown Data & Criteria Options
     const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity)
+        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     let categoryOptions = [];
@@ -357,7 +370,10 @@ export default function ScoringPage() {
 
     // Final Score
     const tarafsizKesinti = parseFloat(neutralDeductions) || 0;
-    const finalScore = Math.max(0, calculatedDScore + currentEScore - missingPenalty - tarafsizKesinti + bonusValue).toFixed(3);
+    // D puanı 0 ise sporcu puanı da 0 olur
+    const finalScore = calculatedDScore === 0
+        ? '0.000'
+        : Math.max(0, calculatedDScore + currentEScore - missingPenalty - tarafsizKesinti + bonusValue).toFixed(3);
 
     // Handlers
     const handleSelectAthlete = (athlete) => {
@@ -450,8 +466,14 @@ export default function ScoringPage() {
             const inputPwd = unlockPassword.trim();
             const inputHash = await hashPassword(inputPwd);
 
-            // Komite şifresi kontrolü (düz metin)
-            const isKomiteMatch = komiteSifre && inputPwd === komiteSifre;
+            // Komite şifresi kontrolü — timing-safe karşılaştırma (side-channel önlemi)
+            const isKomiteMatch = komiteSifre && (() => {
+                const a = String(inputPwd), b = String(komiteSifre);
+                if (a.length !== b.length) return false;
+                let diff = 0;
+                for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+                return diff === 0;
+            })();
 
             // Kullanıcı şifresi kontrolü (hash veya düz metin)
             let isUserMatch = false;
@@ -527,6 +549,16 @@ export default function ScoringPage() {
             const eVal = parseFloat(combinedEDeduction) || 0;
             if (eVal < 0 || eVal > 10) {
                 return toast("E kesintisi 0-10 arasında olmalıdır.", "error");
+            }
+        }
+        // Ayrı modda en az bir E paneli girilmiş olmalı
+        if (scoringMode === 'separate') {
+            const filledEPanels = ePanels.filter(p => {
+                const val = ePanelLocal[p];
+                return val !== undefined && val !== null && val !== '' && !isNaN(parseFloat(val));
+            });
+            if (filledEPanels.length === 0) {
+                return toast("E puanı girilmeden kayıt yapılamaz.", "error");
             }
         }
 
@@ -612,6 +644,9 @@ export default function ScoringPage() {
                 competitionId: selectedCompId,
             });
 
+            // Kayıt tamamlandı — form state'ini temizle (bir sonraki sporcu için temiz başlangıç)
+            resetScoringPanel();
+
             // Başarılı — sonraki sporcu modal'ı göster
             const nextAth = getNextAthlete();
             setSuccessModal({
@@ -633,6 +668,7 @@ export default function ScoringPage() {
 
     const handleNextAthlete = (nextAth) => {
         setSuccessModal(null);
+        resetScoringPanel();
         handleSelectAthlete(nextAth);
         // Otomatik çağır — kullanıcı tekrar "Çağır" butonuna basmasın
         setIsAthleteCalled(true);
@@ -718,13 +754,32 @@ export default function ScoringPage() {
                         ) : (
                             <div className="roster-list">
                                 <h3 className="section-title-light">Çıkış Sırası</h3>
+                                <div className="athlete-search-box">
+                                    <i className="material-icons-round athlete-search-icon">search</i>
+                                    <input
+                                        type="text"
+                                        className="athlete-search-input"
+                                        placeholder="Sporcu ara..."
+                                        value={athleteSearch}
+                                        onChange={e => setAthleteSearch(e.target.value)}
+                                    />
+                                    {athleteSearch && (
+                                        <button className="athlete-search-clear" onClick={() => setAthleteSearch('')}>
+                                            <i className="material-icons-round">close</i>
+                                        </button>
+                                    )}
+                                </div>
                                 {athletesByRotation.length === 0 && <p className="text-muted">Bu kategori için çıkış sırası bulunamadı.</p>}
 
-                                {athletesByRotation.map((rotation, rIdx) => (
-                                    rotation.length > 0 && (
+                                {athletesByRotation.map((rotation, rIdx) => {
+                                    const searchTerm = athleteSearch.toLocaleLowerCase('tr-TR');
+                                    const filteredRotation = searchTerm
+                                        ? rotation.filter(ath => `${ath.ad} ${ath.soyad}`.toLocaleLowerCase('tr-TR').includes(searchTerm) || (ath.okul || '').toLocaleLowerCase('tr-TR').includes(searchTerm))
+                                        : rotation;
+                                    return filteredRotation.length > 0 && (
                                         <div key={rIdx} className="roster-group">
                                             <div className="rg-title">Rotasyon {rIdx + 1}</div>
-                                            {rotation.map(ath => {
+                                            {filteredRotation.map(ath => {
                                                 const isSelected = selectedAthlete?.id === ath.id;
                                                 const scoreData = existingScores[ath.id];
                                                 const hasScore = scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
@@ -753,8 +808,8 @@ export default function ScoringPage() {
                                                 );
                                             })}
                                         </div>
-                                    )
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -873,7 +928,7 @@ export default function ScoringPage() {
                                                 <div className="diff-component-section">
                                                     <label className="diff-comp-label">CR (Kompozisyon Gereksinimi)</label>
                                                     <div className="diff-option-btns">
-                                                        {(currentCriteria?.crOptions || [0, 0.5, 0.6, 1.5, 2.0]).map(val => (
+                                                        {(defaultCriteriaForApparatus?.crOptions || currentCriteria?.crOptions || [0, 0.5, 1.0, 1.5, 2.0]).map(val => (
                                                             <button
                                                                 key={val}
                                                                 className={`diff-opt-btn ${parseFloat(crValue) === val ? 'diff-opt-selected' : ''}`}
@@ -889,7 +944,7 @@ export default function ScoringPage() {
                                                 <div className="diff-component-section">
                                                     <label className="diff-comp-label">CV (Bağlantı Değeri)</label>
                                                     <div className="diff-option-btns cv-scroll">
-                                                        {(currentCriteria?.cvOptions || [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]).map(val => (
+                                                        {(defaultCriteriaForApparatus?.cvOptions || currentCriteria?.cvOptions || [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]).map(val => (
                                                             <button
                                                                 key={val}
                                                                 className={`diff-opt-btn ${parseFloat(cvValue) === val ? 'diff-opt-selected' : ''}`}
@@ -905,7 +960,7 @@ export default function ScoringPage() {
                                                 <div className="diff-component-section">
                                                     <label className="diff-comp-label">BTRS</label>
                                                     <div className="diff-option-btns">
-                                                        {(currentCriteria?.btrsOptions || [0, 0.2]).map(val => (
+                                                        {(defaultCriteriaForApparatus?.btrsOptions || currentCriteria?.btrsOptions || [0, 0.2]).map(val => (
                                                             <button
                                                                 key={val}
                                                                 className={`diff-opt-btn ${parseFloat(btrsValue) === val ? 'diff-opt-selected' : ''}`}

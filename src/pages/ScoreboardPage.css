@@ -722,6 +722,9 @@
 /* ================================================================
    FLASH OVERLAY — Light Theme Score Announcement
    ================================================================ */
+/* ================================================================
+   FLASH OVERLAY — Broadcast-style animated score reveal
+   ================================================================ */
 .sb-flash {
     position: fixed;
     inset: 0;
@@ -729,11 +732,38 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px);
+    background: rgba(2, 6, 23, 0.9);
+    backdrop-filter: blur(12px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.35s ease;
+    overflow: hidden;
+}
+
+/* Radial spotlight glow behind card */
+.sb-flash::before {
+    content: '';
+    position: absolute;
+    width: 1000px;
+    height: 1000px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(139, 92, 246, 0.08) 45%, transparent 70%);
+    transform: scale(0);
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+    pointer-events: none;
+}
+
+/* Secondary warm glow for total reveal */
+.sb-flash::after {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.12) 0%, transparent 65%);
+    transform: scale(0);
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 2.5s;
+    pointer-events: none;
 }
 
 .sb-flash-visible {
@@ -741,19 +771,32 @@
     pointer-events: auto;
 }
 
-.sb-flash-card {
-    width: 92%;
-    max-width: 800px;
-    text-align: center;
-    transform: scale(0.92);
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sb-flash-visible .sb-flash-card {
+.sb-flash-visible::before {
     transform: scale(1);
 }
 
-/* Flash Header */
+.sb-flash-visible::after {
+    transform: scale(1);
+}
+
+/* Card: slides up from below with spring overshoot */
+.sb-flash-card {
+    width: 92%;
+    max-width: 820px;
+    text-align: center;
+    transform: translateY(80px) scale(0.88);
+    opacity: 0;
+    transition: transform 0.75s cubic-bezier(0.22, 1.35, 0.36, 1), opacity 0.4s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.sb-flash-visible .sb-flash-card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* ---- Header ---- */
 .sf-header {
     margin-bottom: 2rem;
 }
@@ -762,59 +805,68 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #EEF2FF;
-    border: 1px solid #C7D2FE;
-    color: #4338CA;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(165, 180, 252, 0.4);
+    color: #A5B4FC;
     font-size: 0.72rem;
     font-weight: 900;
     letter-spacing: 3px;
     padding: 5px 14px;
     border-radius: 4px;
     margin-bottom: 1.5rem;
+    animation: tagPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes tagPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); border-color: rgba(165, 180, 252, 0.4); }
+    50% { box-shadow: 0 0 16px 4px rgba(99, 102, 241, 0.3); border-color: rgba(165, 180, 252, 0.8); }
 }
 
 .sf-new-score-tag i {
     font-size: 0.9rem;
-    animation: bellShake 2s ease-in-out infinite;
+    animation: bellShake 2.2s ease-in-out infinite;
 }
 
 @keyframes bellShake {
-    0%, 80%, 100% { transform: rotate(0); }
-    85% { transform: rotate(12deg); }
-    90% { transform: rotate(-12deg); }
-    95% { transform: rotate(6deg); }
+    0%, 75%, 100% { transform: rotate(0) scale(1); }
+    80% { transform: rotate(18deg) scale(1.1); }
+    87% { transform: rotate(-16deg) scale(1.05); }
+    93% { transform: rotate(10deg); }
+    97% { transform: rotate(-5deg); }
 }
 
 .sf-athlete {
     font-size: 3rem;
     font-weight: 900;
-    color: #0F172A;
+    color: #F1F5F9;
     margin: 0;
     line-height: 1.1;
     letter-spacing: -0.5px;
+    text-shadow: 0 0 40px rgba(165, 180, 252, 0.35);
 }
 
 .sf-club {
-    font-size: 1.1rem;
-    color: #64748B;
-    font-weight: 700;
-    margin: 0.25rem 0 0;
+    font-size: 1.05rem;
+    color: #94A3B8;
+    font-weight: 600;
+    margin: 0.3rem 0 0;
+    letter-spacing: 0.3px;
 }
 
 .sf-apparatus {
     display: inline-block;
     margin-top: 1rem;
     padding: 0.35rem 1.2rem;
-    background: #F1F5F9;
-    border: 1px solid #E2E8F0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     font-size: 0.85rem;
     font-weight: 900;
-    color: #475569;
+    color: #94A3B8;
     letter-spacing: 3px;
 }
 
-/* Sequential Score Reveal */
+/* ---- Score panels ---- */
 .sf-scores {
     display: flex;
     align-items: center;
@@ -825,17 +877,23 @@
 
 .sf-score-item {
     padding: 1.2rem 1.5rem;
-    border-radius: 8px;
+    border-radius: 10px;
     border: 1px solid transparent;
     opacity: 0;
-    transform: translateY(15px) scale(0.9);
-    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(24px) scale(0.8);
     min-width: 130px;
+    /* no transition — animation handles reveal */
 }
 
 .sf-score-item.sf-reveal {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    animation: scorePop 0.65s cubic-bezier(0.22, 1.5, 0.36, 1) forwards;
+}
+
+@keyframes scorePop {
+    0%   { opacity: 0; transform: translateY(24px) scale(0.75); }
+    55%  { opacity: 1; transform: translateY(-8px) scale(1.1); }
+    78%  { transform: translateY(3px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .sf-score-label {
@@ -844,6 +902,7 @@
     letter-spacing: 2px;
     margin-bottom: 0.4rem;
     text-transform: uppercase;
+    opacity: 0.75;
 }
 
 .sf-score-value {
@@ -855,55 +914,67 @@
 
 /* D-Score */
 .sf-d {
-    background: #FAF5FF;
-    border-color: #E9D5FF;
+    background: rgba(109, 40, 217, 0.18);
+    border-color: rgba(139, 92, 246, 0.4);
 }
-
-.sf-d .sf-score-label { color: #7C3AED; }
-.sf-d .sf-score-value { color: #6D28D9; }
+.sf-d.sf-reveal {
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(167, 139, 250, 0.2);
+}
+.sf-d .sf-score-label { color: #A78BFA; }
+.sf-d .sf-score-value { color: #C4B5FD; }
 
 /* E-Score */
 .sf-e {
-    background: #F0FDF4;
-    border-color: #BBF7D0;
+    background: rgba(21, 128, 61, 0.18);
+    border-color: rgba(34, 197, 94, 0.35);
 }
-
-.sf-e .sf-score-label { color: #16A34A; }
-.sf-e .sf-score-value { color: #15803D; }
+.sf-e.sf-reveal {
+    box-shadow: 0 0 24px rgba(34, 197, 94, 0.25), inset 0 1px 0 rgba(74, 222, 128, 0.15);
+}
+.sf-e .sf-score-label { color: #4ADE80; }
+.sf-e .sf-score-value { color: #86EFAC; }
 
 /* Penalty */
 .sf-pen {
-    background: #FEF2F2;
-    border-color: #FECACA;
+    background: rgba(185, 28, 28, 0.18);
+    border-color: rgba(239, 68, 68, 0.35);
 }
+.sf-pen.sf-reveal {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(252, 165, 165, 0.15);
+}
+.sf-pen .sf-score-label { color: #F87171; }
+.sf-pen .sf-score-value { color: #FCA5A5; }
 
-.sf-pen .sf-score-label { color: #DC2626; }
-.sf-pen .sf-score-value { color: #B91C1C; }
-
+/* Divider */
 .sf-score-divider {
     font-size: 1.8rem;
-    font-weight: 300;
-    color: #CBD5E1;
+    font-weight: 200;
+    color: rgba(255, 255, 255, 0.12);
     opacity: 0;
     transition: opacity 0.4s ease 0.3s;
 }
 
 .sb-flash-visible .sf-score-divider {
-    opacity: 0.6;
-    transition: opacity 0.5s ease 0.6s;
+    opacity: 1;
+    transition: opacity 0.5s ease 0.7s;
 }
 
-/* Total Score */
+/* ---- Total Score ---- */
 .sf-total {
     margin-top: 1.5rem;
     opacity: 0;
-    transform: scale(0.8);
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: scale(0.45);
 }
 
 .sf-total.sf-reveal-total {
-    opacity: 1;
-    transform: scale(1);
+    animation: totalReveal 0.85s cubic-bezier(0.22, 1.45, 0.36, 1) forwards;
+}
+
+@keyframes totalReveal {
+    0%   { opacity: 0; transform: scale(0.4); }
+    55%  { opacity: 1; transform: scale(1.15); }
+    78%  { transform: scale(0.96); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
 .sf-total-value {
@@ -912,34 +983,44 @@
     font-variant-numeric: tabular-nums;
     line-height: 1;
     display: inline-block;
-    background: linear-gradient(180deg, #F59E0B, #D97706);
+    background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 35%, #FBBF24 55%, #D97706 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-/* Timer Bar */
+.sf-total.sf-reveal-total .sf-total-value {
+    animation: goldGlow 1.8s ease-in-out 0.6s infinite;
+}
+
+@keyframes goldGlow {
+    0%, 100% { filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.5)); }
+    50%       { filter: drop-shadow(0 0 42px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 80px rgba(245, 158, 11, 0.4)); }
+}
+
+/* ---- Timer Bar ---- */
 .sf-timer {
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     height: 3px;
-    background: #F1F5F9;
+    background: rgba(255, 255, 255, 0.07);
     border-radius: 2px;
     overflow: hidden;
-    max-width: 50%;
+    max-width: 40%;
     margin-left: auto;
     margin-right: auto;
 }
 
 .sf-timer-bar {
     height: 100%;
-    background: linear-gradient(90deg, #6366F1, #818CF8);
+    background: linear-gradient(90deg, #6366F1, #8B5CF6, #A78BFA, #C4B5FD);
     border-radius: 2px;
     animation: timerCountdown 10s linear forwards;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
 }
 
 @keyframes timerCountdown {
     from { width: 100%; }
-    to { width: 0%; }
+    to   { width: 0%; }
 }
 
 /* ================================================================

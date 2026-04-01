@@ -9,6 +9,23 @@ import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './AthletesPage.css';
 
+// ─── Takım Kontenjan Kuralları ───
+const TEAM_RULES = {
+    minik:  { min: 4, max: 7 },
+    kucuk:  { min: 4, max: 5 },
+    yildiz: { min: 2, max: 3 },
+    genc:   { min: 2, max: 3 },
+};
+
+function getTeamRules(catName) {
+    const n = (catName || '').toLocaleLowerCase('tr-TR');
+    if (n.includes('minik'))                                   return TEAM_RULES.minik;
+    if (n.includes('küçük') || n.includes('kucuk'))            return TEAM_RULES.kucuk;
+    if (n.includes('yıldız') || n.includes('yildiz'))          return TEAM_RULES.yildiz;
+    if (n.includes('genç')  || n.includes('genc'))             return TEAM_RULES.genc;
+    return null;
+}
+
 export default function AthletesPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
@@ -22,6 +39,8 @@ export default function AthletesPage() {
     const [filterCity, setFilterCity] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
+    const [filterSchool, setFilterSchool] = useState(''); // Kontenjan panelinden okul filtresi
+    const [expandedSchool, setExpandedSchool] = useState(''); // Kontenjan panelinde açık okul
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -295,10 +314,10 @@ export default function AthletesPage() {
         reader.readAsBinaryString(file);
     };
 
-    const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
     const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !filterCity || (comp.il || comp.city) === filterCity)
+        .filter(([id, comp]) => !filterCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === filterCity)
         .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
 
     // Global Search Logic
@@ -363,8 +382,10 @@ export default function AthletesPage() {
             (ath.tckn && String(ath.tckn).includes(searchLower));
 
         const matchesCategory = filterCategory === '' || ath.categoryId === filterCategory;
+        const matchesSchool   = filterSchool === '' ||
+            (ath.okul || ath.kulup || '').toLocaleUpperCase('tr-TR') === filterSchool;
 
-        return matchesSearch && matchesCategory;
+        return matchesSearch && matchesCategory && matchesSchool;
     });
 
     const uniqueCategories = [...new Set(athletes.map(a => a.categoryId))];
@@ -714,6 +735,75 @@ export default function AthletesPage() {
         }
     };
 
+    // Sporcu yarışma türünü (ferdi/takim) kural bazlı otomatik hesapla
+    const handleRecalculateTur = async () => {
+        if (!selectedCompId || athletes.length === 0) {
+            toast('Önce yarışma seçin ve sporcuların yüklenmesini bekleyin.', 'warning');
+            return;
+        }
+
+        // Kategori adlarını al
+        const catNames = competitions[selectedCompId]?.kategoriler || {};
+
+        // Grup: { catId_okul: [athlete, ...] }
+        const groups = {};
+        athletes.forEach(ath => {
+            const okul = (ath.okul || ath.kulup || '').trim();
+            if (!okul) return;
+            const key = `${ath.categoryId}___${okul}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(ath);
+        });
+
+        // Her grup için yeni yarismaTuru hesapla
+        const updates = {};
+        let changedCount = 0;
+        let unchangedCount = 0;
+        const summary = [];
+
+        Object.entries(groups).forEach(([key, grpAthletes]) => {
+            const [catId] = key.split('___');
+            const catName = catNames[catId]?.name || catId;
+            const rules = getTeamRules(catName);
+
+            let newTur;
+            if (!rules) {
+                // Kural tanımsız kategori → dokunma
+                unchangedCount += grpAthletes.length;
+                return;
+            }
+            newTur = grpAthletes.length >= rules.min ? 'takim' : 'ferdi';
+
+            grpAthletes.forEach(ath => {
+                const oldTur = ath.yarismaTuru || 'ferdi';
+                if (oldTur !== newTur) {
+                    updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}/yarismaTuru`] = newTur;
+                    changedCount++;
+                    summary.push(`${ath.ad} ${ath.soyad} (${catName}): ${oldTur} → ${newTur}`);
+                } else {
+                    unchangedCount++;
+                }
+            });
+        });
+
+        if (changedCount === 0) {
+            toast(`Tüm sporcuların türü zaten doğru. (${unchangedCount} sporcu kontrol edildi)`, 'success');
+            return;
+        }
+
+        const confirmText = `${changedCount} sporcunun türü değiştirilecek:\n\n${summary.slice(0, 10).join('\n')}${summary.length > 10 ? `\n...ve ${summary.length - 10} daha` : ''}\n\nDevam edilsin mi?`;
+        const confirmed = await confirm(confirmText, { title: 'Tür Hesaplama', type: 'warning' });
+        if (!confirmed) return;
+
+        try {
+            await update(ref(db), updates);
+            toast(`${changedCount} sporcu güncellendi, ${unchangedCount} sporcu değiştirilmedi.`, 'success');
+        } catch (err) {
+            console.error('Tür hesaplama hatası:', err);
+            toast('Güncelleme sırasında hata oluştu: ' + err.message, 'error');
+        }
+    };
+
     return (
         <div className="athletes-page">
             <header className="page-header">
@@ -742,6 +832,18 @@ export default function AthletesPage() {
                         ref={fileInputRef}
                         onChange={handleExcelImport}
                     />
+                    {hasPermission('athletes', 'duzenle') && (
+                        <button
+                            className="action-btn-outline"
+                            style={{ borderColor: '#7C3AED', color: '#7C3AED' }}
+                            onClick={handleRecalculateTur}
+                            disabled={!selectedCompId || athletes.length === 0}
+                            title="Okul başına sporcu sayısına göre ferdi/takım türünü otomatik hesapla"
+                        >
+                            <i className="material-icons-round">calculate</i>
+                            <span>Tür Hesapla</span>
+                        </button>
+                    )}
                     {hasPermission('athletes', 'duzenle') && (
                         <button
                             className="action-btn-outline"
@@ -800,7 +902,7 @@ export default function AthletesPage() {
                         <select
                             className="control-select"
                             value={selectedCompId}
-                            onChange={(e) => setSelectedCompId(e.target.value)}
+                            onChange={(e) => { setSelectedCompId(e.target.value); setFilterCategory(''); setFilterSchool(''); }}
                         >
                             <option value="">-- Yarışma Seçiniz --</option>
                             {compOptions.map(([id, comp]) => (
@@ -826,7 +928,7 @@ export default function AthletesPage() {
                         <select
                             className="control-select"
                             value={filterCategory}
-                            onChange={(e) => setFilterCategory(e.target.value)}
+                            onChange={(e) => { setFilterCategory(e.target.value); setFilterSchool(''); }}
                             disabled={!selectedCompId || uniqueCategories.length === 0}
                         >
                             <option value="">-- Tüm Kategoriler --</option>
@@ -855,6 +957,173 @@ export default function AthletesPage() {
                             <div className="stat-pill">Toplam: <strong>{athletes.length}</strong> Sporcu</div>
                             <div className="stat-pill">Bulunan: <strong>{filteredAthletes.length}</strong> Sonuç</div>
                         </div>
+
+                        {/* ─── Okul Kontenjan Paneli ─── */}
+                        {(() => {
+                            // Hangi kategoriler gösterilecek?
+                            const catsToShow = filterCategory
+                                ? [filterCategory]
+                                : [...new Set(athletes.map(a => a.categoryId))];
+
+                            const panels = catsToShow.map(catId => {
+                                const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || catId;
+                                const rules = getTeamRules(catName || catId);
+                                if (!rules) return null; // Kural tanımsız kategorileri atla
+
+                                // Bu kategorideki okul bazlı grupla — il+okul bileşik anahtar ile aynı isimli farklı okullara karışmasın
+                                const catAthletes = athletes.filter(a => a.categoryId === catId);
+                                const schoolMap = {}; // key: "IL___OKUL", value: { count, il, okul }
+                                catAthletes.forEach(a => {
+                                    const okul = (a.okul || a.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
+                                    const il = (a.il || '').toLocaleUpperCase('tr-TR');
+                                    const key = `${il}___${okul}`;
+                                    if (!schoolMap[key]) schoolMap[key] = { count: 0, il, okul };
+                                    schoolMap[key].count++;
+                                });
+                                if (Object.keys(schoolMap).length === 0) return null;
+
+                                return { catId, catName, rules, schoolMap };
+                            }).filter(Boolean);
+
+                            if (panels.length === 0) return null;
+
+                            return (
+                                <div className="quota-panel">
+                                    <div className="quota-panel__header">
+                                        <i className="material-icons-round">bar_chart</i>
+                                        <span>Okul Kontenjanları</span>
+                                    </div>
+                                    {panels.map(({ catId, catName, rules, schoolMap }) => (
+                                        <div key={catId} className="quota-category">
+                                            {!filterCategory && (
+                                                <div className="quota-category__title">{catName || catId}</div>
+                                            )}
+                                            <div className="quota-schools">
+                                                {Object.entries(schoolMap)
+                                                    .sort((a, b) => b[1].count - a[1].count)
+                                                    .map(([schoolKey2, { count, il, okul }]) => {
+                                                        const pct = Math.min((count / rules.max) * 100, 100);
+                                                        const remaining = rules.max - count;
+                                                        const isTeam = count >= rules.min;
+                                                        const isFull = count >= rules.max;
+                                                        const barColor = isFull ? '#EF4444' : isTeam ? '#16A34A' : '#F59E0B';
+                                                        const schoolKey = `${catId}__${schoolKey2}`;
+                                                        const isOpen = expandedSchool === schoolKey;
+                                                        // il + okul bileşik filtresi: aynı isimli farklı il okulları ayrı listelenir
+                                                        const schoolAthletes = athletes.filter(a =>
+                                                            a.categoryId === catId &&
+                                                            (a.okul || a.kulup || '').toLocaleUpperCase('tr-TR') === okul &&
+                                                            (a.il || '').toLocaleUpperCase('tr-TR') === il
+                                                        );
+                                                        return (
+                                                            <div
+                                                                key={schoolKey2}
+                                                                className={`quota-school-row${isOpen ? ' quota-school-row--active' : ''}`}
+                                                            >
+                                                                <div
+                                                                    className="quota-school-row__info"
+                                                                    onClick={() => setExpandedSchool(isOpen ? '' : schoolKey)}
+                                                                    style={{ cursor: 'pointer' }}
+                                                                    title={isOpen ? 'Kapat' : 'Sporcuları göster'}
+                                                                >
+                                                                    <span className="quota-school-name">
+                                                                        <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 3, color: isOpen ? '#4F46E5' : '#9CA3AF', transition: 'transform .2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>chevron_right</i>
+                                                                        {okul}{il ? <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>({il})</span> : null}
+                                                                    </span>
+                                                                    <span className="quota-school-badges">
+                                                                        <span className="quota-count" style={{ color: barColor }}>
+                                                                            {count}/{rules.max}
+                                                                        </span>
+                                                                        {isTeam && <span className="quota-badge quota-badge--team">Takım</span>}
+                                                                        {isFull
+                                                                            ? <span className="quota-badge quota-badge--full">Dolu</span>
+                                                                            : <span className="quota-badge quota-badge--remaining">{remaining} yer kaldı</span>
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                                <div className="quota-bar-track">
+                                                                    <div
+                                                                        className="quota-bar-fill"
+                                                                        style={{ width: `${pct}%`, background: barColor }}
+                                                                    />
+                                                                    {/* Min eşik işareti */}
+                                                                    <div
+                                                                        className="quota-bar-min"
+                                                                        style={{ left: `${(rules.min / rules.max) * 100}%` }}
+                                                                        title={`Takım eşiği: ${rules.min}`}
+                                                                    />
+                                                                </div>
+
+                                                                {/* Accordion: sporcu listesi */}
+                                                                {isOpen && (
+                                                                    <div className="quota-accordion">
+                                                                        {schoolAthletes.length === 0 ? (
+                                                                            <p className="quota-accordion__empty">Sporcu bulunamadı.</p>
+                                                                        ) : (
+                                                                            <table className="quota-athlete-table">
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th>#</th>
+                                                                                        <th>Ad Soyad</th>
+                                                                                        <th>TCKN</th>
+                                                                                        <th>Doğum</th>
+                                                                                        <th>Tür</th>
+                                                                                        <th></th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {schoolAthletes.map((ath, i) => (
+                                                                                        <tr key={ath.id}>
+                                                                                            <td className="quota-athlete-table__num">{i + 1}</td>
+                                                                                            <td className="quota-athlete-table__name">{ath.ad} {ath.soyad}</td>
+                                                                                            <td className="quota-athlete-table__tckn">{ath.tckn || '—'}</td>
+                                                                                            <td className="quota-athlete-table__dob">{ath.dogumTarihi || ath.dob || '—'}</td>
+                                                                                            <td>
+                                                                                                <span className={`quota-tur-badge quota-tur-badge--${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>
+                                                                                                    {ath.yarismaTuru === 'takim' ? 'Takım' : 'Ferdi'}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                            <td>
+                                                                                                {hasPermission('athletes', 'duzenle') && (
+                                                                                                    <button
+                                                                                                        className="quota-edit-btn"
+                                                                                                        onClick={() => {
+                                                                                                            setEditingAthlete(ath);
+                                                                                                            setFormData({
+                                                                                                                ad: ath.ad || '',
+                                                                                                                soyad: ath.soyad || '',
+                                                                                                                tckn: ath.tckn || '',
+                                                                                                                lisans: ath.lisansNo || ath.lisans || '',
+                                                                                                                dob: ath.dogumTarihi || ath.dob || '',
+                                                                                                                okul: ath.okul || ath.kulup || '',
+                                                                                                                il: ath.il || '',
+                                                                                                                categoryId: ath.categoryId || '',
+                                                                                                                yarismaTuru: ath.yarismaTuru || 'ferdi'
+                                                                                                            });
+                                                                                                            setIsModalOpen(true);
+                                                                                                        }}
+                                                                                                        title="Düzenle"
+                                                                                                    >
+                                                                                                        <i className="material-icons-round">edit</i>
+                                                                                                    </button>
+                                                                                                )}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
 
                         {filteredAthletes.length === 0 ? (
                             <div className="empty-state">

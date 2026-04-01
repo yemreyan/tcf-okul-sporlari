@@ -437,9 +437,9 @@ export default function ScoreboardPage() {
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
-        const availableCities = [...new Set(Object.values(competitions).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
         const compEntries = Object.entries(competitions)
-            .filter(([id, comp]) => !selectedCity || (comp.il || comp.city) === selectedCity);
+            .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity);
         const categories = selectedCompId ? competitions[selectedCompId]?.kategoriler || {} : {};
         const catEntries = Object.entries(categories);
 

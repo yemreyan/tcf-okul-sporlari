@@ -125,11 +125,11 @@ export default function AnnouncementsPage() {
         [competitions, currentUser]
     );
 
-    const availableCities = [...new Set(Object.values(filteredComps).map(c => c.il || c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = [...new Set(Object.values(filteredComps).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
     const compList = useMemo(
         () => Object.entries(filteredComps)
-            .filter(([, c]) => !selectedCity || (c.il || c.city) === selectedCity)
+            .filter(([, c]) => !selectedCity || (c.il || c.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
             .map(([id, c]) => ({ id, ...c }))
             .sort((a, b) => (b.baslangicTarihi || '').localeCompare(a.baslangicTarihi || '')),
         [filteredComps, selectedCity]

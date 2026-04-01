@@ -8,7 +8,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -16,7 +16,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -24,7 +24,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -32,7 +32,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -43,7 +43,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -51,7 +51,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         }
@@ -61,7 +61,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -73,7 +73,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -84,7 +84,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         }
@@ -1103,7 +1103,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1111,7 +1111,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1119,7 +1119,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1127,7 +1127,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1138,7 +1138,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1146,7 +1146,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         }
@@ -1156,7 +1156,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1168,7 +1168,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         },
@@ -1179,7 +1179,7 @@ export const DEFAULT_CRITERIA = {
             "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 0.6, 1.5, 2.0],
+            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
             "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
             "btrsOptions": [0, 0.2]
         }

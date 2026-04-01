@@ -1,0 +1,657 @@
+/* ═══════════════════════════════════════════════════
+   Parkur Cimnastik — Puanlama Sayfası
+   Tema: Amber/Sarı (#F59E0B)
+   ═══════════════════════════════════════════════════ */
+
+:root {
+    --prk-primary:        #F59E0B;
+    --prk-primary-dark:   #B45309;
+    --prk-primary-light:  #FFFBEB;
+    --prk-primary-muted:  rgba(245,158,11,0.12);
+    --prk-bg:             #0f1117;
+    --prk-surface:        #161b27;
+    --prk-surface2:       #1e2535;
+    --prk-border:         rgba(255,255,255,0.08);
+    --prk-text:           #F1F5F9;
+    --prk-text-sec:       #94A3B8;
+    --prk-green:          #22C55E;
+    --prk-red:            #EF4444;
+    --prk-blue:           #60A5FA;
+    --prk-amber:          #FBBF24;
+    --prk-sidebar-w:      280px;
+
+    /* Group colours */
+    --prk-group-A:        #F59E0B;
+    --prk-group-B:        #10B981;
+    --prk-group-C:        #6366F1;
+    --prk-group-D:        #EF4444;
+}
+
+/* ── Layout ── */
+.prk-page {
+    display: flex;
+    min-height: 100vh;
+    background: var(--prk-bg);
+    color: var(--prk-text);
+    font-family: 'Inter', system-ui, sans-serif;
+    position: relative;
+}
+
+/* ── Sidebar Toggle ── */
+.prk-sidebar-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    background: var(--prk-primary);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.4);
+    transition: background 0.2s, transform 0.2s;
+}
+.prk-sidebar-toggle:hover { background: var(--prk-primary-dark); transform: scale(1.05); }
+.prk-page--collapsed .prk-sidebar-toggle { left: 16px; }
+
+/* ── Sidebar ── */
+.prk-sidebar {
+    width: var(--prk-sidebar-w);
+    min-height: 100vh;
+    background: var(--prk-surface);
+    border-right: 1px solid var(--prk-border);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.prk-sidebar--collapsed {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+.prk-sidebar-inner {
+    width: var(--prk-sidebar-w);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 2rem;
+}
+
+/* Sidebar Header */
+.prk-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--prk-border);
+    padding-top: 64px;
+}
+.prk-back-btn {
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--prk-text-sec);
+    display: flex;
+    align-items: center;
+    transition: color 0.2s, border-color 0.2s;
+}
+.prk-back-btn:hover { color: var(--prk-primary); border-color: var(--prk-primary); }
+.prk-sidebar-title { font-weight: 700; font-size: 14px; color: var(--prk-text); }
+.prk-sidebar-sub   { font-size: 11px; color: var(--prk-primary); margin-top: 2px; }
+
+/* Filters */
+.prk-filters { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.prk-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.prk-filter-group label { font-size: 11px; color: var(--prk-text-sec); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.prk-filter-group select {
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 8px;
+    color: var(--prk-text);
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.prk-filter-group select:focus { outline: none; border-color: var(--prk-primary); }
+
+/* Athlete List */
+.prk-athlete-list { padding: 0 16px; flex: 1; }
+.prk-athlete-list-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--prk-text-sec);
+    margin-bottom: 10px;
+}
+.prk-athlete-list-title .material-icons-round { font-size: 14px; color: var(--prk-primary); }
+
+.prk-rotation-group { margin-bottom: 12px; }
+.prk-rotation-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--prk-text-sec); margin-bottom: 6px; padding-left: 4px; }
+
+.prk-athlete-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--prk-text);
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 3px;
+    text-align: left;
+}
+.prk-athlete-item:hover { background: var(--prk-surface2); border-color: var(--prk-border); }
+.prk-athlete-item--active { background: var(--prk-primary-muted) !important; border-color: var(--prk-primary) !important; }
+
+.prk-ath-num { font-size: 11px; color: var(--prk-text-sec); min-width: 18px; font-weight: 600; }
+.prk-ath-name { flex: 1; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prk-ath-badge .material-icons-round { font-size: 16px; }
+.prk-ath-badge--bekliyor .material-icons-round   { color: var(--prk-text-sec); }
+.prk-ath-badge--tamamlandi .material-icons-round { color: var(--prk-green); }
+.prk-ath-badge--kilitli .material-icons-round    { color: var(--prk-amber); }
+
+/* ── Main ── */
+.prk-main {
+    flex: 1;
+    padding: 72px 24px 40px;
+    overflow-y: auto;
+    max-width: 860px;
+}
+
+/* Empty State */
+.prk-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 12px;
+    color: var(--prk-text-sec);
+}
+.prk-empty-state .material-icons-round { font-size: 56px; color: var(--prk-primary); opacity: .4; }
+.prk-empty-state p { font-size: 15px; }
+.prk-empty-sub { font-size: 13px; opacity: .7; }
+.prk-empty { font-size: 12px; color: var(--prk-text-sec); padding: 8px 0; text-align: center; }
+
+/* ── Scoring Wrap ── */
+.prk-scoring-wrap { display: flex; flex-direction: column; gap: 16px; }
+
+/* Athlete Header */
+.prk-athlete-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--prk-surface);
+    border: 1px solid var(--prk-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+}
+.prk-athlete-name { font-size: 20px; font-weight: 700; color: var(--prk-text); }
+.prk-athlete-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.prk-athlete-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--prk-text-sec);
+}
+.prk-athlete-meta .material-icons-round { font-size: 14px; color: var(--prk-primary); }
+.prk-athlete-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Buttons */
+.prk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+}
+.prk-btn:disabled { opacity: .45; cursor: not-allowed; }
+.prk-btn--call    { background: var(--prk-primary); color: #fff; }
+.prk-btn--call:hover { background: var(--prk-primary-dark); }
+.prk-btn--lock    { background: rgba(34,197,94,0.15); color: var(--prk-green); border: 1px solid rgba(34,197,94,0.3); }
+.prk-btn--unlock  { background: rgba(251,191,36,0.15); color: var(--prk-amber); border: 1px solid rgba(251,191,36,0.3); }
+.prk-btn--submit  { background: var(--prk-primary); color: #fff; font-size: 15px; padding: 12px 28px; }
+.prk-btn--submit:hover { background: var(--prk-primary-dark); }
+.prk-btn--cancel  { background: var(--prk-surface2); color: var(--prk-text-sec); border: 1px solid var(--prk-border); }
+.prk-btn--confirm { background: var(--prk-primary); color: #fff; }
+.prk-btn--confirm:hover { background: var(--prk-primary-dark); }
+.prk-btn--next    { background: rgba(96,165,250,0.15); color: var(--prk-blue); border: 1px solid rgba(96,165,250,0.3); }
+
+.prk-called-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--prk-green);
+    background: rgba(34,197,94,0.1); border-radius: 8px; padding: 6px 12px;
+    border: 1px solid rgba(34,197,94,0.2);
+}
+.prk-called-badge .material-icons-round { font-size: 15px; }
+
+.prk-locked-banner {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 10px; padding: 10px 16px; font-size: 13px; color: var(--prk-amber);
+}
+.prk-locked-banner .material-icons-round { font-size: 18px; }
+
+/* ── Cards ── */
+.prk-card {
+    background: var(--prk-surface);
+    border: 1px solid var(--prk-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.prk-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--prk-border);
+    background: rgba(255,255,255,0.02);
+}
+.prk-card-label {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800;
+    flex-shrink: 0;
+}
+.prk-card-label--d   { background: rgba(245,158,11,0.15); color: var(--prk-primary); }
+.prk-card-label--e   { background: rgba(34,197,94,0.15);  color: var(--prk-green); }
+.prk-card-label--ded { background: rgba(239,68,68,0.15);  color: var(--prk-red); }
+
+.prk-card-title { font-size: 14px; font-weight: 700; }
+.prk-card-desc  { font-size: 12px; color: var(--prk-text-sec); flex: 1; }
+.prk-score-chip {
+    font-size: 16px; font-weight: 800;
+    padding: 4px 12px; border-radius: 20px;
+    margin-left: auto;
+}
+.prk-score-chip--d   { background: rgba(245,158,11,0.12); color: var(--prk-primary); }
+.prk-score-chip--e   { background: rgba(34,197,94,0.12);  color: var(--prk-green); }
+.prk-score-chip--ded { background: rgba(239,68,68,0.12);  color: var(--prk-red); }
+
+/* ── D Score — Element Body ── */
+.prk-element-body {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.prk-element-hint {
+    font-size: 13px;
+    color: var(--prk-text-sec);
+    padding: 8px 0;
+}
+.prk-element-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.prk-element-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+.prk-el-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--prk-text-sec);
+    min-width: 20px;
+    text-align: center;
+}
+.prk-el-family {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--prk-text);
+}
+.prk-el-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--prk-primary);
+    min-width: 32px;
+    text-align: right;
+}
+.prk-el-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--prk-text-sec);
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+.prk-el-remove:hover { color: var(--prk-red); }
+.prk-el-remove .material-icons-round { font-size: 16px; }
+
+.prk-btn-add-element {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--prk-primary-muted);
+    border: 1px dashed var(--prk-primary);
+    border-radius: 8px;
+    color: var(--prk-primary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    align-self: flex-start;
+}
+.prk-btn-add-element:hover { background: rgba(245,158,11,0.2); }
+.prk-btn-add-element .material-icons-round { font-size: 18px; }
+
+.prk-d-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--prk-text-sec);
+    padding-top: 4px;
+}
+.prk-d-total {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--prk-primary);
+}
+
+/* ── Group Badges ── */
+.prk-group-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.prk-group-A { background: rgba(245,158,11,0.2); color: var(--prk-group-A); border: 1px solid rgba(245,158,11,0.3); }
+.prk-group-B { background: rgba(16,185,129,0.2); color: var(--prk-group-B); border: 1px solid rgba(16,185,129,0.3); }
+.prk-group-C { background: rgba(99,102,241,0.2); color: var(--prk-group-C); border: 1px solid rgba(99,102,241,0.3); }
+.prk-group-D { background: rgba(239,68,68,0.2);  color: var(--prk-group-D); border: 1px solid rgba(239,68,68,0.3); }
+
+/* ── E Judges Row ── */
+.prk-judges-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 18px;
+}
+.prk-judge-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 72px;
+}
+.prk-judge-cell label { font-size: 11px; font-weight: 700; color: var(--prk-text-sec); }
+.prk-judge-cell input {
+    width: 72px;
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 8px;
+    color: var(--prk-text);
+    padding: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+.prk-judge-cell input:focus { outline: none; border-color: var(--prk-green); }
+.prk-judge-result { font-size: 11px; color: var(--prk-green); font-weight: 600; }
+
+/* ── Deductions Section ── */
+.prk-ded-section { padding: 12px 18px; }
+.prk-ded-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; color: var(--prk-text-sec);
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 10px;
+}
+.prk-ded-label .material-icons-round { font-size: 15px; color: var(--prk-red); }
+
+/* Penalties */
+.prk-penalties-grid { display: flex; flex-direction: column; gap: 10px; }
+.prk-penalty-item { display: flex; align-items: center; gap: 12px; }
+.prk-penalty-item label { font-size: 13px; color: var(--prk-text); min-width: 160px; }
+.prk-penalty-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.prk-pen-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--prk-border);
+    background: var(--prk-surface2);
+    color: var(--prk-text-sec);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.prk-pen-btn:hover { border-color: var(--prk-red); color: var(--prk-red); }
+.prk-pen-btn--active { background: rgba(239,68,68,0.15); border-color: var(--prk-red); color: var(--prk-red); }
+.prk-pen-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Final Bar ── */
+.prk-final-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--prk-surface);
+    border: 1px solid var(--prk-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
+    flex-wrap: wrap;
+}
+.prk-final-breakdown {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    font-size: 13px;
+    color: var(--prk-text-sec);
+}
+.prk-final-breakdown strong { color: var(--prk-text); font-weight: 700; }
+.prk-final-score {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--prk-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 100px;
+    text-align: right;
+}
+
+/* ── Element Picker Modal ── */
+.prk-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    backdrop-filter: blur(4px);
+}
+
+.prk-element-picker {
+    background: var(--prk-surface);
+    border: 1px solid var(--prk-border);
+    border-radius: 18px;
+    width: 90%;
+    max-width: 640px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+.prk-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--prk-border);
+    background: rgba(245,158,11,0.06);
+}
+.prk-picker-header .material-icons-round { font-size: 22px; color: var(--prk-primary); }
+.prk-picker-header h2 { font-size: 16px; font-weight: 700; color: var(--prk-text); margin: 0; }
+
+.prk-picker-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.prk-family-section {
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    transition: opacity 0.2s;
+}
+.prk-family-full { opacity: 0.55; }
+
+.prk-family-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.prk-family-header strong { font-size: 13px; font-weight: 700; color: var(--prk-text); }
+.prk-family-desc { font-size: 11px; color: var(--prk-text-sec); flex: 1; }
+.prk-family-limit-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--prk-amber);
+    background: rgba(251,191,36,0.1);
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+.prk-value-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.prk-value-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--prk-border);
+    background: var(--prk-surface);
+    color: var(--prk-primary);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.prk-value-btn:hover:not(:disabled) { background: var(--prk-primary-muted); border-color: var(--prk-primary); }
+.prk-value-btn:disabled { opacity: .4; cursor: not-allowed; color: var(--prk-text-sec); }
+
+.prk-picker-actions {
+    padding: 14px 20px;
+    border-top: 1px solid var(--prk-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Standard Modals ── */
+.prk-modal {
+    background: var(--prk-surface);
+    border: 1px solid var(--prk-border);
+    border-radius: 18px;
+    padding: 28px 32px;
+    min-width: 320px;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.prk-modal--success { border-color: rgba(34,197,94,0.3); }
+.prk-modal-icon { font-size: 48px; color: var(--prk-green); text-align: center; }
+.prk-modal-title { font-size: 18px; font-weight: 700; text-align: center; }
+.prk-modal-athlete { font-size: 15px; font-weight: 600; text-align: center; color: var(--prk-text-sec); }
+.prk-modal-breakdown { display: flex; flex-direction: column; gap: 6px; background: var(--prk-surface2); border-radius: 10px; padding: 14px; }
+.prk-modal-breakdown div { display: flex; justify-content: space-between; font-size: 14px; }
+.prk-modal-breakdown span { color: var(--prk-text-sec); }
+.prk-modal-breakdown strong { color: var(--prk-text); font-weight: 700; }
+.prk-modal-final { font-size: 36px; font-weight: 900; color: var(--prk-primary); text-align: center; }
+.prk-modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+.prk-unlock-input {
+    width: 100%;
+    background: var(--prk-surface2);
+    border: 1px solid var(--prk-border);
+    border-radius: 8px;
+    color: var(--prk-text);
+    padding: 10px 14px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+.prk-unlock-input:focus { outline: none; border-color: var(--prk-primary); }
+.prk-unlock-error { color: var(--prk-red); font-size: 13px; text-align: center; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .prk-page { flex-direction: column; }
+    .prk-sidebar {
+        width: 100%;
+        min-height: auto;
+        max-height: 45vh;
+    }
+    .prk-sidebar--collapsed { max-height: 0; }
+    .prk-sidebar-inner { width: 100%; }
+    .prk-main { padding: 16px 12px 80px; }
+    .prk-final-bar { flex-direction: column; align-items: stretch; }
+    .prk-final-score { text-align: center; }
+    .prk-btn--submit { width: 100%; justify-content: center; }
+    .prk-judges-row { gap: 8px; }
+    .prk-penalty-item { flex-direction: column; align-items: flex-start; }
+    .prk-element-picker { max-width: 100%; max-height: 90vh; border-radius: 14px 14px 0 0; align-self: flex-end; width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .prk-athlete-header { flex-direction: column; }
+    .prk-family-header { flex-direction: column; align-items: flex-start; }
+}

@@ -32,6 +32,18 @@ const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 // Aerobik — özel puanlama sayfası (A+E+D+CJP formülü farklı)
 const AerobikScoringPage = lazy(() => import('./pages/AerobikScoringPage'));
 
+// Trampolin — özel puanlama sayfası (D+E+T−HD formülü)
+const TrampolinScoringPage = lazy(() => import('./pages/TrampolinScoringPage'));
+
+// Parkur — özel puanlama sayfası (D+E−Ceza formülü)
+const ParkurScoringPage = lazy(() => import('./pages/ParkurScoringPage'));
+
+// Ritmik — özel puanlama sayfası (D+E−Ceza formülü)
+const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
+
+// Görevli Yaka Kartları — tüm branşlar için ortak
+const GorevliKartlariPage = lazy(() => import('./pages/GorevliKartlariPage'));
+
 // ─── Loading Fallback ───
 const PageLoader = () => (
   <div style={{
@@ -138,6 +150,67 @@ function AppRoutes() {
         <Route path="/aerobik/announcements" element={<PD discipline="aerobik" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/aerobik/certificates" element={<PD discipline="aerobik" pageKey="certificates"><CertificatePage /></PD>} />
         <Route path="/aerobik/epanel" element={<D discipline="aerobik"><EPanelPage /></D>} />
+
+        {/* ═══ TRAMPOLİN CİMNASTİK ═══ */}
+        <Route path="/trampolin" element={<D discipline="trampolin"><HomePage /></D>} />
+        <Route path="/trampolin/competitions" element={<PD discipline="trampolin" pageKey="competitions"><CompetitionsPage /></PD>} />
+        <Route path="/trampolin/applications" element={<PD discipline="trampolin" pageKey="applications"><ApplicationsPage /></PD>} />
+        <Route path="/trampolin/athletes" element={<PD discipline="trampolin" pageKey="athletes"><AthletesPage /></PD>} />
+        <Route path="/trampolin/criteria" element={<PD discipline="trampolin" pageKey="criteria"><CriteriaPage /></PD>} />
+        <Route path="/trampolin/start-order" element={<PD discipline="trampolin" pageKey="start_order"><StartOrderPage /></PD>} />
+        <Route path="/trampolin/scoring" element={<PD discipline="trampolin" pageKey="scoring"><TrampolinScoringPage /></PD>} />
+        <Route path="/trampolin/referees" element={<PD discipline="trampolin" pageKey="referees"><RefereesPage /></PD>} />
+        <Route path="/trampolin/analytics" element={<PD discipline="trampolin" pageKey="analytics"><AnalyticsPage /></PD>} />
+        <Route path="/trampolin/finals" element={<PD discipline="trampolin" pageKey="finals"><FinalsPage /></PD>} />
+        <Route path="/trampolin/scoreboard" element={<PD discipline="trampolin" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/trampolin/links" element={<PD discipline="trampolin" pageKey="links"><LinksPage /></PD>} />
+        <Route path="/trampolin/official-report" element={<PD discipline="trampolin" pageKey="official_report"><OfficialReportPage /></PD>} />
+        <Route path="/trampolin/athlete/:compId/:catId/:athId" element={<PD discipline="trampolin" pageKey="athletes"><AthleteProfilePage /></PD>} />
+        <Route path="/trampolin/schedule" element={<PD discipline="trampolin" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
+        <Route path="/trampolin/announcements" element={<PD discipline="trampolin" pageKey="announcements"><AnnouncementsPage /></PD>} />
+        <Route path="/trampolin/certificates" element={<PD discipline="trampolin" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/trampolin/epanel" element={<D discipline="trampolin"><EPanelPage /></D>} />
+
+        {/* ═══ PARKUR CİMNASTİK ═══ */}
+        <Route path="/parkur" element={<D discipline="parkur"><HomePage /></D>} />
+        <Route path="/parkur/competitions" element={<PD discipline="parkur" pageKey="competitions"><CompetitionsPage /></PD>} />
+        <Route path="/parkur/applications" element={<PD discipline="parkur" pageKey="applications"><ApplicationsPage /></PD>} />
+        <Route path="/parkur/athletes" element={<PD discipline="parkur" pageKey="athletes"><AthletesPage /></PD>} />
+        <Route path="/parkur/start-order" element={<PD discipline="parkur" pageKey="start_order"><StartOrderPage /></PD>} />
+        <Route path="/parkur/scoring" element={<PD discipline="parkur" pageKey="scoring"><ParkurScoringPage /></PD>} />
+        <Route path="/parkur/referees" element={<PD discipline="parkur" pageKey="referees"><RefereesPage /></PD>} />
+        <Route path="/parkur/analytics" element={<PD discipline="parkur" pageKey="analytics"><AnalyticsPage /></PD>} />
+        <Route path="/parkur/finals" element={<PD discipline="parkur" pageKey="finals"><FinalsPage /></PD>} />
+        <Route path="/parkur/scoreboard" element={<PD discipline="parkur" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/parkur/links" element={<PD discipline="parkur" pageKey="links"><LinksPage /></PD>} />
+        <Route path="/parkur/official-report" element={<PD discipline="parkur" pageKey="official_report"><OfficialReportPage /></PD>} />
+        <Route path="/parkur/athlete/:compId/:catId/:athId" element={<PD discipline="parkur" pageKey="athletes"><AthleteProfilePage /></PD>} />
+        <Route path="/parkur/schedule" element={<PD discipline="parkur" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
+        <Route path="/parkur/announcements" element={<PD discipline="parkur" pageKey="announcements"><AnnouncementsPage /></PD>} />
+        <Route path="/parkur/certificates" element={<PD discipline="parkur" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/parkur/epanel" element={<D discipline="parkur"><EPanelPage /></D>} />
+
+        {/* ═══ RİTMİK CİMNASTİK ═══ */}
+        <Route path="/ritmik" element={<D discipline="ritmik"><HomePage /></D>} />
+        <Route path="/ritmik/competitions" element={<PD discipline="ritmik" pageKey="competitions"><CompetitionsPage /></PD>} />
+        <Route path="/ritmik/applications" element={<PD discipline="ritmik" pageKey="applications"><ApplicationsPage /></PD>} />
+        <Route path="/ritmik/athletes" element={<PD discipline="ritmik" pageKey="athletes"><AthletesPage /></PD>} />
+        <Route path="/ritmik/start-order" element={<PD discipline="ritmik" pageKey="start_order"><StartOrderPage /></PD>} />
+        <Route path="/ritmik/scoring" element={<PD discipline="ritmik" pageKey="scoring"><RitmikScoringPage /></PD>} />
+        <Route path="/ritmik/referees" element={<PD discipline="ritmik" pageKey="referees"><RefereesPage /></PD>} />
+        <Route path="/ritmik/analytics" element={<PD discipline="ritmik" pageKey="analytics"><AnalyticsPage /></PD>} />
+        <Route path="/ritmik/finals" element={<PD discipline="ritmik" pageKey="finals"><FinalsPage /></PD>} />
+        <Route path="/ritmik/scoreboard" element={<PD discipline="ritmik" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/ritmik/links" element={<PD discipline="ritmik" pageKey="links"><LinksPage /></PD>} />
+        <Route path="/ritmik/official-report" element={<PD discipline="ritmik" pageKey="official_report"><OfficialReportPage /></PD>} />
+        <Route path="/ritmik/athlete/:compId/:catId/:athId" element={<PD discipline="ritmik" pageKey="athletes"><AthleteProfilePage /></PD>} />
+        <Route path="/ritmik/schedule" element={<PD discipline="ritmik" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
+        <Route path="/ritmik/announcements" element={<PD discipline="ritmik" pageKey="announcements"><AnnouncementsPage /></PD>} />
+        <Route path="/ritmik/certificates" element={<PD discipline="ritmik" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/ritmik/epanel" element={<D discipline="ritmik"><EPanelPage /></D>} />
+
+        {/* ═══ ORTAK ARAÇLAR ═══ */}
+        <Route path="/gorevli-kartlari" element={<ProtectedRoute redirectTo="/"><GorevliKartlariPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
