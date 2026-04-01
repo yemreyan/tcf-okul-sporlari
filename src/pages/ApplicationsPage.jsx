@@ -395,18 +395,35 @@ export default function ApplicationsPage() {
                 toast('Yarışma veya kategori bilgisi eksik!', 'error');
                 return;
             }
-            // Mevcut sporcuları kontrol et
+
+            // Eğer sporcular verisi yoksa → başvuruyu silme seçeneği sun
+            if (!app.athletes || app.athletes.length === 0) {
+                const shouldDelete = await confirm(
+                    `Bu onaylı başvuruda sporcu verisi bulunamadı. Başvuru listede engel oluşturuyorsa silebilirsiniz. Başvuruyu silmek istiyor musunuz?`,
+                    { title: 'Sporcu Verisi Yok', type: 'warning', confirmText: 'Başvuruyu Sil', cancelText: 'İptal' }
+                );
+                if (shouldDelete) {
+                    await remove(ref(db, `applications/${app.id}`));
+                    toast('Boş başvuru silindi. Okul yeniden başvuru yapabilir.', 'success');
+                    logAction('delete_empty_application', `Sporcu verisi olmayan başvuru silindi: ${app.schoolName}`, { user: currentUser?.kullaniciAdi || 'admin', appId: app.id });
+                }
+                return;
+            }
+
+            // Mevcut sporcuları kontrol et — appId eşleşmesi VEYA TCKN eşleşmesi
             const existingSnap = await get(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`));
             const existing = existingSnap.val() || {};
-            const alreadySynced = Object.values(existing).some(a => a.appId === app.id);
+            const existingList = Object.values(existing);
+            const appTcknSet = new Set(app.athletes.map(a => a.tckn).filter(Boolean));
+            const alreadySynced =
+                existingList.some(a => a.appId === app.id) ||
+                (appTcknSet.size > 0 && existingList.some(a => appTcknSet.has(a.tckn)));
+
             if (alreadySynced) {
-                toast('Bu başvurunun sporcuları zaten mevcut. Sorun devam ediyorsa sporcu listesini filtreleyin.', 'info');
+                toast('Bu başvurunun sporcuları zaten sistemde mevcut.', 'info');
                 return;
             }
-            if (!app.athletes || app.athletes.length === 0) {
-                toast('Bu başvuruda kayıtlı sporcu bulunamadı (sporcular alanı boş).', 'error');
-                return;
-            }
+
             const updates = {};
             app.athletes.forEach(ath => {
                 const newAthKey = push(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`)).key;
