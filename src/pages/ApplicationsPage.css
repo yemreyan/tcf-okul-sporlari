@@ -464,6 +464,40 @@
     font-size: 16px;
 }
 
+/* ── Sync All Button ── */
+
+.sync-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1.5px solid #059669;
+    background: rgba(16, 185, 129, 0.08);
+    color: #059669;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: auto;
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
+    white-space: nowrap;
+}
+
+.sync-all-btn:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.18);
+}
+
+.sync-all-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
 /* ── Expanded Detail View ── */
 
 .app-card__detail {

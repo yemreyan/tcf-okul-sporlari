@@ -174,6 +174,7 @@ export default function ApplicationsPage() {
     const [filterComp, setFilterComp] = useState(''); // Yarışma filtresi
     const [filterBrans, setFilterBrans] = useState(''); // Branş filtresi (Super Admin)
     const [searchQuery, setSearchQuery] = useState(''); // Sporcu adı veya okul adı araması
+    const [isSyncingAll, setIsSyncingAll] = useState(false); // Toplu senkronizasyon durumu
 
     // Detay gösterme state'i
     const [expandedAppId, setExpandedAppId] = useState(null);
@@ -452,6 +453,94 @@ export default function ApplicationsPage() {
         }
     };
 
+    // Tüm onaylı başvuruları tara — sistemde olmayan sporcuları ekle, mevcut olanları atla
+    const handleResyncAll = async () => {
+        const approvedApps = applications.filter(a => a.status === 'onaylandi' && a.athletes?.length > 0);
+        if (approvedApps.length === 0) {
+            toast('Sporcu verisi olan onaylı başvuru bulunamadı.', 'info');
+            return;
+        }
+
+        const proceed = await confirm(
+            `${approvedApps.length} onaylı başvuru taranacak. Sistemde kaydı olmayan sporcular eklenecek, mevcut kayıtlara dokunulmayacak. Devam etmek istiyor musunuz?`,
+            { title: 'Tümünü Senkronize Et', type: 'warning' }
+        );
+        if (!proceed) return;
+
+        setIsSyncingAll(true);
+        let addedCount = 0;
+        let skippedCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Her onaylı başvuruyu sırayla işle
+            for (const app of approvedApps) {
+                try {
+                    const appFirebasePath = getCompetitionPathByBranch(app.brans, firebasePath);
+                    const compId = app.compId;
+                    const catId = app.categoryId;
+                    if (!compId || !catId) { skippedCount++; continue; }
+
+                    // Mevcut sporcuları oku
+                    const existingSnap = await get(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`));
+                    const existing = existingSnap.val() || {};
+                    const existingList = Object.values(existing);
+
+                    // Zaten bu appId ile senkronize edilmiş mi?
+                    const appAlreadySynced = existingList.some(a => a.appId === app.id);
+                    if (appAlreadySynced) { skippedCount++; continue; }
+
+                    // Hangi sporcular henüz sistemde yok? (TCKN kontrolü)
+                    const existingTcknSet = new Set(existingList.map(a => a.tckn).filter(Boolean));
+                    const newAthletes = app.athletes.filter(a => !a.tckn || !existingTcknSet.has(a.tckn));
+
+                    if (newAthletes.length === 0) { skippedCount++; continue; }
+
+                    // Sadece eksik sporcuları yaz
+                    const updates = {};
+                    newAthletes.forEach(ath => {
+                        const newAthKey = push(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`)).key;
+                        const fullName = ath.name || ath.adSoyad || '';
+                        const parts = fullName.trim().split(' ');
+                        let ad = '', soyad = '';
+                        if (parts.length > 1) { soyad = parts.pop(); ad = parts.join(' '); }
+                        else { ad = parts[0] || ''; }
+                        const lisans = ath.license || ath.lisans || '-';
+                        updates[`${appFirebasePath}/${compId}/sporcular/${catId}/${newAthKey}`] = {
+                            id: newAthKey, adSoyad: fullName, soyadAd: `${soyad} ${ad}`.trim(),
+                            ad, soyad, dogumTarihi: ath.dob || '', dob: ath.dob || '',
+                            lisansNo: lisans, lisans, okul: app.schoolName, kulup: app.schoolName,
+                            il: app.city, ilce: app.district || '', sirasi: 999,
+                            yarismaTuru: 'ferdi', tckn: ath.tckn || '-', appId: app.id
+                        };
+                    });
+
+                    await update(ref(db), updates);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                    addedCount += newAthletes.length;
+                } catch (e) {
+                    console.error('Resync all — app error:', app.id, e);
+                    errorCount++;
+                }
+            }
+
+            const parts = [];
+            if (addedCount > 0) parts.push(`${addedCount} sporcu eklendi`);
+            if (skippedCount > 0) parts.push(`${skippedCount} başvuru zaten günceldi`);
+            if (errorCount > 0) parts.push(`${errorCount} başvuruda hata oluştu`);
+
+            toast(parts.join(' · '), addedCount > 0 ? 'success' : 'info');
+            logAction('resync_all', `Toplu senkronizasyon tamamlandı: +${addedCount} sporcu, ${skippedCount} atlandı`, {
+                user: currentUser?.kullaniciAdi || 'admin', addedCount, skippedCount, errorCount
+            });
+        } catch (err) {
+            console.error('Resync all failed:', err);
+            toast('Toplu senkronizasyon başarısız oldu.', 'error');
+        } finally {
+            setIsSyncingAll(false);
+        }
+    };
+
     const handleDeleteApplication = async (app) => {
         const proceed = await confirm(
             `"${app.schoolName}" okulunun başvurusunu kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
@@ -621,6 +710,20 @@ export default function ApplicationsPage() {
                         >
                             Tümü
                         </button>
+
+                        {hasPermission('applications', 'onayla') && (
+                            <button
+                                className="sync-all-btn"
+                                onClick={handleResyncAll}
+                                disabled={isSyncingAll}
+                                title="Tüm onaylı başvuruları tara — sistemde olmayan sporcuları ekle"
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 18, animation: isSyncingAll ? 'spin 1s linear infinite' : 'none' }}>
+                                    sync
+                                </i>
+                                {isSyncingAll ? 'Senkronize ediliyor...' : 'Tümünü Senkronize Et'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
