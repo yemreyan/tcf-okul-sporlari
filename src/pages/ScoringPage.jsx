@@ -46,6 +46,8 @@ export default function ScoringPage() {
     const [manualEksikSayisi, setManualEksikSayisi] = useState(0);
     const [ePanelLocal, setEPanelLocal] = useState({});
     const [ePanelTouched, setEPanelTouched] = useState({});
+    // "Kullanıcı dokundu mu?" takibi — Firebase'den gelen güncelleme kullanıcı girişini ezmemesi için
+    const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
@@ -211,6 +213,31 @@ export default function ScoringPage() {
             }
             return updated;
         });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id]);
+
+    // 5b. Sync D-score ve diğer alanları Firebase'den yükle (kullanıcı henüz dokunmadıysa)
+    // Bu özellikle existingScores sporcu seçildikten sonra geldiğinde formu doldurmak için gerekli
+    useEffect(() => {
+        if (!selectedAthlete || scoringFieldsTouched) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        // D puanı
+        setDScore(scores.dScore ?? scores.calc_D ?? 0);
+        // Tarafsız kesinti
+        setNeutralDeductions(scores.tarafsiz ?? scores.neutralDeductions ?? 0);
+        // Eksik sayısı
+        setManualEksikSayisi(scores.eksikSayisi ?? 0);
+        // Skill (hareket) puanları
+        setSkillScores(scores.hareketler ?? {});
+        // Scoring modu
+        setScoringMode(scores.scoringMode ?? 'separate');
+        setCombinedEDeduction(scores.combinedEDeduction ?? 0);
+        // Difficulty modu
+        setDifficultyMoves(scores.difficultyMoves ?? {});
+        setCrValue(scores.crScore_val ?? 0);
+        setCvValue(scores.cvScore_val ?? 0);
+        setBtrsValue(scores.btrsScore_val ?? 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
 
@@ -416,6 +443,7 @@ export default function ScoringPage() {
             resetScoringPanel();
         }
         setEPanelTouched({});
+        setScoringFieldsTouched(false);
     };
 
     const resetScoringPanel = () => {
@@ -428,6 +456,7 @@ export default function ScoringPage() {
         setScoringMode('separate');
         setCombinedEDeduction(0);
         setScoreLocked(false);
+        setScoringFieldsTouched(false);
         // Difficulty mode reset
         setDifficultyMoves({});
         setCrValue(0);
@@ -842,7 +871,7 @@ export default function ScoringPage() {
                         </div>
                     ) : (
                         /* ACTIVE SCORING STATE */
-                        <div className="active-scoring-panel animate-slide-up">
+                        <div className={`active-scoring-panel animate-slide-up${scoreLocked ? ' scoring-panel-locked' : ''}`}>
 
                             <div className="athlete-header-card">
                                 <div className="avatar-gradient">{selectedAthlete.ad.charAt(0)}{selectedAthlete.soyad.charAt(0)}</div>
@@ -1021,17 +1050,17 @@ export default function ScoringPage() {
                                                         step="0.1"
                                                         min="0"
                                                         value={dScore}
-                                                        onChange={e => setDScore(e.target.value)}
+                                                        onChange={e => { setDScore(e.target.value); setScoringFieldsTouched(true); }}
                                                         className="giant-num-input input-blue"
                                                     />
                                                 </div>
                                                 <div className="quick-d-buttons">
                                                     {[2.0, 2.5, 3.0, 3.5, 4.0, 4.5].map(val => (
-                                                        <button key={val} className="btn-quick-blue" onClick={() => setDScore(val)}>
+                                                        <button key={val} className="btn-quick-blue" onClick={() => { setDScore(val); setScoringFieldsTouched(true); }}>
                                                             {val.toFixed(1)}
                                                         </button>
                                                     ))}
-                                                    <button className="btn-quick-blue clear-btn" onClick={() => setDScore(0)}>Sıfırla</button>
+                                                    <button className="btn-quick-blue clear-btn" onClick={() => { setDScore(0); setScoringFieldsTouched(true); }}>Sıfırla</button>
                                                 </div>
                                             </>
                                         )}
@@ -1185,13 +1214,13 @@ export default function ScoringPage() {
                                             step="0.1"
                                             min="0"
                                             value={neutralDeductions}
-                                            onChange={e => setNeutralDeductions(e.target.value)}
+                                            onChange={e => { setNeutralDeductions(e.target.value); setScoringFieldsTouched(true); }}
                                             className="med-num-input input-orange"
                                         />
                                         <div className="nd-quick">
-                                            <button className="btn-outline-orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.1).toFixed(1))}>+0.1</button>
-                                            <button className="btn-outline-orange" onClick={() => setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.3).toFixed(1))}>+0.3</button>
-                                            <button className="btn-outline-gray" onClick={() => setNeutralDeductions(0)}>Sıfırla</button>
+                                            <button className="btn-outline-orange" onClick={() => { setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.1).toFixed(1)); setScoringFieldsTouched(true); }}>+0.1</button>
+                                            <button className="btn-outline-orange" onClick={() => { setNeutralDeductions(prev => (parseFloat(prev || 0) + 0.3).toFixed(1)); setScoringFieldsTouched(true); }}>+0.3</button>
+                                            <button className="btn-outline-gray" onClick={() => { setNeutralDeductions(0); setScoringFieldsTouched(true); }}>Sıfırla</button>
                                         </div>
                                     </div>
                                 </div>
