@@ -116,6 +116,13 @@ export default function AthletesPage() {
     const [isGlobalModalOpen, setIsGlobalModalOpen] = useState(false);
     const [globalSearchText, setGlobalSearchText] = useState('');
 
+    // Toplu okul geri döndürme modal
+    const [isRevertModalOpen, setIsRevertModalOpen] = useState(false);
+    const [revertCandidates, setRevertCandidates] = useState([]); // [{ ath, originalSchool }]
+    const [revertLoading, setRevertLoading] = useState(false);
+    const [revertSelected, setRevertSelected] = useState(new Set()); // seçili ath.id'leri
+    const [revertApplying, setRevertApplying] = useState(false);
+
     // Görünüm modu
     const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'grouped'
     const [collapsedIls, setCollapsedIls] = useState(new Set());
@@ -592,6 +599,76 @@ export default function AthletesPage() {
     const transferFilteredAthletes = transferCategory
         ? athletes.filter(a => a.categoryId === transferCategory)
         : athletes;
+
+    // Toplu geri döndürme modal — tüm sporcuları tara, okul adı değişmiş olanları listele
+    const handleOpenRevertModal = async () => {
+        const eligible = athletes.filter(a => a.appId && a.appId !== 'excel_import');
+        if (eligible.length === 0) {
+            toast('Başvuru sistemiyle eklenmiş sporcu bulunamadı.', 'info');
+            return;
+        }
+        setIsRevertModalOpen(true);
+        setRevertLoading(true);
+        setRevertCandidates([]);
+        setRevertSelected(new Set());
+
+        try {
+            // Unik appId'leri topla, tek seferde çek
+            const uniqueAppIds = [...new Set(eligible.map(a => a.appId))];
+            const appDataMap = {};
+            await Promise.all(uniqueAppIds.map(async (appId) => {
+                const snap = await get(ref(db, `applications/${appId}`));
+                if (snap.exists()) appDataMap[appId] = snap.val();
+            }));
+
+            const candidates = [];
+            eligible.forEach(ath => {
+                const appData = appDataMap[ath.appId];
+                if (!appData) return;
+                const originalSchool = (appData.okul || appData.schoolName || '').toLocaleUpperCase('tr-TR');
+                const currentSchool  = (ath.okul || ath.kulup || '').toLocaleUpperCase('tr-TR');
+                if (originalSchool && originalSchool !== currentSchool) {
+                    candidates.push({ ath, originalSchool, currentSchool });
+                }
+            });
+
+            candidates.sort((a, b) => `${a.ath.ad} ${a.ath.soyad}`.localeCompare(`${b.ath.ad} ${b.ath.soyad}`, 'tr-TR'));
+            setRevertCandidates(candidates);
+            // Varsayılan: hepsini seç
+            setRevertSelected(new Set(candidates.map(c => c.ath.id)));
+        } catch (err) {
+            console.error('Revert modal load error:', err);
+            toast('Veriler yüklenirken hata oluştu.', 'error');
+        } finally {
+            setRevertLoading(false);
+        }
+    };
+
+    // Seçili sporcuları başvurudaki okul adına geri döndür
+    const handleApplyBulkRevert = async () => {
+        const toRevert = revertCandidates.filter(c => revertSelected.has(c.ath.id));
+        if (toRevert.length === 0) { toast('Hiç sporcu seçilmedi.', 'warning'); return; }
+
+        setRevertApplying(true);
+        try {
+            const updates = {};
+            const affectedCats = new Set();
+            toRevert.forEach(({ ath, originalSchool }) => {
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}/okul`]  = originalSchool;
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}/kulup`] = originalSchool;
+                affectedCats.add(ath.categoryId);
+            });
+            await update(ref(db), updates);
+            await autoSyncTeamStatus(selectedCompId, [...affectedCats]);
+            toast(`${toRevert.length} sporcunun okul adı başvurudaki haliyle güncellendi.`, 'success');
+            setIsRevertModalOpen(false);
+        } catch (err) {
+            console.error('Bulk revert error:', err);
+            toast('Güncelleme sırasında hata oluştu.', 'error');
+        } finally {
+            setRevertApplying(false);
+        }
+    };
 
     // Sporcuyu başvurudaki orijinal okul adına geri döndür
     const handleRevertSchool = async (ath) => {
@@ -1136,6 +1213,18 @@ export default function AthletesPage() {
                             <span>Toplu Düzenle</span>
                         </button>
                     )}
+                    {hasPermission('athletes', 'duzenle') && (
+                        <button
+                            className="action-btn-outline"
+                            style={{ borderColor: '#F59E0B', color: '#D97706' }}
+                            onClick={handleOpenRevertModal}
+                            disabled={!selectedCompId || athletes.length === 0}
+                            title="Okul adı değişmiş sporcuları toplu başvurudaki hale döndür"
+                        >
+                            <i className="material-icons-round">history</i>
+                            <span>Okul Geri Al</span>
+                        </button>
+                    )}
                     {hasPermission('athletes', 'ekle') && (
                         <button
                             className="action-btn-outline"
@@ -1625,6 +1714,102 @@ export default function AthletesPage() {
                     </div>
                 )}
             </main>
+
+            {/* Toplu Okul Geri Döndürme Modal */}
+            {isRevertModalOpen && (
+                <div className="modal-overlay" onClick={() => !revertApplying && setIsRevertModalOpen(false)}>
+                    <div className="modal revert-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal__header">
+                            <h2><i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: 8, color: '#D97706' }}>history</i>Okul Adı Geri Döndür</h2>
+                            <button className="modal__close" onClick={() => setIsRevertModalOpen(false)} disabled={revertApplying}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+
+                        <div className="revert-modal__body">
+                            {revertLoading ? (
+                                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>
+                                    <div className="spinner" style={{ margin: '0 auto 12px' }}></div>
+                                    <p>Başvuru kayıtları taranıyor...</p>
+                                </div>
+                            ) : revertCandidates.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>
+                                    <i className="material-icons-round" style={{ fontSize: 48, opacity: 0.3 }}>check_circle</i>
+                                    <p style={{ marginTop: 8 }}>Tüm sporcuların okul adı başvuruyla uyumlu.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="revert-modal__toolbar">
+                                        <span className="revert-modal__count">
+                                            <strong>{revertCandidates.length}</strong> sporcuda farklılık tespit edildi
+                                        </span>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button className="revert-toolbar-btn" onClick={() => setRevertSelected(new Set(revertCandidates.map(c => c.ath.id)))}>
+                                                Tümünü Seç
+                                            </button>
+                                            <button className="revert-toolbar-btn" onClick={() => setRevertSelected(new Set())}>
+                                                Seçimi Kaldır
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="revert-modal__list">
+                                        {revertCandidates.map(({ ath, originalSchool, currentSchool }) => {
+                                            const catNames = competitions[selectedCompId]?.kategoriler || {};
+                                            const catObj = catNames[ath.categoryId] || {};
+                                            const catLabel = catObj.isim || catObj.name || catObj.ad || ath.categoryId;
+                                            const isSelected = revertSelected.has(ath.id);
+                                            return (
+                                                <label
+                                                    key={ath.id}
+                                                    className={`revert-row ${isSelected ? 'revert-row--selected' : ''}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => setRevertSelected(prev => {
+                                                            const next = new Set(prev);
+                                                            next.has(ath.id) ? next.delete(ath.id) : next.add(ath.id);
+                                                            return next;
+                                                        })}
+                                                    />
+                                                    <div className="revert-row__info">
+                                                        <div className="revert-row__name">{ath.ad} {ath.soyad}
+                                                            <span className="athlete-cat-badge" style={{ marginLeft: 8, fontSize: '0.72rem' }}>{catLabel}</span>
+                                                        </div>
+                                                        <div className="revert-row__schools">
+                                                            <span className="revert-school revert-school--current" title="Mevcut okul adı">{currentSchool || '—'}</span>
+                                                            <i className="material-icons-round" style={{ fontSize: 16, color: 'var(--text-tertiary)' }}>arrow_forward</i>
+                                                            <span className="revert-school revert-school--original" title="Başvurudaki okul adı">{originalSchool}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {revertCandidates.length > 0 && (
+                            <div className="modal__footer">
+                                <button className="btn btn--secondary" onClick={() => setIsRevertModalOpen(false)} disabled={revertApplying}>İptal</button>
+                                <button
+                                    className="btn btn--primary"
+                                    style={{ background: '#F59E0B', borderColor: '#F59E0B' }}
+                                    onClick={handleApplyBulkRevert}
+                                    disabled={revertApplying || revertSelected.size === 0}
+                                >
+                                    {revertApplying
+                                        ? <><span className="spinner-small" style={{ marginRight: 8 }}></span>Uygulanıyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: 6 }}>history</i>{revertSelected.size} Sporcuyu Geri Döndür</>
+                                    }
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Ek/Düzenle Modal */}
             {isModalOpen && (
