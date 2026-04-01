@@ -116,6 +116,11 @@ export default function AthletesPage() {
     const [isGlobalModalOpen, setIsGlobalModalOpen] = useState(false);
     const [globalSearchText, setGlobalSearchText] = useState('');
 
+    // Görünüm modu
+    const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'grouped'
+    const [collapsedIls, setCollapsedIls] = useState(new Set());
+    const [collapsedSchools, setCollapsedSchools] = useState(new Set());
+
     // Bulk Edit State
     const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
     const [bulkEditTab, setBulkEditTab] = useState('okul'); // 'okul' | 'tur' | 'transfer'
@@ -1200,6 +1205,22 @@ export default function AthletesPage() {
                         <div className="athletes-stats">
                             <div className="stat-pill">Toplam: <strong>{athletes.length}</strong> Sporcu</div>
                             <div className="stat-pill">Bulunan: <strong>{filteredAthletes.length}</strong> Sonuç</div>
+                            <div className="view-toggle">
+                                <button
+                                    className={`view-toggle-btn ${viewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+                                    onClick={() => setViewMode('cards')}
+                                    title="Kart görünümü"
+                                >
+                                    <i className="material-icons-round">grid_view</i>
+                                </button>
+                                <button
+                                    className={`view-toggle-btn ${viewMode === 'grouped' ? 'view-toggle-btn--active' : ''}`}
+                                    onClick={() => setViewMode('grouped')}
+                                    title="İl / Okul gruplu görünüm"
+                                >
+                                    <i className="material-icons-round">account_tree</i>
+                                </button>
+                            </div>
                         </div>
 
                         {/* ─── Okul Kontenjan Paneli ─── */}
@@ -1376,7 +1397,127 @@ export default function AthletesPage() {
                                 </div>
                                 <p>Arama kriterlerine uygun sporcu bulunamadı.</p>
                             </div>
-                        ) : (
+                        ) : viewMode === 'grouped' ? (() => {
+                            // İl → Okul → Sporcular hiyerarşisi
+                            const catNames = competitions[selectedCompId]?.kategoriler || {};
+                            const byCitySchool = {};
+                            filteredAthletes.forEach(ath => {
+                                const il = (ath.il || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
+                                const okul = (ath.okul || ath.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
+                                if (!byCitySchool[il]) byCitySchool[il] = {};
+                                if (!byCitySchool[il][okul]) byCitySchool[il][okul] = [];
+                                byCitySchool[il][okul].push(ath);
+                            });
+                            const sortedIls = Object.keys(byCitySchool).sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
+                            return (
+                                <div className="grouped-view">
+                                    {sortedIls.map(il => {
+                                        const ilCollapsed = collapsedIls.has(il);
+                                        const ilAthletes = Object.values(byCitySchool[il]).flat();
+                                        const sortedSchools = Object.keys(byCitySchool[il]).sort((a, b) => a.localeCompare(b, 'tr-TR'));
+                                        return (
+                                            <div key={il} className="group-il">
+                                                <button
+                                                    className="group-il__header"
+                                                    onClick={() => setCollapsedIls(prev => {
+                                                        const next = new Set(prev);
+                                                        next.has(il) ? next.delete(il) : next.add(il);
+                                                        return next;
+                                                    })}
+                                                >
+                                                    <i className="material-icons-round">place</i>
+                                                    <span className="group-il__name">{il}</span>
+                                                    <span className="group-il__count">{sortedSchools.length} okul · {ilAthletes.length} sporcu</span>
+                                                    <i className="material-icons-round group-il__chevron">{ilCollapsed ? 'expand_more' : 'expand_less'}</i>
+                                                </button>
+
+                                                {!ilCollapsed && sortedSchools.map(okul => {
+                                                    const schoolAthletes = byCitySchool[il][okul];
+                                                    const schoolKey = `${il}__${okul}`;
+                                                    const schoolCollapsed = collapsedSchools.has(schoolKey);
+                                                    const takimCount = schoolAthletes.filter(a => a.yarismaTuru === 'takim').length;
+                                                    const ferdiCount = schoolAthletes.length - takimCount;
+                                                    return (
+                                                        <div key={okul} className="group-school">
+                                                            <button
+                                                                className="group-school__header"
+                                                                onClick={() => setCollapsedSchools(prev => {
+                                                                    const next = new Set(prev);
+                                                                    next.has(schoolKey) ? next.delete(schoolKey) : next.add(schoolKey);
+                                                                    return next;
+                                                                })}
+                                                            >
+                                                                <i className="material-icons-round">school</i>
+                                                                <span className="group-school__name">{okul}</span>
+                                                                <div className="group-school__badges">
+                                                                    <span className="group-badge group-badge--total">{schoolAthletes.length} sporcu</span>
+                                                                    {takimCount > 0 && <span className="group-badge group-badge--takim">Takım: {takimCount}</span>}
+                                                                    {ferdiCount > 0 && <span className="group-badge group-badge--ferdi">Ferdi: {ferdiCount}</span>}
+                                                                </div>
+                                                                <i className="material-icons-round group-school__chevron">{schoolCollapsed ? 'expand_more' : 'expand_less'}</i>
+                                                            </button>
+
+                                                            {!schoolCollapsed && (
+                                                                <div className="group-school__athletes">
+                                                                    <table className="group-athletes-table">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>#</th>
+                                                                                <th>Ad Soyad</th>
+                                                                                <th>Kategori</th>
+                                                                                <th>Tür</th>
+                                                                                <th>T.C.</th>
+                                                                                <th>Doğum</th>
+                                                                                <th></th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {schoolAthletes
+                                                                                .sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'))
+                                                                                .map((ath, i) => {
+                                                                                    const catObj = catNames[ath.categoryId] || {};
+                                                                                    const catLabel = catObj.isim || catObj.name || catObj.ad || ath.categoryId;
+                                                                                    return (
+                                                                                        <tr key={ath.id}>
+                                                                                            <td className="col-num">{i + 1}</td>
+                                                                                            <td className="col-name">{ath.ad} {ath.soyad}</td>
+                                                                                            <td><span className="athlete-cat-badge" style={{ fontSize: '0.75rem' }}>{catLabel}</span></td>
+                                                                                            <td>
+                                                                                                <span className={`tur-badge ${ath.yarismaTuru === 'takim' ? 'tur-badge--takim' : 'tur-badge--ferdi'}`}>
+                                                                                                    {ath.yarismaTuru === 'takim' ? 'TAKIM' : 'FERDİ'}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                            <td className="col-tc">{ath.tckn || '-'}</td>
+                                                                                            <td className="col-dob">{ath.dob || '-'}</td>
+                                                                                            <td className="col-actions">
+                                                                                                {hasPermission('athletes', 'duzenle') && (
+                                                                                                    <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
+                                                                                                        <i className="material-icons-round">edit</i>
+                                                                                                    </button>
+                                                                                                )}
+                                                                                                {hasPermission('athletes', 'sil') && (
+                                                                                                    <button className="del-btn" onClick={() => handleDelete(ath.categoryId, ath.id, `${ath.ad} ${ath.soyad}`)} title="Sil">
+                                                                                                        <i className="material-icons-round">delete_outline</i>
+                                                                                                    </button>
+                                                                                                )}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })() : (
                             <div className="athletes-grid">
                                 {filteredAthletes.map((ath, index) => (
                                     <div className="athlete-card" key={ath.id} style={{ animationDelay: `${(index % 10) * 0.03}s` }}>
