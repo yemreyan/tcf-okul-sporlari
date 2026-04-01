@@ -257,8 +257,13 @@ export default function ScoreboardPage() {
                 let completedCount = 0;
                 apparatusList.forEach(alet => {
                     const s = allScores[alet.id]?.[ath.id];
-                    const val = (s && s.durum === 'tamamlandi') ? parseFloat(s.sonuc) : 0;
-                    appScores[alet.id] = val;
+                    const done = s && s.durum === 'tamamlandi';
+                    const val = done ? parseFloat(s.sonuc) : 0;
+                    appScores[alet.id] = {
+                        total: val,
+                        d: done ? parseFloat(s.calc_D ?? s.dScore ?? 0) : 0,
+                        e: done ? parseFloat(s.calc_E ?? 0) : 0,
+                    };
                     total += val;
                     if (val > 0) completedCount++;
                 });
@@ -687,9 +692,18 @@ export default function ScoreboardPage() {
                                     </div>
                                     {apparatusList.map(alet => {
                                         const val = ath.appScores[alet.id];
+                                        const hasScore = val && val.total > 0;
                                         return (
-                                            <div key={alet.id} className={`sb-cell sb-score-cell ${val > 0 ? 'sb-scored' : 'sb-pending'}`}>
-                                                {val > 0 ? val.toFixed(3) : '\u2014'}
+                                            <div key={alet.id} className={`sb-cell sb-score-cell ${hasScore ? 'sb-scored' : 'sb-pending'}`}>
+                                                {hasScore ? (
+                                                    <>
+                                                        <div className="sb-score-total">{val.total.toFixed(3)}</div>
+                                                        <div className="sb-score-de">
+                                                            <span className="sb-score-d">D {val.d.toFixed(2)}</span>
+                                                            <span className="sb-score-e">E {val.e.toFixed(3)}</span>
+                                                        </div>
+                                                    </>
+                                                ) : '\u2014'}
                                             </div>
                                         );
                                     })}

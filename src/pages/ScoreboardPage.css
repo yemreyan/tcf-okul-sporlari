@@ -676,6 +676,11 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     transition: color 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
 }
 
 .sb-scored {
@@ -684,6 +689,29 @@
 
 .sb-pending {
     color: #E2E8F0;
+}
+
+.sb-score-total {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.sb-score-de {
+    display: flex;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    opacity: 0.75;
+    line-height: 1;
+}
+
+.sb-score-d {
+    color: #6366f1;
+}
+
+.sb-score-e {
+    color: #0ea5e9;
 }
 
 /* Total Cell */
