@@ -593,6 +593,47 @@ export default function AthletesPage() {
         ? athletes.filter(a => a.categoryId === transferCategory)
         : athletes;
 
+    // Sporcuyu başvurudaki orijinal okul adına geri döndür
+    const handleRevertSchool = async (ath) => {
+        const appId = ath.appId;
+        if (!appId || appId === 'excel_import') {
+            toast('Bu sporcu başvuru sistemi dışında eklendiği için orijinal okul bilgisi bulunamıyor.', 'info');
+            return;
+        }
+        try {
+            const appSnap = await get(ref(db, `applications/${appId}`));
+            if (!appSnap.exists()) {
+                toast('Orijinal başvuru kaydı bulunamadı.', 'warning');
+                return;
+            }
+            const appData = appSnap.val();
+            const originalSchool = (appData.okul || appData.schoolName || '').toLocaleUpperCase('tr-TR');
+            if (!originalSchool) {
+                toast('Başvuruda okul bilgisi kayıtlı değil.', 'warning');
+                return;
+            }
+            const currentSchool = (ath.okul || ath.kulup || '').toLocaleUpperCase('tr-TR');
+            if (originalSchool === currentSchool) {
+                toast('Sporcu zaten başvurudaki okul ismiyle kayıtlı.', 'info');
+                return;
+            }
+            const confirmed = await confirm(
+                `"${ath.ad} ${ath.soyad}" için okul ismi:\n\n"${currentSchool}" → "${originalSchool}"\n\nolarak geri döndürülecek. Devam?`,
+                { title: 'Başvurudaki Okula Geri Döndür', type: 'warning' }
+            );
+            if (!confirmed) return;
+            await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${ath.categoryId}/${ath.id}`), {
+                okul: originalSchool,
+                kulup: originalSchool,
+            });
+            await autoSyncTeamStatus(selectedCompId, [ath.categoryId]);
+            toast(`Okul ismi "${originalSchool}" olarak geri döndürüldü.`, 'success');
+        } catch (err) {
+            console.error('Revert school error:', err);
+            toast('Geri döndürme sırasında hata oluştu.', 'error');
+        }
+    };
+
     // Benzer okul isimlerini tara
     const handleFindSimilarSchools = () => {
         setIsFindingSchools(true);
@@ -1491,6 +1532,11 @@ export default function AthletesPage() {
                                                                                             <td className="col-tc">{ath.tckn || '-'}</td>
                                                                                             <td className="col-dob">{ath.dob || '-'}</td>
                                                                                             <td className="col-actions">
+                                                                                                {hasPermission('athletes', 'duzenle') && ath.appId && ath.appId !== 'excel_import' && (
+                                                                                                    <button className="revert-school-btn" onClick={() => handleRevertSchool(ath)} title="Başvurudaki okula geri döndür">
+                                                                                                        <i className="material-icons-round">history</i>
+                                                                                                    </button>
+                                                                                                )}
                                                                                                 {hasPermission('athletes', 'duzenle') && (
                                                                                                     <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
                                                                                                         <i className="material-icons-round">edit</i>
@@ -1530,6 +1576,11 @@ export default function AthletesPage() {
                                                 <span className="athlete-cat-badge" title={ath.categoryId}>{ath.categoryId}</span>
                                             </div>
                                             <div className="athlete-actions">
+                                                {hasPermission('athletes', 'duzenle') && ath.appId && ath.appId !== 'excel_import' && (
+                                                    <button className="revert-school-btn" onClick={() => handleRevertSchool(ath)} title="Başvurudaki okula geri döndür">
+                                                        <i className="material-icons-round">history</i>
+                                                    </button>
+                                                )}
                                                 {hasPermission('athletes', 'duzenle') && (
                                                     <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
                                                         <i className="material-icons-round">edit</i>
@@ -1627,7 +1678,20 @@ export default function AthletesPage() {
                             </div>
 
                             <div className="form-group form-group--full">
-                                <label>Okul Adı</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label style={{ margin: 0 }}>Okul Adı</label>
+                                    {editingAthlete?.appId && editingAthlete.appId !== 'excel_import' && (
+                                        <button
+                                            type="button"
+                                            className="revert-school-inline-btn"
+                                            onClick={() => handleRevertSchool(editingAthlete)}
+                                            title="Başvurudaki orijinal okul adına geri döndür"
+                                        >
+                                            <i className="material-icons-round">history</i>
+                                            Başvurudaki okula geri döndür
+                                        </button>
+                                    )}
+                                </div>
                                 <input type="text" value={formData.okul} onChange={e => setFormData({ ...formData, okul: e.target.value })} />
                             </div>
 

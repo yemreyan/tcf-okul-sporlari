@@ -381,7 +381,8 @@
 }
 
 .edit-btn,
-.del-btn {
+.del-btn,
+.revert-school-btn {
     background: transparent;
     border: none;
     width: 32px;
@@ -393,6 +394,37 @@
     cursor: pointer;
     transition: all 0.2s;
 }
+
+.revert-school-btn {
+    background: rgba(245, 158, 11, 0.1);
+    color: #D97706;
+}
+
+.revert-school-btn:hover {
+    background: #F59E0B;
+    color: white;
+}
+
+.revert-school-btn .material-icons-round { font-size: 18px; }
+
+.revert-school-inline-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid #F59E0B;
+    color: #D97706;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.revert-school-inline-btn:hover { background: rgba(245,158,11,0.22); }
+.revert-school-inline-btn .material-icons-round { font-size: 15px; }
 
 .edit-btn {
     background: rgba(37, 99, 235, 0.1);
