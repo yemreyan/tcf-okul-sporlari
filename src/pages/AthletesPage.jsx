@@ -248,6 +248,58 @@ export default function AthletesPage() {
         }
     };
 
+    const handleExcelExport = async () => {
+        if (filteredAthletes.length === 0) {
+            toast('Aktarılacak sporcu bulunamadı.', 'warning');
+            return;
+        }
+
+        try {
+            const XLSX = await import('xlsx');
+            const comp = selectedCompId ? competitions[selectedCompId] : null;
+            const compName = comp?.isim || 'Yarışma';
+
+            // Kategori adlarını yarışmanın kategoriler node'undan al
+            const kategoriler = comp?.kategoriler || {};
+            const getCatName = (catId) => kategoriler[catId]?.isim || kategoriler[catId]?.ad || catId;
+
+            const rows = filteredAthletes.map((ath, i) => ({
+                'Sıra':         i + 1,
+                'Ad':           ath.ad || '',
+                'Soyad':        ath.soyad || '',
+                'T.C. Kimlik':  ath.tckn || '',
+                'Lisans No':    ath.lisansNo || ath.lisans || '',
+                'Doğum Tarihi': ath.dogumTarihi || ath.dob || '',
+                'Okul / Kulüp': ath.okul || ath.kulup || '',
+                'İl':           ath.il || '',
+                'İlçe':         ath.ilce || '',
+                'Kategori':     getCatName(ath.categoryId),
+                'Tür':          ath.yarismaTuru || 'ferdi',
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+
+            // Sütun genişlikleri
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+                { wch: 14 }, { wch: 14 }, { wch: 28 }, { wch: 12 },
+                { wch: 14 }, { wch: 20 }, { wch: 10 },
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sporcular');
+
+            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
+            const dateStr = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
+            XLSX.writeFile(wb, `${safeCompName}_Sporcular_${dateStr}.xlsx`);
+
+            toast(`${filteredAthletes.length} sporcu Excel'e aktarıldı.`, 'success');
+        } catch (err) {
+            console.error('Excel export error:', err);
+            toast('Excel aktarımında bir hata oluştu.', 'error');
+        }
+    };
+
     const handleExcelImport = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -861,12 +913,22 @@ export default function AthletesPage() {
                             className="action-btn-outline"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={!selectedCompId}
-                            title={!selectedCompId ? "Önce Yarışma Seçin" : "Excel Aktar"}
+                            title={!selectedCompId ? "Önce Yarışma Seçin" : "Excel ile Yükle"}
                         >
                             <i className="material-icons-round">upload_file</i>
-                            <span>Excel Aktar</span>
+                            <span>Excel ile Yükle</span>
                         </button>
                     )}
+                    <button
+                        className="action-btn-outline"
+                        style={{ borderColor: '#059669', color: '#059669' }}
+                        onClick={handleExcelExport}
+                        disabled={!selectedCompId || filteredAthletes.length === 0}
+                        title={!selectedCompId ? "Önce Yarışma Seçin" : `Filtrelenmiş ${filteredAthletes.length} sporcuyu Excel'e aktar`}
+                    >
+                        <i className="material-icons-round">download</i>
+                        <span>Excel'e Aktar</span>
+                    </button>
 
                     {hasPermission('athletes', 'ekle') && (
                         <button
