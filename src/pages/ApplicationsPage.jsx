@@ -173,6 +173,7 @@ export default function ApplicationsPage() {
     const [filterStatus, setFilterStatus] = useState('bekliyor'); // bekliyor, onaylandi, reddedildi, all
     const [filterComp, setFilterComp] = useState(''); // Yarışma filtresi
     const [filterBrans, setFilterBrans] = useState(''); // Branş filtresi (Super Admin)
+    const [searchQuery, setSearchQuery] = useState(''); // Sporcu adı veya okul adı araması
 
     // Detay gösterme state'i
     const [expandedAppId, setExpandedAppId] = useState(null);
@@ -494,6 +495,17 @@ export default function ApplicationsPage() {
         // ── Diğer filtreler ──────────────────────────────────────────────────
         if (filterCity && app.city !== filterCity) return false;
         if (filterComp && app.compId !== filterComp) return false;
+
+        // ── Arama: sporcu adı veya okul adı ─────────────────────────────────
+        if (searchQuery) {
+            const q = searchQuery.toLocaleUpperCase('tr-TR').trim();
+            const inSchool = (app.schoolName || '').includes(q);
+            const inAthletes = (app.athletes || []).some(a =>
+                (a.name || a.adSoyad || '').toLocaleUpperCase('tr-TR').includes(q)
+            );
+            if (!inSchool && !inAthletes) return false;
+        }
+
         if (filterStatus === 'all') return true;
         return app.status === filterStatus;
     });
@@ -561,6 +573,24 @@ export default function ApplicationsPage() {
                                 <option key={id} value={id}>{comp.isim}</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="filters-row filters-row--search">
+                        <div className="search-input-wrapper">
+                            <i className="material-icons-round search-input-icon">search</i>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Sporcu adı veya okul adı ara..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button className="search-input-clear" onClick={() => setSearchQuery('')} title="Temizle">
+                                    <i className="material-icons-round">close</i>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="filters-row filters-row--status">
