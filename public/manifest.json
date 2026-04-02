@@ -1,0 +1,26 @@
+{
+  "name": "TCF Okul Spor — Cimnastik Yönetim",
+  "short_name": "TCF Cimnastik",
+  "description": "Türkiye Cimnastik Federasyonu okul spor yarışma yönetim sistemi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "productivity"],
+  "lang": "tr"
+}
