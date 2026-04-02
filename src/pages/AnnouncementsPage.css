@@ -252,6 +252,16 @@
     background: #F5F3FF;
 }
 
+.ann-expiry-badge--scheduled {
+    color: #D97706;
+    background: #FFFBEB;
+}
+
+.ann-tab-count--scheduled {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
 /* ── Field Hint ── */
 .ann-field-hint {
     display: block;

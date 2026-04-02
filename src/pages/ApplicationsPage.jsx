@@ -8,6 +8,10 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline, DISCIPLINE_CONFIG } from '../lib/DisciplineContext';
 import { logAction } from '../lib/auditLogger';
+import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
+import { TRAMPOLIN_CATEGORIES } from '../data/trampolinCriteriaDefaults';
+import { PARKUR_CATEGORIES } from '../data/parkurCriteriaDefaults';
+import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults';
 
 // Yardımcı fonksiyon - datayı array'e çevirir (Türkçe & İngilizce fallback)
 function getAthletesArray(app) {
@@ -100,6 +104,46 @@ function getTeamRules(catName) {
     if (nameLower.includes('yıldız') || nameLower.includes('yildiz'))       return TEAM_RULES.yildiz;
     if (nameLower.includes('genç')  || nameLower.includes('genc'))          return TEAM_RULES.genc;
     return null; // Bu kategori için takım kuralı tanımlı değil
+}
+
+// ─── Yaş Doğrulama Yardımcıları ───
+
+// Branş adından kategori haritasını döndürür
+function getCategoryMap(brans) {
+    const b = normalizeString(brans || '');
+    if (b.includes('AEROB')) return AEROBIK_CATEGORIES;
+    if (b.includes('TRAMP')) return TRAMPOLIN_CATEGORIES;
+    if (b.includes('PARKUR')) return PARKUR_CATEGORIES;
+    if (b.includes('RITMIK')) return RITMIK_CATEGORIES;
+    return null; // Artistik için yaş doğrulaması yok
+}
+
+// dobYears string/array → valid year set (Set<number>)
+function parseDobYears(dobYears) {
+    if (!dobYears) return null;
+    if (Array.isArray(dobYears)) {
+        return new Set(dobYears.map(Number));
+    }
+    if (typeof dobYears === 'string') {
+        return new Set(dobYears.split('-').map(Number).filter(Boolean));
+    }
+    return null;
+}
+
+// dob string → year number (handles "DD.MM.YYYY", "YYYY-MM-DD", "YYYY")
+function parseBirthYear(dob) {
+    if (!dob) return null;
+    const s = dob.trim();
+    // DD.MM.YYYY
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return parseInt(s.split('.')[2]);
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return parseInt(s.split('-')[0]);
+    // YYYY
+    if (/^\d{4}$/.test(s)) return parseInt(s);
+    // fallback: try Date.parse
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.getFullYear();
+    return null;
 }
 
 // ─── Yardımcı: Bir okulun mevcut sporcu sayısını getirir ───
@@ -266,7 +310,28 @@ export default function ApplicationsPage() {
             // ═══ ONAYLAMA ═══
             if (newStatus === 'onaylandi') {
 
-                // 0. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
+                // 0a. Yaş doğrulama kontrolü
+                const catMap = getCategoryMap(app.brans);
+                if (catMap && app.categoryId && catMap[app.categoryId]) {
+                    const validYears = parseDobYears(catMap[app.categoryId].dobYears);
+                    if (validYears && validYears.size > 0) {
+                        const outOfRange = app.athletes.filter(ath => {
+                            const birthYear = parseBirthYear(ath.dob || ath.dogumTarihi);
+                            return birthYear && !validYears.has(birthYear);
+                        });
+                        if (outOfRange.length > 0) {
+                            const validYearsStr = [...validYears].sort().join(', ');
+                            const athleteList = outOfRange.map(a => `• ${a.name || a.adSoyad} (${a.dob || a.dogumTarihi || '?'})`).join('\n');
+                            const proceed = await confirm(
+                                `Aşağıdaki sporcuların doğum yılı "${app.categoryName}" kategorisi için geçerli değil (izin verilen: ${validYearsStr}):\n\n${athleteList}\n\nYine de onaylamak istiyor musunuz?`,
+                                { title: 'Yaş Uyumsuzluğu', type: 'warning' }
+                            );
+                            if (!proceed) return;
+                        }
+                    }
+                }
+
+                // 0b. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
                 const rules = getTeamRules(app.categoryName);
                 if (rules) {
                     const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName, appFirebasePath);

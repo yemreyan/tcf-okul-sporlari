@@ -714,6 +714,28 @@
     color: #0ea5e9;
 }
 
+.sb-score-a {
+    color: #22c55e;
+}
+
+/* Total Cell */
+.sb-total-cell--breakdown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center !important;
+    padding-right: 0 !important;
+    gap: 2px;
+}
+
+.sb-score-total--total {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #4338CA;
+    line-height: 1.1;
+}
+
 /* Total Cell */
 .sb-total-cell {
     text-align: right;

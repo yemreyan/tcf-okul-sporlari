@@ -750,8 +750,22 @@ export default function ScoreboardPage() {
                                             </div>
                                         );
                                     }) : null}
-                                    <div className="sb-cell sb-total-cell">
-                                        {ath.total > 0 ? ath.total.toFixed(3) : '\u2014'}
+                                    <div className={`sb-cell sb-total-cell${!isApparatusBased && ath.total > 0 ? ' sb-total-cell--breakdown' : ''}`}>
+                                        {ath.total > 0 ? (
+                                            <>
+                                                <span className="sb-score-total sb-score-total--total">{ath.total.toFixed(3)}</span>
+                                                {!isApparatusBased && (() => {
+                                                    const sc = ath.appScores['_total'];
+                                                    return (
+                                                        <div className="sb-score-de">
+                                                            {sc?.d > 0 && <span className="sb-score-d">D {sc.d.toFixed(2)}</span>}
+                                                            {sc?.e > 0 && <span className="sb-score-e">E {sc.e.toFixed(3)}</span>}
+                                                            {sc?.a > 0 && <span className="sb-score-a">A {sc.a.toFixed(3)}</span>}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </>
+                                        ) : '\u2014'}
                                     </div>
                                 </div>
                             );

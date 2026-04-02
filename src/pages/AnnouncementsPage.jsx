@@ -78,6 +78,24 @@ function isExpired(ann) {
     return Date.now() > ann.expiresAt;
 }
 
+function isScheduled(ann) {
+    if (!ann.publishAt) return false;
+    return ann.publishAt > Date.now();
+}
+
+function timeUntilPublish(publishAt) {
+    if (!publishAt) return '';
+    const now = Date.now();
+    const diff = publishAt - now;
+    if (diff <= 0) return 'Şimdi yayınlanacak';
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes} dk sonra`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} saat sonra`;
+    const days = Math.floor(hours / 24);
+    return `${days} gün sonra`;
+}
+
 export default function AnnouncementsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
@@ -89,7 +107,7 @@ export default function AnnouncementsPage() {
     const [selectedCompId, setSelectedCompId] = useState('all');
     const [announcements, setAnnouncements] = useState({});
     const [loading, setLoading] = useState(true);
-    const [viewTab, setViewTab] = useState('active'); // 'active' | 'expired'
+    const [viewTab, setViewTab] = useState('active'); // 'active' | 'scheduled' | 'expired'
 
     // Bulk select
     const [selectMode, setSelectMode] = useState(false);
@@ -105,6 +123,7 @@ export default function AnnouncementsPage() {
         competitionId: '',
         oncelik: 'normal',
         sureSaat: 24, // varsayılan 1 gün
+        publishAt: '', // datetime-local string, boşsa hemen yayınla
     });
 
     // Firebase listeners
@@ -146,9 +165,10 @@ export default function AnnouncementsPage() {
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }, [announcements, selectedCompId]);
 
-    const activeAnnouncements = useMemo(() => allFiltered.filter(a => !isExpired(a)), [allFiltered]);
+    const activeAnnouncements = useMemo(() => allFiltered.filter(a => !isExpired(a) && !isScheduled(a)), [allFiltered]);
+    const scheduledAnnouncements = useMemo(() => allFiltered.filter(a => !isExpired(a) && isScheduled(a)), [allFiltered]);
     const expiredAnnouncements = useMemo(() => allFiltered.filter(a => isExpired(a)), [allFiltered]);
-    const sortedAnnouncements = viewTab === 'active' ? activeAnnouncements : expiredAnnouncements;
+    const sortedAnnouncements = viewTab === 'scheduled' ? scheduledAnnouncements : viewTab === 'expired' ? expiredAnnouncements : activeAnnouncements;
 
     const openAddModal = () => {
         setEditingId(null);
@@ -159,6 +179,7 @@ export default function AnnouncementsPage() {
             competitionId: selectedCompId !== 'all' ? selectedCompId : '',
             oncelik: 'normal',
             sureSaat: 24,
+            publishAt: '',
         });
         setIsModalOpen(true);
     };
@@ -170,6 +191,13 @@ export default function AnnouncementsPage() {
         if (ann.expiresAt && ann.createdAt) {
             sureSaat = Math.round((ann.expiresAt - ann.createdAt) / 3600000);
         }
+        // publishAt → datetime-local string (YYYY-MM-DDTHH:mm)
+        let publishAtStr = '';
+        if (ann.publishAt) {
+            const d = new Date(ann.publishAt);
+            const pad = n => String(n).padStart(2, '0');
+            publishAtStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
         setFormData({
             baslik: ann.baslik || '',
             mesaj: ann.mesaj || ann.message || '',
@@ -177,6 +205,7 @@ export default function AnnouncementsPage() {
             competitionId: ann.competitionId || '',
             oncelik: ann.oncelik || 'normal',
             sureSaat: sureSaat,
+            publishAt: publishAtStr,
         });
         setIsModalOpen(true);
     };
@@ -195,6 +224,7 @@ export default function AnnouncementsPage() {
         const createdAt = editingId ? (announcements[editingId]?.createdAt || Date.now()) : Date.now();
         const sureSaat = parseInt(formData.sureSaat) || 0;
         const expiresAt = sureSaat > 0 ? createdAt + (sureSaat * 3600000) : null;
+        const publishAt = formData.publishAt ? new Date(formData.publishAt).getTime() : null;
 
         const data = {
             baslik: formData.baslik.trim(),
@@ -205,6 +235,7 @@ export default function AnnouncementsPage() {
             oncelik: formData.oncelik,
             sureSaat: sureSaat,
             expiresAt: expiresAt,
+            publishAt: publishAt,
             createdAt: createdAt,
             updatedAt: Date.now(),
             createdBy: currentUser?.kullaniciAdi || 'admin',
@@ -216,7 +247,11 @@ export default function AnnouncementsPage() {
                 toast('Duyuru güncellendi', 'success');
             } else {
                 await push(ref(db, 'broadcasts'), data);
-                toast('Duyuru yayınlandı', 'success');
+                if (publishAt && publishAt > Date.now()) {
+                    toast(`Duyuru zamanlandı — ${new Date(publishAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`, 'info');
+                } else {
+                    toast('Duyuru yayınlandı', 'success');
+                }
             }
             closeModal();
         } catch (err) {
@@ -357,7 +392,7 @@ export default function AnnouncementsPage() {
                     <span className="ann-count">{sortedAnnouncements.length} duyuru</span>
                 </div>
 
-                {/* Aktif / Geçmiş Tab */}
+                {/* Aktif / Zamanlanmış / Geçmiş Tab */}
                 <div className="ann-tabs">
                     <button
                         className={`ann-tab ${viewTab === 'active' ? 'ann-tab--active' : ''}`}
@@ -366,6 +401,14 @@ export default function AnnouncementsPage() {
                         <i className="material-icons-round">campaign</i>
                         Aktif Duyurular
                         {activeAnnouncements.length > 0 && <span className="ann-tab-count">{activeAnnouncements.length}</span>}
+                    </button>
+                    <button
+                        className={`ann-tab ${viewTab === 'scheduled' ? 'ann-tab--active' : ''}`}
+                        onClick={() => { setViewTab('scheduled'); setSelectMode(false); setSelectedIds(new Set()); }}
+                    >
+                        <i className="material-icons-round">schedule_send</i>
+                        Zamanlanmış
+                        {scheduledAnnouncements.length > 0 && <span className="ann-tab-count ann-tab-count--scheduled">{scheduledAnnouncements.length}</span>}
                     </button>
                     <button
                         className={`ann-tab ${viewTab === 'expired' ? 'ann-tab--active' : ''}`}
@@ -464,10 +507,16 @@ export default function AnnouncementsPage() {
                                                     {isExpired(ann) ? 'Süresi doldu' : timeRemaining(ann.expiresAt)}
                                                 </span>
                                             )}
-                                            {!ann.expiresAt && (
+                                            {!ann.expiresAt && !isScheduled(ann) && (
                                                 <span className="ann-expiry-badge ann-expiry-badge--forever">
                                                     <i className="material-icons-round">all_inclusive</i>
                                                     Süresiz
+                                                </span>
+                                            )}
+                                            {isScheduled(ann) && (
+                                                <span className="ann-expiry-badge ann-expiry-badge--scheduled">
+                                                    <i className="material-icons-round">schedule_send</i>
+                                                    {timeUntilPublish(ann.publishAt)} yayınlanacak
                                                 </span>
                                             )}
                                             {ann.createdBy && (
@@ -581,6 +630,28 @@ export default function AnnouncementsPage() {
                             </div>
 
                             <div className="ann-field">
+                                <label>
+                                    <i className="material-icons-round" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>schedule_send</i>
+                                    Zamanlanmış Yayın (Opsiyonel)
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    value={formData.publishAt}
+                                    min={(() => {
+                                        const now = new Date();
+                                        const pad = n => String(n).padStart(2, '0');
+                                        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                                    })()}
+                                    onChange={e => setFormData(p => ({ ...p, publishAt: e.target.value }))}
+                                />
+                                <span className="ann-field-hint">
+                                    {formData.publishAt
+                                        ? `Duyuru ${new Date(formData.publishAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} tarihinde otomatik yayınlanacak`
+                                        : 'Boş bırakırsanız duyuru hemen yayınlanır'}
+                                </span>
+                            </div>
+
+                            <div className="ann-field">
                                 <label>Yarışma (Opsiyonel)</label>
                                 <select
                                     value={formData.competitionId}
@@ -599,8 +670,8 @@ export default function AnnouncementsPage() {
                                 İptal
                             </button>
                             <button className="ann-modal__btn ann-modal__btn--save" onClick={handleSave}>
-                                <i className="material-icons-round">{editingId ? 'save' : 'send'}</i>
-                                {editingId ? 'Güncelle' : 'Yayınla'}
+                                <i className="material-icons-round">{editingId ? 'save' : formData.publishAt ? 'schedule_send' : 'send'}</i>
+                                {editingId ? 'Güncelle' : formData.publishAt ? 'Zamanla' : 'Yayınla'}
                             </button>
                         </div>
                     </div>

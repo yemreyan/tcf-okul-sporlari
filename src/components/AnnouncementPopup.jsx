@@ -41,12 +41,14 @@ export default function AnnouncementPopup() {
             const now = Date.now();
             const readIds = JSON.parse(sessionStorage.getItem('ann_popup_read') || '[]');
 
-            // Aktif (suresi dolmamis) ve okunmamis duyurular
+            // Aktif (suresi dolmamis, zamanlanmis degilse yayinda) ve okunmamis duyurular
             const unread = Object.entries(data)
                 .map(([id, a]) => ({ id, ...a }))
                 .filter(a => {
                     // Suresi dolmus mu?
                     if (a.expiresAt && now > a.expiresAt) return false;
+                    // Zamanlanmis ama henuz yayinda degil mi?
+                    if (a.publishAt && a.publishAt > now) return false;
                     // Zaten okunmus mu?
                     if (readIds.includes(a.id)) return false;
                     return true;
