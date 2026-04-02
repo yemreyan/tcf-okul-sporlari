@@ -10,6 +10,7 @@ import {
 } from '../data/trampolinCriteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { useOffline } from '../lib/OfflineContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
@@ -19,6 +20,7 @@ export default function TrampolinScoringPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission, hashPassword } = useAuth();
     const { firebasePath } = useDiscipline();
+    const { offlineWrite } = useOffline();
     const { toast } = useNotification();
 
     // ─── Data ───
@@ -298,7 +300,7 @@ export default function TrampolinScoringPage() {
                 hakem:       currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
             };
 
-            await update(ref(db), {
+            await offlineWrite({
                 [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}`]: scoreData
             });
 
@@ -344,7 +346,7 @@ export default function TrampolinScoringPage() {
             }
 
             if (isKomiteMatch || isUserMatch) {
-                await update(ref(db), {
+                await offlineWrite({
                     [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}/kilitli`]: false
                 });
                 setScoreLocked(false);
@@ -367,7 +369,7 @@ export default function TrampolinScoringPage() {
 
     const handleLock = async () => {
         if (!selectedAthlete) return;
-        await update(ref(db), {
+        await offlineWrite({
             [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/kilitli`]: true
         });
         setScoreLocked(true);

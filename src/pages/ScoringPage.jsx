@@ -8,6 +8,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { useOffline } from '../lib/OfflineContext';
 import './ScoringPage.css';
 
 export default function ScoringPage() {
@@ -15,6 +16,7 @@ export default function ScoringPage() {
     const { currentUser, hasPermission, hashPassword } = useAuth();
     const { toast } = useNotification();
     const { firebasePath, routePrefix } = useDiscipline();
+    const { offlineWrite } = useOffline();
     const [competitions, setCompetitions] = useState({});
 
     // Selections
@@ -520,7 +522,7 @@ export default function ScoringPage() {
             if (isKomiteMatch || isUserMatch) {
                 // Kilidi kaldır
                 const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${unlockModal.athleteId}`;
-                await update(ref(db), { [scorePath + '/kilitli']: false });
+                await offlineWrite({ [scorePath + '/kilitli']: false });
                 setScoreLocked(false);
                 setUnlockModal(null);
                 toast('Puan kilidi kaldırıldı. Düzenleme yapabilirsiniz.', 'success');
@@ -636,7 +638,7 @@ export default function ScoringPage() {
                 [scorePath + '/dScoreMode']: 'skills',
             };
 
-            await update(ref(db), {
+            await offlineWrite({
                 ...ePanelSaveData,
                 ...difficultyData,
                 [scorePath + '/scoringMode']: scoringMode,

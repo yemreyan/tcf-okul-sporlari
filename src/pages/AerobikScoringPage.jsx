@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { AEROBIK_CATEGORIES, ELEMENT_FAMILIES, DIFFICULTY_VALUES, PENALTY_TYPES, FAMILY_CONSTRAINTS } from '../data/aerobikCriteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { useOffline } from '../lib/OfflineContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
@@ -14,6 +15,7 @@ export default function AerobikScoringPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission, hashPassword } = useAuth();
     const { firebasePath } = useDiscipline();
+    const { offlineWrite } = useOffline();
     const { toast } = useNotification();
 
     // Data
@@ -307,7 +309,7 @@ export default function AerobikScoringPage() {
             const activePath = `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`;
             const ts = new Date().toISOString();
 
-            await update(ref(db), {
+            await offlineWrite({
                 [scorePath + '/aScore']: aScore,
                 [scorePath + '/eScore']: eScore,
                 [scorePath + '/dScore']: dScore,
@@ -399,7 +401,7 @@ export default function AerobikScoringPage() {
 
             if (isKomiteMatch || isUserMatch) {
                 const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}`;
-                await update(ref(db), { [scorePath + '/kilitli']: false });
+                await offlineWrite({ [scorePath + '/kilitli']: false });
                 setScoreLocked(false);
                 setUnlockModal(null);
                 toast('Puan kilidi kaldırıldı. Düzenleme yapabilirsiniz.', 'success');

@@ -11,6 +11,7 @@ import {
 } from '../data/parkurCriteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { useOffline } from '../lib/OfflineContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
@@ -20,6 +21,7 @@ export default function ParkurScoringPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission, hashPassword } = useAuth();
     const { firebasePath } = useDiscipline();
+    const { offlineWrite } = useOffline();
     const { toast } = useNotification();
 
     // ─── Data ───
@@ -296,7 +298,7 @@ export default function ParkurScoringPage() {
                 hakem:       currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
             };
 
-            await update(ref(db), {
+            await offlineWrite({
                 [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}`]: scoreData
             });
 
@@ -340,7 +342,7 @@ export default function ParkurScoringPage() {
             }
 
             if (isKomiteMatch || isUserMatch) {
-                await update(ref(db), {
+                await offlineWrite({
                     [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}/kilitli`]: false
                 });
                 setScoreLocked(false);
@@ -363,7 +365,7 @@ export default function ParkurScoringPage() {
 
     const handleLock = async () => {
         if (!selectedAthlete) return;
-        await update(ref(db), {
+        await offlineWrite({
             [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/kilitli`]: true
         });
         setScoreLocked(true);

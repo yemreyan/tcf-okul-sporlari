@@ -1,0 +1,107 @@
+/* OfflineBanner.css */
+
+.offline-banner {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(calc(100% + 2rem));
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    cursor: default;
+    user-select: none;
+
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity   0.25s ease,
+                background 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ── Görünür durum ── */
+.offline-banner--visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ── Offline (bağlantı yok) ── */
+.offline-banner--offline {
+    background: #1e1e2e;
+    border: 1.5px solid #ef4444;
+    color: #fca5a5;
+}
+
+.offline-banner--offline .ob-icon {
+    color: #ef4444;
+    animation: ob-pulse 2s ease-in-out infinite;
+}
+
+/* ── Senkronize ediliyor ── */
+.offline-banner--syncing {
+    background: #1e2a3a;
+    border: 1.5px solid #3b82f6;
+    color: #93c5fd;
+}
+
+.offline-banner--syncing .ob-icon {
+    color: #3b82f6;
+    animation: ob-spin 1s linear infinite;
+}
+
+/* ── Başarılı senkronizasyon ── */
+.offline-banner--success {
+    background: #0f2318;
+    border: 1.5px solid #22c55e;
+    color: #86efac;
+}
+
+.offline-banner--success .ob-icon {
+    color: #22c55e;
+}
+
+/* ── İkonlar ── */
+.ob-icon {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+/* ── Puan sayısı badge ── */
+.ob-badge {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 1px 8px;
+    border-radius: 999px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.offline-banner--syncing .ob-badge {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+}
+
+/* ── Animasyonlar ── */
+@keyframes ob-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+@keyframes ob-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}

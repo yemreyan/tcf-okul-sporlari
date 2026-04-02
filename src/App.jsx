@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { NotificationProvider } from './lib/NotificationContext';
 import { DisciplineProvider } from './lib/DisciplineContext';
+import { OfflineProvider } from './lib/OfflineContext';
 import AnnouncementPopup from './components/AnnouncementPopup';
+import OfflineBanner from './components/OfflineBanner';
 import './App.css';
 
 // ─── Lazy-loaded Pages (Code Splitting) ───
@@ -105,6 +107,7 @@ function AppRoutes() {
   return (
     <>
     <AnnouncementPopup />
+    <OfflineBanner />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -223,9 +226,11 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <OfflineProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </OfflineProvider>
       </NotificationProvider>
     </AuthProvider>
   );
