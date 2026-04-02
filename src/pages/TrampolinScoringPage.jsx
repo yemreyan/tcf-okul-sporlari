@@ -48,6 +48,7 @@ export default function TrampolinScoringPage() {
     const [unlockPassword, setUnlockPassword]     = useState('');
     const [unlockError, setUnlockError]           = useState('');
     const [unlockingInProgress, setUnlockingInProgress] = useState(false);
+    const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
 
     // ─── UI ───
     const [sidebarOpen, setSidebarOpen]   = useState(true);
@@ -119,6 +120,21 @@ export default function TrampolinScoringPage() {
     useEffect(() => {
         if (!selectedAthlete) return;
         setScoreLocked(existingScores[selectedAthlete.id]?.kilitli === true);
+    }, [existingScores, selectedAthlete?.id]);
+
+    // Puan verisi geç geldiğinde formu doldur (kullanıcı henüz dokunmadıysa)
+    useEffect(() => {
+        if (!selectedAthlete || scoringFieldsTouched) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        const sc = TRAMPOLIN_CATEGORIES[selectedCategory]?.skillCount || 10;
+        setEPanelLocal(scores.ePanel || {});
+        setSkillValues(scores.skillValues || Array(sc).fill(''));
+        setTScore(scores.tScore ?? '');
+        setHdScore(scores.hdScore ?? 0);
+        setPenalties(scores.penalties || {});
+        setSPanel(scores.sPanel || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
 
     // ─── Derived ───
@@ -197,6 +213,7 @@ export default function TrampolinScoringPage() {
         setHdScore(0);
         setPenalties({});
         setSPanel({});
+        setScoringFieldsTouched(false);
     }, [skillCount]);
 
     const handleSelectAthlete = (athlete) => {
@@ -205,6 +222,7 @@ export default function TrampolinScoringPage() {
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
         setScoreLocked(prev?.kilitli === true);
+        setScoringFieldsTouched(false);
         if (prev) {
             setEPanelLocal(prev.ePanel || {});
             setSkillValues(prev.skillValues || Array(skillCount).fill(''));

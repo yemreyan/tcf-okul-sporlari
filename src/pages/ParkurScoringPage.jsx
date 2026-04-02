@@ -45,6 +45,7 @@ export default function ParkurScoringPage() {
     const [unlockPassword, setUnlockPassword]         = useState('');
     const [unlockError, setUnlockError]               = useState('');
     const [unlockingInProgress, setUnlockingInProgress] = useState(false);
+    const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
 
     // ─── UI ───
     const [sidebarOpen, setSidebarOpen]       = useState(true);
@@ -119,6 +120,17 @@ export default function ParkurScoringPage() {
         setScoreLocked(existingScores[selectedAthlete.id]?.kilitli === true);
     }, [existingScores, selectedAthlete?.id]);
 
+    // Puan verisi geç geldiğinde formu doldur (kullanıcı henüz dokunmadıysa)
+    useEffect(() => {
+        if (!selectedAthlete || scoringFieldsTouched) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        setEPanelLocal(scores.ePanel || {});
+        setSelectedElements(scores.dElements || []);
+        setPenalties(scores.penalties || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id]);
+
     // ─── Derived ───
     const catConfig   = PARKUR_CATEGORIES[selectedCategory] || {};
     const maxElements = catConfig.maxElements  || 10;
@@ -177,6 +189,7 @@ export default function ParkurScoringPage() {
         setEPanelLocal({});
         setSelectedElements([]);
         setPenalties({});
+        setScoringFieldsTouched(false);
     }, []);
 
     const handleSelectAthlete = (athlete) => {
@@ -185,6 +198,7 @@ export default function ParkurScoringPage() {
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
         setScoreLocked(prev?.kilitli === true);
+        setScoringFieldsTouched(false);
         if (prev) {
             setEPanelLocal(prev.ePanel || {});
             setSelectedElements(prev.dElements || []);

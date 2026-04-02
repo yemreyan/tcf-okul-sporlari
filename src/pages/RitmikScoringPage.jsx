@@ -46,6 +46,7 @@ export default function RitmikScoringPage() {
     const [unlockPassword, setUnlockPassword]         = useState('');
     const [unlockError, setUnlockError]               = useState('');
     const [unlockingInProgress, setUnlockingInProgress] = useState(false);
+    const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
 
     // ─── UI ───
     const [sidebarOpen, setSidebarOpen]       = useState(true);
@@ -120,6 +121,18 @@ export default function RitmikScoringPage() {
         setScoreLocked(existingScores[selectedAthlete.id]?.kilitli === true);
     }, [existingScores, selectedAthlete?.id]);
 
+    // Puan verisi geç geldiğinde formu doldur (kullanıcı henüz dokunmadıysa)
+    useEffect(() => {
+        if (!selectedAthlete || scoringFieldsTouched) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        setAPanelLocal(scores.aPanel || {});
+        setEPanelLocal(scores.ePanel || {});
+        setSelectedElements(scores.dElements || []);
+        setPenalties(scores.penalties || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id]);
+
     // ─── Derived ───
     const catConfig   = RITMIK_CATEGORIES[selectedCategory] || {};
     const maxElements = catConfig.maxElements || 10;
@@ -180,6 +193,7 @@ export default function RitmikScoringPage() {
         setEPanelLocal({});
         setSelectedElements([]);
         setPenalties({});
+        setScoringFieldsTouched(false);
     }, []);
 
     const handleSelectAthlete = (athlete) => {
@@ -188,6 +202,7 @@ export default function RitmikScoringPage() {
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
         setScoreLocked(prev?.kilitli === true);
+        setScoringFieldsTouched(false);
         if (prev) {
             setAPanelLocal(prev.aPanel || {});
             setEPanelLocal(prev.ePanel || {});

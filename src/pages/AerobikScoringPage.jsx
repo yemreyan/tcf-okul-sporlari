@@ -43,6 +43,7 @@ export default function AerobikScoringPage() {
     const [unlockPassword, setUnlockPassword] = useState('');
     const [unlockError, setUnlockError] = useState('');
     const [unlockingInProgress, setUnlockingInProgress] = useState(false);
+    const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
 
     // UI State
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -120,6 +121,18 @@ export default function AerobikScoringPage() {
         setScoreLocked(scores?.kilitli === true);
     }, [existingScores, selectedAthlete?.id]);
 
+    // Puan verisi geç geldiğinde formu doldur (kullanıcı henüz dokunmadıysa)
+    useEffect(() => {
+        if (!selectedAthlete || scoringFieldsTouched) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        setAPanelLocal(scores.aPanel || {});
+        setEPanelLocal(scores.ePanel || {});
+        setSelectedElements(scores.dElements || []);
+        setPenalties(scores.penalties || { fall: 0, time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id]);
+
     // ─── Derived Data ───
     const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
@@ -188,6 +201,7 @@ export default function AerobikScoringPage() {
         setIsAthleteCalled(false);
         setScoreLocked(isLocked);
 
+        setScoringFieldsTouched(false);
         if (prev) {
             setAPanelLocal(prev.aPanel || {});
             setEPanelLocal(prev.ePanel || {});
@@ -203,6 +217,7 @@ export default function AerobikScoringPage() {
         setEPanelLocal({});
         setSelectedElements([]);
         setPenalties({ fall: 0, time: 0, line: 0, music: 0, lift: 0, costume: 0 });
+        setScoringFieldsTouched(false);
     };
 
     const handleCallAthlete = async () => {
