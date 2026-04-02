@@ -8,15 +8,19 @@ import './GorevliKartlariPage.css';
 const SETTING_PATH = 'system_settings/gorevli_kartlari_aktif';
 
 const COMP_PATHS = [
-    { path: 'competitions',         brans: 'Artistik Cimnastik' },
-    { path: 'aerobik_yarismalar',   brans: 'Aerobik Cimnastik'  },
-    { path: 'trampolin_yarismalar', brans: 'Trampolin Cimnastik'},
+    { path: 'competitions',         brans: 'Artistik Cimnastik'  },
+    { path: 'aerobik_yarismalar',   brans: 'Aerobik Cimnastik'   },
+    { path: 'trampolin_yarismalar', brans: 'Trampolin Cimnastik' },
+    { path: 'parkur_yarismalar',    brans: 'Parkur Cimnastik'    },
+    { path: 'ritmik_yarismalar',    brans: 'Ritmik Cimnastik'    },
 ];
 
 const BRANS_COLOR = {
     'Artistik Cimnastik':  '#4F46E5',
     'Aerobik Cimnastik':   '#10B981',
     'Trampolin Cimnastik': '#F97316',
+    'Parkur Cimnastik':    '#EF4444',
+    'Ritmik Cimnastik':    '#EC4899',
 };
 
 const ROLE_COLOR = {

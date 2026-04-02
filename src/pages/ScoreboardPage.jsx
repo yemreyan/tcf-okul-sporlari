@@ -48,7 +48,7 @@ const APPARATUS_IMAGES = {
 export default function ScoreboardPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -237,10 +237,15 @@ export default function ScoreboardPage() {
         return getApparatusListForCategory(currentView.catId);
     }, [isLive, currentView, getApparatusListForCategory]);
 
+    // Branşın alet bazlı olup olmadığı (Artistik=true, diğerleri=false)
+    const isApparatusBased = hasApparatus && apparatusList.length > 0;
+
     const gridTemplate = useMemo(() => {
-        const appCols = apparatusList.length;
-        return `64px 2.8fr repeat(${appCols}, 1fr) 1.4fr`;
-    }, [apparatusList.length]);
+        const appCols = isApparatusBased ? apparatusList.length : 0;
+        return appCols > 0
+            ? `64px 2.8fr repeat(${appCols}, 1fr) 1.4fr`
+            : `64px 2.8fr 1.4fr`;
+    }, [isApparatusBased, apparatusList.length]);
 
     // Memoized individual ranking
     const individualRanking = useMemo(() => {
@@ -255,22 +260,39 @@ export default function ScoreboardPage() {
                 let total = 0;
                 const appScores = {};
                 let completedCount = 0;
-                apparatusList.forEach(alet => {
-                    const s = allScores[alet.id]?.[ath.id];
+
+                if (isApparatusBased) {
+                    // Artistik: puanlar/{catId}/{aletId}/{athId}
+                    apparatusList.forEach(alet => {
+                        const s = allScores[alet.id]?.[ath.id];
+                        const done = s && s.durum === 'tamamlandi';
+                        const val = done ? parseFloat(s.sonuc) : 0;
+                        appScores[alet.id] = {
+                            total: val,
+                            d: done ? parseFloat(s.calc_D ?? s.dScore ?? 0) : 0,
+                            e: done ? parseFloat(s.calc_E ?? 0) : 0,
+                        };
+                        total += val;
+                        if (val > 0) completedCount++;
+                    });
+                } else {
+                    // Aerobik/Trampolin/Parkur/Ritmik: puanlar/{catId}/{athId}
+                    const s = allScores[ath.id];
                     const done = s && s.durum === 'tamamlandi';
-                    const val = done ? parseFloat(s.sonuc) : 0;
-                    appScores[alet.id] = {
-                        total: val,
-                        d: done ? parseFloat(s.calc_D ?? s.dScore ?? 0) : 0,
-                        e: done ? parseFloat(s.calc_E ?? 0) : 0,
+                    total = done ? parseFloat(s.sonuc ?? 0) : 0;
+                    if (total > 0) completedCount = 1;
+                    appScores['_total'] = {
+                        total,
+                        d: done ? parseFloat(s.dScore ?? s.calc_D ?? 0) : 0,
+                        e: done ? parseFloat(s.eScore ?? s.calc_E ?? 0) : 0,
+                        a: done ? parseFloat(s.aScore ?? 0) : 0,
                     };
-                    total += val;
-                    if (val > 0) completedCount++;
-                });
+                }
+
                 return { ...ath, total, appScores, completedCount };
             })
             .sort((a, b) => b.total - a.total);
-    }, [athletes, allScores, apparatusList, currentView, categoryData]);
+    }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
 
     // Memoized team ranking
     const teamRanking = useMemo(() => {
@@ -293,18 +315,33 @@ export default function ScoreboardPage() {
             const appTotals = {};
             let hasScore = false;
 
-            apparatusList.forEach(alet => {
+            if (isApparatusBased) {
+                // Artistik: alet bazlı toplam
+                apparatusList.forEach(alet => {
+                    const scoresArr = [];
+                    members.forEach(mId => {
+                        const s = allScores[alet.id]?.[mId];
+                        if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
+                    });
+                    scoresArr.sort((x, y) => y - x);
+                    const top3Sum = scoresArr.slice(0, 3).reduce((x, y) => x + y, 0);
+                    appTotals[alet.id] = top3Sum;
+                    grandTotal += top3Sum;
+                    if (top3Sum > 0) hasScore = true;
+                });
+            } else {
+                // Non-apparatus: doğrudan sporcu toplam puanları
                 const scoresArr = [];
                 members.forEach(mId => {
-                    const s = allScores[alet.id]?.[mId];
+                    const s = allScores[mId];
                     if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                 });
                 scoresArr.sort((x, y) => y - x);
                 const top3Sum = scoresArr.slice(0, 3).reduce((x, y) => x + y, 0);
-                appTotals[alet.id] = top3Sum;
-                grandTotal += top3Sum;
+                appTotals['_total'] = top3Sum;
+                grandTotal = top3Sum;
                 if (top3Sum > 0) hasScore = true;
-            });
+            }
 
             if (hasScore) {
                 teams.push({ name: teamName, total: grandTotal, appTotals, memberCount: members.length });
@@ -312,7 +349,7 @@ export default function ScoreboardPage() {
         });
 
         return teams.sort((a, b) => b.total - a.total);
-    }, [athletes, allScores, apparatusList, currentView, categoryData]);
+    }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
 
     // Full ranking for current view (used for pagination)
     const fullRanking = currentView?.type === 'team' ? teamRanking : individualRanking;
@@ -431,14 +468,20 @@ export default function ScoreboardPage() {
     const scoredCount = useMemo(() => {
         let count = 0;
         athletes.forEach(ath => {
-            const hasAny = apparatusList.some(alet => {
-                const s = allScores[alet.id]?.[ath.id];
-                return s && s.durum === 'tamamlandi';
-            });
+            let hasAny = false;
+            if (isApparatusBased) {
+                hasAny = apparatusList.some(alet => {
+                    const s = allScores[alet.id]?.[ath.id];
+                    return s && s.durum === 'tamamlandi';
+                });
+            } else {
+                const s = allScores[ath.id];
+                hasAny = s && s.durum === 'tamamlandi';
+            }
             if (hasAny) count++;
         });
         return count;
-    }, [athletes, allScores, apparatusList, categoryData]);
+    }, [athletes, allScores, apparatusList, isApparatusBased, categoryData]);
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
@@ -609,7 +652,7 @@ export default function ScoreboardPage() {
             <div className="sb-thead" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="sb-th sb-th-rank">SIRA</div>
                 <div className="sb-th sb-th-name">{currentView?.type === 'team' ? 'TAKIM' : 'SPORCU'}</div>
-                {apparatusList.map(a => {
+                {isApparatusBased ? apparatusList.map(a => {
                     const mapping = APPARATUS_MAP[a.id] || { abbr: a.name.substring(0, 3).toUpperCase() };
                     return (
                         <div key={a.id} className="sb-th sb-th-app">
@@ -617,7 +660,7 @@ export default function ScoreboardPage() {
                             <div className="sb-app-img" dangerouslySetInnerHTML={{ __html: APPARATUS_IMAGES[a.id] || '' }} />
                         </div>
                     );
-                })}
+                }) : null}
                 <div className="sb-th sb-th-total">TOPLAM</div>
             </div>
 
@@ -654,7 +697,7 @@ export default function ScoreboardPage() {
                                         </div>
                                         <div className="sb-athlete-club">{t.memberCount} sporcu</div>
                                     </div>
-                                    {apparatusList.map(alet => (
+                                    {isApparatusBased && apparatusList.map(alet => (
                                         <div key={alet.id} className={`sb-cell sb-score-cell ${t.appTotals[alet.id] > 0 ? 'sb-scored' : 'sb-pending'}`}>
                                             {t.appTotals[alet.id] > 0 ? t.appTotals[alet.id].toFixed(3) : '\u2014'}
                                         </div>
@@ -690,7 +733,7 @@ export default function ScoreboardPage() {
                                         </div>
                                         <div className="sb-athlete-club">{ath.kulup || ath.okul}</div>
                                     </div>
-                                    {apparatusList.map(alet => {
+                                    {isApparatusBased ? apparatusList.map(alet => {
                                         const val = ath.appScores[alet.id];
                                         const hasScore = val && val.total > 0;
                                         return (
@@ -706,7 +749,7 @@ export default function ScoreboardPage() {
                                                 ) : '\u2014'}
                                             </div>
                                         );
-                                    })}
+                                    }) : null}
                                     <div className="sb-cell sb-total-cell">
                                         {ath.total > 0 ? ath.total.toFixed(3) : '\u2014'}
                                     </div>
