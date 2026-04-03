@@ -944,6 +944,7 @@
     animation: compModalIn 0.25s ease;
     max-width: 600px;
     width: 100%;
+    max-height: 92vh;
 }
 
 @keyframes compModalIn {
@@ -990,6 +991,9 @@
     padding: 1.5rem;
     display: grid;
     gap: 1rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .competitions-page .modal__footer {
@@ -999,6 +1003,7 @@
     padding: 1rem 1.5rem;
     border-top: 1px solid #E2E8F0;
     background: #F8FAFC;
+    flex-shrink: 0;
 }
 
 .btn--secondary {

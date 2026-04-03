@@ -861,7 +861,7 @@ export default function CompetitionsPage() {
                             <h2>{editingComp ? 'Yarışma Düzenle' : 'Yeni Yarışma'}</h2>
                             <button className="modal__close" onClick={() => setIsModalOpen(false)}><i className="material-icons-round">close</i></button>
                         </div>
-                        <form className="modal__form-grid" style={{ gridTemplateColumns: '1fr' }} onSubmit={saveCompetition}>
+                        <form id="comp-modal-form" className="modal__form-grid" style={{ gridTemplateColumns: '1fr' }} onSubmit={saveCompetition}>
                             <div className="form-group form-group--full">
                                 <label>Yarışma Adı *</label>
                                 <input type="text" required value={formData.isim} onChange={e => setFormData({ ...formData, isim: e.target.value })} />
@@ -959,11 +959,11 @@ export default function CompetitionsPage() {
                                     </div>
                                 )}
                             </div>
-                            <div className="modal__footer">
-                                <button type="button" className="btn btn--secondary" onClick={() => setIsModalOpen(false)}>İptal</button>
-                                <button type="submit" className="btn btn--primary">{editingComp ? 'Güncelle' : 'Kaydet'}</button>
-                            </div>
                         </form>
+                        <div className="modal__footer">
+                            <button type="button" className="btn btn--secondary" onClick={() => setIsModalOpen(false)}>İptal</button>
+                            <button type="submit" form="comp-modal-form" className="btn btn--primary">{editingComp ? 'Güncelle' : 'Kaydet'}</button>
+                        </div>
                     </div>
                 </div>
             )}
