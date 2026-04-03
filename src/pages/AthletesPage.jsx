@@ -500,11 +500,17 @@ export default function AthletesPage() {
         reader.readAsBinaryString(file);
     };
 
-    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = useMemo(
+        () => [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
+        [competitions]
+    );
 
-    const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !filterCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === filterCity)
-        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+    const compOptions = useMemo(
+        () => Object.entries(competitions)
+            .filter(([id, comp]) => !filterCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === filterCity)
+            .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0)),
+        [competitions, filterCity]
+    );
 
     // Global Search Logic
     const globalSearchResults = useMemo(() => {
@@ -559,7 +565,7 @@ export default function AthletesPage() {
         });
     }, [competitions, globalSearchText]);
 
-    const filteredAthletes = athletes.filter(ath => {
+    const filteredAthletes = useMemo(() => athletes.filter(ath => {
         const fullName = `${ath.ad || ''} ${ath.soyad || ''}`.toLowerCase();
         const searchLower = searchTerm.toLowerCase();
 
@@ -572,24 +578,33 @@ export default function AthletesPage() {
             (ath.okul || ath.kulup || '').toLocaleUpperCase('tr-TR') === filterSchool;
 
         return matchesSearch && matchesCategory && matchesSchool;
-    });
+    }), [athletes, searchTerm, filterCategory, filterSchool]);
 
-    const uniqueCategories = [...new Set(athletes.map(a => a.categoryId))];
+    const uniqueCategories = useMemo(() => [...new Set(athletes.map(a => a.categoryId))], [athletes]);
 
     // Benzersiz okul isimleri ve yarışma türleri
-    const uniqueSchools = [...new Set(athletes.map(a => a.okul || a.kulup || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
-    const uniqueTurTypes = [...new Set(athletes.map(a => (a.yarismaTuru || 'ferdi').toLowerCase()))].sort();
+    const uniqueSchools = useMemo(
+        () => [...new Set(athletes.map(a => a.okul || a.kulup || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
+        [athletes]
+    );
+    const uniqueTurTypes = useMemo(
+        () => [...new Set(athletes.map(a => (a.yarismaTuru || 'ferdi').toLowerCase()))].sort(),
+        [athletes]
+    );
 
     // Transfer: aynı il altındaki diğer yarışmalar
     const currentComp = selectedCompId ? competitions[selectedCompId] : null;
-    const transferableComps = Object.entries(competitions)
-        .filter(([id, c]) => {
-            if (id === selectedCompId) return false;
-            // Aynı il
-            if ((c.il || c.city) !== (currentComp?.il || currentComp?.city)) return false;
-            return true;
-        })
-        .sort((a, b) => (b[1].baslangicTarihi || '').localeCompare(a[1].baslangicTarihi || ''));
+    const transferableComps = useMemo(
+        () => Object.entries(competitions)
+            .filter(([id, c]) => {
+                if (id === selectedCompId) return false;
+                // Aynı il
+                if ((c.il || c.city) !== (currentComp?.il || currentComp?.city)) return false;
+                return true;
+            })
+            .sort((a, b) => (b[1].baslangicTarihi || '').localeCompare(a[1].baslangicTarihi || '')),
+        [competitions, selectedCompId, currentComp?.il, currentComp?.city]
+    );
 
     // Transfer: hedef yarışmanın kategorileri
     const transferTargetComp = transferTargetCompId ? competitions[transferTargetCompId] : null;

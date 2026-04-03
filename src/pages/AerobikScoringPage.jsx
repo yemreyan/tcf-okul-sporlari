@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -136,11 +136,17 @@ export default function AerobikScoringPage() {
     }, [existingScores, selectedAthlete?.id]);
 
     // ─── Derived Data ───
-    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = useMemo(
+        () => [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
+        [competitions]
+    );
 
-    const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
-        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+    const compOptions = useMemo(
+        () => Object.entries(competitions)
+            .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
+            .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0)),
+        [competitions, selectedCity]
+    );
 
     let categoryOptions = [];
     if (selectedCompId && competitions[selectedCompId]?.sporcular) {
@@ -173,24 +179,33 @@ export default function AerobikScoringPage() {
         return scores.reduce((a, b) => a + b, 0) / scores.length;
     };
 
-    const aScore = calcTrimmedAvg(aPanelLocal, JUDGE_COUNT);
+    const aScore = useMemo(() => calcTrimmedAvg(aPanelLocal, JUDGE_COUNT), [aPanelLocal]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // E Score: judges enter deductions, E = 10 - trimmed avg deduction
-    const avgEDeduction = calcTrimmedAvg(ePanelLocal, JUDGE_COUNT);
+    const avgEDeduction = useMemo(() => calcTrimmedAvg(ePanelLocal, JUDGE_COUNT), [ePanelLocal]); // eslint-disable-line react-hooks/exhaustive-deps
     const eScore = Math.max(0, 10.0 - avgEDeduction);
 
     // D Score: sum of element values / divisor
-    const dRawSum = selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
+    const dRawSum = useMemo(
+        () => selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0),
+        [selectedElements]
+    );
     const dScore = dDivisor > 0 ? dRawSum / dDivisor : 0;
 
     // Penalties
-    const totalPenalties = Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+    const totalPenalties = useMemo(
+        () => Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0),
+        [penalties]
+    );
 
     // Final Score = A + E + D - Penalties
     // D puanı 0 ise sporcu puanı 0 olmalı (güçlük elementi girilmemişse geçersiz performans)
-    const finalScore = dScore === 0
-        ? '0.000'
-        : Math.max(0, aScore + eScore + dScore - totalPenalties).toFixed(3);
+    const finalScore = useMemo(
+        () => dScore === 0
+            ? '0.000'
+            : Math.max(0, aScore + eScore + dScore - totalPenalties).toFixed(3),
+        [dScore, aScore, eScore, totalPenalties]
+    );
 
     // ─── Handlers ───
     const handleSelectAthlete = (athlete) => {

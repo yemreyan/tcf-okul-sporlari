@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -244,23 +244,29 @@ export default function ScoringPage() {
     }, [existingScores, selectedAthlete?.id]);
 
     // Available Cities for Filtering
-    const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = useMemo(
+        () => [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
+        [competitions]
+    );
 
     // Dropdown Data & Criteria Options
-    const compOptions = Object.entries(competitions)
-        .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
-        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+    const compOptions = useMemo(
+        () => Object.entries(competitions)
+            .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity)
+            .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0)),
+        [competitions, selectedCity]
+    );
 
-    let categoryOptions = [];
-    if (selectedCompId) {
+    const categoryOptions = useMemo(() => {
+        if (!selectedCompId) return [];
         const comp = competitions[selectedCompId];
         // kategoriler ve sporcular'dan gelen kategorileri birleştir
         const catSet = new Set();
         if (comp?.kategoriler) Object.keys(comp.kategoriler).forEach(k => catSet.add(k));
         if (comp?.sporcular) Object.keys(comp.sporcular).forEach(k => catSet.add(k));
         // "undefined" gibi geçersiz key'leri filtrele
-        categoryOptions = [...catSet].filter(k => k && k !== 'undefined');
-    }
+        return [...catSet].filter(k => k && k !== 'undefined');
+    }, [selectedCompId, competitions]);
 
     // Yarışma bazlı alet filtreleme
     const compData = selectedCompId ? competitions[selectedCompId] : null;
@@ -275,49 +281,54 @@ export default function ScoringPage() {
     // Criteria kaynağı: liveCriteria (Firebase) → DEFAULT_CRITERIA (fallback)
     const effectiveCriteria = liveCriteria || (selectedCategory ? DEFAULT_CRITERIA[selectedCategory] : null);
 
-    let apparatusOptions = [];
-    let currentCriteria = null;
-    if (selectedCategory && effectiveCriteria) {
+    const apparatusOptions = useMemo(() => {
+        if (!selectedCategory || !effectiveCriteria) return [];
         const allKeys = Object.keys(effectiveCriteria).filter(key => key !== 'metadata' && key !== 'eksikKesintiTiers');
         // compAletler varsa sadece eşleşenleri göster, yoksa tümünü göster
         // Ek olarak: Aletin "isActive" flag'i false ise gösterme
-        apparatusOptions = allKeys
+        let opts = allKeys
             .filter(key => (compAletler.length === 0 || compAletler.includes(key)) && effectiveCriteria[key]?.isActive !== false)
             .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
 
         // Eğer compAletler filtresi sonrası boş kaldıysa, sadece aktif olanları filtresiz göster
-        if (apparatusOptions.length === 0 && allKeys.some(key => effectiveCriteria[key]?.isActive !== false)) {
-            apparatusOptions = allKeys
+        if (opts.length === 0 && allKeys.some(key => effectiveCriteria[key]?.isActive !== false)) {
+            opts = allKeys
                 .filter(key => effectiveCriteria[key]?.isActive !== false)
                 .map(key => ({ id: key, name: key.charAt(0).toUpperCase() + key.slice(1) }));
         }
+        return opts;
+    }, [selectedCategory, effectiveCriteria, compAletler]);
 
-        if (selectedApparatus) {
-            currentCriteria = effectiveCriteria[selectedApparatus];
-        }
-    }
+    const currentCriteria = useMemo(() => {
+        if (!selectedCategory || !effectiveCriteria || !selectedApparatus) return null;
+        return effectiveCriteria[selectedApparatus] || null;
+    }, [selectedCategory, effectiveCriteria, selectedApparatus]);
 
     // D-Score Calculation
     // dScoreMode: Firebase criteria'da varsa onu kullan, yoksa DEFAULT_CRITERIA'dan fallback yap
-    const defaultCriteriaForApparatus = selectedCategory && selectedApparatus ? DEFAULT_CRITERIA[selectedCategory]?.[selectedApparatus] : null;
+    const defaultCriteriaForApparatus = useMemo(
+        () => selectedCategory && selectedApparatus ? DEFAULT_CRITERIA[selectedCategory]?.[selectedApparatus] : null,
+        [selectedCategory, selectedApparatus]
+    );
     const dScoreMode = currentCriteria?.dScoreMode || defaultCriteriaForApparatus?.dScoreMode || 'skills'; // 'skills' | 'difficulty'
     // hasDynamicSkills: skills modunda VE en az bir geçerli hareket tanımlıysa (isim veya dValues dolu)
     const hasDynamicSkills = dScoreMode === 'skills' && currentCriteria?.hareketler && currentCriteria.hareketler.length > 0
         && currentCriteria.hareketler.some(h => (h.isim && h.isim.trim() !== '') || (h.dValues && String(h.dValues).trim() !== ''));
     const isDifficultyMode = dScoreMode === 'difficulty';
 
-    let calculatedDScore = 0;
-    if (isDifficultyMode) {
-        // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS
-        const movesTotal = Object.entries(difficultyMoves).reduce((sum, [group, count]) => {
-            return sum + ((parseInt(count) || 0) * (DIFFICULTY_POINTS[group] || 0));
-        }, 0);
-        calculatedDScore = movesTotal + (parseFloat(crValue) || 0) + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0);
-    } else if (hasDynamicSkills) {
-        calculatedDScore = Object.values(skillScores).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-    } else {
-        calculatedDScore = parseFloat(dScore) || 0;
-    }
+    const calculatedDScore = useMemo(() => {
+        if (isDifficultyMode) {
+            // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS
+            const movesTotal = Object.entries(difficultyMoves).reduce((sum, [group, count]) => {
+                return sum + ((parseInt(count) || 0) * (DIFFICULTY_POINTS[group] || 0));
+            }, 0);
+            return movesTotal + (parseFloat(crValue) || 0) + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0);
+        } else if (hasDynamicSkills) {
+            return Object.values(skillScores).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+        } else {
+            return parseFloat(dScore) || 0;
+        }
+    }, [isDifficultyMode, hasDynamicSkills, difficultyMoves, crValue, cvValue, btrsValue, skillScores, dScore]);
 
     // Eksik Eleman Kesintisi
     let missingPenalty = 0;
@@ -353,8 +364,8 @@ export default function ScoringPage() {
         return panels;
     };
 
-    const ePanels = renderEPanels();
-    const calculateAvgEDeduction = () => {
+    const ePanels = useMemo(() => renderEPanels(), [currentCriteria, effectiveHakemSayisi]); // eslint-disable-line react-hooks/exhaustive-deps
+    const avgEDeduction = useMemo(() => {
         // Birleşik modda tek E kesinti değeri kullanılır
         if (scoringMode === 'combined') {
             return parseFloat(combinedEDeduction) || 0;
@@ -380,10 +391,9 @@ export default function ScoringPage() {
         // 3 veya daha az: düz ortalama
         const sum = localScores.reduce((acc, val) => acc + val, 0);
         return sum / localScores.length;
-    };
+    }, [scoringMode, combinedEDeduction, ePanels, ePanelLocal]);
 
     const E_SCORE_BASE = 10.0;
-    const avgEDeduction = calculateAvgEDeduction();
     const currentEScore = Math.max(0, E_SCORE_BASE - avgEDeduction);
 
     // Bonus

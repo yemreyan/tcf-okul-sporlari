@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get, push, remove } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -632,7 +632,7 @@ export default function ApplicationsPage() {
 
     const disciplineBransUpper = (disciplineBrans || '').toLocaleUpperCase('tr-TR');
 
-    const filteredApps = applications.map(app => ({
+    const filteredApps = useMemo(() => applications.map(app => ({
         ...app,
         compName: competitions[app.compId]?.isim || app.compName || app.compId || 'Bilinmeyen Yarışma'
     })).filter(app => {
@@ -662,7 +662,7 @@ export default function ApplicationsPage() {
 
         if (filterStatus === 'all') return true;
         return app.status === filterStatus;
-    });
+    }), [applications, competitions, isSuperAdmin, disciplineBransUpper, filterBrans, filterCity, filterComp, searchQuery, filterStatus]);
 
     const statusConfig = {
         bekliyor: { label: 'Bekliyor', color: '#EA580C', icon: 'schedule' },
@@ -670,11 +670,17 @@ export default function ApplicationsPage() {
         reddedildi: { label: 'Reddedildi', color: '#EF4444', icon: 'cancel' },
     };
 
-    const availableCities = [...new Set(applications.map(app => app.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    const availableCities = useMemo(
+        () => [...new Set(applications.map(app => app.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
+        [applications]
+    );
 
-    const compOptions = Object.entries(competitions)
-        .filter(([, comp]) => !filterCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === filterCity)
-        .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0));
+    const compOptions = useMemo(
+        () => Object.entries(competitions)
+            .filter(([, comp]) => !filterCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === filterCity)
+            .sort((a, b) => new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0)),
+        [competitions, filterCity]
+    );
 
     return (
         <div className="applications-page">
