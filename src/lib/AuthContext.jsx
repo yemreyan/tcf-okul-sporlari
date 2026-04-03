@@ -147,7 +147,8 @@ export const AuthProvider = ({ children }) => {
                 kullaniciAdi: sanitizedUsername,
                 rolAdi: userData.rolAdi || 'Kullanıcı',
                 il: userData.il || null,
-                izinler: userData.izinler || {}
+                izinler: userData.izinler || {},
+                bransIzinler: userData.bransIzinler || {},
             };
 
             const token = generateSessionToken();
@@ -181,17 +182,26 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Sayfa ve alt özellik izin kontrolü
-     * @param {string} pageKey - Sayfa anahtarı (ör: 'competitions')
-     * @param {string} action - Alt izin (ör: 'goruntule', 'olustur', 'duzenle', 'sil'). Varsayılan: 'goruntule'
+     * @param {string} pageKey   - Sayfa anahtarı (ör: 'competitions')
+     * @param {string} action    - Alt izin (ör: 'goruntule', 'olustur'). Varsayılan: 'goruntule'
+     * @param {string} discipline - Branş id (ör: 'artistik'). Verilirse önce branş izinlerine bakılır.
      * @returns {boolean}
      */
-    const hasPermission = (pageKey, action = 'goruntule') => {
+    const hasPermission = (pageKey, action = 'goruntule', discipline = null) => {
         if (!currentUser) return false;
         if (isSuperAdmin()) return true;
 
+        // Branş bazlı izin — tanımlanmışsa global'e göre önceliklidir
+        if (discipline && currentUser.bransIzinler?.[discipline]) {
+            const bp = currentUser.bransIzinler[discipline];
+            if (bp[pageKey] !== undefined && bp[pageKey][action] !== undefined) {
+                return bp[pageKey][action] === true;
+            }
+        }
+
+        // Global fallback
         const pagePerms = currentUser.izinler?.[pageKey];
         if (!pagePerms) return false;
-
         return pagePerms[action] === true;
     };
 

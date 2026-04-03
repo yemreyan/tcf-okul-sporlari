@@ -2,6 +2,18 @@
    ROLE MANAGEMENT PAGE
    ============================ */
 
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 900;
+    padding: 24px 16px;
+    overflow-y: auto;
+}
+
 .role-page {
     min-height: 100vh;
     background: var(--bg);
@@ -1077,3 +1089,109 @@
         max-width: 95vw;
     }
 }
+
+/* ── Branş Sekme Çubuğu ── */
+.rm-perm-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.rm-perm-tabs::-webkit-scrollbar { display: none; }
+
+.rm-perm-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border: none;
+    background: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    border-radius: 6px 6px 0 0;
+    transition: color 0.15s, background 0.15s;
+    position: relative;
+}
+.rm-perm-tab .material-icons-round { font-size: 15px; }
+.rm-perm-tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.rm-perm-tab--active { color: var(--text-primary); border-bottom-color: #6366f1; font-weight: 600; }
+
+.rm-perm-tab__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+/* ── Branş Kontrol Çubuğu ── */
+.rm-branch-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.03);
+}
+.rm-branch-bar .material-icons-round { font-size: 18px; flex-shrink: 0; }
+
+.rm-branch-bar__text { flex: 1; font-size: 0.82rem; color: var(--text-primary); }
+.rm-branch-bar__text--muted { color: var(--text-muted); }
+
+.rm-branch-bar__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+.rm-branch-bar__btn:hover { opacity: 0.85; }
+.rm-branch-bar__btn .material-icons-round { font-size: 14px; }
+
+.rm-branch-bar__btn--primary { background: #6366f1; color: #fff; }
+.rm-branch-bar__btn--danger  { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+/* ── Read-only Grid ── */
+.rm-perm-grid--readonly {
+    opacity: 0.55;
+    pointer-events: none;
+    filter: grayscale(30%);
+}
+
+/* ── Kullanıcı Kartında Branş Rozetleri ── */
+.rm-branch-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.rm-branch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+.rm-branch-badge .material-icons-round { font-size: 11px; }
+
+/* ── Checkbox readonly ── */
+.rm-checkbox--readonly { cursor: default; }

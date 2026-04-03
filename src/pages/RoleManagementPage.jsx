@@ -29,6 +29,7 @@ const PERMISSION_PAGES = [
             { key: 'goruntule', label: 'Görüntüle' },
             { key: 'onayla', label: 'Onayla' },
             { key: 'reddet', label: 'Reddet' },
+            { key: 'yas_atla', label: 'Yaş Uyarısını Atla' },
         ],
     },
     {
@@ -144,6 +145,7 @@ const PERMISSION_PAGES = [
             { key: 'olustur', label: 'Oluştur' },
             { key: 'duzenle', label: 'Düzenle' },
             { key: 'sil', label: 'Sil' },
+            { key: 'zamanla', label: 'Zamanlanmış Duyuru' },
         ],
     },
     {
@@ -153,6 +155,17 @@ const PERMISSION_PAGES = [
         actions: [
             { key: 'goruntule', label: 'Görüntüle' },
             { key: 'olustur', label: 'Oluştur / İndir' },
+        ],
+    },
+    {
+        key: 'coaches',
+        label: 'Antrenörler',
+        icon: 'sports',
+        actions: [
+            { key: 'goruntule', label: 'Görüntüle' },
+            { key: 'ekle', label: 'Ekle' },
+            { key: 'duzenle', label: 'Düzenle' },
+            { key: 'sil', label: 'Sil' },
         ],
     },
 ];
@@ -207,6 +220,14 @@ function countPermissions(izinler) {
     return { granted, total };
 }
 
+const BRANSLAR = [
+    { id: 'artistik',  label: 'Artistik',  icon: 'sports_gymnastics', color: '#E30613' },
+    { id: 'aerobik',   label: 'Aerobik',   icon: 'directions_run',    color: '#2563EB' },
+    { id: 'trampolin', label: 'Trampolin', icon: 'height',            color: '#7C3AED' },
+    { id: 'parkur',    label: 'Parkur',    icon: 'terrain',           color: '#059669' },
+    { id: 'ritmik',    label: 'Ritmik',    icon: 'self_improvement',  color: '#DB2777' },
+];
+
 const cities = Object.keys(turkeyData).sort();
 
 const EMPTY_FORM = {
@@ -216,6 +237,7 @@ const EMPTY_FORM = {
     il: '',
     aktif: true,
     izinler: createEmptyPermissions(),
+    bransIzinler: {}, // branşId -> izin objesi (null = global'e devret)
 };
 
 export default function RoleManagementPage() {
@@ -234,6 +256,7 @@ export default function RoleManagementPage() {
     const [formData, setFormData] = useState({ ...EMPTY_FORM });
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const [permTab, setPermTab] = useState('global'); // 'global' | branş id
 
     // Delete confirmation
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -299,6 +322,12 @@ export default function RoleManagementPage() {
         if (user) {
             // Düzenleme — şifre alanı boş açılır; boş bırakılırsa mevcut hash korunur
             setEditingUser(user.id);
+            // bransIzinler: her branş için mergePermissions uygula (yoksa null bırak)
+            const bransIzinler = {};
+            BRANSLAR.forEach(b => {
+                const raw = user.bransIzinler?.[b.id];
+                bransIzinler[b.id] = raw ? mergePermissions(raw) : null;
+            });
             setFormData({
                 kullaniciAdi: user.id,
                 sifre: '',
@@ -306,12 +335,14 @@ export default function RoleManagementPage() {
                 il: user.il || '',
                 aktif: user.aktif !== false,
                 izinler: mergePermissions(user.izinler),
+                bransIzinler,
             });
         } else {
             // Yeni kullanıcı
             setEditingUser(null);
-            setFormData({ ...EMPTY_FORM, izinler: createEmptyPermissions() });
+            setFormData({ ...EMPTY_FORM, izinler: createEmptyPermissions(), bransIzinler: {} });
         }
+        setPermTab('global');
         setFormError('');
         setModalOpen(true);
     };
@@ -336,41 +367,60 @@ export default function RoleManagementPage() {
         setEditingUser(null);
         setFormData({ ...EMPTY_FORM });
         setFormError('');
+        setPermTab('global');
+    };
+
+    // Aktif tab'da izin okuma yardımcısı
+    const getActivePerms = (prev) => {
+        if (permTab === 'global') return prev.izinler;
+        return prev.bransIzinler[permTab] || createEmptyPermissions();
+    };
+    const setActivePerms = (prev, newPerms) => {
+        if (permTab === 'global') return { ...prev, izinler: newPerms };
+        return { ...prev, bransIzinler: { ...prev.bransIzinler, [permTab]: newPerms } };
     };
 
     // İzin toggle
     const togglePermission = (pageKey, actionKey) => {
-        setFormData(prev => ({
-            ...prev,
-            izinler: {
-                ...prev.izinler,
-                [pageKey]: {
-                    ...prev.izinler[pageKey],
-                    [actionKey]: !prev.izinler[pageKey][actionKey],
-                },
-            },
-        }));
+        setFormData(prev => {
+            const cur = getActivePerms(prev);
+            const newPerms = { ...cur, [pageKey]: { ...cur[pageKey], [actionKey]: !cur[pageKey]?.[actionKey] } };
+            return setActivePerms(prev, newPerms);
+        });
     };
 
     // Sayfa tüm izinlerini toggle
     const togglePageAll = (pageKey) => {
         const page = PERMISSION_PAGES.find(p => p.key === pageKey);
         if (!page) return;
-        const allTrue = page.actions.every(a => formData.izinler[pageKey]?.[a.key]);
         setFormData(prev => {
+            const cur = getActivePerms(prev);
+            const allTrue = page.actions.every(a => cur[pageKey]?.[a.key]);
             const newPagePerms = {};
             page.actions.forEach(a => { newPagePerms[a.key] = !allTrue; });
-            return {
-                ...prev,
-                izinler: { ...prev.izinler, [pageKey]: newPagePerms },
-            };
+            return setActivePerms(prev, { ...cur, [pageKey]: newPagePerms });
         });
     };
 
-    // Hızlı seçim butonları
-    const setAllPermissions = () => setFormData(prev => ({ ...prev, izinler: createFullPermissions() }));
-    const clearAllPermissions = () => setFormData(prev => ({ ...prev, izinler: createEmptyPermissions() }));
-    const setViewOnlyPermissions = () => setFormData(prev => ({ ...prev, izinler: createViewOnlyPermissions() }));
+    // Hızlı seçim butonları — aktif tab'a göre
+    const setAllPermissions = () => setFormData(prev => setActivePerms(prev, createFullPermissions()));
+    const clearAllPermissions = () => setFormData(prev => setActivePerms(prev, createEmptyPermissions()));
+    const setViewOnlyPermissions = () => setFormData(prev => setActivePerms(prev, createViewOnlyPermissions()));
+
+    // Branş özel izin etkinleştir (global'den kopyala)
+    const enableBranchPerms = (bransId) => {
+        setFormData(prev => ({
+            ...prev,
+            bransIzinler: { ...prev.bransIzinler, [bransId]: mergePermissions(prev.izinler) },
+        }));
+    };
+    // Branş özel izni kaldır (global'e dön)
+    const disableBranchPerms = (bransId) => {
+        setFormData(prev => ({
+            ...prev,
+            bransIzinler: { ...prev.bransIzinler, [bransId]: null },
+        }));
+    };
 
     // Kaydet
     const handleSave = async (e) => {
@@ -400,11 +450,20 @@ export default function RoleManagementPage() {
 
         setSaving(true);
         try {
+            // bransIzinler: null değerli branşları çıkar (gereksiz veri yazılmasın)
+            const cleanBransIzinler = {};
+            BRANSLAR.forEach(b => {
+                if (formData.bransIzinler[b.id]) {
+                    cleanBransIzinler[b.id] = formData.bransIzinler[b.id];
+                }
+            });
+
             const userData = {
                 rolAdi: formData.rolAdi.trim(),
                 il: formData.il || null,
                 aktif: formData.aktif,
                 izinler: formData.izinler,
+                bransIzinler: Object.keys(cleanBransIzinler).length > 0 ? cleanBransIzinler : null,
             };
 
             if (formData.sifre.trim()) {
@@ -607,8 +666,19 @@ export default function RoleManagementPage() {
                                                 style={{ width: `${permCount.total > 0 ? (permCount.granted / permCount.total) * 100 : 0}%` }}
                                             />
                                         </div>
-                                        <span className="rm-perm-text">{permCount.granted}/{permCount.total} izin</span>
+                                        <span className="rm-perm-text">{permCount.granted}/{permCount.total} global izin</span>
                                     </div>
+                                    {/* Özel branş izni rozetleri */}
+                                    {user.bransIzinler && Object.keys(user.bransIzinler).length > 0 && (
+                                        <div className="rm-branch-badges">
+                                            {BRANSLAR.filter(b => user.bransIzinler?.[b.id]).map(b => (
+                                                <span key={b.id} className="rm-branch-badge" style={{ background: b.color + '22', color: b.color, borderColor: b.color + '55' }}>
+                                                    <i className="material-icons-round" style={{ fontSize: 11 }}>{b.icon}</i>
+                                                    {b.label}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className="rm-user-card__actions">
                                         <button className="rm-action-btn rm-action-btn--edit" onClick={() => openModal(user)} title="Düzenle">
                                             <i className="material-icons-round">edit</i>
@@ -701,59 +771,128 @@ export default function RoleManagementPage() {
 
                             {/* İzin Grid */}
                             <div className="rm-section">
-                                <div className="rm-section__header">
-                                    <h3 className="rm-section__title">
-                                        <i className="material-icons-round">security</i>
-                                        Sayfa İzinleri
-                                    </h3>
-                                    <div className="rm-quick-btns">
-                                        <button type="button" className="rm-quick-btn rm-quick-btn--all" onClick={setAllPermissions}>
-                                            Tümünü Seç
-                                        </button>
-                                        <button type="button" className="rm-quick-btn rm-quick-btn--view" onClick={setViewOnlyPermissions}>
-                                            Sadece Görüntüle
-                                        </button>
-                                        <button type="button" className="rm-quick-btn rm-quick-btn--clear" onClick={clearAllPermissions}>
-                                            Tümünü Kaldır
-                                        </button>
-                                    </div>
-                                </div>
+                                <h3 className="rm-section__title" style={{ marginBottom: 12 }}>
+                                    <i className="material-icons-round">security</i>
+                                    Sayfa İzinleri
+                                </h3>
 
-                                <div className="rm-perm-grid">
-                                    {PERMISSION_PAGES.map(page => {
-                                        const allChecked = page.actions.every(a => formData.izinler[page.key]?.[a.key]);
+                                {/* Branş Sekme Çubuğu */}
+                                <div className="rm-perm-tabs">
+                                    <button
+                                        type="button"
+                                        className={`rm-perm-tab ${permTab === 'global' ? 'rm-perm-tab--active' : ''}`}
+                                        onClick={() => setPermTab('global')}
+                                    >
+                                        <i className="material-icons-round">public</i>
+                                        Global
+                                    </button>
+                                    {BRANSLAR.map(b => {
+                                        const hasCustom = !!formData.bransIzinler?.[b.id];
                                         return (
-                                            <div key={page.key} className="rm-perm-row">
-                                                <div className="rm-perm-row__label">
-                                                    <button
-                                                        type="button"
-                                                        className={`rm-perm-row__toggle ${allChecked ? 'rm-perm-row__toggle--active' : ''}`}
-                                                        onClick={() => togglePageAll(page.key)}
-                                                        title={allChecked ? 'Tümünü kaldır' : 'Tümünü seç'}
-                                                    >
-                                                        <i className="material-icons-round" style={{ fontSize: 18 }}>{page.icon}</i>
-                                                    </button>
-                                                    <span>{page.label}</span>
-                                                </div>
-                                                <div className="rm-perm-row__actions">
-                                                    {page.actions.map(action => (
-                                                        <label key={action.key} className="rm-checkbox">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!formData.izinler[page.key]?.[action.key]}
-                                                                onChange={() => togglePermission(page.key, action.key)}
-                                                            />
-                                                            <span className="rm-checkbox__box">
-                                                                <i className="material-icons-round">check</i>
-                                                            </span>
-                                                            <span className="rm-checkbox__text">{action.label}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                            <button
+                                                key={b.id}
+                                                type="button"
+                                                className={`rm-perm-tab ${permTab === b.id ? 'rm-perm-tab--active' : ''}`}
+                                                style={permTab === b.id ? { borderBottomColor: b.color } : {}}
+                                                onClick={() => setPermTab(b.id)}
+                                            >
+                                                <i className="material-icons-round">{b.icon}</i>
+                                                {b.label}
+                                                {hasCustom && <span className="rm-perm-tab__dot" style={{ background: b.color }} />}
+                                            </button>
                                         );
                                     })}
                                 </div>
+
+                                {/* Tab içeriği */}
+                                {(() => {
+                                    const isBrans = permTab !== 'global';
+                                    const brans = isBrans ? BRANSLAR.find(b => b.id === permTab) : null;
+                                    const hasCustom = isBrans && !!formData.bransIzinler?.[permTab];
+                                    const activePerms = isBrans
+                                        ? (hasCustom ? formData.bransIzinler[permTab] : formData.izinler)
+                                        : formData.izinler;
+                                    const isReadOnly = isBrans && !hasCustom;
+
+                                    return (
+                                        <>
+                                            {/* Branş kontrol çubuğu */}
+                                            {isBrans && (
+                                                <div className="rm-branch-bar" style={{ borderColor: brans.color + '55' }}>
+                                                    <i className="material-icons-round" style={{ color: brans.color }}>{brans.icon}</i>
+                                                    {hasCustom ? (
+                                                        <>
+                                                            <span className="rm-branch-bar__text">
+                                                                <strong>{brans.label}</strong> için özel izinler aktif
+                                                            </span>
+                                                            <button type="button" className="rm-branch-bar__btn rm-branch-bar__btn--danger" onClick={() => disableBranchPerms(permTab)}>
+                                                                <i className="material-icons-round">link_off</i>
+                                                                Global'e Dön
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="rm-branch-bar__text rm-branch-bar__text--muted">
+                                                                <strong>{brans.label}</strong> için global izinler geçerli
+                                                            </span>
+                                                            <button type="button" className="rm-branch-bar__btn rm-branch-bar__btn--primary" onClick={() => enableBranchPerms(permTab)}>
+                                                                <i className="material-icons-round">edit_note</i>
+                                                                Özel İzin Tanımla
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Hızlı seçim — sadece düzenlenebilir modda */}
+                                            {!isReadOnly && (
+                                                <div className="rm-quick-btns" style={{ marginBottom: 10 }}>
+                                                    <button type="button" className="rm-quick-btn rm-quick-btn--all" onClick={setAllPermissions}>Tümünü Seç</button>
+                                                    <button type="button" className="rm-quick-btn rm-quick-btn--view" onClick={setViewOnlyPermissions}>Sadece Görüntüle</button>
+                                                    <button type="button" className="rm-quick-btn rm-quick-btn--clear" onClick={clearAllPermissions}>Tümünü Kaldır</button>
+                                                </div>
+                                            )}
+
+                                            <div className={`rm-perm-grid ${isReadOnly ? 'rm-perm-grid--readonly' : ''}`}>
+                                                {PERMISSION_PAGES.map(page => {
+                                                    const allChecked = page.actions.every(a => activePerms[page.key]?.[a.key]);
+                                                    return (
+                                                        <div key={page.key} className="rm-perm-row">
+                                                            <div className="rm-perm-row__label">
+                                                                <button
+                                                                    type="button"
+                                                                    className={`rm-perm-row__toggle ${allChecked ? 'rm-perm-row__toggle--active' : ''}`}
+                                                                    onClick={() => !isReadOnly && togglePageAll(page.key)}
+                                                                    title={isReadOnly ? 'Global izin (salt okunur)' : (allChecked ? 'Tümünü kaldır' : 'Tümünü seç')}
+                                                                    style={isReadOnly ? { cursor: 'default' } : {}}
+                                                                >
+                                                                    <i className="material-icons-round" style={{ fontSize: 18 }}>{page.icon}</i>
+                                                                </button>
+                                                                <span>{page.label}</span>
+                                                            </div>
+                                                            <div className="rm-perm-row__actions">
+                                                                {page.actions.map(action => (
+                                                                    <label key={action.key} className={`rm-checkbox ${isReadOnly ? 'rm-checkbox--readonly' : ''}`}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={!!activePerms[page.key]?.[action.key]}
+                                                                            onChange={() => !isReadOnly && togglePermission(page.key, action.key)}
+                                                                            readOnly={isReadOnly}
+                                                                        />
+                                                                        <span className="rm-checkbox__box">
+                                                                            <i className="material-icons-round">check</i>
+                                                                        </span>
+                                                                        <span className="rm-checkbox__text">{action.label}</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
 
                             {/* Hata ve Butonlar */}
