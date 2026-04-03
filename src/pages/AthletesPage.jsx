@@ -96,7 +96,7 @@ export default function AthletesPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
 
@@ -142,6 +142,13 @@ export default function AthletesPage() {
     const [transferCategory, setTransferCategory] = useState('');
     const [transferSelectedIds, setTransferSelectedIds] = useState(new Set());
     const [transferSelectAll, setTransferSelectAll] = useState(false);
+
+    // Takım Kategori Transferi State
+    const [teamTransferOpen, setTeamTransferOpen] = useState(false);
+    const [ttSourceCat, setTtSourceCat] = useState('');
+    const [ttSourceOkul, setTtSourceOkul] = useState('');
+    const [ttTargetCat, setTtTargetCat] = useState('');
+    const [ttSaving, setTtSaving] = useState(false);
 
     // Benzer Okul Birleştirme State
     const [similarGroups, setSimilarGroups] = useState([]); // bulunan gruplar
@@ -605,6 +612,37 @@ export default function AthletesPage() {
             .sort((a, b) => (b[1].baslangicTarihi || '').localeCompare(a[1].baslangicTarihi || '')),
         [competitions, selectedCompId, currentComp?.il, currentComp?.city]
     );
+
+    // Takım Transferi — kategori seçenekleri (adlı)
+    const ttCategoryOptions = useMemo(() => {
+        if (!selectedCompId) return [];
+        const katObj = competitions[selectedCompId]?.kategoriler || {};
+        return Object.entries(katObj).map(([id, cat]) => ({
+            id,
+            label: cat.isim || cat.name || cat.ad || id,
+        })).sort((a, b) => a.label.localeCompare(b.label, 'tr-TR'));
+    }, [competitions, selectedCompId]);
+
+    // Takım Transferi — seçilen kaynak kategorideki okullar
+    const ttSourceOkuls = useMemo(() => {
+        if (!ttSourceCat) return [];
+        const okuls = new Set(
+            athletes
+                .filter(a => a.categoryId === ttSourceCat)
+                .map(a => (a.okul || a.kulup || '').trim())
+                .filter(Boolean)
+        );
+        return [...okuls].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+    }, [athletes, ttSourceCat]);
+
+    // Takım Transferi — taşınacak sporcular (kaynak kat + okul)
+    const ttSourceAthletes = useMemo(() => {
+        if (!ttSourceCat || !ttSourceOkul) return [];
+        return athletes.filter(a =>
+            a.categoryId === ttSourceCat &&
+            (a.okul || a.kulup || '').trim() === ttSourceOkul
+        );
+    }, [athletes, ttSourceCat, ttSourceOkul]);
 
     // Transfer: hedef yarışmanın kategorileri
     const transferTargetComp = transferTargetCompId ? competitions[transferTargetCompId] : null;
@@ -1107,6 +1145,110 @@ export default function AthletesPage() {
         }
     };
 
+    // Takım Kategori Transferi — tüm sporcuları puanlarıyla birlikte başka kategoriye taşı
+    const handleTeamTransfer = async () => {
+        if (!ttSourceCat || !ttSourceOkul || !ttTargetCat) {
+            toast('Kaynak kategori, okul ve hedef kategori seçilmelidir.', 'warning');
+            return;
+        }
+        if (ttSourceCat === ttTargetCat) {
+            toast('Kaynak ve hedef kategori aynı olamaz.', 'warning');
+            return;
+        }
+        if (ttSourceAthletes.length === 0) {
+            toast('Taşınacak sporcu bulunamadı.', 'warning');
+            return;
+        }
+
+        const srcCatLabel = ttCategoryOptions.find(c => c.id === ttSourceCat)?.label || ttSourceCat;
+        const tgtCatLabel = ttCategoryOptions.find(c => c.id === ttTargetCat)?.label || ttTargetCat;
+
+        const confirmed = await confirm(
+            `"${ttSourceOkul}" okulundan ${ttSourceAthletes.length} sporcu\n"${srcCatLabel}" → "${tgtCatLabel}" kategorisine taşınacak.\n\nPuanlar ve yarışma sıralaması da aktarılacak. Devam?`,
+            { title: 'Takım Kategori Transferi', type: 'warning' }
+        );
+        if (!confirmed) return;
+
+        setTtSaving(true);
+        try {
+            const updates = {};
+            const athIds = new Set(ttSourceAthletes.map(a => a.id));
+
+            // Sporcuları taşı
+            const srcAthSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${ttSourceCat}`));
+            const srcAthData = srcAthSnap.val() || {};
+
+            ttSourceAthletes.forEach(ath => {
+                const athId = ath.id;
+                const firebaseAth = srcAthData[athId] || {};
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${ttSourceCat}/${athId}`] = null;
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${ttTargetCat}/${athId}`] = {
+                    ...firebaseAth,
+                    id: athId,
+                    adSoyad: `${firebaseAth.ad || ''} ${firebaseAth.soyad || ''}`.trim(),
+                    soyadAd: `${firebaseAth.soyad || ''} ${firebaseAth.ad || ''}`.trim(),
+                    sirasi: firebaseAth.sirasi || 999,
+                };
+            });
+
+            // Puanları taşı
+            const srcScoresSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${ttSourceCat}`));
+            if (srcScoresSnap.exists()) {
+                const srcScores = srcScoresSnap.val();
+                if (hasApparatus) {
+                    // Artistik: puanlar/{catId}/{aletId}/{athId}
+                    Object.keys(srcScores).forEach(aletId => {
+                        if (srcScores[aletId]) {
+                            Object.keys(srcScores[aletId]).forEach(athId => {
+                                if (athIds.has(athId)) {
+                                    updates[`${firebasePath}/${selectedCompId}/puanlar/${ttSourceCat}/${aletId}/${athId}`] = null;
+                                    updates[`${firebasePath}/${selectedCompId}/puanlar/${ttTargetCat}/${aletId}/${athId}`] = srcScores[aletId][athId];
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // Non-artistik: puanlar/{catId}/{athId}
+                    Object.keys(srcScores).forEach(athId => {
+                        if (athIds.has(athId)) {
+                            updates[`${firebasePath}/${selectedCompId}/puanlar/${ttSourceCat}/${athId}`] = null;
+                            updates[`${firebasePath}/${selectedCompId}/puanlar/${ttTargetCat}/${athId}`] = srcScores[athId];
+                        }
+                    });
+                }
+            }
+
+            // Çıkış sıralamasından sil (hedef kategoriye kopyalanmaz — yeniden düzenlenir)
+            const srcSiraSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${ttSourceCat}`));
+            if (srcSiraSnap.exists()) {
+                const srcSira = srcSiraSnap.val();
+                Object.keys(srcSira).forEach(rotKey => {
+                    if (srcSira[rotKey]) {
+                        Object.keys(srcSira[rotKey]).forEach(athId => {
+                            if (athIds.has(athId)) {
+                                updates[`${firebasePath}/${selectedCompId}/siralama/${ttSourceCat}/${rotKey}/${athId}`] = null;
+                            }
+                        });
+                    }
+                });
+            }
+
+            await update(ref(db), updates);
+            await autoSyncTeamStatus(selectedCompId, [ttSourceCat, ttTargetCat]);
+
+            toast(`${ttSourceAthletes.length} sporcu "${tgtCatLabel}" kategorisine taşındı.`, 'success');
+            setTeamTransferOpen(false);
+            setTtSourceCat('');
+            setTtSourceOkul('');
+            setTtTargetCat('');
+        } catch (err) {
+            console.error('Takım transferi hatası:', err);
+            toast('Transfer sırasında hata oluştu: ' + err.message, 'error');
+        } finally {
+            setTtSaving(false);
+        }
+    };
+
     // Sporcu yarışma türünü (ferdi/takim) kural bazlı otomatik hesapla
     const handleRecalculateTur = async () => {
         if (!selectedCompId || athletes.length === 0) {
@@ -1226,6 +1368,18 @@ export default function AthletesPage() {
                         >
                             <i className="material-icons-round">find_replace</i>
                             <span>Toplu Düzenle</span>
+                        </button>
+                    )}
+                    {hasPermission('athletes', 'duzenle') && (
+                        <button
+                            className="action-btn-outline"
+                            style={{ borderColor: '#0891B2', color: '#0891B2' }}
+                            onClick={() => { setTeamTransferOpen(true); setTtSourceCat(''); setTtSourceOkul(''); setTtTargetCat(''); }}
+                            disabled={!selectedCompId || athletes.length === 0}
+                            title="Bir kategorideki takımı puanlarıyla birlikte başka kategoriye taşı"
+                        >
+                            <i className="material-icons-round">drive_file_move</i>
+                            <span>Takım Taşı</span>
                         </button>
                     )}
                     {hasPermission('athletes', 'duzenle') && (
@@ -2435,6 +2589,133 @@ export default function AthletesPage() {
                                     }
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Takım Kategori Transferi Modal */}
+            {teamTransferOpen && (
+                <div className="modal-overlay" onClick={() => !ttSaving && setTeamTransferOpen(false)}>
+                    <div className="modal modal--medium" onClick={e => e.stopPropagation()}>
+                        <div className="modal__header">
+                            <h2>
+                                <i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: '8px', color: '#0891B2' }}>drive_file_move</i>
+                                Takım Kategori Transferi
+                            </h2>
+                            <button className="modal__close" onClick={() => setTeamTransferOpen(false)} disabled={ttSaving}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="modal__body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                Seçilen kategorideki bir okulun tüm sporcularını, puanlarıyla birlikte başka bir kategoriye taşır.
+                            </p>
+
+                            {/* Kaynak Kategori */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontWeight: 600, fontSize: '0.88rem' }}>Kaynak Kategori</label>
+                                <select
+                                    className="control-select"
+                                    style={{ width: '100%', padding: '10px 12px' }}
+                                    value={ttSourceCat}
+                                    onChange={e => { setTtSourceCat(e.target.value); setTtSourceOkul(''); setTtTargetCat(''); }}
+                                >
+                                    <option value="">-- Kategori seçin --</option>
+                                    {ttCategoryOptions.map(c => (
+                                        <option key={c.id} value={c.id}>{c.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Okul Seçimi */}
+                            {ttSourceCat && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontWeight: 600, fontSize: '0.88rem' }}>Okul / Takım</label>
+                                    {ttSourceOkuls.length === 0 ? (
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Bu kategoride kayıtlı okul bulunamadı.</p>
+                                    ) : (
+                                        <select
+                                            className="control-select"
+                                            style={{ width: '100%', padding: '10px 12px' }}
+                                            value={ttSourceOkul}
+                                            onChange={e => setTtSourceOkul(e.target.value)}
+                                        >
+                                            <option value="">-- Okul seçin --</option>
+                                            {ttSourceOkuls.map(okul => {
+                                                const count = athletes.filter(a => a.categoryId === ttSourceCat && (a.okul || a.kulup || '').trim() === okul).length;
+                                                return <option key={okul} value={okul}>{okul} ({count} sporcu)</option>;
+                                            })}
+                                        </select>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Hedef Kategori */}
+                            {ttSourceOkul && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontWeight: 600, fontSize: '0.88rem' }}>Hedef Kategori</label>
+                                    <select
+                                        className="control-select"
+                                        style={{ width: '100%', padding: '10px 12px' }}
+                                        value={ttTargetCat}
+                                        onChange={e => setTtTargetCat(e.target.value)}
+                                    >
+                                        <option value="">-- Hedef kategori seçin --</option>
+                                        {ttCategoryOptions
+                                            .filter(c => c.id !== ttSourceCat)
+                                            .map(c => <option key={c.id} value={c.id}>{c.label}</option>)
+                                        }
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Önizleme */}
+                            {ttSourceAthletes.length > 0 && (
+                                <div style={{
+                                    background: 'var(--bg-secondary)', borderRadius: '10px', padding: '12px',
+                                    border: '1px solid var(--border)', maxHeight: '240px', overflowY: 'auto'
+                                }}>
+                                    <p style={{ margin: '0 0 8px 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        Taşınacak sporcular ({ttSourceAthletes.length}):
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {ttSourceAthletes.map(a => (
+                                            <div key={a.id} style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                padding: '5px 10px', borderRadius: '6px',
+                                                background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                                                fontSize: '0.83rem'
+                                            }}>
+                                                <span style={{ fontWeight: 600 }}>{a.ad} {a.soyad}</span>
+                                                <span style={{
+                                                    fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px',
+                                                    background: a.yarismaTuru === 'takim' ? 'rgba(8,145,178,0.12)' : 'rgba(100,100,100,0.1)',
+                                                    color: a.yarismaTuru === 'takim' ? '#0891B2' : 'var(--text-secondary)',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {(a.yarismaTuru || 'ferdi').toUpperCase()}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal__footer">
+                            <button className="btn btn--secondary" onClick={() => setTeamTransferOpen(false)} disabled={ttSaving}>
+                                İptal
+                            </button>
+                            <button
+                                className="btn btn--primary"
+                                style={{ background: '#0891B2', borderColor: '#0891B2' }}
+                                onClick={handleTeamTransfer}
+                                disabled={ttSaving || !ttSourceCat || !ttSourceOkul || !ttTargetCat || ttSourceAthletes.length === 0}
+                            >
+                                {ttSaving
+                                    ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
+                                    : <><i className="material-icons-round" style={{ marginRight: '6px' }}>drive_file_move</i>{ttSourceAthletes.length > 0 ? `${ttSourceAthletes.length} Sporcuyu Taşı` : 'Taşı'}</>
+                                }
+                            </button>
                         </div>
                     </div>
                 </div>
