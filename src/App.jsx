@@ -46,6 +46,9 @@ const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
 // Görevli Yaka Kartları — tüm branşlar için ortak
 const GorevliKartlariPage = lazy(() => import('./pages/GorevliKartlariPage'));
 
+// Antrenörler — tüm branşlar için ortak (federation-wide)
+const CoachesPage = lazy(() => import('./pages/CoachesPage'));
+
 // ─── Loading Fallback ───
 const PageLoader = () => (
   <div style={{
@@ -130,6 +133,7 @@ function AppRoutes() {
         <Route path="/artistik/schedule" element={<PD discipline="artistik" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
         <Route path="/artistik/announcements" element={<PD discipline="artistik" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/artistik/certificates" element={<PD discipline="artistik" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/artistik/coaches" element={<PD discipline="artistik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/artistik/audit-log" element={<SuperAdminRoute><AuditLogPage /></SuperAdminRoute>} />
         <Route path="/artistik/role-management" element={<SuperAdminRoute><RoleManagementPage /></SuperAdminRoute>} />
         <Route path="/artistik/epanel" element={<D discipline="artistik"><EPanelPage /></D>} />
@@ -152,6 +156,7 @@ function AppRoutes() {
         <Route path="/aerobik/schedule" element={<PD discipline="aerobik" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
         <Route path="/aerobik/announcements" element={<PD discipline="aerobik" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/aerobik/certificates" element={<PD discipline="aerobik" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/aerobik/coaches" element={<PD discipline="aerobik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/aerobik/epanel" element={<D discipline="aerobik"><EPanelPage /></D>} />
 
         {/* ═══ TRAMPOLİN CİMNASTİK ═══ */}
@@ -172,6 +177,7 @@ function AppRoutes() {
         <Route path="/trampolin/schedule" element={<PD discipline="trampolin" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
         <Route path="/trampolin/announcements" element={<PD discipline="trampolin" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/trampolin/certificates" element={<PD discipline="trampolin" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/trampolin/coaches" element={<PD discipline="trampolin" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/trampolin/epanel" element={<D discipline="trampolin"><EPanelPage /></D>} />
 
         {/* ═══ PARKUR CİMNASTİK ═══ */}
@@ -191,6 +197,7 @@ function AppRoutes() {
         <Route path="/parkur/schedule" element={<PD discipline="parkur" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
         <Route path="/parkur/announcements" element={<PD discipline="parkur" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/parkur/certificates" element={<PD discipline="parkur" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/parkur/coaches" element={<PD discipline="parkur" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/parkur/epanel" element={<D discipline="parkur"><EPanelPage /></D>} />
 
         {/* ═══ RİTMİK CİMNASTİK ═══ */}
@@ -210,6 +217,7 @@ function AppRoutes() {
         <Route path="/ritmik/schedule" element={<PD discipline="ritmik" pageKey="schedule"><CompetitionSchedulePage /></PD>} />
         <Route path="/ritmik/announcements" element={<PD discipline="ritmik" pageKey="announcements"><AnnouncementsPage /></PD>} />
         <Route path="/ritmik/certificates" element={<PD discipline="ritmik" pageKey="certificates"><CertificatePage /></PD>} />
+        <Route path="/ritmik/coaches" element={<PD discipline="ritmik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/ritmik/epanel" element={<D discipline="ritmik"><EPanelPage /></D>} />
 
         {/* ═══ ORTAK ARAÇLAR ═══ */}

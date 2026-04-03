@@ -24,6 +24,7 @@ const MENU_ITEMS_BASE = [
     { id: 'report',       icon: 'description',           label: 'Yarışma Raporu', desc: 'Resmi müsabaka raporu oluştur',     color: '#475569', subpath: '/official-report', permKey: 'official_report', disciplines: null },
     { id: 'announcements',icon: 'campaign',              label: 'Duyurular',      desc: 'Yarışma duyuruları yönetimi',       color: '#4F46E5', subpath: '/announcements',   permKey: 'announcements',   disciplines: null },
     { id: 'certificates', icon: 'card_membership',       label: 'Sertifikalar',   desc: 'Katılım ve derece belgeleri',       color: '#D97706', subpath: '/certificates',    permKey: 'certificates',    disciplines: null },
+    { id: 'coaches',      icon: 'sports',                label: 'Antrenörler',    desc: 'Kayıtlı antrenör listesi yönetimi', color: '#0891B2', subpath: '/coaches',         permKey: 'coaches',         disciplines: null },
 ];
 
 // Branşa göre ikon
