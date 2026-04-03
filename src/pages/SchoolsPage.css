@@ -1,0 +1,573 @@
+/* ─── Schools Page ─── */
+
+.schools-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Page Header ─── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-header__left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-header__left h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.page-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.action-btn-outline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.action-btn-outline:hover {
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--blue, #2563EB);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.create-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ─── Page Content ─── */
+.page-content {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ─── Controls ─── */
+.schools-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schools-controls select,
+.schools-controls input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  min-width: 200px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.schools-controls select:focus,
+.schools-controls input:focus {
+  border-color: var(--blue, #2563EB);
+}
+
+.schools-controls select:disabled,
+.schools-controls input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.school-search-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ─── Status Bar ─── */
+.schools-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.schools-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.schools-stat i {
+  font-size: 16px;
+}
+
+.schools-stat strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ─── Source Badges ─── */
+.schools-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.schools-source-badge i {
+  font-size: 14px;
+}
+
+.schools-source-badge--firebase {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16A34A;
+}
+
+.schools-source-badge--static {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-secondary);
+}
+
+/* ─── Import district button ─── */
+.schools-import-district-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #D97706;
+  background: transparent;
+  color: #D97706;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.schools-import-district-btn:hover {
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.schools-import-district-btn i {
+  font-size: 15px;
+}
+
+/* ─── School List ─── */
+.schools-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.schools-list-header {
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.school-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+  transition: background 0.12s;
+}
+
+.school-row:last-child {
+  border-bottom: none;
+}
+
+.school-row:hover {
+  background: var(--bg-secondary);
+}
+
+.school-row__icon {
+  color: var(--text-tertiary, #94a3b8);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.school-row__name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.school-row__actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.school-row:hover .school-row__actions {
+  opacity: 1;
+}
+
+.school-row__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.school-row__btn i {
+  font-size: 16px;
+}
+
+.school-row__btn--edit {
+  color: #0891B2;
+}
+
+.school-row__btn--edit:hover {
+  background: rgba(8, 145, 178, 0.1);
+}
+
+.school-row__btn--delete {
+  color: #DC2626;
+}
+
+.school-row__btn--delete:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+/* ─── Empty / Loading States ─── */
+.schools-empty,
+.schools-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: var(--text-tertiary, #94a3b8);
+  text-align: center;
+}
+
+.schools-empty i,
+.schools-loading i {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.schools-empty p,
+.schools-loading p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* ─── Import Progress ─── */
+.schools-import-progress {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.schools-import-progress-bar {
+  height: 100%;
+  background: #D97706;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* ─── Spinner ─── */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--blue, #2563EB);
+  border-radius: 50%;
+  animation: schools-spin 0.7s linear infinite;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: schools-spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes schools-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.modal--medium {
+  max-width: 540px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.modal__close:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.modal__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* ─── Form ─── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-group input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-group input:focus {
+  border-color: var(--blue, #2563EB);
+}
+
+.help-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ─── Buttons ─── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: opacity 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--blue, #2563EB);
+  color: #fff;
+  border-color: var(--blue, #2563EB);
+}
+
+.btn--primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .page-header {
+    padding: 12px 16px;
+  }
+
+  .page-content {
+    padding: 16px;
+  }
+
+  .schools-controls {
+    flex-direction: column;
+  }
+
+  .schools-controls select,
+  .schools-controls input {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .page-header__right {
+    gap: 8px;
+  }
+
+  .action-btn-outline span {
+    display: none;
+  }
+}

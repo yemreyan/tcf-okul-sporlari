@@ -49,6 +49,9 @@ const GorevliKartlariPage = lazy(() => import('./pages/GorevliKartlariPage'));
 // Antrenörler — tüm branşlar için ortak (federation-wide)
 const CoachesPage = lazy(() => import('./pages/CoachesPage'));
 
+// Okullar — MEB okul listesi yönetimi (federation-wide, super admin only)
+const SchoolsPage = lazy(() => import('./pages/SchoolsPage'));
+
 // ─── Loading Fallback ───
 const PageLoader = () => (
   <div style={{
@@ -222,6 +225,7 @@ function AppRoutes() {
 
         {/* ═══ ORTAK ARAÇLAR ═══ */}
         <Route path="/gorevli-kartlari" element={<ProtectedRoute redirectTo="/"><GorevliKartlariPage /></ProtectedRoute>} />
+        <Route path="/schools-admin" element={<SuperAdminRoute><SchoolsPage /></SuperAdminRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

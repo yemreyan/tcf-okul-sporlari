@@ -409,12 +409,29 @@ export default function HomePage() {
                         </button>
                     )}
 
+                    {/* Okul Yönetimi — Sadece Super Admin */}
+                    {isAuthenticated && isSuperAdmin() && (
+                        <button
+                            className="menu-card"
+                            onClick={() => navigate('/schools-admin')}
+                            style={{ '--card-color': '#0D9488', animationDelay: `${(visibleMenuItems.length + 2) * 0.04}s` }}
+                        >
+                            <div className="menu-card__icon">
+                                <i className="material-icons-round">business</i>
+                            </div>
+                            <div className="menu-card__text">
+                                <span className="menu-card__label">Okullar</span>
+                                <span className="menu-card__desc">MEB okul listesi yönetimi (Firebase)</span>
+                            </div>
+                        </button>
+                    )}
+
                     {/* Başvuru Formu — Sadece Super Admin */}
                     {isAuthenticated && isSuperAdmin() && (
                         <button
                             className="menu-card"
                             onClick={() => window.open('/basvuru.html', '_blank')}
-                            style={{ '--card-color': '#E30613', animationDelay: `${(visibleMenuItems.length + 1) * 0.04}s` }}
+                            style={{ '--card-color': '#E30613', animationDelay: `${(visibleMenuItems.length + 3) * 0.04}s` }}
                         >
                             <div className="menu-card__icon">
                                 <i className="material-icons-round">assignment</i>

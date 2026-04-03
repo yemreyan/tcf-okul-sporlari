@@ -590,7 +590,7 @@ function renderSchoolSelect(filterText) {
   schoolSelect.appendChild(otherOpt);
 }
 
-function loadSchoolsForDistrict() {
+async function loadSchoolsForDistrict() {
   const city = document.getElementById('citySelect').value;
   const district = document.getElementById('districtSelect').value;
   const schoolSelect = document.getElementById('schoolSelect');
@@ -611,6 +611,29 @@ function loadSchoolsForDistrict() {
     schoolSelect.innerHTML = '<option value="">ÖNCE İLÇE SEÇİNİZ</option>';
     if (hint) hint.textContent = 'İLÇE SEÇTİKTEN SONRA OKUL LİSTESİ GÖRÜNECEK';
     return;
+  }
+
+  // Firebase'den okul listesini kontrol et (önce Firebase, sonra statik fallback)
+  try {
+    const fbSnap = await get(ref(db, `okullar/${city}/${district}`));
+    if (fbSnap.exists()) {
+      const fbSchools = fbSnap.val();
+      if (Array.isArray(fbSchools) && fbSchools.length > 0) {
+        currentSchools = fbSchools;
+        renderSchoolSelect('');
+        schoolSelect.style.display = 'block';
+        schoolFilter.style.display = 'block';
+        schoolSelect.required = true;
+        schoolName.style.display = 'none';
+        schoolName.required = false;
+        if (hint) hint.textContent = 'LİSTEDEN OKULUNUZU SEÇİNİZ VEYA FİLTRELEYİNİZ';
+        updateStepIndicators();
+        return; // Firebase'den yüklendi, statik dosyaya gerek yok
+      }
+    }
+  } catch (fbErr) {
+    // Firebase erişim hatası — statik dosyaya devam et
+    console.warn('Firebase okul yüklenemedi, statik dosya kullanılıyor:', fbErr);
   }
 
   if (typeof schoolsData === 'object' && !Array.isArray(schoolsData)) {
