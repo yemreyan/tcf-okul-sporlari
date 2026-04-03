@@ -73,6 +73,8 @@ export default function FinalsPage() {
     const filteredCompetitions = selectedCity ? competitions.filter(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR') === selectedCity) : competitions;
 
     // 2. Load Selected Competition Data
+    // Sadece meta node'ları dinle (kategoriler, teamDeductions, isim vb.)
+    // Tüm yarışma node'unu dinlemek, her puan girişinde yeniden render'a neden oluyordu
     useEffect(() => {
         if (!selectedCompId) {
             setCompetitionData(null);
@@ -84,21 +86,26 @@ export default function FinalsPage() {
         const unsubscribeComp = onValue(compRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                setCompetitionData(data);
+                // puanlar ve sporcular zaten ayrı effect'lerden geliyor,
+                // competitionData'ya yazılmıyor — gereksiz re-render engellendi
+                const { puanlar: _p, sporcular: _s, ...meta } = data;
+                setCompetitionData(meta);
                 setTeamDeductions(data.teamDeductions || {});
-
-                // Set default category if not selected
-                if (!selectedCategoryId && data.kategoriler) {
-                    setSelectedCategoryId(Object.keys(data.kategoriler)[0]);
-                }
             } else {
                 setCompetitionData(null);
             }
         });
 
         return () => unsubscribeComp();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedCompId]);
+    }, [selectedCompId, firebasePath]);
+
+    // Yarışma yüklendiğinde varsayılan kategoriyi bir kez seç
+    // (onValue callback'inden ayrıldı — stale closure hatası önlendi)
+    useEffect(() => {
+        if (competitionData?.kategoriler && !selectedCategoryId) {
+            setSelectedCategoryId(Object.keys(competitionData.kategoriler)[0]);
+        }
+    }, [competitionData, selectedCategoryId]);
 
     // 3. Load Athletes and Scores
     useEffect(() => {
