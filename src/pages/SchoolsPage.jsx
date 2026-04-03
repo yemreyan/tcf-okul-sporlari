@@ -25,6 +25,50 @@ export default function SchoolsPage() {
   const [schoolInput, setSchoolInput] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // MEBBİS senkronizasyon state'leri
+  const [syncMeta, setSyncMeta] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState('');
+
+  // MEBBİS meta verisini Firebase'den yükle
+  useEffect(() => {
+    get(ref(db, '_meta/okullar_guncelleme'))
+      .then((snap) => snap.exists() && setSyncMeta(snap.val()))
+      .catch(() => {});
+  }, []);
+
+  // MEBBİS senkronizasyonunu tetikle (GitHub Actions workflow_dispatch)
+  const handleMebbisSync = async (options = {}) => {
+    setSyncing(true);
+    setSyncError('');
+    try {
+      const res = await fetch('/api/trigger-scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          il: options.il || '',
+          testMode: options.testMode || false,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast(
+          'GitHub Actions iş akışı başlatıldı. İşlem tamamlanınca Firebase güncellenir.',
+          'success'
+        );
+      } else {
+        const msg = data.error || 'Bilinmeyen hata';
+        setSyncError(msg);
+        toast('Tetikleme başarısız: ' + msg, 'error');
+      }
+    } catch (err) {
+      setSyncError(err.message);
+      toast('Bağlantı hatası: ' + err.message, 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Load static + Firebase data when il/ilce changes
   useEffect(() => {
     if (!selectedIl || !selectedIlce) {
@@ -198,6 +242,80 @@ export default function SchoolsPage() {
           </button>
         </div>
       </header>
+
+      {/* MEBBİS Senkronizasyon Paneli */}
+      <div className="mebbis-sync-panel">
+        <div className="mebbis-sync-panel__left">
+          <div className="mebbis-sync-panel__icon">
+            <i className="material-icons-round">sync</i>
+          </div>
+          <div>
+            <div className="mebbis-sync-panel__title">MEBBİS Senkronizasyonu</div>
+            <div className="mebbis-sync-panel__sub">
+              {syncMeta ? (
+                <>
+                  <span>
+                    Son güncelleme:{' '}
+                    <strong>
+                      {new Date(syncMeta.tarih).toLocaleString('tr-TR')}
+                    </strong>
+                  </span>
+                  <span className="mebbis-sync-dot">·</span>
+                  <span>{syncMeta.toplamOkul?.toLocaleString('tr-TR')} okul</span>
+                  <span className="mebbis-sync-dot">·</span>
+                  <span
+                    className={`mebbis-sync-status mebbis-sync-status--${
+                      syncMeta.durum === 'tamamlandi' ? 'ok' : 'warn'
+                    }`}
+                  >
+                    {syncMeta.durum === 'tamamlandi'
+                      ? '✓ Başarılı'
+                      : '⚠ Hatalarla tamamlandı'}
+                  </span>
+                </>
+              ) : (
+                <span>Henüz MEBBİS'ten güncelleme yapılmamış</span>
+              )}
+              {syncError && (
+                <span className="mebbis-sync-status mebbis-sync-status--warn">
+                  {syncError}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mebbis-sync-panel__right">
+          {selectedIl && (
+            <button
+              className="mebbis-sync-btn mebbis-sync-btn--secondary"
+              onClick={() => handleMebbisSync({ il: selectedIl })}
+              disabled={syncing}
+              title={`Sadece ${selectedIl} ili için MEBBİS'ten güncelle`}
+            >
+              <i className="material-icons-round">place</i>
+              <span>{selectedIl} İlini Güncelle</span>
+            </button>
+          )}
+          <button
+            className="mebbis-sync-btn mebbis-sync-btn--primary"
+            onClick={() => handleMebbisSync()}
+            disabled={syncing}
+            title="Tüm Türkiye okullarını MEBBİS'ten çekerek Firebase'e yaz"
+          >
+            {syncing ? (
+              <>
+                <span className="spinner-small" style={{ marginRight: 6 }}></span>
+                Başlatılıyor...
+              </>
+            ) : (
+              <>
+                <i className="material-icons-round">cloud_sync</i>
+                <span>MEBBİS'ten Güncelle</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
       <main className="page-content">
         {/* Controls */}

@@ -1,0 +1,61 @@
+name: MEBBİS Okul Listesi Güncelleme
+
+on:
+  schedule:
+    # Her ayın 1'i saat 02:00 UTC'de çalışır
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      il:
+        description: 'Sadece bu ili güncelle (opsiyonel, örn: ANKARA)'
+        required: false
+        default: ''
+      test_mode:
+        description: 'Test modu (sadece ilk 2 il, 3 ilçe)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240  # 4 saat maksimum
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run MEBBİS scraper
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.il }}" ]; then
+            ARGS="$ARGS --il ${{ github.event.inputs.il }}"
+          fi
+          if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+            ARGS="$ARGS --test"
+          fi
+          node scripts/scrape-mebbis.mjs $ARGS
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "Scraper tamamlandı."
+          echo "Firebase RTDB'ye yazıldı: okullar/ ve _meta/okullar_guncelleme"

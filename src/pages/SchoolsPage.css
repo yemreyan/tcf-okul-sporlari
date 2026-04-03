@@ -543,6 +543,119 @@
   background: var(--bg-tertiary);
 }
 
+/* ─── MEBBİS Sync Panel ─── */
+.mebbis-sync-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(8, 145, 178, 0.06) 0%,
+    rgba(13, 148, 136, 0.06) 100%
+  );
+  border: 1px solid rgba(8, 145, 178, 0.2);
+  border-radius: 12px;
+  margin: 16px 24px 0;
+  flex-wrap: wrap;
+}
+
+.mebbis-sync-panel__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mebbis-sync-panel__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(8, 145, 178, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0891b2;
+  flex-shrink: 0;
+}
+
+.mebbis-sync-panel__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.mebbis-sync-panel__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.mebbis-sync-dot {
+  color: var(--border);
+}
+
+.mebbis-sync-status--ok {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.mebbis-sync-status--warn {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.mebbis-sync-panel__right {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mebbis-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.mebbis-sync-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mebbis-sync-btn i {
+  font-size: 18px;
+}
+
+.mebbis-sync-btn--primary {
+  background: #0891b2;
+  color: white;
+}
+
+.mebbis-sync-btn--primary:hover:not(:disabled) {
+  background: #0e7490;
+}
+
+.mebbis-sync-btn--secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.mebbis-sync-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 600px) {
   .page-header {
