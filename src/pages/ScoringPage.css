@@ -421,6 +421,23 @@
     background: #FFF5F5;
 }
 
+.ra-status-badge.gecersiz {
+    background: #FFF7ED;
+    color: #EA580C;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.roster-athlete.gecersiz {
+    opacity: 0.55;
+    border: 1px solid #FED7AA;
+    background: #FFF7ED;
+}
+
 .roster-athlete.scored {
     opacity: 0.65;
     border: 1px solid #E2E8F0;
@@ -572,6 +589,12 @@
     margin-top: 0.5rem;
 }
 
+.call-athlete-secondary-btns {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
 .btn-yarismadi {
     background: transparent;
     color: #DC2626;
@@ -595,6 +618,30 @@
 
 .btn-yarismadi:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-yarismadi i { font-size: 1.2rem; }
+
+.btn-gecersiz {
+    background: transparent;
+    color: #EA580C;
+    border: 2px solid #EA580C;
+    padding: 0.75rem 2rem;
+    border-radius: 99px;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+}
+
+.btn-gecersiz:hover {
+    background: #FFF7ED;
+    transform: translateY(-1px);
+}
+
+.btn-gecersiz:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-gecersiz i { font-size: 1.2rem; }
 
 .animate-zoom-in {
     animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;

@@ -624,6 +624,31 @@ export default function ScoringPage() {
         }
     };
 
+    const handleGecersiz = async () => {
+        if (!selectedAthlete) return;
+        setIsSubmitting(true);
+        try {
+            const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${selectedAthlete.id}`;
+            const activePath = `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`;
+            const ts = new Date().toISOString();
+            await offlineWrite({
+                [scorePath + '/gecersiz']: true,
+                [scorePath + '/durum']: 'gecersiz',
+                [scorePath + '/sonuc']: 0,
+                [scorePath + '/kilitli']: true,
+                [scorePath + '/timestamp']: ts,
+                [activePath]: null,
+            });
+            setIsAthleteCalled(false);
+            toast(`${selectedAthlete.ad} ${selectedAthlete.soyad} — Geçersiz olarak kaydedildi (0 puan).`, 'warning');
+        } catch (err) {
+            console.error('Geçersiz save error:', err);
+            toast('Kayıt sırasında hata oluştu.', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     // Sonraki sporcuyu bul
     const getNextAthlete = () => {
         if (!selectedAthlete || athletesByRotation.length === 0) return null;
@@ -862,14 +887,15 @@ export default function ScoringPage() {
                                                 const isSelected = selectedAthlete?.id === ath.id;
                                                 const scoreData = existingScores[ath.id];
                                                 const isDNS = scoreData?.yarismadi === true;
-                                                const hasScore = !isDNS && scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
+                                                const isGecersiz = scoreData?.gecersiz === true;
+                                                const hasScore = !isDNS && !isGecersiz && scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
                                                 const isLockedScore = scoreData?.kilitli === true;
                                                 const finalDisplay = scoreData ? parseFloat(scoreData.sonuc ?? scoreData.finalScore ?? 0).toFixed(3) : "0.000";
 
                                                 return (
                                                     <div
                                                         key={ath.id}
-                                                        className={`roster-athlete ${isSelected ? 'selected' : ''} ${hasScore ? 'scored' : ''} ${isDNS ? 'dns' : ''}`}
+                                                        className={`roster-athlete ${isSelected ? 'selected' : ''} ${hasScore ? 'scored' : ''} ${isDNS ? 'dns' : ''} ${isGecersiz ? 'gecersiz' : ''}`}
                                                         onClick={() => handleSelectAthlete(ath)}
                                                     >
                                                         <div className="ra-info">
@@ -878,6 +904,8 @@ export default function ScoringPage() {
                                                         </div>
                                                         {isDNS ? (
                                                             <div className="ra-status-badge dns">Yarışmadı</div>
+                                                        ) : isGecersiz ? (
+                                                            <div className="ra-status-badge gecersiz">Geçersiz</div>
                                                         ) : hasScore ? (
                                                             <div className={`ra-score-badge success-glow ${isLockedScore ? 'locked' : ''}`}>
                                                                 {isLockedScore && <i className="material-icons-round ra-lock-icon">lock</i>}
@@ -922,10 +950,16 @@ export default function ScoringPage() {
                                     <i className="material-icons-round">campaign</i>
                                     Sporcuyu Çağır ve Puanla
                                 </button>
-                                <button className="btn-yarismadi" onClick={handleYarismadi} disabled={isSubmitting}>
-                                    <i className="material-icons-round">do_not_disturb_on</i>
-                                    Yarışmadı
-                                </button>
+                                <div className="call-athlete-secondary-btns">
+                                    <button className="btn-yarismadi" onClick={handleYarismadi} disabled={isSubmitting}>
+                                        <i className="material-icons-round">do_not_disturb_on</i>
+                                        Yarışmadı
+                                    </button>
+                                    <button className="btn-gecersiz" onClick={handleGecersiz} disabled={isSubmitting}>
+                                        <i className="material-icons-round">cancel</i>
+                                        Geçersiz
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
