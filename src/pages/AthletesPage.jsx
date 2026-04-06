@@ -171,6 +171,8 @@ export default function AthletesPage() {
 
     // Sadece yarışma listesini yükle
     useEffect(() => {
+        // Branş değiştiğinde seçili yarışmayı sıfırla — eski branşın yarışması seçili kalmasın
+        setSelectedCompId('');
         const compsRef = ref(db, firebasePath);
         const unsubscribe = onValue(compsRef, (snap) => {
             const data = snap.val() || {};
@@ -221,7 +223,7 @@ export default function AthletesPage() {
         });
 
         return () => unsubscribe();
-    }, [selectedCompId]);
+    }, [selectedCompId, firebasePath]);
 
     // Belirtilen kategorilerde okul bazlı takım türünü otomatik hesapla ve güncelle
     const autoSyncTeamStatus = async (compId, catIdList) => {

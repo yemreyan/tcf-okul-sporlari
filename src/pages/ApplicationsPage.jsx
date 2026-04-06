@@ -74,7 +74,7 @@ function buildApplicationBackfillPayload(app, fallbackBrans) {
     const safeBranch = ((app.brans || fallbackBrans || 'Artistik').toString().trim() || 'Artistik').toLocaleUpperCase('tr-TR');
     const safeStatus = normalizeStatusValue(app.status);
 
-    return {
+    const payload = {
         competitionId: app.compId || '',
         okul: safeSchoolName,
         il: safeCity,
@@ -83,8 +83,12 @@ function buildApplicationBackfillPayload(app, fallbackBrans) {
         brans: safeBranch,
         durum: safeStatus,
         status: safeStatus,
-        sporcular: Array.isArray(app.athletes) ? app.athletes : []
     };
+    // Sporcu verisi varsa yaz — boş array yazarsak Firebase siler, mevcut veri kaybolur
+    if (Array.isArray(app.athletes) && app.athletes.length > 0) {
+        payload.sporcular = app.athletes;
+    }
+    return payload;
 }
 
 // ─── Takım Kuralları Tablosu ───
@@ -310,6 +314,20 @@ export default function ApplicationsPage() {
             // ═══ ONAYLAMA ═══
             if (newStatus === 'onaylandi') {
 
+                // 0. Zorunlu alan kontrolleri
+                if (!compId) {
+                    toast('Bu başvuruda yarışma bilgisi eksik. Onaylanamaz.', 'error');
+                    return;
+                }
+                if (!catId) {
+                    toast('Bu başvuruda kategori bilgisi eksik. Onaylanamaz.', 'error');
+                    return;
+                }
+                if (!app.athletes || app.athletes.length === 0) {
+                    toast('Bu başvuruda sporcu listesi boş. Onaylanamaz.', 'error');
+                    return;
+                }
+
                 // 0a. Yaş doğrulama kontrolü
                 const catMap = getCategoryMap(app.brans);
                 if (catMap && app.categoryId && catMap[app.categoryId]) {
@@ -400,6 +418,12 @@ export default function ApplicationsPage() {
 
                 // 3. Eşik kontrolü: Yeterli sporcu varsa takım'e yükselt, yoksa ferdi bırak
                 await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+
+                // 4. Cross-discipline uyarısı: sporcular farklı bir branşın sayfasına yazıldıysa kullanıcıyı bilgilendir
+                if (appFirebasePath !== firebasePath) {
+                    const branchLabel = app.brans || 'ilgili branş';
+                    toast(`${app.athletes.length} sporcu onaylandı. Sporcuları görmek için "${branchLabel}" Sporcular sayfasına gidin.`, 'info');
+                }
 
             // ═══ GERİ ALMA / REDDETME ═══
             } else {
