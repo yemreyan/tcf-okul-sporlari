@@ -543,7 +543,10 @@ function findSchoolKey(obj, target) {
   if (obj[target]) return target;
   const targetUpper = target.toLocaleUpperCase('tr-TR');
   if (obj[targetUpper]) return targetUpper;
-  return Object.keys(obj).find(k => k.toLocaleUpperCase('tr-TR') === targetUpper) || null;
+  // Türkçe İ/I farkını tolere et: her ikisini de 'I' olarak normalize et
+  const norm = (s) => s.toLocaleUpperCase('tr-TR').replace(/İ/g, 'I');
+  const targetNorm = norm(target);
+  return Object.keys(obj).find(k => norm(k) === targetNorm) || null;
 }
 
 function getSchoolGroup(name) {
