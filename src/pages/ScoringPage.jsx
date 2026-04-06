@@ -63,6 +63,9 @@ export default function ScoringPage() {
     const [unlockError, setUnlockError] = useState('');
     const [unlockingInProgress, setUnlockingInProgress] = useState(false);
 
+    // Yarışmadı (DNS) state
+    const [yarismadi, setYarismadi] = useState(false);
+
     // Difficulty Mode State (yıldız/genç kategoriler için)
     const [difficultyMoves, setDifficultyMoves] = useState({});
     const [crValue, setCrValue] = useState(0);          // Kız kategoriler (tek CR)
@@ -225,6 +228,8 @@ export default function ScoringPage() {
         if (!selectedAthlete || scoringFieldsTouched) return;
         const scores = existingScores[selectedAthlete.id];
         if (!scores) return;
+        // Yarışmadı
+        setYarismadi(scores.yarismadi === true);
         // D puanı
         setDScore(scores.dScore ?? scores.calc_D ?? 0);
         // Tarafsız kesinti
@@ -347,33 +352,32 @@ export default function ScoringPage() {
     let missingPenalty = 0;
     let missingCount = 0;
 
+    const effectiveEksikTiers = currentCriteria?.eksikKesintiTiers || defaultCriteriaForApparatus?.eksikKesintiTiers;
+
     if (isDifficultyMode) {
         // Difficulty modda: toplam hareket sayısı üzerinden eksik hesapla,
         // kesinti miktarı kriterlerdeki eksikKesintiTiers tablosundan gelir (CriteriaPage'den yönetilir)
         const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
         if (totalMoveCount > 0 && isFinite(diffMaxMoves)) {
             missingCount = Math.max(0, diffMaxMoves - totalMoveCount);
-            if (missingCount > 0) {
-                const tiers = currentCriteria?.eksikKesintiTiers;
-                if (tiers && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
-                    missingPenalty = parseFloat(tiers[missingCount]);
+            if (missingCount > 0 && effectiveEksikTiers) {
+                if (effectiveEksikTiers[missingCount] !== undefined && effectiveEksikTiers[missingCount] !== null) {
+                    missingPenalty = parseFloat(effectiveEksikTiers[missingCount]);
                 }
             }
         }
-    } else if (hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
-        const moves = currentCriteria.hareketler || [];
+    } else if (hasDynamicSkills && effectiveEksikTiers) {
+        const moves = currentCriteria?.hareketler || [];
         const performedCount = Object.values(skillScores).filter(val => (parseFloat(val) || 0) > 0).length;
         missingCount = Math.max(0, moves.length - performedCount);
 
-        const tiers = currentCriteria.eksikKesintiTiers;
-        if (tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
-            missingPenalty = parseFloat(tiers[missingCount]);
+        if (effectiveEksikTiers[missingCount] !== undefined && effectiveEksikTiers[missingCount] !== null) {
+            missingPenalty = parseFloat(effectiveEksikTiers[missingCount]);
         }
-    } else if (!hasDynamicSkills && !isDifficultyMode && currentCriteria?.eksikKesintiTiers) {
+    } else if (!hasDynamicSkills && !isDifficultyMode && effectiveEksikTiers) {
         missingCount = parseInt(manualEksikSayisi) || 0;
-        const tiers = currentCriteria.eksikKesintiTiers;
-        if (missingCount > 0 && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
-            missingPenalty = parseFloat(tiers[missingCount]);
+        if (missingCount > 0 && effectiveEksikTiers[missingCount] !== undefined && effectiveEksikTiers[missingCount] !== null) {
+            missingPenalty = parseFloat(effectiveEksikTiers[missingCount]);
         }
     }
 
@@ -457,6 +461,7 @@ export default function ScoringPage() {
         }
 
         if (prevScore) {
+            setYarismadi(prevScore.yarismadi === true);
             setDScore(prevScore.dScore || prevScore.calc_D || 0);
             setNeutralDeductions(prevScore.tarafsiz || prevScore.neutralDeductions || 0);
             setManualEksikSayisi(prevScore.eksikSayisi || 0);
@@ -496,6 +501,7 @@ export default function ScoringPage() {
         setCombinedEDeduction(0);
         setScoreLocked(false);
         setScoringFieldsTouched(false);
+        setYarismadi(false);
         // Difficulty mode reset
         setDifficultyMoves({});
         setCrValue(0);
@@ -592,6 +598,32 @@ export default function ScoringPage() {
         } catch (e) { console.error("Could not set active athlete", e); }
     };
 
+    const handleYarismadi = async () => {
+        if (!selectedAthlete) return;
+        setIsSubmitting(true);
+        try {
+            const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${selectedAthlete.id}`;
+            const activePath = `${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`;
+            const ts = new Date().toISOString();
+            await offlineWrite({
+                [scorePath + '/yarismadi']: true,
+                [scorePath + '/durum']: 'yarishmadi',
+                [scorePath + '/sonuc']: null,
+                [scorePath + '/kilitli']: true,
+                [scorePath + '/timestamp']: ts,
+                [activePath]: null,
+            });
+            setYarismadi(true);
+            setIsAthleteCalled(false);
+            toast(`${selectedAthlete.ad} ${selectedAthlete.soyad} — Yarışmadı olarak kaydedildi.`, 'info');
+        } catch (err) {
+            console.error('Yarışmadı save error:', err);
+            toast('Kayıt sırasında hata oluştu.', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     // Sonraki sporcuyu bul
     const getNextAthlete = () => {
         if (!selectedAthlete || athletesByRotation.length === 0) return null;
@@ -614,14 +646,8 @@ export default function ScoringPage() {
         if (isNaN(finalVal) || finalVal < 0 || finalVal > 40) {
             return toast("Final puanı geçersiz (0-40 arası olmalı).", "error");
         }
-        if (scoringMode === 'combined') {
-            const eVal = parseFloat(combinedEDeduction) || 0;
-            if (eVal < 0 || eVal > 10) {
-                return toast("E kesintisi 0-10 arasında olmalıdır.", "error");
-            }
-        }
-        // Ayrı modda en az bir E paneli girilmiş olmalı
-        if (scoringMode === 'separate') {
+        // En az bir E paneli girilmiş olmalı
+        {
             const filledEPanels = ePanels.filter(p => {
                 const val = ePanelLocal[p];
                 return val !== undefined && val !== null && val !== '' && !isNaN(parseFloat(val));
@@ -797,26 +823,6 @@ export default function ScoringPage() {
                         </select>
                     </div>
 
-                    {/* Puanlama Modu Toggle — sadece kategori seçildiyse göster */}
-                    {selectedCategory && <div className="scoring-mode-section">
-                        <div className="mode-label">Puanlama Modu</div>
-                        <div className="scoring-mode-toggle">
-                            <button
-                                className={`mode-btn ${scoringMode === 'separate' ? 'active' : ''}`}
-                                onClick={() => setScoringMode('separate')}
-                            >
-                                <i className="material-icons-round" style={{ fontSize: '1rem' }}>view_column</i>
-                                Ayrı (D + E)
-                            </button>
-                            <button
-                                className={`mode-btn ${scoringMode === 'combined' ? 'active' : ''}`}
-                                onClick={() => setScoringMode('combined')}
-                            >
-                                <i className="material-icons-round" style={{ fontSize: '1rem' }}>join_full</i>
-                                Birleşik (D &amp; E)
-                            </button>
-                        </div>
-                    </div>}
 
                     <div className="roster-container">
                         {!selectedApparatus ? (
@@ -855,21 +861,24 @@ export default function ScoringPage() {
                                             {filteredRotation.map(ath => {
                                                 const isSelected = selectedAthlete?.id === ath.id;
                                                 const scoreData = existingScores[ath.id];
-                                                const hasScore = scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
+                                                const isDNS = scoreData?.yarismadi === true;
+                                                const hasScore = !isDNS && scoreData && (scoreData.sonuc !== undefined || scoreData.finalScore !== undefined || scoreData.durum === 'tamamlandi');
                                                 const isLockedScore = scoreData?.kilitli === true;
                                                 const finalDisplay = scoreData ? parseFloat(scoreData.sonuc ?? scoreData.finalScore ?? 0).toFixed(3) : "0.000";
 
                                                 return (
                                                     <div
                                                         key={ath.id}
-                                                        className={`roster-athlete ${isSelected ? 'selected' : ''} ${hasScore ? 'scored' : ''}`}
+                                                        className={`roster-athlete ${isSelected ? 'selected' : ''} ${hasScore ? 'scored' : ''} ${isDNS ? 'dns' : ''}`}
                                                         onClick={() => handleSelectAthlete(ath)}
                                                     >
                                                         <div className="ra-info">
                                                             <span className="ra-order">{ath.sirasi || ath.cikisSirasi || ath._kayitSirasi || ''}.</span>
                                                             <span className="ra-name">{ath.ad} {ath.soyad}</span>
                                                         </div>
-                                                        {hasScore ? (
+                                                        {isDNS ? (
+                                                            <div className="ra-status-badge dns">Yarışmadı</div>
+                                                        ) : hasScore ? (
                                                             <div className={`ra-score-badge success-glow ${isLockedScore ? 'locked' : ''}`}>
                                                                 {isLockedScore && <i className="material-icons-round ra-lock-icon">lock</i>}
                                                                 {finalDisplay}
@@ -908,10 +917,16 @@ export default function ScoringPage() {
                                     <span className="ca-badge">Alet: {apparatusOptions.find(a => a.id === selectedApparatus)?.name}</span>
                                 </div>
                             </div>
-                            <button className="btn-call-athlete" onClick={handleCallAthlete}>
-                                <i className="material-icons-round">campaign</i>
-                                Sporcuyu Çağır ve Puanla
-                            </button>
+                            <div className="call-athlete-actions">
+                                <button className="btn-call-athlete" onClick={handleCallAthlete}>
+                                    <i className="material-icons-round">campaign</i>
+                                    Sporcuyu Çağır ve Puanla
+                                </button>
+                                <button className="btn-yarismadi" onClick={handleYarismadi} disabled={isSubmitting}>
+                                    <i className="material-icons-round">do_not_disturb_on</i>
+                                    Yarışmadı
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         /* ACTIVE SCORING STATE */
@@ -1151,45 +1166,11 @@ export default function ScoringPage() {
                                 {/* E-Score Panel */}
                                 <div className="score-card card-green">
                                     <div className="sc-header card-header-green">
-                                        <h3>{scoringMode === 'combined' ? 'E-Puanı (Uygulama Kesintisi)' : 'E-Puanı Yönetimi'}</h3>
-                                        {scoringMode === 'combined' && (
-                                            <span className="mode-indicator-badge">Birleşik</span>
-                                        )}
+                                        <h3>E-Puanı Yönetimi</h3>
                                     </div>
                                     <div className="sc-body e-panel-body">
-                                        {scoringMode === 'combined' ? (
-                                            /* Birleşik mod: Tek E kesinti input'u */
-                                            <>
-                                                <div className="combined-e-wrapper">
-                                                    <label className="combined-e-label">Toplam E Kesintisi</label>
-                                                    <div className="d-input-wrapper">
-                                                        <input
-                                                            type="number"
-                                                            step="0.1"
-                                                            min="0"
-                                                            value={combinedEDeduction}
-                                                            onChange={e => setCombinedEDeduction(e.target.value)}
-                                                            className="giant-num-input input-green"
-                                                            placeholder="0.0"
-                                                        />
-                                                    </div>
-                                                    <div className="combined-e-quick-btns">
-                                                        {[0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(val => (
-                                                            <button key={val} className="btn-quick-green" onClick={() => setCombinedEDeduction(val)}>
-                                                                {val.toFixed(1)}
-                                                            </button>
-                                                        ))}
-                                                        <button className="btn-quick-green clear-btn-green" onClick={() => setCombinedEDeduction(0)}>Sıfırla</button>
-                                                    </div>
-                                                </div>
-                                                <div className="e-summary">
-                                                    <span className="sum-label">Kesinti: <strong className="text-orange">-{avgEDeduction.toFixed(2)}</strong></span>
-                                                    <span className="sum-label">Net E-Puanı: <strong className="text-green">{currentEScore.toFixed(3)}</strong></span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            /* Ayrı mod: Çoklu hakem panelleri */
-                                            <>
+                                        {/* Ayrı mod: Çoklu hakem panelleri */}
+                                        <>
                                                 <div className="collaborative-panels">
                                                     {ePanels.map(panelId => {
                                                         const localVal = ePanelLocal[panelId];
@@ -1237,7 +1218,6 @@ export default function ScoringPage() {
                                                     </button>
                                                 </div>
                                             </>
-                                        )}
                                     </div>
                                 </div>
 

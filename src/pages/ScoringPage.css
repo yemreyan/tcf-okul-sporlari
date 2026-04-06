@@ -404,6 +404,23 @@
     letter-spacing: 0.5px;
 }
 
+.ra-status-badge.dns {
+    background: #FEF2F2;
+    color: #DC2626;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.roster-athlete.dns {
+    opacity: 0.55;
+    border: 1px solid #FCA5A5;
+    background: #FFF5F5;
+}
+
 .roster-athlete.scored {
     opacity: 0.65;
     border: 1px solid #E2E8F0;
@@ -546,6 +563,38 @@
 .btn-call-athlete:active { transform: scale(0.98); }
 
 .btn-call-athlete i { font-size: 1.5rem; }
+
+.call-athlete-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.btn-yarismadi {
+    background: transparent;
+    color: #DC2626;
+    border: 2px solid #DC2626;
+    padding: 0.75rem 2rem;
+    border-radius: 99px;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+}
+
+.btn-yarismadi:hover {
+    background: #FEF2F2;
+    transform: translateY(-1px);
+}
+
+.btn-yarismadi:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-yarismadi i { font-size: 1.2rem; }
 
 .animate-zoom-in {
     animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
