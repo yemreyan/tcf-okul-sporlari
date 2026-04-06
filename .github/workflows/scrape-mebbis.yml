@@ -22,7 +22,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # 4 saat maksimum
+    timeout-minutes: 360  # 6 saat maksimum (81 il için)
 
     steps:
       - name: Checkout
