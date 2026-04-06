@@ -327,7 +327,8 @@ export default function ScoringPage() {
 
     const calculatedDScore = useMemo(() => {
         if (isDifficultyMode) {
-            // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS - EksikKesinti
+            // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS
+            // Eksik eleman kesintisi burada DEĞİL, ayrı missingPenalty bloğunda hesaplanır
             const movesTotal = Object.entries(difficultyMoves).reduce((sum, [group, count]) => {
                 return sum + ((parseInt(count) || 0) * (DIFFICULTY_POINTS[group] || 0));
             }, 0);
@@ -335,25 +336,35 @@ export default function ScoringPage() {
             const effectiveCrTotal = hasCrGroups
                 ? crGroupValues.reduce((s, v) => s + (parseFloat(v) || 0), 0)
                 : (parseFloat(crValue) || 0);
-            // Eksik eleman kesintisi (sadece en az 1 hareket girilmişse)
-            const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
-            const missingMoves = (totalMoveCount > 0 && isFinite(diffMaxMoves))
-                ? Math.max(0, diffMaxMoves - totalMoveCount)
-                : 0;
-            const diffMissingPenalty = missingMoves * eksikKesintiPerHareket;
-            return movesTotal + effectiveCrTotal + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0) - diffMissingPenalty;
+            return movesTotal + effectiveCrTotal + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0);
         } else if (hasDynamicSkills) {
             return Object.values(skillScores).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
         } else {
             return parseFloat(dScore) || 0;
         }
-    }, [isDifficultyMode, hasDynamicSkills, difficultyMoves, crValue, crGroupValues, hasCrGroups, cvValue, btrsValue, skillScores, dScore, diffMaxMoves, eksikKesintiPerHareket]);
+    }, [isDifficultyMode, hasDynamicSkills, difficultyMoves, crValue, crGroupValues, hasCrGroups, cvValue, btrsValue, skillScores, dScore]);
 
     // Eksik Eleman Kesintisi
     let missingPenalty = 0;
     let missingCount = 0;
 
-    if (hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
+    if (isDifficultyMode) {
+        // Difficulty modda: toplam hareket sayısından otomatik hesapla
+        const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
+        if (totalMoveCount > 0 && isFinite(diffMaxMoves)) {
+            missingCount = Math.max(0, diffMaxMoves - totalMoveCount);
+            if (missingCount > 0) {
+                const tiers = currentCriteria?.eksikKesintiTiers;
+                if (tiers && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
+                    // Tanımlı tier tablosundan al
+                    missingPenalty = parseFloat(tiers[missingCount]);
+                } else if (eksikKesintiPerHareket > 0) {
+                    // Tier yoksa hareket başı katsayı ile hesapla
+                    missingPenalty = missingCount * eksikKesintiPerHareket;
+                }
+            }
+        }
+    } else if (hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
         const moves = currentCriteria.hareketler || [];
         const performedCount = Object.values(skillScores).filter(val => (parseFloat(val) || 0) > 0).length;
         missingCount = Math.max(0, moves.length - performedCount);
@@ -362,7 +373,7 @@ export default function ScoringPage() {
         if (tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
             missingPenalty = parseFloat(tiers[missingCount]);
         }
-    } else if (!hasDynamicSkills && currentCriteria?.eksikKesintiTiers) {
+    } else if (!hasDynamicSkills && !isDifficultyMode && currentCriteria?.eksikKesintiTiers) {
         missingCount = parseInt(manualEksikSayisi) || 0;
         const tiers = currentCriteria.eksikKesintiTiers;
         if (missingCount > 0 && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
@@ -990,26 +1001,15 @@ export default function ScoringPage() {
                                                 {(() => {
                                                     const movesTotal = Object.entries(difficultyMoves).reduce((sum, [g, c]) => sum + ((parseInt(c) || 0) * (DIFFICULTY_POINTS[g] || 0)), 0);
                                                     const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
-                                                    const missingMoves = (totalMoveCount > 0 && isFinite(diffMaxMoves)) ? Math.max(0, diffMaxMoves - totalMoveCount) : 0;
-                                                    const diffMissingPenalty = missingMoves * eksikKesintiPerHareket;
                                                     return (
-                                                        <>
-                                                            <div className="diff-subtotal">
-                                                                <span>Hareket Puanı: <strong>{movesTotal.toFixed(2)}</strong></span>
-                                                                {isFinite(diffMaxMoves) && (
-                                                                    <span className={`diff-move-counter ${totalMoveCount >= diffMaxMoves ? 'diff-move-counter--full' : totalMoveCount > 0 ? 'diff-move-counter--partial' : ''}`}>
-                                                                        {totalMoveCount}/{diffMaxMoves} hareket
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {missingMoves > 0 && (
-                                                                <div className="diff-missing-penalty">
-                                                                    <i className="material-icons-round" style={{fontSize:'0.9rem',verticalAlign:'middle',marginRight:4}}>warning</i>
-                                                                    Eksik Hareket Kesintisi: <strong>−{diffMissingPenalty.toFixed(2)}</strong>
-                                                                    <span style={{fontSize:'0.8rem',marginLeft:6,opacity:0.7}}>({missingMoves} hareket × {eksikKesintiPerHareket})</span>
-                                                                </div>
+                                                        <div className="diff-subtotal">
+                                                            <span>Hareket Puanı: <strong>{movesTotal.toFixed(2)}</strong></span>
+                                                            {isFinite(diffMaxMoves) && (
+                                                                <span className={`diff-move-counter ${totalMoveCount >= diffMaxMoves ? 'diff-move-counter--full' : totalMoveCount > 0 ? 'diff-move-counter--partial' : ''}`}>
+                                                                    {totalMoveCount}/{diffMaxMoves} hareket
+                                                                </span>
                                                             )}
-                                                        </>
+                                                        </div>
                                                     );
                                                 })()}
 
@@ -1251,18 +1251,21 @@ export default function ScoringPage() {
                                         <h3>Eksik Eleman Kesintisi</h3>
                                     </div>
                                     <div className="sc-body">
-                                        {hasDynamicSkills ? (
+                                        {(hasDynamicSkills || isDifficultyMode) ? (
                                             <div className="eksik-auto-display">
                                                 <div className="eksik-info-row">
                                                     <span className="eksik-label">Eksik Hareket:</span>
                                                     <span className={`eksik-value ${missingCount > 0 ? 'text-danger' : 'text-success'}`}>
-                                                        {missingCount > 0 ? `${missingCount} hareket eksik` : 'Tümü yapıldı'}
+                                                        {isDifficultyMode
+                                                            ? (missingCount > 0 ? `${missingCount} hareket eksik (${Object.values(difficultyMoves).reduce((s,c)=>s+(parseInt(c)||0),0)}/${diffMaxMoves})` : `${diffMaxMoves}/${diffMaxMoves} — Tam`)
+                                                            : (missingCount > 0 ? `${missingCount} hareket eksik` : 'Tümü yapıldı')
+                                                        }
                                                     </span>
                                                 </div>
                                                 <div className="eksik-info-row">
                                                     <span className="eksik-label">Kesinti:</span>
                                                     <span className={`eksik-penalty ${missingPenalty > 0 ? 'badge-missing' : ''}`}>
-                                                        {missingPenalty > 0 ? `-${missingPenalty}` : '0'}
+                                                        {missingPenalty > 0 ? `-${missingPenalty.toFixed(2)}` : '0'}
                                                     </span>
                                                 </div>
                                             </div>
