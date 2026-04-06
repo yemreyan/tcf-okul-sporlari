@@ -614,8 +614,11 @@ async function loadSchoolsForDistrict() {
   }
 
   // Firebase'den okul listesini kontrol et (önce Firebase, sonra statik fallback)
+  // Anahtarlar schools.json gibi büyük harf (ADANA/ALADAĞ)
+  const fbCity = city.toLocaleUpperCase('tr-TR');
+  const fbDistrict = district.toLocaleUpperCase('tr-TR');
   try {
-    const fbSnap = await get(ref(db, `okullar/${city}/${district}`));
+    const fbSnap = await get(ref(db, `okullar/${fbCity}/${fbDistrict}`));
     if (fbSnap.exists()) {
       const fbSchools = fbSnap.val();
       if (Array.isArray(fbSchools) && fbSchools.length > 0) {

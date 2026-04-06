@@ -143,8 +143,8 @@ export default function CompetitionsPage() {
                         categoryCount: compData.kategoriler ? Object.keys(compData.kategoriler).length : 0,
                         athleteCount: countAthletes(compData.sporcular),
                         basvuruKapaliMi: compData.basvuruKapaliMi || false,
-                        // İsim ya da tarih yoksa sahipsiz (orphan) kayıt
-                        orphan: !compData.isim || !compData.baslangicTarihi,
+                        // İsim ya da tarih (eski 'tarih' alanı dahil) yoksa sahipsiz (orphan) kayıt
+                        orphan: !compData.isim || !baslangic,
                     };
                 });
 

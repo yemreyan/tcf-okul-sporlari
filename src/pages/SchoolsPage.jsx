@@ -50,14 +50,20 @@ export default function SchoolsPage() {
           testMode: options.testMode || false,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
-        toast(
-          'GitHub Actions iş akışı başlatıldı. İşlem tamamlanınca Firebase güncellenir.',
-          'success'
-        );
+      // res.json() can fail if response is empty or HTML (e.g. 404 from dev server)
+      let data = {};
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+      if (res.ok && (data.success || res.status === 204)) {
+        toast('GitHub Actions iş akışı başlatıldı. İşlem tamamlanınca Firebase güncellenir.', 'success');
+      } else if (!res.ok && res.status === 404) {
+        toast('API endpoint bulunamadı — bu özellik sadece Vercel ortamında çalışır (prod/preview).', 'warning');
       } else {
-        const msg = data.error || 'Bilinmeyen hata';
+        const msg = data.error || `HTTP ${res.status}`;
         setSyncError(msg);
         toast('Tetikleme başarısız: ' + msg, 'error');
       }
@@ -95,9 +101,11 @@ export default function SchoolsPage() {
       })
       .catch(() => setStaticSchools([]));
 
-    // Load Firebase
+    // Load Firebase (keys are UPPERCASE in Firebase, e.g. ADANA/ALADAĞ)
+    const fbIl = selectedIl.toLocaleUpperCase('tr-TR');
+    const fbIlce = selectedIlce.toLocaleUpperCase('tr-TR');
     setLoadingFirebase(true);
-    get(ref(db, `okullar/${selectedIl}/${selectedIlce}`))
+    get(ref(db, `okullar/${fbIl}/${fbIlce}`))
       .then(snap => setFirebaseSchools(snap.exists() ? snap.val() : null))
       .catch(() => setFirebaseSchools(null))
       .finally(() => setLoadingFirebase(false));
@@ -135,7 +143,7 @@ export default function SchoolsPage() {
       setImportStatus("Tüm okullar başarıyla Firebase'e aktarıldı!");
       // Reload Firebase for current selection
       if (selectedIl && selectedIlce) {
-        const snap = await get(ref(db, `okullar/${selectedIl}/${selectedIlce}`));
+        const snap = await get(ref(db, `okullar/${selectedIl.toLocaleUpperCase('tr-TR')}/${selectedIlce.toLocaleUpperCase('tr-TR')}`));
         setFirebaseSchools(snap.exists() ? snap.val() : null);
       }
     } catch (err) {
@@ -149,7 +157,7 @@ export default function SchoolsPage() {
   const handleImportCurrentDistrict = async () => {
     if (!selectedIl || !selectedIlce || staticSchools.length === 0) return;
     try {
-      await set(ref(db, `okullar/${selectedIl}/${selectedIlce}`), staticSchools);
+      await set(ref(db, `okullar/${selectedIl.toLocaleUpperCase('tr-TR')}/${selectedIlce.toLocaleUpperCase('tr-TR')}`), staticSchools);
       setFirebaseSchools([...staticSchools]);
       toast(`${staticSchools.length} okul Firebase'e aktarıldı.`, 'success');
     } catch (err) {
@@ -174,7 +182,7 @@ export default function SchoolsPage() {
     }
     setSaving(true);
     try {
-      await set(ref(db, `okullar/${selectedIl}/${selectedIlce}`), current);
+      await set(ref(db, `okullar/${selectedIl.toLocaleUpperCase('tr-TR')}/${selectedIlce.toLocaleUpperCase('tr-TR')}`), current);
       setFirebaseSchools(current);
       setAddModalOpen(false);
       setEditingSchool(null);
@@ -197,7 +205,7 @@ export default function SchoolsPage() {
     const current = firebaseSchools !== null ? [...firebaseSchools] : [...staticSchools];
     current.splice(index, 1);
     try {
-      await set(ref(db, `okullar/${selectedIl}/${selectedIlce}`), current);
+      await set(ref(db, `okullar/${selectedIl.toLocaleUpperCase('tr-TR')}/${selectedIlce.toLocaleUpperCase('tr-TR')}`), current);
       setFirebaseSchools(current);
       toast('Okul silindi.', 'success');
     } catch (err) {
@@ -343,7 +351,10 @@ export default function SchoolsPage() {
             disabled={!selectedIl}
           >
             <option value="">-- İlçe Seçiniz --</option>
-            {selectedIl && Object.keys(turkeyData[selectedIl] || {}).sort().map(ilce => (
+            {selectedIl && (Array.isArray(turkeyData[selectedIl])
+              ? turkeyData[selectedIl]
+              : Object.keys(turkeyData[selectedIl] || {})
+            ).sort((a, b) => a.localeCompare(b, 'tr-TR')).map(ilce => (
               <option key={ilce} value={ilce}>{ilce}</option>
             ))}
           </select>
