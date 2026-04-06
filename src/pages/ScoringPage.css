@@ -2096,17 +2096,63 @@
 }
 
 .diff-subtotal {
-    text-align: center;
-    padding: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
     background: #EFF6FF;
     border-radius: 8px;
     color: #1E40AF;
     font-size: 0.9rem;
     font-weight: 500;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 .diff-subtotal strong {
     font-size: 1.1rem;
     margin-left: 0.4rem;
+}
+
+/* Hareket sayacı rozeti */
+.diff-move-counter {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #DBEAFE;
+    color: #1E40AF;
+    white-space: nowrap;
+}
+.diff-move-counter--partial {
+    background: #FEF3C7;
+    color: #92400E;
+}
+.diff-move-counter--full {
+    background: #DCFCE7;
+    color: #15803D;
+}
+
+/* Eksik hareket kesintisi uyarısı */
+.diff-missing-penalty {
+    display: flex;
+    align-items: center;
+    padding: 0.45rem 0.7rem;
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    border-radius: 8px;
+    color: #991B1B;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.diff-missing-penalty strong {
+    margin-left: 4px;
+    font-size: 0.95rem;
+}
+
+/* Max harekete ulaşılan butonlar */
+.diff-count-btn--disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 .diff-component-section {

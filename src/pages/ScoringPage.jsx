@@ -65,7 +65,8 @@ export default function ScoringPage() {
 
     // Difficulty Mode State (yıldız/genç kategoriler için)
     const [difficultyMoves, setDifficultyMoves] = useState({});
-    const [crValue, setCrValue] = useState(0);
+    const [crValue, setCrValue] = useState(0);          // Kız kategoriler (tek CR)
+    const [crGroupValues, setCrGroupValues] = useState([0, 0, 0, 0]); // Erkek kategoriler (4 Yapı Grubu)
     const [cvValue, setCvValue] = useState(0);
     const [btrsValue, setBtrsValue] = useState(0);
 
@@ -238,6 +239,7 @@ export default function ScoringPage() {
         // Difficulty modu
         setDifficultyMoves(scores.difficultyMoves ?? {});
         setCrValue(scores.crScore_val ?? 0);
+        setCrGroupValues(scores.crGroupValues ?? [0, 0, 0, 0]);
         setCvValue(scores.cvScore_val ?? 0);
         setBtrsValue(scores.btrsScore_val ?? 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -316,19 +318,36 @@ export default function ScoringPage() {
         && currentCriteria.hareketler.some(h => (h.isim && h.isim.trim() !== '') || (h.dValues && String(h.dValues).trim() !== ''));
     const isDifficultyMode = dScoreMode === 'difficulty';
 
+    // Erkek kategoriler: CR grupları (4 Yapı Grubu)
+    const hasCrGroups = !!(defaultCriteriaForApparatus?.crGroups || currentCriteria?.crGroups);
+    const crGroupDefs = defaultCriteriaForApparatus?.crGroups || currentCriteria?.crGroups || [];
+    // Difficulty mode: max hareket sayısı ve eksik kesinti katsayısı
+    const diffMaxMoves = defaultCriteriaForApparatus?.maxDMoves ?? currentCriteria?.maxDMoves ?? Infinity;
+    const eksikKesintiPerHareket = defaultCriteriaForApparatus?.eksikKesintiPerHareket ?? currentCriteria?.eksikKesintiPerHareket ?? 0;
+
     const calculatedDScore = useMemo(() => {
         if (isDifficultyMode) {
-            // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS
+            // Zorluk grubu sistemi: Σ(grup_değeri × adet) + CR + CV + BTRS - EksikKesinti
             const movesTotal = Object.entries(difficultyMoves).reduce((sum, [group, count]) => {
                 return sum + ((parseInt(count) || 0) * (DIFFICULTY_POINTS[group] || 0));
             }, 0);
-            return movesTotal + (parseFloat(crValue) || 0) + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0);
+            // CR: erkek kategoriler → 4 Yapı Grubu toplamı; kız kategoriler → tek crValue
+            const effectiveCrTotal = hasCrGroups
+                ? crGroupValues.reduce((s, v) => s + (parseFloat(v) || 0), 0)
+                : (parseFloat(crValue) || 0);
+            // Eksik eleman kesintisi (sadece en az 1 hareket girilmişse)
+            const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
+            const missingMoves = (totalMoveCount > 0 && isFinite(diffMaxMoves))
+                ? Math.max(0, diffMaxMoves - totalMoveCount)
+                : 0;
+            const diffMissingPenalty = missingMoves * eksikKesintiPerHareket;
+            return movesTotal + effectiveCrTotal + (parseFloat(cvValue) || 0) + (parseFloat(btrsValue) || 0) - diffMissingPenalty;
         } else if (hasDynamicSkills) {
             return Object.values(skillScores).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
         } else {
             return parseFloat(dScore) || 0;
         }
-    }, [isDifficultyMode, hasDynamicSkills, difficultyMoves, crValue, cvValue, btrsValue, skillScores, dScore]);
+    }, [isDifficultyMode, hasDynamicSkills, difficultyMoves, crValue, crGroupValues, hasCrGroups, cvValue, btrsValue, skillScores, dScore, diffMaxMoves, eksikKesintiPerHareket]);
 
     // Eksik Eleman Kesintisi
     let missingPenalty = 0;
@@ -441,6 +460,7 @@ export default function ScoringPage() {
             // Difficulty mode state geri yükle
             setDifficultyMoves(prevScore.difficultyMoves || {});
             setCrValue(prevScore.crScore_val || 0);
+            setCrGroupValues(prevScore.crGroupValues || [0, 0, 0, 0]);
             setCvValue(prevScore.cvScore_val || 0);
             setBtrsValue(prevScore.btrsScore_val || 0);
             const panels = {};
@@ -472,6 +492,7 @@ export default function ScoringPage() {
         // Difficulty mode reset
         setDifficultyMoves({});
         setCrValue(0);
+        setCrGroupValues([0, 0, 0, 0]);
         setCvValue(0);
         setBtrsValue(0);
     };
@@ -638,10 +659,14 @@ export default function ScoringPage() {
             }
 
             // Difficulty mode ek verileri
+            const effectiveCrSaveTotal = hasCrGroups
+                ? crGroupValues.reduce((s, v) => s + (parseFloat(v) || 0), 0)
+                : parseFloat(crValue) || 0;
             const difficultyData = isDifficultyMode ? {
                 [scorePath + '/dScoreMode']: 'difficulty',
                 [scorePath + '/difficultyMoves']: difficultyMoves,
-                [scorePath + '/crScore_val']: parseFloat(crValue) || 0,
+                [scorePath + '/crScore_val']: effectiveCrSaveTotal,
+                [scorePath + '/crGroupValues']: hasCrGroups ? crGroupValues : null,
                 [scorePath + '/cvScore_val']: parseFloat(cvValue) || 0,
                 [scorePath + '/btrsScore_val']: parseFloat(btrsValue) || 0,
             } : {
@@ -934,20 +959,26 @@ export default function ScoringPage() {
                                                         <tbody>
                                                             {DIFFICULTY_GROUPS.map(group => {
                                                                 const selectedCount = difficultyMoves[group] || 0;
+                                                                const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
                                                                 return (
                                                                     <tr key={group}>
                                                                         <td className="diff-group-label"><strong>{group}</strong></td>
                                                                         <td className="diff-point-label">{DIFFICULTY_POINTS[group].toFixed(1)}</td>
-                                                                        {[...Array(MAX_MOVES_PER_GROUP + 1)].map((_, i) => (
-                                                                            <td key={i}>
-                                                                                <button
-                                                                                    className={`diff-count-btn ${selectedCount === i ? 'diff-selected' : ''}`}
-                                                                                    onClick={() => setDifficultyMoves(prev => ({ ...prev, [group]: i }))}
-                                                                                >
-                                                                                    {i}
-                                                                                </button>
-                                                                            </td>
-                                                                        ))}
+                                                                        {[...Array(MAX_MOVES_PER_GROUP + 1)].map((_, i) => {
+                                                                            const wouldExceed = isFinite(diffMaxMoves) && i > selectedCount && (totalMoveCount - selectedCount + i) > diffMaxMoves;
+                                                                            return (
+                                                                                <td key={i}>
+                                                                                    <button
+                                                                                        className={`diff-count-btn ${selectedCount === i ? 'diff-selected' : ''} ${wouldExceed ? 'diff-count-btn--disabled' : ''}`}
+                                                                                        onClick={() => !wouldExceed && setDifficultyMoves(prev => ({ ...prev, [group]: i }))}
+                                                                                        disabled={wouldExceed}
+                                                                                        title={wouldExceed ? `Maksimum ${diffMaxMoves} hareket sınırına ulaşıldı` : ''}
+                                                                                    >
+                                                                                        {i}
+                                                                                    </button>
+                                                                                </td>
+                                                                            );
+                                                                        })}
                                                                     </tr>
                                                                 );
                                                             })}
@@ -955,31 +986,73 @@ export default function ScoringPage() {
                                                     </table>
                                                 </div>
 
-                                                {/* Hareket Puanı Toplamı */}
+                                                {/* Hareket Puanı Toplamı + Sayaç */}
                                                 {(() => {
                                                     const movesTotal = Object.entries(difficultyMoves).reduce((sum, [g, c]) => sum + ((parseInt(c) || 0) * (DIFFICULTY_POINTS[g] || 0)), 0);
+                                                    const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
+                                                    const missingMoves = (totalMoveCount > 0 && isFinite(diffMaxMoves)) ? Math.max(0, diffMaxMoves - totalMoveCount) : 0;
+                                                    const diffMissingPenalty = missingMoves * eksikKesintiPerHareket;
                                                     return (
-                                                        <div className="diff-subtotal">
-                                                            Hareket Puanı: <strong>{movesTotal.toFixed(2)}</strong>
-                                                        </div>
+                                                        <>
+                                                            <div className="diff-subtotal">
+                                                                <span>Hareket Puanı: <strong>{movesTotal.toFixed(2)}</strong></span>
+                                                                {isFinite(diffMaxMoves) && (
+                                                                    <span className={`diff-move-counter ${totalMoveCount >= diffMaxMoves ? 'diff-move-counter--full' : totalMoveCount > 0 ? 'diff-move-counter--partial' : ''}`}>
+                                                                        {totalMoveCount}/{diffMaxMoves} hareket
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {missingMoves > 0 && (
+                                                                <div className="diff-missing-penalty">
+                                                                    <i className="material-icons-round" style={{fontSize:'0.9rem',verticalAlign:'middle',marginRight:4}}>warning</i>
+                                                                    Eksik Hareket Kesintisi: <strong>−{diffMissingPenalty.toFixed(2)}</strong>
+                                                                    <span style={{fontSize:'0.8rem',marginLeft:6,opacity:0.7}}>({missingMoves} hareket × {eksikKesintiPerHareket})</span>
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     );
                                                 })()}
 
                                                 {/* CR - Kompozisyon Gereksinimi */}
-                                                <div className="diff-component-section">
-                                                    <label className="diff-comp-label">CR (Kompozisyon Gereksinimi)</label>
-                                                    <div className="diff-option-btns">
-                                                        {(defaultCriteriaForApparatus?.crOptions || currentCriteria?.crOptions || [0, 0.5, 1.0, 1.5, 2.0]).map(val => (
-                                                            <button
-                                                                key={val}
-                                                                className={`diff-opt-btn ${parseFloat(crValue) === val ? 'diff-opt-selected' : ''}`}
-                                                                onClick={() => setCrValue(val)}
-                                                            >
-                                                                {Number(val).toFixed(1)}
-                                                            </button>
-                                                        ))}
+                                                {hasCrGroups ? (
+                                                    /* Erkek kategoriler: 4 Yapı Grubu */
+                                                    crGroupDefs.map((group, idx) => (
+                                                        <div key={idx} className="diff-component-section">
+                                                            <label className="diff-comp-label">{group.label}</label>
+                                                            <div className="diff-option-btns">
+                                                                {group.options.map(val => (
+                                                                    <button
+                                                                        key={val}
+                                                                        className={`diff-opt-btn ${parseFloat(crGroupValues[idx]) === val ? 'diff-opt-selected' : ''}`}
+                                                                        onClick={() => {
+                                                                            const next = [...crGroupValues];
+                                                                            next[idx] = val;
+                                                                            setCrGroupValues(next);
+                                                                        }}
+                                                                    >
+                                                                        {Number(val).toFixed(1)}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    /* Kız kategoriler: tek CR alanı */
+                                                    <div className="diff-component-section">
+                                                        <label className="diff-comp-label">CR (Kompozisyon Gereksinimi)</label>
+                                                        <div className="diff-option-btns">
+                                                            {(defaultCriteriaForApparatus?.crOptions || currentCriteria?.crOptions || [0, 0.5, 1.0, 1.5, 2.0]).map(val => (
+                                                                <button
+                                                                    key={val}
+                                                                    className={`diff-opt-btn ${parseFloat(crValue) === val ? 'diff-opt-selected' : ''}`}
+                                                                    onClick={() => setCrValue(val)}
+                                                                >
+                                                                    {Number(val).toFixed(1)}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
 
                                                 {/* CV - Bağlantı Değeri */}
                                                 <div className="diff-component-section">
@@ -1019,7 +1092,7 @@ export default function ScoringPage() {
                                                     <strong>{calculatedDScore.toFixed(2)}</strong>
                                                 </div>
 
-                                                <button className="btn-quick-blue clear-btn" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => { setDifficultyMoves({}); setCrValue(0); setCvValue(0); setBtrsValue(0); }}>
+                                                <button className="btn-quick-blue clear-btn" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => { setDifficultyMoves({}); setCrValue(0); setCrGroupValues([0,0,0,0]); setCvValue(0); setBtrsValue(0); }}>
                                                     <i className="material-icons-round" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: 4 }}>refresh</i> D-Puanını Sıfırla
                                                 </button>
                                             </div>

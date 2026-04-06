@@ -1,92 +1,622 @@
 export const DEFAULT_CRITERIA = {
     "genc_erkek": {
         "atlama": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4
         },
         "barfiks": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "halka": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "kulplu": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "mantar": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "metadata": {
             "isActive": true
         },
         "paralel": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "yer": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         }
     },
     "genc_kiz": {
         "asimetrik": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         },
         "atlama": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4
         },
         "denge": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         },
         "metadata": {
             "isActive": true
         },
         "yer": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         }
     },
     "kucuk_erkek": {
@@ -1096,92 +1626,622 @@ export const DEFAULT_CRITERIA = {
     },
     "yildiz_erkek": {
         "atlama": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4
         },
         "barfiks": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "halka": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "kulplu": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "mantar": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "metadata": {
             "isActive": true
         },
         "paralel": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         },
         "yer": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.1
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5,
+            "crGroups": [
+                {
+                    "label": "Yapı Grubu 1",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 2",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 3",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                },
+                {
+                    "label": "Yapı Grubu 4",
+                    "options": [
+                        0,
+                        0.1,
+                        0.2,
+                        0.3,
+                        0.4,
+                        0.5
+                    ]
+                }
+            ]
         }
     },
     "yildiz_kiz": {
         "asimetrik": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         },
         "atlama": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4
         },
         "denge": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         },
         "metadata": {
             "isActive": true
         },
         "yer": {
-            "bonus": { "maxE": 10, "requiredD": 0, "value": 0 },
+            "bonus": {
+                "maxE": 10,
+                "requiredD": 0,
+                "value": 0
+            },
             "hakemSayisi": 4,
             "dScoreMode": "difficulty",
-            "crOptions": [0, 0.5, 1.0, 1.5, 2.0],
-            "cvOptions": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
-            "btrsOptions": [0, 0.2]
+            "crOptions": [
+                0,
+                0.5,
+                1.0,
+                1.5,
+                2.0
+            ],
+            "cvOptions": [
+                0,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.4,
+                1.5
+            ],
+            "btrsOptions": [
+                0,
+                0.2
+            ],
+            "maxDMoves": 8,
+            "eksikKesintiPerHareket": 0.5
         }
     }
 };
