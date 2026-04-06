@@ -39,7 +39,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -85,7 +84,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "halka": {
             "bonus": {
@@ -118,7 +127,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -164,7 +172,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "kulplu": {
             "bonus": {
@@ -197,7 +215,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -243,7 +260,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "mantar": {
             "bonus": {
@@ -276,7 +303,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -322,7 +348,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "metadata": {
             "isActive": true
@@ -358,7 +394,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -404,7 +439,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "yer": {
             "bonus": {
@@ -437,7 +482,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -483,7 +527,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         }
     },
     "genc_kiz": {
@@ -525,7 +579,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "atlama": {
             "bonus": {
@@ -573,7 +636,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "metadata": {
             "isActive": true
@@ -616,7 +688,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         }
     },
     "kucuk_erkek": {
@@ -1664,7 +1745,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -1710,7 +1790,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "halka": {
             "bonus": {
@@ -1743,7 +1833,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -1789,7 +1878,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "kulplu": {
             "bonus": {
@@ -1822,7 +1921,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -1868,7 +1966,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "mantar": {
             "bonus": {
@@ -1901,7 +2009,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -1947,7 +2054,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "metadata": {
             "isActive": true
@@ -1983,7 +2100,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -2029,7 +2145,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "yer": {
             "bonus": {
@@ -2062,7 +2188,6 @@ export const DEFAULT_CRITERIA = {
                 0.1
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5,
             "crGroups": [
                 {
                     "label": "Yapı Grubu 1",
@@ -2108,7 +2233,17 @@ export const DEFAULT_CRITERIA = {
                         0.5
                     ]
                 }
-            ]
+            ],
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         }
     },
     "yildiz_kiz": {
@@ -2150,7 +2285,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "atlama": {
             "bonus": {
@@ -2198,7 +2342,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         },
         "metadata": {
             "isActive": true
@@ -2241,7 +2394,16 @@ export const DEFAULT_CRITERIA = {
                 0.2
             ],
             "maxDMoves": 8,
-            "eksikKesintiPerHareket": 0.5
+            "eksikKesintiTiers": {
+                "1": 0.5,
+                "2": 1.0,
+                "3": 1.5,
+                "4": 2.0,
+                "5": 2.5,
+                "6": 3.0,
+                "7": 3.5,
+                "8": 4.0
+            }
         }
     }
 };

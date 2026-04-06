@@ -321,9 +321,8 @@ export default function ScoringPage() {
     // Erkek kategoriler: CR grupları (4 Yapı Grubu)
     const hasCrGroups = !!(defaultCriteriaForApparatus?.crGroups || currentCriteria?.crGroups);
     const crGroupDefs = defaultCriteriaForApparatus?.crGroups || currentCriteria?.crGroups || [];
-    // Difficulty mode: max hareket sayısı ve eksik kesinti katsayısı
+    // Difficulty mode: max hareket sayısı (eksik kesinti kriterlerdeki eksikKesintiTiers'dan gelir)
     const diffMaxMoves = defaultCriteriaForApparatus?.maxDMoves ?? currentCriteria?.maxDMoves ?? Infinity;
-    const eksikKesintiPerHareket = defaultCriteriaForApparatus?.eksikKesintiPerHareket ?? currentCriteria?.eksikKesintiPerHareket ?? 0;
 
     const calculatedDScore = useMemo(() => {
         if (isDifficultyMode) {
@@ -349,18 +348,15 @@ export default function ScoringPage() {
     let missingCount = 0;
 
     if (isDifficultyMode) {
-        // Difficulty modda: toplam hareket sayısından otomatik hesapla
+        // Difficulty modda: toplam hareket sayısı üzerinden eksik hesapla,
+        // kesinti miktarı kriterlerdeki eksikKesintiTiers tablosundan gelir (CriteriaPage'den yönetilir)
         const totalMoveCount = Object.values(difficultyMoves).reduce((s, c) => s + (parseInt(c) || 0), 0);
         if (totalMoveCount > 0 && isFinite(diffMaxMoves)) {
             missingCount = Math.max(0, diffMaxMoves - totalMoveCount);
             if (missingCount > 0) {
                 const tiers = currentCriteria?.eksikKesintiTiers;
                 if (tiers && tiers[missingCount] !== undefined && tiers[missingCount] !== null) {
-                    // Tanımlı tier tablosundan al
                     missingPenalty = parseFloat(tiers[missingCount]);
-                } else if (eksikKesintiPerHareket > 0) {
-                    // Tier yoksa hareket başı katsayı ile hesapla
-                    missingPenalty = missingCount * eksikKesintiPerHareket;
                 }
             }
         }
