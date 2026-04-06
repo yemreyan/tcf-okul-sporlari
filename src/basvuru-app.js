@@ -584,10 +584,6 @@ function renderSchoolSelect(filterText) {
     schoolSelect.appendChild(optgroup);
   });
 
-  const otherOpt = document.createElement('option');
-  otherOpt.value = 'OTHER';
-  otherOpt.textContent = 'OKULUMU BULAMADIM / DİĞER';
-  schoolSelect.appendChild(otherOpt);
 }
 
 async function loadSchoolsForDistrict() {
@@ -595,18 +591,14 @@ async function loadSchoolsForDistrict() {
   const district = document.getElementById('districtSelect').value;
   const schoolSelect = document.getElementById('schoolSelect');
   const schoolFilter = document.getElementById('schoolFilter');
-  const schoolName = document.getElementById('schoolName');
   const hint = schoolSelect.parentElement.querySelector('.hint');
 
   currentSchools = [];
   schoolFilter.value = '';
-  schoolName.value = '';
 
   if (!city || !district) {
     schoolSelect.style.display = 'none';
     schoolFilter.style.display = 'none';
-    schoolName.style.display = 'none';
-    schoolName.required = false;
     schoolSelect.required = true;
     schoolSelect.innerHTML = '<option value="">ÖNCE İLÇE SEÇİNİZ</option>';
     if (hint) hint.textContent = 'İLÇE SEÇTİKTEN SONRA OKUL LİSTESİ GÖRÜNECEK';
@@ -627,8 +619,6 @@ async function loadSchoolsForDistrict() {
         schoolSelect.style.display = 'block';
         schoolFilter.style.display = 'block';
         schoolSelect.required = true;
-        schoolName.style.display = 'none';
-        schoolName.required = false;
         if (hint) hint.textContent = 'LİSTEDEN OKULUNUZU SEÇİNİZ VEYA FİLTRELEYİNİZ';
         updateStepIndicators();
         return; // Firebase'den yüklendi, statik dosyaya gerek yok
@@ -654,16 +644,12 @@ async function loadSchoolsForDistrict() {
     schoolSelect.style.display = 'block';
     schoolFilter.style.display = 'block';
     schoolSelect.required = true;
-    schoolName.style.display = 'none';
-    schoolName.required = false;
     if (hint) hint.textContent = 'LİSTEDEN OKULUNUZU SEÇİNİZ VEYA FİLTRELEYİNİZ';
   } else {
     schoolSelect.style.display = 'none';
     schoolFilter.style.display = 'none';
-    schoolName.style.display = 'block';
-    schoolName.required = true;
     schoolSelect.required = false;
-    if (hint) hint.textContent = 'BU İLÇEDE KAYITLI OKUL BULUNAMADI - MANUEL GİRİNİZ';
+    if (hint) hint.textContent = 'BU İLÇEDE KAYITLI OKUL BULUNAMADI';
   }
   updateStepIndicators();
 }
@@ -1309,11 +1295,7 @@ function handleAthleteDOBBlur(inputEl) {
 
 function getSelectedSchool() {
   const schoolSelect = document.getElementById('schoolSelect');
-  const schoolName = document.getElementById('schoolName');
-  if (schoolSelect.style.display !== 'none' && schoolSelect.value && schoolSelect.value !== 'OTHER') {
-    return schoolSelect.value;
-  }
-  return schoolName.value;
+  return schoolSelect.value || '';
 }
 
 // ─── Collect Form Data ───
@@ -1635,10 +1617,8 @@ async function handleSubmit(e) {
             document.getElementById('coachRows').innerHTML = '';
             document.getElementById('teacherRows').innerHTML = '';
             document.getElementById('athleteRows').innerHTML = '';
-            document.getElementById('schoolName').value = '';
             document.getElementById('schoolSelect').style.display = 'none';
             document.getElementById('schoolFilter').style.display = 'none';
-            document.getElementById('schoolName').style.display = 'none';
             document.getElementById('schoolSelect').innerHTML = '<option value="">ÖNCE İLÇE SEÇİNİZ</option>';
             document.getElementById('participationType').value = 'Ferdi';
             participationType = 'Ferdi';
@@ -1715,17 +1695,6 @@ function initEventListeners() {
   });
 
   document.getElementById('schoolSelect').addEventListener('change', function() {
-    const schoolName = document.getElementById('schoolName');
-    if (this.value === 'OTHER') {
-      schoolName.style.display = 'block';
-      schoolName.required = true;
-      schoolName.value = '';
-      schoolName.focus();
-    } else {
-      schoolName.style.display = 'none';
-      schoolName.required = false;
-      schoolName.value = this.value;
-    }
     updateStepIndicators();
     fetchExistingAthleteCount(); // Okul değişince kontenjan sorgula
   });
