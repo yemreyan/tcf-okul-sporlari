@@ -304,9 +304,16 @@ export default function RoleManagementPage() {
     }, [users, search, filterIl, filterRole, filterAktif]);
 
     // İllerde kullanılan iller (filtre dropdown için)
+    // Normalize: Firebase'deki il değerleri farklı case'de saklanmış olabilir →
+    // turkey_data.json standart key'iyle eşleştirerek duplikasyonu önle
     const usedCities = useMemo(() => {
         const set = new Set();
-        Object.values(users).forEach(u => { if (u.il) set.add(u.il); });
+        Object.values(users).forEach(u => {
+            if (!u.il) return;
+            const norm = u.il.toLocaleUpperCase('tr-TR');
+            const match = cities.find(c => c.toLocaleUpperCase('tr-TR') === norm);
+            set.add(match || u.il);
+        });
         return [...set].sort((a, b) => a.localeCompare(b, 'tr-TR'));
     }, [users]);
 
@@ -458,9 +465,14 @@ export default function RoleManagementPage() {
                 }
             });
 
+            // il değerini turkey_data.json standardına normalize et (büyük/küçük harf uyumu)
+            const safeIl = formData.il
+                ? (cities.find(c => c.toLocaleUpperCase('tr-TR') === formData.il.toLocaleUpperCase('tr-TR')) || formData.il)
+                : null;
+
             const userData = {
                 rolAdi: formData.rolAdi.trim(),
-                il: formData.il || null,
+                il: safeIl,
                 aktif: formData.aktif,
                 izinler: formData.izinler,
                 bransIzinler: Object.keys(cleanBransIzinler).length > 0 ? cleanBransIzinler : null,
