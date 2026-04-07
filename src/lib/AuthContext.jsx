@@ -127,8 +127,21 @@ export const AuthProvider = ({ children }) => {
                 const inputHash = await hashPassword(password);
                 passwordMatch = timingSafeEqual(inputHash, userData.sifreHash);
             } else if (userData.sifre) {
-                // Eski format: düz metin (geriye uyumluluk — migration gerekir)
-                passwordMatch = userData.sifre === password;
+                // Eski format: düz metin → otomatik hash'e çevir ve kaydet
+                if (userData.sifre === password) {
+                    passwordMatch = true;
+                    // Asenkron olarak hash'e migrate et (sonucu beklemiyoruz)
+                    hashPassword(password).then(async hash => {
+                        try {
+                            const { update: fbUpdate, ref: fbRef } = await import('firebase/database');
+                            const { db: fbDb } = await import('./firebase');
+                            await fbUpdate(fbRef(fbDb, `kullanicilar/${sanitizedUsername}`), {
+                                sifreHash: hash,
+                                sifre: null
+                            });
+                        } catch { /* sessiz hata */ }
+                    });
+                }
             }
 
             if (!passwordMatch) {

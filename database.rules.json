@@ -1,460 +1,211 @@
 {
   "rules": {
     ".read": true,
-    ".write": true,
+    ".write": false,
+
+    "kullanicilar": {
+      "$userId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['kullaniciAdi', 'rolAdi']) && newData.child('kullaniciAdi').isString() && newData.child('kullaniciAdi').val().length >= 1 && newData.child('kullaniciAdi').val().length <= 100 && newData.child('rolAdi').isString() && newData.child('rolAdi').val().length <= 100",
+        "kullaniciAdi": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
+        "rolAdi":       { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
+        "aktif":        { ".validate": "newData.isBoolean()" },
+        "il":           { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 100)" },
+        "email":        { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200)" },
+        "sifreHash":    { ".validate": "!newData.exists() || (newData.isString() && newData.val().length === 64)" },
+        "sifre":        { ".validate": false },
+        ".indexOn": ["email", "role", "rolAdi", "kullaniciAdi", "aktif", "il"]
+      }
+    },
 
     "competitions": {
+      ".write": true,
       ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
-
       "$competitionId": {
         ".indexOn": ["tarih", "isim", "il"],
-
-        "kategoriler": {
-          "$categoryId": {
-            ".indexOn": ["name"]
-          }
-        },
-
-        "sporcular": {
-          "$categoryId": {
-            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
-
-            "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
-            }
-          }
-        },
-
-        "puanlar": {
-          "$categoryId": {
-            "$apparatusId": {
-              "$athleteId": {
-                ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
-              }
-            }
-          }
-        },
-
-        "siralama": {
-          "$categoryId": {
-            "$rotationId": {
-              "$athleteId": {
-                ".indexOn": ["sirasi"]
-              }
-            }
-          }
-        },
-
-        "hakemler": {
-          ".indexOn": ["name"],
-          "$categoryId": {
-            "$apparatusId": {}
-          }
-        },
-
-        "teamDeductions": {
-          ".indexOn": ["teamName", "team"]
-        },
-
-        "program": {
-          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
-          "$sessionId": {
-            ".indexOn": ["baslangic", "kategori", "alet", "durum"]
-          }
-        },
-
-        "aktifSporcu": {
-          "$categoryId": {}
-        },
-
+        "kategoriler":  { "$categoryId": { ".indexOn": ["name"] } },
+        "sporcular":    { "$categoryId": { ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"], "$athleteId": { ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"] } } },
+        "puanlar":      { "$categoryId": { "$apparatusId": { "$athleteId": { ".indexOn": ["toplam", "finalScore", "sonuc", "durum"] } } } },
+        "siralama":     { "$categoryId": { "$rotationId": { "$athleteId": { ".indexOn": ["sirasi"] } } } },
+        "hakemler":     { ".indexOn": ["name"], "$categoryId": { "$apparatusId": {} } },
+        "teamDeductions": { ".indexOn": ["teamName", "team"] },
+        "program":      { ".indexOn": ["baslangic", "bitis", "kategori", "durum"], "$sessionId": { ".indexOn": ["baslangic", "kategori", "alet", "durum"] } },
+        "aktifSporcu":  { "$categoryId": {} },
         "flashTrigger": {},
         "katilimcilar": {},
         "onayli_okullar": {},
-        "epanelToken": {},
+        "epanelToken":  {},
         "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
 
     "aerobik_yarismalar": {
+      ".write": true,
       ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
-
       "$competitionId": {
         ".indexOn": ["tarih", "isim", "il"],
-
-        "kategoriler": {
-          "$categoryId": {
-            ".indexOn": ["name"]
-          }
-        },
-
-        "sporcular": {
-          "$categoryId": {
-            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
-
-            "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
-            }
-          }
-        },
-
-        "puanlar": {
-          "$categoryId": {
-            "$athleteId": {
-              ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
-            }
-          }
-        },
-
-        "siralama": {
-          "$categoryId": {
-            "$rotationId": {
-              "$athleteId": {
-                ".indexOn": ["sirasi"]
-              }
-            }
-          }
-        },
-
-        "hakemler": {
-          ".indexOn": ["name"],
-          "$categoryId": {}
-        },
-
-        "teamDeductions": {
-          ".indexOn": ["teamName", "team"]
-        },
-
-        "program": {
-          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
-          "$sessionId": {
-            ".indexOn": ["baslangic", "kategori", "durum"]
-          }
-        },
-
-        "aktifSporcu": {
-          "$categoryId": {}
-        },
-
+        "kategoriler":  { "$categoryId": { ".indexOn": ["name"] } },
+        "sporcular":    { "$categoryId": { ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"], "$athleteId": { ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"] } } },
+        "puanlar":      { "$categoryId": { "$athleteId": { ".indexOn": ["toplam", "finalScore", "sonuc", "durum"] } } },
+        "siralama":     { "$categoryId": { "$rotationId": { "$athleteId": { ".indexOn": ["sirasi"] } } } },
+        "hakemler":     { ".indexOn": ["name"], "$categoryId": {} },
+        "teamDeductions": { ".indexOn": ["teamName", "team"] },
+        "program":      { ".indexOn": ["baslangic", "bitis", "kategori", "durum"], "$sessionId": { ".indexOn": ["baslangic", "kategori", "durum"] } },
+        "aktifSporcu":  { "$categoryId": {} },
         "flashTrigger": {},
         "katilimcilar": {},
         "onayli_okullar": {},
-        "epanelToken": {},
+        "epanelToken":  {},
         "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
 
     "trampolin_yarismalar": {
+      ".write": true,
       ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
-
       "$competitionId": {
         ".indexOn": ["tarih", "isim", "il"],
-
-        "kategoriler": {
-          "$categoryId": {
-            ".indexOn": ["name"]
-          }
-        },
-
-        "sporcular": {
-          "$categoryId": {
-            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
-
-            "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
-            }
-          }
-        },
-
-        "puanlar": {
-          "$categoryId": {
-            "$athleteId": {
-              ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
-            }
-          }
-        },
-
-        "siralama": {
-          "$categoryId": {
-            "$rotationId": {
-              "$athleteId": {
-                ".indexOn": ["sirasi"]
-              }
-            }
-          }
-        },
-
-        "hakemler": {
-          ".indexOn": ["name"],
-          "$categoryId": {}
-        },
-
-        "teamDeductions": {
-          ".indexOn": ["teamName", "team"]
-        },
-
-        "program": {
-          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
-          "$sessionId": {
-            ".indexOn": ["baslangic", "kategori", "durum"]
-          }
-        },
-
-        "aktifSporcu": {
-          "$categoryId": {}
-        },
-
+        "kategoriler":  { "$categoryId": { ".indexOn": ["name"] } },
+        "sporcular":    { "$categoryId": { ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"], "$athleteId": { ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"] } } },
+        "puanlar":      { "$categoryId": { "$athleteId": { ".indexOn": ["toplam", "finalScore", "sonuc", "durum"] } } },
+        "siralama":     { "$categoryId": { "$rotationId": { "$athleteId": { ".indexOn": ["sirasi"] } } } },
+        "hakemler":     { ".indexOn": ["name"], "$categoryId": {} },
+        "teamDeductions": { ".indexOn": ["teamName", "team"] },
+        "program":      { ".indexOn": ["baslangic", "bitis", "kategori", "durum"], "$sessionId": { ".indexOn": ["baslangic", "kategori", "durum"] } },
+        "aktifSporcu":  { "$categoryId": {} },
         "flashTrigger": {},
         "katilimcilar": {},
         "onayli_okullar": {},
-        "epanelToken": {},
+        "epanelToken":  {},
         "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
 
     "parkur_yarismalar": {
+      ".write": true,
       ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
-
       "$competitionId": {
         ".indexOn": ["tarih", "isim", "il"],
-
-        "kategoriler": {
-          "$categoryId": {
-            ".indexOn": ["name"]
-          }
-        },
-
-        "sporcular": {
-          "$categoryId": {
-            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
-
-            "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
-            }
-          }
-        },
-
-        "puanlar": {
-          "$categoryId": {
-            "$athleteId": {
-              ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
-            }
-          }
-        },
-
-        "siralama": {
-          "$categoryId": {
-            "$rotationId": {
-              "$athleteId": {
-                ".indexOn": ["sirasi"]
-              }
-            }
-          }
-        },
-
-        "hakemler": {
-          ".indexOn": ["name"],
-          "$categoryId": {}
-        },
-
-        "teamDeductions": {
-          ".indexOn": ["teamName", "team"]
-        },
-
-        "program": {
-          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
-          "$sessionId": {
-            ".indexOn": ["baslangic", "kategori", "durum"]
-          }
-        },
-
-        "aktifSporcu": {
-          "$categoryId": {}
-        },
-
+        "kategoriler":  { "$categoryId": { ".indexOn": ["name"] } },
+        "sporcular":    { "$categoryId": { ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"], "$athleteId": { ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"] } } },
+        "puanlar":      { "$categoryId": { "$athleteId": { ".indexOn": ["toplam", "finalScore", "sonuc", "durum"] } } },
+        "siralama":     { "$categoryId": { "$rotationId": { "$athleteId": { ".indexOn": ["sirasi"] } } } },
+        "hakemler":     { ".indexOn": ["name"], "$categoryId": {} },
+        "teamDeductions": { ".indexOn": ["teamName", "team"] },
+        "program":      { ".indexOn": ["baslangic", "bitis", "kategori", "durum"], "$sessionId": { ".indexOn": ["baslangic", "kategori", "durum"] } },
+        "aktifSporcu":  { "$categoryId": {} },
         "flashTrigger": {},
         "katilimcilar": {},
         "onayli_okullar": {},
-        "epanelToken": {},
+        "epanelToken":  {},
         "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
 
     "ritmik_yarismalar": {
+      ".write": true,
       ".indexOn": ["tarih", "yil", "baslangicTarihi", "bitisTarihi", "il", "isim"],
-
       "$competitionId": {
         ".indexOn": ["tarih", "isim", "il"],
-
-        "kategoriler": {
-          "$categoryId": {
-            ".indexOn": ["name"]
-          }
-        },
-
-        "sporcular": {
-          "$categoryId": {
-            ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"],
-
-            "$athleteId": {
-              ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"]
-            }
-          }
-        },
-
-        "puanlar": {
-          "$categoryId": {
-            "$athleteId": {
-              ".indexOn": ["toplam", "finalScore", "sonuc", "durum"]
-            }
-          }
-        },
-
-        "siralama": {
-          "$categoryId": {
-            "$rotationId": {
-              "$athleteId": {
-                ".indexOn": ["sirasi"]
-              }
-            }
-          }
-        },
-
-        "hakemler": {
-          ".indexOn": ["name"],
-          "$categoryId": {}
-        },
-
-        "teamDeductions": {
-          ".indexOn": ["teamName", "team"]
-        },
-
-        "program": {
-          ".indexOn": ["baslangic", "bitis", "kategori", "durum"],
-          "$sessionId": {
-            ".indexOn": ["baslangic", "kategori", "durum"]
-          }
-        },
-
-        "aktifSporcu": {
-          "$categoryId": {}
-        },
-
+        "kategoriler":  { "$categoryId": { ".indexOn": ["name"] } },
+        "sporcular":    { "$categoryId": { ".indexOn": ["soyadAd", "lisansNo", "okul", "il", "yarismaTuru"], "$athleteId": { ".indexOn": ["lisansNo", "soyadAd", "tckn", "okul", "il", "yarismaTuru", "sirasi", "cikisSirasi"] } } },
+        "puanlar":      { "$categoryId": { "$athleteId": { ".indexOn": ["toplam", "finalScore", "sonuc", "durum"] } } },
+        "siralama":     { "$categoryId": { "$rotationId": { "$athleteId": { ".indexOn": ["sirasi"] } } } },
+        "hakemler":     { ".indexOn": ["name"], "$categoryId": {} },
+        "teamDeductions": { ".indexOn": ["teamName", "team"] },
+        "program":      { ".indexOn": ["baslangic", "bitis", "kategori", "durum"], "$sessionId": { ".indexOn": ["baslangic", "kategori", "durum"] } },
+        "aktifSporcu":  { "$categoryId": {} },
         "flashTrigger": {},
         "katilimcilar": {},
         "onayli_okullar": {},
-        "epanelToken": {},
+        "epanelToken":  {},
         "komiteSifresi": {},
         "cimnastikVerileri": {}
       }
     },
 
     "globalSporcular": {
+      ".write": true,
       ".indexOn": ["lisansNo", "tckn", "soyadAd", "cinsiyet", "kategori"],
-
-      "$athleteKey": {
-        ".indexOn": ["lisansNo", "tckn", "soyadAd"]
-      }
+      "$athleteKey": { ".indexOn": ["lisansNo", "tckn", "soyadAd"] }
     },
 
     "applications": {
+      ".write": true,
       ".indexOn": ["competitionId", "status", "durum", "createdAt", "olusturmaTarihi", "okul", "il"],
-
       "$applicationId": {
         ".indexOn": ["competitionId", "status", "durum", "kategoriId", "categoryId"],
-        ".validate": "newData.hasChildren(['competitionId', 'okul', 'il', 'ilce', 'sporcular', 'durum', 'kategoriId', 'brans']) && newData.child('okul').val().length <= 200 && newData.child('il').val().length <= 100 && newData.child('ilce').val().length <= 100 && newData.child('brans').val().length <= 50 && (newData.child('durum').val() === 'bekliyor' || newData.child('durum').val() === 'onaylandi' || newData.child('durum').val() === 'reddedildi')",
-
-        "durum": {
-          ".validate": "newData.val() === 'bekliyor' || newData.val() === 'onaylandi' || newData.val() === 'reddedildi'"
-        },
-
-        "okul": {
-          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200"
-        },
-
-        "il": {
-          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
-        },
-
-        "ilce": {
-          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
-        }
-      }
-    },
-
-    "kullanicilar": {
-      "$userId": {
-        ".indexOn": ["email", "role", "rolAdi", "kullaniciAdi", "aktif", "il"]
-      }
-    },
-
-    "broadcasts": {
-      ".indexOn": ["competitionId", "createdAt", "kategori", "expiresAt"],
-
-      "$broadcastId": {
-        ".indexOn": ["competitionId", "createdAt"]
+        ".validate": "newData.hasChildren(['competitionId', 'okul', 'il', 'ilce', 'durum', 'kategoriId', 'brans']) && newData.child('okul').val().length <= 200 && newData.child('il').val().length <= 100 && newData.child('ilce').val().length <= 100 && newData.child('brans').val().length <= 50 && (newData.child('durum').val() === 'bekliyor' || newData.child('durum').val() === 'onaylandi' || newData.child('durum').val() === 'reddedildi')",
+        "durum": { ".validate": "newData.val() === 'bekliyor' || newData.val() === 'onaylandi' || newData.val() === 'reddedildi'" },
+        "okul":  { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
+        "il":    { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
+        "ilce":  { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" }
       }
     },
 
     "referees": {
+      ".write": true,
       ".indexOn": ["adSoyad", "brans", "il", "brove"],
-
       "$refereeId": {
-        ".indexOn": ["adSoyad", "brans", "il", "brove", "email", "hesapOlusturuldu"]
+        ".indexOn": ["adSoyad", "brans", "il", "brove", "email", "hesapOlusturuldu"],
+        ".validate": "newData.hasChildren(['adSoyad']) && newData.child('adSoyad').val().length <= 200",
+        "adSoyad": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
+        "email":   { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200)" }
       }
     },
 
     "criteria": {
+      ".write": true,
       ".indexOn": ["activeYear"],
-
       "activeYear": {},
-
       "$year": {
         ".indexOn": ["isActive"],
-
         "metadata": {},
-
         "$categoryId": {
           ".indexOn": ["isActive"],
-
           "metadata": {},
-
-          "$apparatusId": {
-            ".indexOn": ["isActive", "hakemSayisi"]
-          }
+          "$apparatusId": { ".indexOn": ["isActive", "hakemSayisi"] }
         }
       }
     },
 
     "reports": {
+      ".write": true,
       ".indexOn": ["_compId"],
-
-      "$reportId": {
-        ".indexOn": ["_compId", "tarih"]
-      }
+      "$reportId": { ".indexOn": ["_compId", "tarih"] }
     },
 
     "logs": {
-      ".indexOn": ["timestamp", "type", "competitionId", "user"]
-    },
-
-    "defaultCriteria": {
-      "$criteriaType": {
-        ".indexOn": ["name"]
+      ".write": true,
+      ".indexOn": ["timestamp", "type", "competitionId", "user"],
+      "$logId": {
+        ".validate": "!data.exists() && newData.hasChildren(['timestamp', 'type', 'mesaj']) && newData.child('mesaj').val().length <= 500"
       }
     },
 
+    "broadcasts": {
+      ".write": true,
+      ".indexOn": ["competitionId", "createdAt", "kategori", "expiresAt"],
+      "$broadcastId": { ".indexOn": ["competitionId", "createdAt"] }
+    },
+
+    "defaultCriteria": {
+      ".write": true,
+      "$criteriaType": { ".indexOn": ["name"] }
+    },
+
     "ayarlar": {
+      ".write": true,
       "komiteSifresi": {}
     },
 
     "system_settings": {
-      "gorevli_kartlari_aktif": {
-        ".validate": "newData.isBoolean()"
-      }
+      ".write": true,
+      "gorevli_kartlari_aktif": { ".validate": "newData.isBoolean()" }
     }
   }
 }

@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { maskTckn } from '../lib/privacy';
 import './AthletesPage.css';
 
 // ─── Okul Benzerlik Algılama ───
@@ -1642,7 +1643,7 @@ export default function AthletesPage() {
                                                                                         <tr key={ath.id}>
                                                                                             <td className="quota-athlete-table__num">{i + 1}</td>
                                                                                             <td className="quota-athlete-table__name">{ath.ad} {ath.soyad}</td>
-                                                                                            <td className="quota-athlete-table__tckn">{ath.tckn || '—'}</td>
+                                                                                            <td className="quota-athlete-table__tckn">{maskTckn(ath.tckn)}</td>
                                                                                             <td className="quota-athlete-table__dob">{ath.dogumTarihi || ath.dob || '—'}</td>
                                                                                             <td>
                                                                                                 <span className={`quota-tur-badge quota-tur-badge--${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>
@@ -1789,7 +1790,7 @@ export default function AthletesPage() {
                                                                                                     {ath.yarismaTuru === 'takim' ? 'TAKIM' : 'FERDİ'}
                                                                                                 </span>
                                                                                             </td>
-                                                                                            <td className="col-tc">{ath.tckn || '-'}</td>
+                                                                                            <td className="col-tc">{maskTckn(ath.tckn)}</td>
                                                                                             <td className="col-dob">{ath.dob || '-'}</td>
                                                                                             <td className="col-actions">
                                                                                                 {hasPermission('athletes', 'duzenle') && ath.appId && ath.appId !== 'excel_import' && (
@@ -1860,7 +1861,7 @@ export default function AthletesPage() {
                                             </div>
                                             <div className="detail-row">
                                                 <i className="material-icons-round">badge</i>
-                                                <span>TC: {ath.tckn} • Lisans: {ath.lisans}</span>
+                                                <span>TC: {maskTckn(ath.tckn)} • Lisans: {ath.lisans}</span>
                                             </div>
                                             <div className="detail-row">
                                                 <i className="material-icons-round">cake</i>
@@ -2101,7 +2102,7 @@ export default function AthletesPage() {
                                             <div>
                                                 <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{res.athlete.ad} {res.athlete.soyad}</h3>
                                                 <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <i className="material-icons-round" style={{ fontSize: '1rem' }}>badge</i> TC: {res.athlete.tckn || '-'} • Lisans: {res.athlete.lisans || '-'}
+                                                    <i className="material-icons-round" style={{ fontSize: '1rem' }}>badge</i> TC: {maskTckn(res.athlete.tckn)} • Lisans: {res.athlete.lisans || '-'}
                                                 </p>
                                             </div>
                                             <div style={{ textAlign: 'right', fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>

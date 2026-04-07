@@ -8,6 +8,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline, DISCIPLINE_CONFIG } from '../lib/DisciplineContext';
 import { logAction } from '../lib/auditLogger';
+import { maskTckn } from '../lib/privacy';
 import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
 import { TRAMPOLIN_CATEGORIES } from '../data/trampolinCriteriaDefaults';
 import { PARKUR_CATEGORIES } from '../data/parkurCriteriaDefaults';
@@ -1099,7 +1100,7 @@ export default function ApplicationsPage() {
                                                             {app.athletes.map((ath, idx) => (
                                                                 <div className="athlete-card" key={idx}>
                                                                     <div className="ath-name">{ath.name || ath.adSoyad || '-'}</div>
-                                                                    <div className="ath-detail">TCKN: {ath.tckn || '-'}</div>
+                                                                    <div className="ath-detail">TCKN: {maskTckn(ath.tckn)}</div>
                                                                     <div className="ath-detail">Lisans: {ath.license || ath.lisans || '-'}</div>
                                                                     <div className="ath-detail">D.Tarihi: {ath.dob || '-'}</div>
                                                                 </div>
@@ -1148,7 +1149,7 @@ export default function ApplicationsPage() {
                                             {item.missingAthletes.map((ath, athIdx) => (
                                                 <div key={athIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#475569' }}>
                                                     <i className="material-icons-round" style={{ fontSize: '1rem', color: '#cbd5e1' }}>person</i>
-                                                    {ath.name || ath.adSoyad} (TC: {ath.tckn || '*'})
+                                                    {ath.name || ath.adSoyad} (TC: {maskTckn(ath.tckn)})
                                                 </div>
                                             ))}
                                         </div>

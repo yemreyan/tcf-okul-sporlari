@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './AthleteProfilePage.css';
+import { maskTckn } from '../lib/privacy';
 
 const ALET_LABELS = {
     atlama: 'Atlama', barfiks: 'Barfiks', halka: 'Halka', kulplu: 'Kulplu Beygir',
@@ -192,7 +193,7 @@ export default function AthleteProfilePage() {
                                 <i className="material-icons-round">badge</i>
                                 <div>
                                     <span className="ath-info-label">TCKN</span>
-                                    <span className="ath-info-value">{athlete.tckn}</span>
+                                    <span className="ath-info-value">{maskTckn(athlete.tckn)}</span>
                                 </div>
                             </div>
                         )}
