@@ -265,8 +265,8 @@ export default function ScoreboardPage() {
                     // Artistik: puanlar/{catId}/{aletId}/{athId}
                     apparatusList.forEach(alet => {
                         const s = allScores[alet.id]?.[ath.id];
-                        const done = s && s.durum === 'tamamlandi';
-                        const val = done ? parseFloat(s.sonuc) : 0;
+                        const done = s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
+                        const val = done ? parseFloat(s.sonuc ?? 0) : 0;
                         appScores[alet.id] = {
                             total: val,
                             d: done ? parseFloat(s.calc_D ?? s.dScore ?? 0) : 0,
@@ -278,7 +278,7 @@ export default function ScoreboardPage() {
                 } else {
                     // Aerobik/Trampolin/Parkur/Ritmik: puanlar/{catId}/{athId}
                     const s = allScores[ath.id];
-                    const done = s && s.durum === 'tamamlandi';
+                    const done = s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
                     total = done ? parseFloat(s.sonuc ?? 0) : 0;
                     if (total > 0) completedCount = 1;
                     appScores['_total'] = {
@@ -472,11 +472,11 @@ export default function ScoreboardPage() {
             if (isApparatusBased) {
                 hasAny = apparatusList.some(alet => {
                     const s = allScores[alet.id]?.[ath.id];
-                    return s && s.durum === 'tamamlandi';
+                    return s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
                 });
             } else {
                 const s = allScores[ath.id];
-                hasAny = s && s.durum === 'tamamlandi';
+                hasAny = s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
             }
             if (hasAny) count++;
         });

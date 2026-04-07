@@ -181,6 +181,8 @@ export default function FinalsPage() {
                 let penVal = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
 
                 const score = parseFloat(finalScoreVal || 0);
+                const isGecersiz = !!(scoreData?.gecersiz);
+                const isDNS = !!(scoreData?.yarismadi);
                 scores[key] = score;
 
                 const detail = {
@@ -189,6 +191,8 @@ export default function FinalsPage() {
                     E: parseFloat(eScoreVal || 0),
                     P: parseFloat(penVal || 0),
                     ME: 0,
+                    isGecersiz,
+                    isDNS,
                 };
                 allScoreDetails[key] = detail;
                 totalScore += score;
@@ -404,7 +408,9 @@ export default function FinalsPage() {
                 const score = parseFloat(finalScoreVal || 0);
                 scores[key] = score;
 
-                allScoreDetails[key] = { final: score, D: parseFloat(dScoreVal || 0), E: parseFloat(eScoreVal || 0), P: parseFloat(penVal || 0), ME: 0 };
+                const isGecersiz = !!(scoreData?.gecersiz);
+                const isDNS = !!(scoreData?.yarismadi);
+                allScoreDetails[key] = { final: score, D: parseFloat(dScoreVal || 0), E: parseFloat(eScoreVal || 0), P: parseFloat(penVal || 0), ME: 0, isGecersiz, isDNS };
                 totalScore += score;
             });
 
@@ -999,7 +1005,7 @@ export default function FinalsPage() {
                                                         {apparatusKeys.map(key => {
                                                             const detail = res.allScoreDetails[key];
                                                             const penalty = detail.P + detail.ME;
-                                                            if (detail.final > 0) {
+                                                            if (detail.final > 0 || detail.isGecersiz || detail.isDNS) {
                                                                 return (
                                                                     <td key={key} className="td-center score-col">
                                                                         <div className="score-header">
@@ -1041,7 +1047,7 @@ export default function FinalsPage() {
                                             E: r.allScoreDetails[key]?.E || 0,
                                             TotalPenalty: (r.allScoreDetails[key]?.P || 0) + (r.allScoreDetails[key]?.ME || 0)
                                         }))
-                                        .filter(r => r.score > 0)
+                                        .filter(r => r.score > 0 || r.allScoreDetails[key]?.isGecersiz || r.allScoreDetails[key]?.isDNS)
                                         .sort((a, b) => b.score - a.score);
 
                                     return (
