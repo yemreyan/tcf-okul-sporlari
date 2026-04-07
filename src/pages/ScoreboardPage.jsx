@@ -45,6 +45,19 @@ const APPARATUS_IMAGES = {
     tumbling: '<svg viewBox="0 0 40 28" fill="none"><rect x="2" y="20" width="36" height="6" rx="2" fill="#94A3B8"/><rect x="4" y="22" width="32" height="2" rx="1" fill="#CBD5E1"/><path d="M10 14L16 8L22 14L28 8" stroke="#64748B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
 };
 
+function ApparatusIcon({ id, className }) {
+    const svgStr = APPARATUS_IMAGES[id];
+    if (!svgStr) return null;
+    return (
+        <img
+            className={className}
+            src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`}
+            alt=""
+            aria-hidden="true"
+        />
+    );
+}
+
 export default function ScoreboardPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
@@ -672,7 +685,7 @@ export default function ScoreboardPage() {
                     return (
                         <div key={a.id} className="sb-th sb-th-app">
                             <span className="sb-app-abbr">{mapping.abbr}</span>
-                            <div className="sb-app-img" dangerouslySetInnerHTML={{ __html: APPARATUS_IMAGES[a.id] || '' }} />
+                            <ApparatusIcon id={a.id} className="sb-app-img" />
                         </div>
                     );
                 }) : null}

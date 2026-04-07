@@ -139,7 +139,7 @@ export default function RefereesPage() {
 
             setLoading(false);
         }, (error) => {
-            console.error("Firebase fetch error:", error);
+            if (import.meta.env.DEV) console.error("Firebase fetch error:", error);
             setLoading(false);
         });
 
@@ -188,7 +188,7 @@ export default function RefereesPage() {
                     setSelectedReferee(null);
                 }
             } catch (err) {
-                console.error("Delete failed", err);
+                if (import.meta.env.DEV) console.error("Delete failed", err);
                 toast("Silme işlemi başarısız.", "error");
             }
         }
@@ -248,12 +248,12 @@ export default function RefereesPage() {
                     setCredentialsModal({ username, password, adSoyad: formData.adSoyad });
                     toast(`${formData.adSoyad} kaydedildi ve giriş hesabı oluşturuldu.`, 'success');
                 } catch (accErr) {
-                    console.error('Auto account creation failed:', accErr);
+                    if (import.meta.env.DEV) console.error('Auto account creation failed:', accErr);
                     toast(`Hakem kaydedildi ancak otomatik hesap oluşturulamadı.`, 'warning');
                 }
             }
         } catch (err) {
-            console.error("Save failed", err);
+            if (import.meta.env.DEV) console.error("Save failed", err);
             toast("Kaydetme işlemi başarısız oldu.", "error");
         }
     };
@@ -282,7 +282,7 @@ export default function RefereesPage() {
             setPastCompForm({ compName: '', date: '', role: '' });
             setIsAddHistoryModalOpen(false);
         } catch (err) {
-            console.error("Adding past comp failed", err);
+            if (import.meta.env.DEV) console.error("Adding past comp failed", err);
             toast("Geçmiş görev eklenemedi.", "error");
         }
     };
@@ -336,7 +336,7 @@ export default function RefereesPage() {
             setCredentialsModal({ ...result, adSoyad: referee.adSoyad });
             toast(`${referee.adSoyad} için hesap oluşturuldu.`, 'success');
         } catch (err) {
-            console.error('Hesap oluşturma hatası:', err);
+            if (import.meta.env.DEV) console.error('Hesap oluşturma hatası:', err);
             toast('Hesap oluşturma başarısız.', 'error');
         }
     };
@@ -367,7 +367,7 @@ export default function RefereesPage() {
                 results.push({ adSoyad: referee.adSoyad, username, password, status: 'ok' });
                 success++;
             } catch (err) {
-                console.error(`Hesap oluşturulamadı: ${referee.adSoyad}`, err);
+                if (import.meta.env.DEV) console.error(`Hesap oluşturulamadı: ${referee.adSoyad}`, err);
                 results.push({ adSoyad: referee.adSoyad, username: '-', password: '-', status: 'fail' });
                 fail++;
             }
@@ -434,7 +434,7 @@ export default function RefereesPage() {
                 }
                 toast(`İşlem tamamlandı. Başarılı: ${successCount}, Başarısız: ${failCount}`, "success");
             } catch (err) {
-                console.error("Excel parse error", err);
+                if (import.meta.env.DEV) console.error("Excel parse error", err);
                 toast("Hata oluştu.", "error");
             } finally {
                 if (fileInputRef.current) fileInputRef.current.value = "";

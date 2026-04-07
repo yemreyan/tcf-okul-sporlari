@@ -219,7 +219,7 @@ export default function AthletesPage() {
             setAthletes(loadedAthletes);
             setLoading(false);
         }, (error) => {
-            console.error("Firebase fetch error:", error);
+            if (import.meta.env.DEV) console.error("Firebase fetch error:", error);
             setLoading(false);
         });
 
@@ -276,7 +276,7 @@ export default function AthletesPage() {
                 // Sporcu silindi — okulun kalan sporcuları için takım türünü güncelle
                 await autoSyncTeamStatus(selectedCompId, [catId]);
             } catch (err) {
-                console.error("Delete failed", err);
+                if (import.meta.env.DEV) console.error("Delete failed", err);
                 toast("Silme işlemi başarısız.", "error");
             }
         }
@@ -384,7 +384,7 @@ export default function AthletesPage() {
             }
             setIsModalOpen(false);
         } catch (err) {
-            console.error("Save error:", err);
+            if (import.meta.env.DEV) console.error("Save error:", err);
             toast("Kaydedilirken hata oluştu.", "error");
         }
     };
@@ -436,7 +436,7 @@ export default function AthletesPage() {
 
             toast(`${filteredAthletes.length} sporcu Excel'e aktarıldı.`, 'success');
         } catch (err) {
-            console.error('Excel export error:', err);
+            if (import.meta.env.DEV) console.error('Excel export error:', err);
             toast('Excel aktarımında bir hata oluştu.', 'error');
         }
     };
@@ -502,7 +502,7 @@ export default function AthletesPage() {
                     toast("Geçerli veri bulunamadı. Lütfen Excel sütun başlıklarını kontrol edin (Ad, Soyad, Kategori zorunlu).", "warning");
                 }
             } catch (error) {
-                console.error("Excel import error", error);
+                if (import.meta.env.DEV) console.error("Excel import error", error);
                 toast("Excel aktarımında bir hata meydana geldi.", "error");
             }
             e.target.value = null; // reset input
@@ -693,7 +693,7 @@ export default function AthletesPage() {
             // Varsayılan: hepsini seç
             setRevertSelected(new Set(candidates.map(c => c.ath.id)));
         } catch (err) {
-            console.error('Revert modal load error:', err);
+            if (import.meta.env.DEV) console.error('Revert modal load error:', err);
             toast('Veriler yüklenirken hata oluştu.', 'error');
         } finally {
             setRevertLoading(false);
@@ -719,7 +719,7 @@ export default function AthletesPage() {
             toast(`${toRevert.length} sporcunun okul adı başvurudaki haliyle güncellendi.`, 'success');
             setIsRevertModalOpen(false);
         } catch (err) {
-            console.error('Bulk revert error:', err);
+            if (import.meta.env.DEV) console.error('Bulk revert error:', err);
             toast('Güncelleme sırasında hata oluştu.', 'error');
         } finally {
             setRevertApplying(false);
@@ -762,7 +762,7 @@ export default function AthletesPage() {
             await autoSyncTeamStatus(selectedCompId, [ath.categoryId]);
             toast(`Okul ismi "${originalSchool}" olarak geri döndürüldü.`, 'success');
         } catch (err) {
-            console.error('Revert school error:', err);
+            if (import.meta.env.DEV) console.error('Revert school error:', err);
             toast('Geri döndürme sırasında hata oluştu.', 'error');
         }
     };
@@ -820,7 +820,7 @@ export default function AthletesPage() {
                 setSimilarGroups([]);
             }
         } catch (err) {
-            console.error('Okul birleştirme hatası:', err);
+            if (import.meta.env.DEV) console.error('Okul birleştirme hatası:', err);
             toast('Birleştirme sırasında hata oluştu.', 'error');
         } finally {
             setBulkSaving(false);
@@ -947,7 +947,7 @@ export default function AthletesPage() {
             setBulkNewValue('');
             setBulkAthleteOverrides({});
         } catch (err) {
-            console.error('Toplu güncelleme hatası:', err);
+            if (import.meta.env.DEV) console.error('Toplu güncelleme hatası:', err);
             toast('Güncelleme sırasında hata oluştu: ' + err.message, 'error');
         } finally {
             setBulkSaving(false);
@@ -1037,7 +1037,7 @@ export default function AthletesPage() {
             setBulkOldValue('');
             setBulkNewValue('');
         } catch (err) {
-            console.error('Toplu kategori değişikliği hatası:', err);
+            if (import.meta.env.DEV) console.error('Toplu kategori değişikliği hatası:', err);
             toast('Kategori değişikliği sırasında hata oluştu: ' + err.message, 'error');
         } finally {
             setBulkSaving(false);
@@ -1141,7 +1141,7 @@ export default function AthletesPage() {
             setTransferSelectedIds(new Set());
             setTransferSelectAll(false);
         } catch (err) {
-            console.error('Transfer hatası:', err);
+            if (import.meta.env.DEV) console.error('Transfer hatası:', err);
             toast('Transfer sırasında hata oluştu: ' + err.message, 'error');
         } finally {
             setBulkSaving(false);
@@ -1245,7 +1245,7 @@ export default function AthletesPage() {
             setTtSourceOkul('');
             setTtTargetCat('');
         } catch (err) {
-            console.error('Takım transferi hatası:', err);
+            if (import.meta.env.DEV) console.error('Takım transferi hatası:', err);
             toast('Transfer sırasında hata oluştu: ' + err.message, 'error');
         } finally {
             setTtSaving(false);
@@ -1316,7 +1316,7 @@ export default function AthletesPage() {
             await update(ref(db), updates);
             toast(`${changedCount} sporcu güncellendi, ${unchangedCount} sporcu değiştirilmedi.`, 'success');
         } catch (err) {
-            console.error('Tür hesaplama hatası:', err);
+            if (import.meta.env.DEV) console.error('Tür hesaplama hatası:', err);
             toast('Güncelleme sırasında hata oluştu: ' + err.message, 'error');
         }
     };

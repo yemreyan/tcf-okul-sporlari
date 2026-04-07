@@ -132,7 +132,7 @@ export default function StartOrderPage() {
                 setRotations(currentRotations);
                 setUnassigned(currentUnassigned);
             } catch (err) {
-                console.error('StartOrder loadData error:', err);
+                if (import.meta.env.DEV) console.error('StartOrder loadData error:', err);
             } finally {
                 setLoading(false);
             }
@@ -306,7 +306,7 @@ export default function StartOrderPage() {
                 showToast('Atama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
             }
         } catch (err) {
-            console.error('Rastgele atama hatası:', err);
+            if (import.meta.env.DEV) console.error('Rastgele atama hatası:', err);
             showToast('Rastgele atama sırasında hata oluştu: ' + err.message, 'error');
         }
     };
@@ -450,7 +450,7 @@ export default function StartOrderPage() {
             if (!silent) showToast("Çıkış sırası başarıyla kaydedildi.", 'success');
             return true;
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
             showToast("Kaydetme işlemi başarısız.", 'error');
             return false;
         } finally {
@@ -668,11 +668,11 @@ export default function StartOrderPage() {
                     setRotations(currentRotations);
                     setUnassigned(currentUnassigned);
                 } catch (reloadErr) {
-                    console.error('Yeniden yükleme hatası:', reloadErr);
+                    if (import.meta.env.DEV) console.error('Yeniden yükleme hatası:', reloadErr);
                 }
             }
         } catch (err) {
-            console.error('Toplu atama hatası:', err);
+            if (import.meta.env.DEV) console.error('Toplu atama hatası:', err);
             showToast('Toplu atama sırasında hata oluştu: ' + err.message, 'error', 5000);
         } finally {
             setBulkAssigning(false);
@@ -723,7 +723,7 @@ export default function StartOrderPage() {
                     activeFontName = 'Roboto';
                 }
             } catch {
-                console.warn('Roboto font yüklenemedi, varsayılan font kullanılıyor.');
+                if (import.meta.env.DEV) console.warn('Roboto font yüklenemedi, varsayılan font kullanılıyor.');
             }
 
             doc.setFont(activeFontName);
@@ -847,7 +847,7 @@ export default function StartOrderPage() {
             const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
             doc.save(`${safeCompName}_Tum_Kategoriler_Cikis_Sirasi.pdf`);
         } catch (err) {
-            console.error('PDF oluşturma hatası:', err);
+            if (import.meta.env.DEV) console.error('PDF oluşturma hatası:', err);
             showToast('PDF oluşturulurken bir hata oluştu: ' + err.message, 'error');
         } finally {
             setPdfGenerating(false);
@@ -998,7 +998,7 @@ export default function StartOrderPage() {
             XLSX.writeFile(wb, `${safeCompName}_Cikis_Sirasi.xlsx`);
             showToast("Excel başarıyla oluşturuldu.", 'success');
         } catch (err) {
-            console.error('Excel oluşturma hatası:', err);
+            if (import.meta.env.DEV) console.error('Excel oluşturma hatası:', err);
             showToast('Excel oluşturulurken bir hata oluştu: ' + err.message, 'error');
         } finally {
             setExcelGenerating(false);

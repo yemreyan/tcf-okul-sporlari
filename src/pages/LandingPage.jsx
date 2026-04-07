@@ -82,7 +82,7 @@ export default function LandingPage() {
         try {
             await set(ref(db, SETTING_PATH), !gorevliAktif);
         } catch (e) {
-            console.error('Ayar güncellenemedi:', e);
+            if (import.meta.env.DEV) console.error('Ayar güncellenemedi:', e);
         }
         setToggling(false);
     };

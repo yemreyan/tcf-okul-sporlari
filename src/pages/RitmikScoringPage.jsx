@@ -221,7 +221,7 @@ export default function RitmikScoringPage() {
             await update(ref(db), {
                 [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id
             });
-        } catch (e) { console.error('aktifSporcu error', e); }
+        } catch (e) { if (import.meta.env.DEV) console.error('aktifSporcu error', e); }
     };
 
     const getNextAthlete = () => {

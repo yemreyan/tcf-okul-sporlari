@@ -244,7 +244,7 @@ const OfficialReportPage = () => {
                 setReportData({ ...EMPTY_REPORT, baslik: comp.isim || '', tarih: tarihStr, yer: comp.il || '' });
             }
         } catch (err) {
-            console.error('Rapor yükleme hatası:', err);
+            if (import.meta.env.DEV) console.error('Rapor yükleme hatası:', err);
         }
     };
 

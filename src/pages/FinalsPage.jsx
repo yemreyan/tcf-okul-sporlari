@@ -332,7 +332,7 @@ export default function FinalsPage() {
             setDeductionForm({ team: "", amount: "", reason: "" });
             setIsDeductionModalOpen(false);
         } catch (err) {
-            console.error("Ceza eklenirken hata oluştu:", err);
+            if (import.meta.env.DEV) console.error("Ceza eklenirken hata oluştu:", err);
             toast("Ceza kaydedilemedi!", "error");
         }
     };
@@ -344,7 +344,7 @@ export default function FinalsPage() {
                 const refPath = `${firebasePath}/${selectedCompId}/teamDeductions/${deductionId}`;
                 await remove(ref(db, refPath));
             } catch (err) {
-                console.error("Ceza silinirken hata:", err);
+                if (import.meta.env.DEV) console.error("Ceza silinirken hata:", err);
             }
         }
     };
@@ -760,7 +760,7 @@ export default function FinalsPage() {
             doc.save(`${fName}_sonuclar.pdf`);
             toast("PDF başarıyla indirildi.", "success");
         } catch (error) {
-            console.error("PDF Export Error:", error);
+            if (import.meta.env.DEV) console.error("PDF Export Error:", error);
             toast("PDF oluşturulurken bir hata oluştu.", "error");
         }
     };
@@ -849,7 +849,7 @@ export default function FinalsPage() {
             XLSX.writeFile(wb, fileName);
             toast("Excel başarıyla dışa aktarıldı.", "success");
         } catch (error) {
-            console.error("Excel Export Error:", error);
+            if (import.meta.env.DEV) console.error("Excel Export Error:", error);
             toast("Excel oluşturulurken bir hata oluştu.", "error");
         }
     };

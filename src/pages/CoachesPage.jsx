@@ -171,7 +171,7 @@ export default function CoachesPage() {
             }
             closeModal();
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
             toast('Kayıt sırasında hata oluştu.', 'error');
         } finally {
             setSaving(false);
@@ -191,7 +191,7 @@ export default function CoachesPage() {
                 return next;
             });
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
             toast('Silme sırasında hata oluştu.', 'error');
         }
     }
@@ -209,7 +209,7 @@ export default function CoachesPage() {
             setSelectedIds(new Set());
             toast(`${selectedIds.size} antrenör silindi.`, 'success');
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
             toast('Toplu silme sırasında hata oluştu.', 'error');
         }
     }
@@ -282,7 +282,7 @@ export default function CoachesPage() {
             }
             toast(`${total} antrenör başarıyla içe aktarıldı.`, 'success');
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
             toast('İçe aktarma sırasında hata oluştu: ' + err.message, 'error');
         } finally {
             setImporting(false);

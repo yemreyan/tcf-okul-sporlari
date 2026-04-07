@@ -273,7 +273,7 @@ export default function CompetitionsPage() {
             const criteriaSnap = await get(ref(db, `criteria/${activeYear}`));
             liveCriteriaData = criteriaSnap.val() || DEFAULT_CRITERIA;
         } catch (err) {
-            console.error("Criteria fetch error", err);
+            if (import.meta.env.DEV) console.error("Criteria fetch error", err);
             liveCriteriaData = DEFAULT_CRITERIA;
         }
 
@@ -407,7 +407,7 @@ export default function CompetitionsPage() {
             toast("Hakem ayarları kaydedildi.", "success");
             closeHakemModal();
         } catch (err) {
-            console.error("Hakem save error", err);
+            if (import.meta.env.DEV) console.error("Hakem save error", err);
             toast("Hakem ayarları kaydedilemedi.", "error");
         } finally {
             setHakemSaving(false);

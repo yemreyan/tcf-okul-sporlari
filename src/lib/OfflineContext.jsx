@@ -71,7 +71,7 @@ export function OfflineProvider({ children }) {
                 await dequeue(item.id);
                 successCount++;
             } catch (err) {
-                console.error('[OfflineSync] Sync failed for item', item.id, err);
+                if (import.meta.env.DEV) console.error('[OfflineSync] Sync failed for item', item.id, err);
                 await incrementRetry(item.id).catch(() => { });
             }
         }

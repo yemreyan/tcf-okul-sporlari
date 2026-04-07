@@ -578,7 +578,7 @@ export default function ScoringPage() {
                 setUnlockError('Şifre hatalı. Süper Admin veya Komite şifresi gereklidir.');
             }
         } catch (err) {
-            console.error('Unlock error:', err);
+            if (import.meta.env.DEV) console.error('Unlock error:', err);
             setUnlockError('Bir hata oluştu. Tekrar deneyin.');
         } finally {
             setUnlockingInProgress(false);
@@ -595,7 +595,7 @@ export default function ScoringPage() {
             await update(ref(db), {
                 [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: selectedAthlete.id
             });
-        } catch (e) { console.error("Could not set active athlete", e); }
+        } catch (e) { if (import.meta.env.DEV) console.error("Could not set active athlete", e); }
     };
 
     const handleYarismadi = async () => {
@@ -629,7 +629,7 @@ export default function ScoringPage() {
             setIsAthleteCalled(false);
             toast(`${selectedAthlete.ad} ${selectedAthlete.soyad} — Yarışmadı olarak kaydedildi.`, 'info');
         } catch (err) {
-            console.error('Yarışmadı save error:', err);
+            if (import.meta.env.DEV) console.error('Yarışmadı save error:', err);
             toast('Kayıt sırasında hata oluştu.', 'error');
         } finally {
             setIsSubmitting(false);
@@ -666,7 +666,7 @@ export default function ScoringPage() {
             setIsAthleteCalled(false);
             toast(`${selectedAthlete.ad} ${selectedAthlete.soyad} — Geçersiz olarak kaydedildi (0 puan).`, 'warning');
         } catch (err) {
-            console.error('Geçersiz save error:', err);
+            if (import.meta.env.DEV) console.error('Geçersiz save error:', err);
             toast('Kayıt sırasında hata oluştu.', 'error');
         } finally {
             setIsSubmitting(false);
@@ -825,7 +825,7 @@ export default function ScoringPage() {
         setIsAthleteCalled(true);
         update(ref(db), {
             [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}/${selectedApparatus}`]: nextAth.id
-        }).catch(e => console.error("Could not set active athlete", e));
+        }).catch(e => { if (import.meta.env.DEV) console.error("Could not set active athlete", e); });
     };
 
     return (

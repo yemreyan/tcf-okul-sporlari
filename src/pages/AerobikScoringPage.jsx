@@ -243,7 +243,7 @@ export default function AerobikScoringPage() {
             await update(ref(db), {
                 [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id
             });
-        } catch (e) { console.error('Could not set active athlete', e); }
+        } catch (e) { if (import.meta.env.DEV) console.error('Could not set active athlete', e); }
     };
 
     const getNextAthlete = () => {
@@ -355,7 +355,7 @@ export default function AerobikScoringPage() {
                 nextAthlete: nextAth
             });
         } catch (error) {
-            console.error('Score save error:', error);
+            if (import.meta.env.DEV) console.error('Score save error:', error);
             toast('Puan kaydedilirken bir hata oluştu.', 'error');
         } finally {
             setIsSubmitting(false);
@@ -428,7 +428,7 @@ export default function AerobikScoringPage() {
                 setUnlockError('Şifre hatalı. Süper Admin veya Komite şifresi gereklidir.');
             }
         } catch (err) {
-            console.error('Unlock error:', err);
+            if (import.meta.env.DEV) console.error('Unlock error:', err);
             setUnlockError('Bir hata oluştu. Tekrar deneyin.');
         } finally {
             setUnlockingInProgress(false);

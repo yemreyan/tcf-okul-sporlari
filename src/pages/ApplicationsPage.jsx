@@ -197,15 +197,15 @@ async function syncTeamStatus(compId, catId, catName, schoolName, firebasePath) 
 
         if (updateCount > 0) {
             await update(ref(db), updates);
-            console.log(`[syncTeamStatus] ${schoolName} / ${catName}: ${count} sporcu → ${targetType} (min: ${rules.min}, max: ${rules.max})`);
+            if (import.meta.env.DEV) console.log(`[syncTeamStatus] ${schoolName} / ${catName}: ${count} sporcu → ${targetType} (min: ${rules.min}, max: ${rules.max})`);
         }
 
         // Max aşımı uyarısı (konsol'a log — admin bilgilendirilir)
         if (count > rules.max) {
-            console.warn(`[syncTeamStatus] ⚠️ ${schoolName} / ${catName}: ${count} sporcu var ama max ${rules.max}! Fazla sporcu düzeltilmeli.`);
+            if (import.meta.env.DEV) console.warn(`[syncTeamStatus] ⚠️ ${schoolName} / ${catName}: ${count} sporcu var ama max ${rules.max}! Fazla sporcu düzeltilmeli.`);
         }
     } catch (err) {
-        console.error("Team sync error:", err);
+        if (import.meta.env.DEV) console.error("Team sync error:", err);
     }
 }
 
@@ -288,7 +288,7 @@ export default function ApplicationsPage() {
             }
             setLoading(false);
         }, (error) => {
-            console.error("Firebase fetch error:", error);
+            if (import.meta.env.DEV) console.error("Firebase fetch error:", error);
             setLoading(false);
         });
 
@@ -453,7 +453,7 @@ export default function ApplicationsPage() {
             }
 
         } catch (err) {
-            console.error("Status update failed", err);
+            if (import.meta.env.DEV) console.error("Status update failed", err);
             toast("Durum güncellenirken bir hata oluştu.", "error");
         }
     };
@@ -472,7 +472,7 @@ export default function ApplicationsPage() {
             await update(ref(db), updates);
             toast(`Branş "${newBrans}" olarak güncellendi.`, 'success');
         } catch (err) {
-            console.error('Brans update failed:', err);
+            if (import.meta.env.DEV) console.error('Brans update failed:', err);
             toast('Branş güncellenirken hata oluştu.', 'error');
         }
     };
@@ -545,7 +545,7 @@ export default function ApplicationsPage() {
             toast(`${app.athletes.length} sporcu başarıyla yeniden yazıldı.`, 'success');
             logAction('resync_athletes', `Sporcular yeniden senkronize edildi: ${app.schoolName} — ${app.categoryName}`, { user: currentUser?.kullaniciAdi || 'admin', appId: app.id });
         } catch (err) {
-            console.error('Resync failed:', err);
+            if (import.meta.env.DEV) console.error('Resync failed:', err);
             toast('Senkronizasyon başarısız oldu.', 'error');
         }
     };
@@ -617,7 +617,7 @@ export default function ApplicationsPage() {
                     await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
                     addedCount += newAthletes.length;
                 } catch (e) {
-                    console.error('Resync all — app error:', app.id, e);
+                    if (import.meta.env.DEV) console.error('Resync all — app error:', app.id, e);
                     errorCount++;
                 }
             }
@@ -632,7 +632,7 @@ export default function ApplicationsPage() {
                 user: currentUser?.kullaniciAdi || 'admin', addedCount, skippedCount, errorCount
             });
         } catch (err) {
-            console.error('Resync all failed:', err);
+            if (import.meta.env.DEV) console.error('Resync all failed:', err);
             toast('Toplu senkronizasyon başarısız oldu.', 'error');
         } finally {
             setIsSyncingAll(false);
@@ -680,7 +680,7 @@ export default function ApplicationsPage() {
                 toast('Seçili filtredeki tüm onaylı sporcular sistemde kayıtlı. Eksik bulunamadı.', 'success');
             }
         } catch (err) {
-            console.error('Check missing failed:', err);
+            if (import.meta.env.DEV) console.error('Check missing failed:', err);
             toast('Eksik sporcu kontrolü sırasında hata oluştu.', 'error');
         } finally {
             setIsCheckingMissing(false);
@@ -724,7 +724,7 @@ export default function ApplicationsPage() {
                     await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
                     addedCount += missingAthletes.length;
                 } catch (e) {
-                    console.error('Add missing app error:', app.id, e);
+                    if (import.meta.env.DEV) console.error('Add missing app error:', app.id, e);
                     errorCount++;
                 }
             }
@@ -732,7 +732,7 @@ export default function ApplicationsPage() {
             toast(`${addedCount} eksik sporcu sisteme eklendi.`, addedCount > 0 ? 'success' : 'info');
             logAction('add_missing_athletes', `Eksik sporcular eklendi: +${addedCount}`, { user: currentUser?.kullaniciAdi || 'admin', addedCount, errorCount });
         } catch (err) {
-            console.error('Add missing failed:', err);
+            if (import.meta.env.DEV) console.error('Add missing failed:', err);
             toast('Eksik sporcular eklenirken bir hata oluştu.', 'error');
         } finally {
             setIsSyncingAll(false);
@@ -751,7 +751,7 @@ export default function ApplicationsPage() {
             await remove(ref(db, `applications/${app.id}`));
             toast('Başvuru başarıyla silindi.', 'success');
         } catch (err) {
-            console.error('Delete failed:', err);
+            if (import.meta.env.DEV) console.error('Delete failed:', err);
             toast('Başvuru silinirken bir hata oluştu.', 'error');
         }
     };

@@ -155,7 +155,7 @@ export default function GorevliKartlariPage() {
             setGorevliler(list);
             setSelectedIds(new Set(list.map(g => g.id)));
         } catch (e) {
-            console.error('Görevli yükleme hatası:', e);
+            if (import.meta.env.DEV) console.error('Görevli yükleme hatası:', e);
             setGorevliler([]);
         }
         setLoadingGorevli(false);

@@ -105,7 +105,7 @@ export default function CriteriaPage() {
                     setActiveYear(2026);
                     setSelectedYear(2026);
                 } catch (err) {
-                    console.error('Seed hatası:', err);
+                    if (import.meta.env.DEV) console.error('Seed hatası:', err);
                     setAvailableYears([2026]);
                     setActiveYear(2026);
                     setSelectedYear(2026);
@@ -184,7 +184,7 @@ export default function CriteriaPage() {
         try {
             await set(ref(db, `criteria/${selectedYear}/${catId}/metadata/isActive`), !currentActive);
         } catch (err) {
-            console.error('Toggle hatası:', err);
+            if (import.meta.env.DEV) console.error('Toggle hatası:', err);
         }
     };
 
