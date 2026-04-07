@@ -59,7 +59,7 @@ function createRefereePermissions() {
 
 export default function RefereesPage() {
     const navigate = useNavigate();
-    const { hasPermission, hashPassword } = useAuth();
+    const { hasPermission, hashPassword, isSuperAdmin } = useAuth();
     const { toast, confirm } = useNotification();
     const { firebasePath, routePrefix } = useDiscipline();
 
@@ -179,6 +179,7 @@ export default function RefereesPage() {
 
     // 2. Handlers
     const handleDelete = async (refId, name) => {
+        if (!hasPermission('referees', 'sil')) { toast('Hakem silme yetkiniz yok.', 'error'); return; }
         const ok = await confirm(`${name} isimli hakemi kalıcı olarak silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
         if (ok) {
             try {
@@ -220,6 +221,8 @@ export default function RefereesPage() {
 
     const saveReferee = async (e) => {
         e.preventDefault();
+        const action = editingReferee ? 'duzenle' : 'ekle';
+        if (!hasPermission('referees', action)) { toast('Bu işlem için yetkiniz yok.', 'error'); return; }
         if (!formData.adSoyad) return toast("Ad Soyad zorunludur.", "warning");
 
         try {
@@ -257,6 +260,7 @@ export default function RefereesPage() {
 
     const handleAddPastCompetition = async (e) => {
         e.preventDefault();
+        if (!hasPermission('referees', 'duzenle')) { toast('Hakem düzenleme yetkiniz yok.', 'error'); return; }
         if (!selectedReferee) return;
         if (!pastCompForm.compName || !pastCompForm.date) return toast("Yarışma adı ve tarihi zorunludur.", "warning");
 
@@ -326,6 +330,7 @@ export default function RefereesPage() {
 
     // Tek hakem için hesap oluştur (buton handler)
     const handleCreateAccount = async (referee) => {
+        if (!hasPermission('referees', 'ekle') && !isSuperAdmin()) { toast('Hesap oluşturma yetkiniz yok.', 'error'); return; }
         try {
             const result = await createRefereeAccount(referee);
             setCredentialsModal({ ...result, adSoyad: referee.adSoyad });
@@ -338,6 +343,7 @@ export default function RefereesPage() {
 
     // Toplu hesap oluşturma (hesabı olmayanlar için)
     const handleBulkCreateAccounts = async () => {
+        if (!hasPermission('referees', 'ekle') && !isSuperAdmin()) { toast('Toplu hesap oluşturma yetkiniz yok.', 'error'); return; }
         const refereesWithoutAccount = referees.filter(r => !r.hesapKullaniciAdi);
         if (refereesWithoutAccount.length === 0) {
             toast('Tüm hakemlerin zaten hesabı var.', 'info');
@@ -379,6 +385,7 @@ export default function RefereesPage() {
 
     // 3. Excel Upload Logic (Initializes stats)
     const handleFileUpload = (e) => {
+        if (!hasPermission('referees', 'ekle')) { toast('Hakem yükleme yetkiniz yok.', 'error'); return; }
         const file = e.target.files[0];
         if (!file) return;
 

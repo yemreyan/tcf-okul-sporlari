@@ -211,10 +211,10 @@ async function syncTeamStatus(compId, catId, catName, schoolName, firebasePath) 
 
 export default function ApplicationsPage() {
     const navigate = useNavigate();
-    const { currentUser, hasPermission } = useAuth();
+    const { currentUser, hasPermission, isSuperAdmin: isSuperAdminFn } = useAuth();
     const { toast, confirm } = useNotification();
     const { firebasePath, routePrefix, brans: disciplineBrans } = useDiscipline();
-    const isSuperAdmin = currentUser?.rolAdi === 'Super Admin' || currentUser?.kullaniciAdi === 'admin';
+    const isSuperAdmin = isSuperAdminFn();
     const [applications, setApplications] = useState([]);
     const [competitions, setCompetitions] = useState({});
     const [loading, setLoading] = useState(true);
@@ -296,6 +296,9 @@ export default function ApplicationsPage() {
     }, [currentUser, firebasePath, isSuperAdmin]);
 
     const handleStatusChange = async (app, newStatus) => {
+        if (newStatus === 'onaylandi' && !hasPermission('applications', 'onayla')) { toast('Başvuru onaylama yetkiniz yok.', 'error'); return; }
+        if (newStatus === 'reddedildi' && !hasPermission('applications', 'reddet')) { toast('Başvuru reddetme yetkiniz yok.', 'error'); return; }
+        if (newStatus === 'bekliyor' && !hasPermission('applications', 'onayla') && !hasPermission('applications', 'reddet')) { toast('Bu işlem için yetkiniz yok.', 'error'); return; }
         try {
             const normalizedCurrentStatus = normalizeStatusValue(app.status);
             const appFirebasePath = getCompetitionPathByBranch(app.brans, firebasePath);
@@ -456,6 +459,7 @@ export default function ApplicationsPage() {
     };
 
     const handleBransChange = async (app, newBrans) => {
+        if (!hasPermission('applications', 'onayla') && !isSuperAdmin) { toast('Branş güncelleme yetkiniz yok.', 'error'); return; }
         try {
             const basePayload = buildApplicationBackfillPayload({ ...app, brans: newBrans }, newBrans || disciplineBrans);
             const updates = {};
@@ -475,6 +479,7 @@ export default function ApplicationsPage() {
 
     // Onaylı ama sporcuları yanlış/eksik yazılmış başvurular için yeniden senkronize et
     const handleResyncAthletes = async (app) => {
+        if (!hasPermission('applications', 'onayla')) { toast('Sporcu senkronizasyon yetkiniz yok.', 'error'); return; }
         if (app.status !== 'onaylandi') return;
         const proceed = await confirm(
             `"${app.schoolName}" okulunun onaylı başvurusundaki sporcular yarışmaya yeniden yazılacak. Zaten mevcut kayıtlar güncellenmeyecek. Devam etmek istiyor musunuz?`,
@@ -547,6 +552,7 @@ export default function ApplicationsPage() {
 
     // Tüm onaylı başvuruları tara — sistemde olmayan sporcuları ekle, mevcut olanları atla
     const handleResyncAll = async () => {
+        if (!isSuperAdmin) { toast('Bu işlem yalnızca Super Admin tarafından yapılabilir.', 'error'); return; }
         const approvedApps = applications.filter(a => a.status === 'onaylandi' && a.athletes?.length > 0);
         if (approvedApps.length === 0) {
             toast('Sporcu verisi olan onaylı başvuru bulunamadı.', 'info');
@@ -634,6 +640,7 @@ export default function ApplicationsPage() {
     };
 
     const handleCheckMissing = async () => {
+        if (!hasPermission('applications', 'onayla')) { toast('Bu işlem için yetkiniz yok.', 'error'); return; }
         const approvedApps = filteredApps.filter(a => a.status === 'onaylandi' && a.athletes?.length > 0);
         if (approvedApps.length === 0) {
             toast('Şu anki filtrede kontrol edilecek onaylı başvuru bulunmuyor.', 'info');
@@ -681,6 +688,7 @@ export default function ApplicationsPage() {
     };
 
     const handleAddMissingAthletes = async () => {
+        if (!hasPermission('applications', 'onayla')) { toast('Bu işlem için yetkiniz yok.', 'error'); return; }
         if (!missingAthletesModal.data || missingAthletesModal.data.length === 0) return;
         setIsSyncingAll(true);
         let addedCount = 0;
@@ -733,6 +741,7 @@ export default function ApplicationsPage() {
     };
 
     const handleDeleteApplication = async (app) => {
+        if (!isSuperAdmin && !hasPermission('applications', 'sil')) { toast('Başvuru silme yetkiniz yok.', 'error'); return; }
         const proceed = await confirm(
             `"${app.schoolName}" okulunun başvurusunu kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
             { title: 'Başvuru Silme', type: 'warning' }
