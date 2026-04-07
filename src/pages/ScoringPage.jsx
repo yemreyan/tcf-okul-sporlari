@@ -600,6 +600,10 @@ export default function ScoringPage() {
 
     const handleYarismadi = async () => {
         if (!selectedAthlete) return;
+        if (existingScores[selectedAthlete.id]?.kilitli && !isAthleteCalled) {
+            toast("Bu sporcunun puanı kilitli. Lütfen 'Sporcuyu Çağır' diyerek şifre ile kilidi açınız.", 'warning');
+            return;
+        }
         setIsSubmitting(true);
         try {
             const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${selectedAthlete.id}`;
@@ -607,8 +611,16 @@ export default function ScoringPage() {
             const ts = new Date().toISOString();
             await offlineWrite({
                 [scorePath + '/yarismadi']: true,
+                [scorePath + '/gecersiz']: null,
                 [scorePath + '/durum']: 'yarishmadi',
-                [scorePath + '/sonuc']: null,
+                [scorePath + '/sonuc']: 0,
+                [scorePath + '/finalScore']: 0,
+                [scorePath + '/dScore']: 0,
+                [scorePath + '/eScore']: 0,
+                [scorePath + '/calc_D']: 0,
+                [scorePath + '/calc_E']: 0,
+                [scorePath + '/tarafsiz']: 0,
+                [scorePath + '/TarafsizKesinti']: 0,
                 [scorePath + '/kilitli']: true,
                 [scorePath + '/timestamp']: ts,
                 [activePath]: null,
@@ -626,6 +638,10 @@ export default function ScoringPage() {
 
     const handleGecersiz = async () => {
         if (!selectedAthlete) return;
+        if (existingScores[selectedAthlete.id]?.kilitli && !isAthleteCalled) {
+            toast("Bu sporcunun puanı kilitli. Lütfen 'Sporcuyu Çağır' diyerek şifre ile kilidi açınız.", 'warning');
+            return;
+        }
         setIsSubmitting(true);
         try {
             const scorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}/${selectedAthlete.id}`;
@@ -633,8 +649,16 @@ export default function ScoringPage() {
             const ts = new Date().toISOString();
             await offlineWrite({
                 [scorePath + '/gecersiz']: true,
+                [scorePath + '/yarismadi']: null,
                 [scorePath + '/durum']: 'gecersiz',
                 [scorePath + '/sonuc']: 0,
+                [scorePath + '/finalScore']: 0,
+                [scorePath + '/dScore']: 0,
+                [scorePath + '/eScore']: 0,
+                [scorePath + '/calc_D']: 0,
+                [scorePath + '/calc_E']: 0,
+                [scorePath + '/tarafsiz']: 0,
+                [scorePath + '/TarafsizKesinti']: 0,
                 [scorePath + '/kilitli']: true,
                 [scorePath + '/timestamp']: ts,
                 [activePath]: null,
@@ -745,8 +769,11 @@ export default function ScoringPage() {
                 [scorePath + '/neutralDeductions']: tarafsizKesinti,
                 [scorePath + '/eksikSayisi']: missingCount,
                 [scorePath + '/sonuc']: parseFloat(finalScore),
+                [scorePath + '/finalScore']: parseFloat(finalScore),
                 [scorePath + '/timestamp']: ts,
                 [scorePath + '/durum']: "tamamlandi",
+                [scorePath + '/gecersiz']: null,
+                [scorePath + '/yarismadi']: null,
                 [scorePath + '/kilitli']: true,
                 [scorePath + '/hareketler']: isDifficultyMode ? null : skillScores,
                 [activePath]: null,
@@ -1353,14 +1380,23 @@ export default function ScoringPage() {
                                     {finalScore}
                                 </div>
                                 {hasPermission('scoring', 'puanla') && (
-                                    <button
-                                        className="btn-save-score"
-                                        onClick={handleSubmitScore}
-                                        disabled={isSubmitting || scoreLocked}
-                                    >
-                                        {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">{scoreLocked ? 'lock' : 'publish'}</i>}
-                                        <span>{scoreLocked ? 'Puan Kilitli' : 'Puanı Kaydet'}</span>
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', marginTop: '1rem' }}>
+                                        <button className="btn-yarismadi" style={{ padding: '0 1rem', height: '48px', borderRadius: '8px', opacity: scoreLocked ? 0.5 : 1 }} onClick={handleYarismadi} disabled={isSubmitting || scoreLocked} title="Yarışmadı">
+                                            <i className="material-icons-round" style={{ fontSize: '1.2rem', marginRight: '4px' }}>do_not_disturb_on</i> Yarışmadı
+                                        </button>
+                                        <button className="btn-gecersiz" style={{ padding: '0 1rem', height: '48px', borderRadius: '8px', opacity: scoreLocked ? 0.5 : 1 }} onClick={handleGecersiz} disabled={isSubmitting || scoreLocked} title="Geçersiz">
+                                            <i className="material-icons-round" style={{ fontSize: '1.2rem', marginRight: '4px' }}>cancel</i> Geçersiz
+                                        </button>
+                                        <button
+                                            className="btn-save-score"
+                                            style={{ flex: 1, margin: 0 }}
+                                            onClick={handleSubmitScore}
+                                            disabled={isSubmitting || scoreLocked}
+                                        >
+                                            {isSubmitting ? <div className="spinner-small"></div> : <i className="material-icons-round">{scoreLocked ? 'lock' : 'publish'}</i>}
+                                            <span>{scoreLocked ? 'Puan Kilitli' : 'Puanı Kaydet'}</span>
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
