@@ -223,6 +223,8 @@ export default function ApplicationsPage() {
     const [filterBrans, setFilterBrans] = useState(''); // Branş filtresi (Super Admin)
     const [searchQuery, setSearchQuery] = useState(''); // Sporcu adı veya okul adı araması
     const [isSyncingAll, setIsSyncingAll] = useState(false); // Toplu senkronizasyon durumu
+    const [isCheckingMissing, setIsCheckingMissing] = useState(false); // Eksik sporcuları kontrol etme
+    const [missingAthletesModal, setMissingAthletesModal] = useState({ isOpen: false, data: [] });
 
     // Detay gösterme state'i
     const [expandedAppId, setExpandedAppId] = useState(null);
@@ -630,6 +632,105 @@ export default function ApplicationsPage() {
         }
     };
 
+    const handleCheckMissing = async () => {
+        const approvedApps = filteredApps.filter(a => a.status === 'onaylandi' && a.athletes?.length > 0);
+        if (approvedApps.length === 0) {
+            toast('Şu anki filtrede kontrol edilecek onaylı başvuru bulunmuyor.', 'info');
+            return;
+        }
+
+        setIsCheckingMissing(true);
+        let missingList = [];
+
+        try {
+            for (const app of approvedApps) {
+                const appFirebasePath = getCompetitionPathByBranch(app.brans, firebasePath);
+                const compId = app.compId;
+                const catId = app.categoryId;
+                if (!compId || !catId) continue;
+
+                // Mevcut sporcuları oku
+                const existingSnap = await get(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`));
+                const existing = existingSnap.val() || {};
+                const existingList = Object.values(existing);
+
+                // TCKN üzerinden kontrol et
+                const existingTcknSet = new Set(existingList.map(a => a.tckn).filter(Boolean));
+                const newAthletes = app.athletes.filter(a => !a.tckn || !existingTcknSet.has(a.tckn));
+
+                if (newAthletes.length > 0) {
+                    missingList.push({
+                        app,
+                        missingAthletes: newAthletes
+                    });
+                }
+            }
+
+            if (missingList.length > 0) {
+                setMissingAthletesModal({ isOpen: true, data: missingList });
+            } else {
+                toast('Seçili filtredeki tüm onaylı sporcular sistemde kayıtlı. Eksik bulunamadı.', 'success');
+            }
+        } catch (err) {
+            console.error('Check missing failed:', err);
+            toast('Eksik sporcu kontrolü sırasında hata oluştu.', 'error');
+        } finally {
+            setIsCheckingMissing(false);
+        }
+    };
+
+    const handleAddMissingAthletes = async () => {
+        if (!missingAthletesModal.data || missingAthletesModal.data.length === 0) return;
+        setIsSyncingAll(true);
+        let addedCount = 0;
+        let errorCount = 0;
+
+        try {
+            for (const item of missingAthletesModal.data) {
+                const { app, missingAthletes } = item;
+                try {
+                    const appFirebasePath = getCompetitionPathByBranch(app.brans, firebasePath);
+                    const compId = app.compId;
+                    const catId = app.categoryId;
+                    
+                    const updates = {};
+                    missingAthletes.forEach(ath => {
+                        const newAthKey = push(ref(db, `${appFirebasePath}/${compId}/sporcular/${catId}`)).key;
+                        const fullName = ath.name || ath.adSoyad || '';
+                        const parts = fullName.trim().split(' ');
+                        let ad = '', soyad = '';
+                        if (parts.length > 1) { soyad = parts.pop(); ad = parts.join(' '); }
+                        else { ad = parts[0] || ''; }
+                        const lisans = ath.license || ath.lisans || '-';
+                        updates[`${appFirebasePath}/${compId}/sporcular/${catId}/${newAthKey}`] = {
+                            id: newAthKey, adSoyad: fullName, soyadAd: `${soyad} ${ad}`.trim(),
+                            ad, soyad, dogumTarihi: ath.dob || '', dob: ath.dob || '',
+                            lisansNo: lisans, lisans, okul: app.schoolName, kulup: app.schoolName,
+                            il: app.city, ilce: app.district || '', sirasi: 999,
+                            yarismaTuru: 'ferdi', tckn: ath.tckn || '-', appId: app.id
+                        };
+                    });
+
+                    await update(ref(db), updates);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                    addedCount += missingAthletes.length;
+                } catch (e) {
+                    console.error('Add missing app error:', app.id, e);
+                    errorCount++;
+                }
+            }
+
+            toast(`${addedCount} eksik sporcu sisteme eklendi.`, addedCount > 0 ? 'success' : 'info');
+            logAction('add_missing_athletes', `Eksik sporcular eklendi: +${addedCount}`, { user: currentUser?.kullaniciAdi || 'admin', addedCount, errorCount });
+        } catch (err) {
+            console.error('Add missing failed:', err);
+            toast('Eksik sporcular eklenirken bir hata oluştu.', 'error');
+        } finally {
+            setIsSyncingAll(false);
+            setMissingAthletesModal({ isOpen: false, data: [] });
+        }
+    };
+
     const handleDeleteApplication = async (app) => {
         const proceed = await confirm(
             `"${app.schoolName}" okulunun başvurusunu kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
@@ -807,6 +908,21 @@ export default function ApplicationsPage() {
                         </button>
 
                         {hasPermission('applications', 'onayla') && (
+                            <button
+                                className="sync-all-btn"
+                                onClick={handleCheckMissing}
+                                disabled={isCheckingMissing}
+                                title="Yarışmaya dahil edilmemiş sporcuları bul"
+                                style={{ backgroundColor: '#2563EB' }}
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 18, animation: isCheckingMissing ? 'spin 1s linear infinite' : 'none' }}>
+                                    person_search
+                                </i>
+                                {isCheckingMissing ? 'Kontrol ediliyor...' : 'Eksik Sporcuları Kontrol Et'}
+                            </button>
+                        )}
+
+                        {isSuperAdmin && (
                             <button
                                 className="sync-all-btn"
                                 onClick={handleResyncAll}
@@ -1000,6 +1116,63 @@ export default function ApplicationsPage() {
                     </div>
                 )}
             </main>
+
+            {/* Eksik Sporcular Modalı */}
+            {missingAthletesModal.isOpen && (
+                <div className="modal-overlay animate-fade-in" style={{ zIndex: 9999 }}>
+                    <div className="modal-content animate-slide-up" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+                                <i className="material-icons-round" style={{ color: '#EA580C' }}>warning</i>
+                                Eksik Sporcular Bulundu
+                            </h2>
+                            <button className="btn-close" onClick={() => setMissingAthletesModal({ isOpen: false, data: [] })}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+                                Aşağıdaki başvurularda yer alan, ancak henüz yarışma "Sporcular" listesine dahil edilmemiş sporcular tespit edildi.
+                            </p>
+                            
+                            <div className="missing-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                                {missingAthletesModal.data.map((item, index) => (
+                                    <div key={index} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', backgroundColor: '#f8fafc' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>{item.app.schoolName}</h3>
+                                            <span style={{ fontSize: '0.85rem', backgroundColor: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                                                {item.app.categoryName} <span style={{ marginLeft: 4, opacity: 0.8 }}>({item.app.brans})</span>
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                                            {item.missingAthletes.map((ath, athIdx) => (
+                                                <div key={athIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#475569' }}>
+                                                    <i className="material-icons-round" style={{ fontSize: '1rem', color: '#cbd5e1' }}>person</i>
+                                                    {ath.name || ath.adSoyad} (TC: {ath.tckn || '*'})
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                            <button className="btn-outline-gray" onClick={() => setMissingAthletesModal({ isOpen: false, data: [] })}>
+                                İptal
+                            </button>
+                            <button 
+                                className="btn-primary" 
+                                onClick={handleAddMissingAthletes}
+                                disabled={isSyncingAll}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <i className="material-icons-round" style={{ animation: isSyncingAll ? 'spin 1s linear infinite' : 'none' }}>add_circle</i>
+                                {isSyncingAll ? 'İşleniyor...' : 'Listelediklerimi Senkronize Et ve Ekle'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

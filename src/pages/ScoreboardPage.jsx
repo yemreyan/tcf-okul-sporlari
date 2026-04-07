@@ -261,35 +261,50 @@ export default function ScoreboardPage() {
                 const appScores = {};
                 let completedCount = 0;
 
+                let athIsGecersiz = false;
+                let athIsDNS = false;
+
                 if (isApparatusBased) {
                     // Artistik: puanlar/{catId}/{aletId}/{athId}
                     apparatusList.forEach(alet => {
                         const s = allScores[alet.id]?.[ath.id];
-                        const done = s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
+                        const isGecersiz = s?.gecersiz === true;
+                        const isDNS = s?.yarismadi === true;
+                        const done = s && (s.durum === 'tamamlandi' || isGecersiz || isDNS);
                         const val = done ? parseFloat(s.sonuc ?? 0) : 0;
                         appScores[alet.id] = {
                             total: val,
                             d: done ? parseFloat(s.calc_D ?? s.dScore ?? 0) : 0,
                             e: done ? parseFloat(s.calc_E ?? 0) : 0,
+                            isGecersiz,
+                            isDNS,
                         };
                         total += val;
                         if (val > 0) completedCount++;
+                        if (isGecersiz) athIsGecersiz = true;
+                        if (isDNS) athIsDNS = true;
                     });
                 } else {
                     // Aerobik/Trampolin/Parkur/Ritmik: puanlar/{catId}/{athId}
                     const s = allScores[ath.id];
-                    const done = s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
+                    const isGecersiz = s?.gecersiz === true;
+                    const isDNS = s?.yarismadi === true;
+                    const done = s && (s.durum === 'tamamlandi' || isGecersiz || isDNS);
                     total = done ? parseFloat(s.sonuc ?? 0) : 0;
                     if (total > 0) completedCount = 1;
+                    athIsGecersiz = isGecersiz;
+                    athIsDNS = isDNS;
                     appScores['_total'] = {
                         total,
                         d: done ? parseFloat(s.dScore ?? s.calc_D ?? 0) : 0,
                         e: done ? parseFloat(s.eScore ?? s.calc_E ?? 0) : 0,
                         a: done ? parseFloat(s.aScore ?? 0) : 0,
+                        isGecersiz,
+                        isDNS,
                     };
                 }
 
-                return { ...ath, total, appScores, completedCount };
+                return { ...ath, total, appScores, completedCount, isGecersiz: athIsGecersiz, isDNS: athIsDNS };
             })
             .sort((a, b) => b.total - a.total);
     }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
@@ -736,8 +751,9 @@ export default function ScoreboardPage() {
                                     {isApparatusBased ? apparatusList.map(alet => {
                                         const val = ath.appScores[alet.id];
                                         const hasScore = val && val.total > 0;
+                                        const isValGecersiz = val?.isGecersiz || val?.isDNS;
                                         return (
-                                            <div key={alet.id} className={`sb-cell sb-score-cell ${hasScore ? 'sb-scored' : 'sb-pending'}`}>
+                                            <div key={alet.id} className={`sb-cell sb-score-cell ${hasScore ? 'sb-scored' : isValGecersiz ? 'sb-scored sb-gecersiz' : 'sb-pending'}`}>
                                                 {hasScore ? (
                                                     <>
                                                         <div className="sb-score-total">{val.total.toFixed(3)}</div>
@@ -746,6 +762,8 @@ export default function ScoreboardPage() {
                                                             <span className="sb-score-e">E {val.e.toFixed(3)}</span>
                                                         </div>
                                                     </>
+                                                ) : isValGecersiz ? (
+                                                    <div className="sb-score-total">0.000</div>
                                                 ) : '\u2014'}
                                             </div>
                                         );
@@ -765,6 +783,8 @@ export default function ScoreboardPage() {
                                                     );
                                                 })()}
                                             </>
+                                        ) : (ath.isGecersiz || ath.isDNS) ? (
+                                            <span className="sb-score-total sb-score-total--total">0.000</span>
                                         ) : '\u2014'}
                                     </div>
                                 </div>
