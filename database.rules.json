@@ -6,8 +6,8 @@
     "kullanicilar": {
       "$userId": {
         ".write": true,
-        ".validate": "newData.hasChildren(['kullaniciAdi', 'rolAdi']) && newData.child('kullaniciAdi').isString() && newData.child('kullaniciAdi').val().length >= 1 && newData.child('kullaniciAdi').val().length <= 100 && newData.child('rolAdi').isString() && newData.child('rolAdi').val().length <= 100",
-        "kullaniciAdi": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
+        ".validate": "newData.hasChildren(['rolAdi']) && newData.child('rolAdi').isString() && newData.child('rolAdi').val().length >= 1 && newData.child('rolAdi').val().length <= 100",
+        "kullaniciAdi": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 100)" },
         "rolAdi":       { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
         "aktif":        { ".validate": "newData.isBoolean()" },
         "il":           { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 100)" },

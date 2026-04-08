@@ -309,13 +309,14 @@ export default function RefereesPage() {
         const sifreHash = await hashPassword(password);
 
         const userData = {
+            kullaniciAdi: username,
             rolAdi: 'Hakem',
             il: referee.il || null,
             aktif: true,
             izinler: createRefereePermissions(),
             sifreHash,
             olusturmaTarihi: new Date().toISOString(),
-            hakemId: referee.id || null, // Hakem kaydı ile bağlantı
+            hakemId: referee.id || null,
         };
 
         await set(ref(db, `kullanicilar/${username}`), userData);
