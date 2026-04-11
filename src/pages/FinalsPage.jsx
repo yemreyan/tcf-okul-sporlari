@@ -198,7 +198,12 @@ export default function FinalsPage() {
                 totalScore += score;
             });
 
-            return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, id };
+            // Sporcu en az bir alette yarışmış mı? (tamamlandi, gecersiz veya yarismadi)
+            const hasParticipated = apparatusKeys.some(key => {
+                const d = allScoreDetails[key];
+                return d && (d.final > 0 || d.isGecersiz || d.isDNS);
+            });
+            return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, hasParticipated, id };
         }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
 
         let lastS = -1;
@@ -417,7 +422,11 @@ export default function FinalsPage() {
                 totalScore += score;
             });
 
-            return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, id };
+            const hasParticipated = apparatusKeysList.some(key => {
+                const d = allScoreDetails[key];
+                return d && (d.final > 0 || d.isGecersiz || d.isDNS);
+            });
+            return { ...athlete, okul: athlete.okul || athlete.kulup || '', scores, allScoreDetails, totalScore, hasParticipated, id };
         }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
 
         let ls = -1;
@@ -641,8 +650,8 @@ export default function FinalsPage() {
                 const catData = competitionData.kategoriler[cId];
                 const { results, teamResults, apparatusKeysList, catName } = computeCategoryResults(cId, catData, compAthletes, compScores);
 
-                // Skip if no athlete has any score
-                const scoredResults = results.filter(r => r.totalScore > 0);
+                // Yarışmış sporcular: puanı olan veya gecersiz/yarismadi işaretli
+                const scoredResults = results.filter(r => r.hasParticipated);
                 if (scoredResults.length === 0) return;
 
                 const appCount = apparatusKeysList.length;
