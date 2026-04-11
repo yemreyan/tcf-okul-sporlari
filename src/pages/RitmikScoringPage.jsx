@@ -39,7 +39,8 @@ export default function RitmikScoringPage() {
     // ─── Scoring ───
     const [aPanelLocal, setAPanelLocal]           = useState({});       // A: artistlik kesintileri (4 hakem)
     const [ePanelLocal, setEPanelLocal]           = useState({});       // E: icra kesintileri (4 hakem)
-    const [selectedElements, setSelectedElements] = useState([]);       // D: vücut elementleri
+    const [selectedElements, setSelectedElements] = useState([]);       // DB: vücut elementleri
+    const [daScoreInput, setDaScoreInput]         = useState('');       // DA: alet zorluğu (2 hakem mutabık)
     const [penalties, setPenalties]               = useState({});       // Cezalar
 
     // ─── Lock ───
@@ -131,6 +132,7 @@ export default function RitmikScoringPage() {
         setAPanelLocal(scores.aPanel || {});
         setEPanelLocal(scores.ePanel || {});
         setSelectedElements(scores.dElements || []);
+        setDaScoreInput(scores.daScore != null ? String(scores.daScore) : '');
         setPenalties(scores.penalties || {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
@@ -139,6 +141,7 @@ export default function RitmikScoringPage() {
     const catConfig   = RITMIK_CATEGORIES[selectedCategory] || {};
     const maxElements = catConfig.maxElements || 10;
     const judgeCount  = catConfig.judgeCount  || 4;
+    const hasDA       = catConfig.hasDA === true;
 
     const availableCities = [...new Set(
         Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean)
@@ -177,23 +180,29 @@ export default function RitmikScoringPage() {
 
     // A: artistlik kesintileri → A = 10 − ortalama
     // E: icra kesintileri → E = 10 − ortalama
-    // D: element değerlerinin toplamı
-    const aScore = calcPanelScore(aPanelLocal);
-    const eScore = calcPanelScore(ePanelLocal);
-    const dScore = selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
+    // DB: vücut element değerlerinin toplamı
+    // DA: alet zorluk puanı (2 hakem mutabık → doğrudan girilir), yalnızca hasDA kategorilerde
+    const aScore   = calcPanelScore(aPanelLocal);
+    const eScore   = calcPanelScore(ePanelLocal);
+    const dbScore  = selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
+    const daScoreNum = hasDA ? (parseFloat(daScoreInput) || 0) : 0;
     const totalPenalties = Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
 
-    // Standart FIG Ritmik Formülü: D + E + A − Ceza
-    // D=0 → final=0 (güçlük elementi girilmemişse geçersiz performans)
-    const finalScore = dScore === 0
+    // TCF/FIG Ritmik Formülü:
+    //   hasDA  → DA + DB + E + A − Ceza (FIG Gençler kuralları: Minikler A, Küçükler, Yıldızlar, Gençler)
+    //   !hasDA → DB + E + A − Ceza     (Minikler B serbest seri — alet yok)
+    // DB=0 → final=0 (hiç vücut elementi girilmemişse geçersiz performans)
+    const totalDifficulty = daScoreNum + dbScore;
+    const finalScore = dbScore === 0
         ? '0.000'
-        : Math.max(0, dScore + eScore + aScore - totalPenalties).toFixed(3);
+        : Math.max(0, totalDifficulty + eScore + aScore - totalPenalties).toFixed(3);
 
     // ─── Handlers ───
     const resetPanel = useCallback(() => {
         setAPanelLocal({});
         setEPanelLocal({});
         setSelectedElements([]);
+        setDaScoreInput('');
         setPenalties({});
         setScoringFieldsTouched(false);
     }, []);
@@ -209,6 +218,7 @@ export default function RitmikScoringPage() {
             setAPanelLocal(prev.aPanel || {});
             setEPanelLocal(prev.ePanel || {});
             setSelectedElements(prev.dElements || []);
+            setDaScoreInput(prev.daScore != null ? String(prev.daScore) : '');
             setPenalties(prev.penalties || {});
         } else {
             resetPanel();
@@ -267,8 +277,12 @@ export default function RitmikScoringPage() {
         const filledE = Object.values(ePanelLocal).filter(v => v !== '' && !isNaN(parseFloat(v)));
         if (filledE.length === 0) return toast('E (İcra) puanı girilmeden kayıt yapılamaz. En az bir hakem notu giriniz.', 'warning');
 
-        if (dScore === 0 || selectedElements.length === 0) {
-            return toast('D puanı 0 — hiç element eklenmemiş. Element ekleyiniz veya 0.000 olarak kaydetmek için önce element ekleyip kaldırabilirsiniz.', 'warning');
+        if (selectedElements.length === 0) {
+            return toast('DB puanı 0 — hiç vücut elementi eklenmemiş. Element ekleyiniz.', 'warning');
+        }
+
+        if (hasDA && (daScoreInput === '' || isNaN(parseFloat(daScoreInput)))) {
+            return toast('DA (Alet Zorluğu) puanı girilmeden kayıt yapılamaz. DA hakemleri mutabık kaldıktan sonra değeri girin.', 'warning');
         }
 
         const uniqueFamilies = new Set(selectedElements.map(el => el.familyId));
@@ -281,7 +295,7 @@ export default function RitmikScoringPage() {
 
         setConfirmModal({
             athlete: selectedAthlete,
-            dScore, eScore, aScore, totalPenalties, finalScore, fVal,
+            hasDA, daScore: daScoreNum, dbScore, eScore, aScore, totalPenalties, finalScore, fVal,
         });
     };
 
@@ -296,7 +310,9 @@ export default function RitmikScoringPage() {
                 penalties:   penalties,
                 aScore:      parseFloat(aScore.toFixed(3)),
                 eScore:      parseFloat(eScore.toFixed(3)),
-                dScore:      parseFloat(dScore.toFixed(3)),
+                dbScore:     parseFloat(dbScore.toFixed(3)),
+                daScore:     hasDA ? parseFloat(daScoreNum.toFixed(3)) : 0,
+                dScore:      parseFloat(totalDifficulty.toFixed(3)),  // geriye dönük uyumluluk için DA+DB toplamı
                 sonuc:       parseFloat(confirmModal.finalScore),
                 durum:       'tamamlandi',
                 kilitli:     true,
@@ -547,15 +563,40 @@ export default function RitmikScoringPage() {
                             </div>
                         )}
 
-                        {/* ── D Puanı — Element Seçimi ── */}
+                        {/* ── DA Puanı — Alet Zorluğu (yalnızca alet kullanan kategoriler) ── */}
+                        {hasDA && (
+                            <div className="rtm-card">
+                                <div className="rtm-card-header">
+                                    <span className="rtm-card-label rtm-card-label--d">DA</span>
+                                    <span className="rtm-card-title">Alet Zorluğu</span>
+                                    <span className="rtm-card-desc">2 hakem · mutabık kalınan puanı girin</span>
+                                    <span className="rtm-score-chip rtm-score-chip--d">{daScoreNum.toFixed(3)}</span>
+                                </div>
+                                <div className="rtm-da-input-row">
+                                    <input
+                                        type="number"
+                                        className="rtm-da-input"
+                                        min="0"
+                                        step="0.1"
+                                        placeholder="0.0"
+                                        value={daScoreInput}
+                                        disabled={scoreLocked}
+                                        onChange={e => setDaScoreInput(e.target.value)}
+                                    />
+                                    <span className="rtm-da-hint">DA hakemleri değerlendirmelerini karşılaştırarak mutabık kaldıkları alet zorluk puanını giriniz ({catConfig.alet})</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── DB Puanı — Vücut Element Seçimi ── */}
                         <div className="rtm-card">
                             <div className="rtm-card-header">
-                                <span className="rtm-card-label rtm-card-label--d">D</span>
-                                <span className="rtm-card-title">Zorluk Puanı</span>
+                                <span className="rtm-card-label rtm-card-label--d">{hasDA ? 'DB' : 'D'}</span>
+                                <span className="rtm-card-title">{hasDA ? 'Vücut Zorluğu' : 'Zorluk Puanı'}</span>
                                 <span className="rtm-card-desc">
-                                    {selectedElements.length}/{maxElements} element · toplam {dScore.toFixed(2)}
+                                    {selectedElements.length}/{maxElements} element · toplam {dbScore.toFixed(2)}
                                 </span>
-                                <span className="rtm-score-chip rtm-score-chip--d">{dScore.toFixed(3)}</span>
+                                <span className="rtm-score-chip rtm-score-chip--d">{dbScore.toFixed(3)}</span>
                             </div>
                             <div className="rtm-element-body">
                                 <div className="rtm-element-list">
@@ -585,7 +626,7 @@ export default function RitmikScoringPage() {
                                 {selectedElements.length > 0 && (
                                     <div className="rtm-d-summary">
                                         <span>{selectedElements.length} element</span>
-                                        <strong className="rtm-d-total">= {dScore.toFixed(3)}</strong>
+                                        <strong className="rtm-d-total">= {dbScore.toFixed(3)}</strong>
                                     </div>
                                 )}
                             </div>
@@ -693,7 +734,11 @@ export default function RitmikScoringPage() {
                         {/* ── Final Skor Bar ── */}
                         <div className="rtm-final-bar">
                             <div className="rtm-final-breakdown">
-                                <span>D <strong>{dScore.toFixed(3)}</strong></span>
+                                {hasDA && <>
+                                    <span>DA <strong>{daScoreNum.toFixed(3)}</strong></span>
+                                    <span>+</span>
+                                </>}
+                                <span>{hasDA ? 'DB' : 'D'} <strong>{dbScore.toFixed(3)}</strong></span>
                                 <span>+</span>
                                 <span>A <strong>{aScore.toFixed(3)}</strong></span>
                                 <span>+</span>
@@ -776,7 +821,10 @@ export default function RitmikScoringPage() {
                                 : confirmModal.athlete.name || ''}
                         </div>
                         <div className="rtm-modal-breakdown">
-                            <div><span>D (Zorluk)</span><strong>{confirmModal.dScore.toFixed(3)}</strong></div>
+                            {confirmModal.hasDA && (
+                                <div><span>DA (Alet Zorluğu)</span><strong>{confirmModal.daScore.toFixed(3)}</strong></div>
+                            )}
+                            <div><span>{confirmModal.hasDA ? 'DB (Vücut Zorluğu)' : 'D (Zorluk)'}</span><strong>{confirmModal.dbScore.toFixed(3)}</strong></div>
                             <div><span>A (Artistlik)</span><strong>{confirmModal.aScore.toFixed(3)}</strong></div>
                             <div><span>E (İcra)</span><strong>{confirmModal.eScore.toFixed(3)}</strong></div>
                             <div><span>Ceza</span><strong>−{confirmModal.totalPenalties.toFixed(3)}</strong></div>

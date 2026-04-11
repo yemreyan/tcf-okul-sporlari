@@ -152,21 +152,29 @@ function parseBirthYear(dob) {
 }
 
 // ─── Yardımcı: Bir okulun mevcut sporcu sayısını getirir ───
-async function getSchoolAthleteCount(compId, catId, schoolName, firebasePath) {
+// district parametresi verilirse okul adı + ilçe birlikte eşleştirilir
+// (aynı ildeki aynı isimli farklı ilçe okullarının karışmaması için)
+async function getSchoolAthleteCount(compId, catId, schoolName, district, firebasePath) {
     if (!compId || !catId || !schoolName) return 0;
     try {
         const snapshot = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
         if (!snapshot.exists()) return 0;
         const all = snapshot.val();
         const normalizedSchool = normalizeString(schoolName);
-        return Object.values(all).filter(a => normalizeString(a.okul || a.kulup) === normalizedSchool).length;
+        const normalizedDistrict = district ? normalizeString(district) : null;
+        return Object.values(all).filter(a => {
+            const schoolMatch = normalizeString(a.okul || a.kulup) === normalizedSchool;
+            if (!normalizedDistrict) return schoolMatch;
+            return schoolMatch && normalizeString(a.ilce || '') === normalizedDistrict;
+        }).length;
     } catch { return 0; }
 }
 
 // ─── Automatic Team Promotion & Demotion Logic ───
 // Sporcu sayısı >= min → tüm okul sporcuları 'takim'
 // Sporcu sayısı <  min → tüm okul sporcuları 'ferdi'
-async function syncTeamStatus(compId, catId, catName, schoolName, firebasePath) {
+// district parametresi: aynı ildeki aynı isimli farklı ilçe okullarının karışmaması için kullanılır
+async function syncTeamStatus(compId, catId, catName, schoolName, district, firebasePath) {
     if (!compId || !catId || !schoolName) return;
 
     const rules = getTeamRules(catName);
@@ -178,8 +186,11 @@ async function syncTeamStatus(compId, catId, catName, schoolName, firebasePath) 
 
         const allAthletes = snapshot.val();
         const normalizedSchool = normalizeString(schoolName);
+        const normalizedDistrict = district ? normalizeString(district) : null;
         const schoolAthletes = Object.entries(allAthletes).filter(([, a]) => {
-            return normalizeString(a.okul || a.kulup) === normalizedSchool;
+            const schoolMatch = normalizeString(a.okul || a.kulup) === normalizedSchool;
+            if (!normalizedDistrict) return schoolMatch;
+            return schoolMatch && normalizeString(a.ilce || '') === normalizedDistrict;
         });
 
         const count = schoolAthletes.length;
@@ -358,7 +369,7 @@ export default function ApplicationsPage() {
                 // 0b. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
                 const rules = getTeamRules(app.categoryName);
                 if (rules) {
-                    const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName, appFirebasePath);
+                    const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName, app.district, appFirebasePath);
                     const afterCount = currentCount + app.athleteCount;
                     if (afterCount > rules.max) {
                         const proceed = await confirm(
@@ -370,10 +381,13 @@ export default function ApplicationsPage() {
                 }
 
                 // 1. Okulu onaylı okullar listesine ekle
-                const safeSchoolName = app.schoolName.replace(/[.#$[\]]/g, '');
-                updates[`${appFirebasePath}/${compId}/onayli_okullar/${safeSchoolName}`] = {
+                // Key: "OkulAdı__İlçeAdı" → aynı ilde aynı isimli farklı ilçe okulları birbirini ezmez
+                const safeSchoolKey = `${app.schoolName}__${app.district || 'BELIRTILMEDI'}`
+                    .replace(/[.#$[\]]/g, '');
+                updates[`${appFirebasePath}/${compId}/onayli_okullar/${safeSchoolKey}`] = {
                     city: app.city,
-                    district: app.district
+                    district: app.district,
+                    schoolName: app.schoolName
                 };
 
                 // 2. Sporcuları ilgili kategori altına ekle
@@ -423,7 +437,7 @@ export default function ApplicationsPage() {
                 await update(ref(db), updates);
 
                 // 3. Eşik kontrolü: Yeterli sporcu varsa takım'e yükselt, yoksa ferdi bırak
-                await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, app.district, appFirebasePath);
 
                 // 4. Cross-discipline uyarısı: sporcular farklı bir branşın sayfasına yazıldıysa kullanıcıyı bilgilendir
                 if (appFirebasePath !== firebasePath) {
@@ -448,7 +462,7 @@ export default function ApplicationsPage() {
 
                 // Kalan sporcu sayısı eşiğin altına düşmüş olabilir → demotion kontrolü
                 if ((newStatus === 'bekliyor' || newStatus === 'reddedildi') && normalizedCurrentStatus === 'onaylandi') {
-                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, app.district, appFirebasePath);
                 }
             }
 
@@ -541,7 +555,7 @@ export default function ApplicationsPage() {
                 };
             });
             await update(ref(db), updates);
-            await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+            await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, app.district, appFirebasePath);
             toast(`${app.athletes.length} sporcu başarıyla yeniden yazıldı.`, 'success');
             logAction('resync_athletes', `Sporcular yeniden senkronize edildi: ${app.schoolName} — ${app.categoryName}`, { user: currentUser?.kullaniciAdi || 'admin', appId: app.id });
         } catch (err) {
@@ -614,7 +628,7 @@ export default function ApplicationsPage() {
                     });
 
                     await update(ref(db), updates);
-                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, app.district, appFirebasePath);
                     addedCount += newAthletes.length;
                 } catch (e) {
                     if (import.meta.env.DEV) console.error('Resync all — app error:', app.id, e);
@@ -721,7 +735,7 @@ export default function ApplicationsPage() {
                     });
 
                     await update(ref(db), updates);
-                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, appFirebasePath);
+                    await syncTeamStatus(compId, catId, app.categoryName, app.schoolName, app.district, appFirebasePath);
                     addedCount += missingAthletes.length;
                 } catch (e) {
                     if (import.meta.env.DEV) console.error('Add missing app error:', app.id, e);

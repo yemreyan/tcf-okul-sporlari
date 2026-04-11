@@ -388,6 +388,41 @@
     color: var(--rtm-primary);
 }
 
+/* DA — Alet Zorluğu girişi */
+.rtm-da-input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 4px;
+    flex-wrap: wrap;
+}
+.rtm-da-input {
+    width: 100px;
+    padding: 10px 12px;
+    border: 2px solid var(--rtm-border);
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    background: var(--rtm-bg);
+    color: var(--rtm-text);
+    transition: border-color 0.15s;
+}
+.rtm-da-input:focus {
+    outline: none;
+    border-color: var(--rtm-primary);
+}
+.rtm-da-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.rtm-da-hint {
+    font-size: 12px;
+    color: var(--rtm-text-sec);
+    flex: 1;
+    min-width: 200px;
+}
+
 /* ── Group Badges ── */
 .rtm-group-badge {
     display: inline-flex;

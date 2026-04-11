@@ -319,7 +319,16 @@ export default function ScoreboardPage() {
 
                 return { ...ath, total, appScores, completedCount, isGecersiz: athIsGecersiz, isDNS: athIsDNS };
             })
-            .sort((a, b) => b.total - a.total);
+            .sort((a, b) => b.total - a.total)
+            .reduce((acc, ath, idx) => {
+                // Eşit puanlı sporcular aynı sırayı paylaşır — float hassasiyeti için yuvarla
+                const prev = acc[acc.length - 1];
+                const rounded = Math.round(ath.total * 1000) / 1000;
+                const prevRounded = prev ? Math.round(prev.total * 1000) / 1000 : -1;
+                const rank = (prev && ath.total > 0 && rounded === prevRounded) ? prev.rank : (ath.total > 0 ? idx + 1 : 0);
+                acc.push({ ...ath, rank });
+                return acc;
+            }, []);
     }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
 
     // Memoized team ranking
@@ -330,7 +339,7 @@ export default function ScoreboardPage() {
         athletes.forEach(a => {
             const t = (a.yarismaTuru || a.katilimTuru || '').toLowerCase();
             if (t !== 'takim' && t !== 'takım') return;
-            const club = a.kulup || a.okul;
+            const club = a.okul || a.kulup;
             if (club) {
                 if (!teamAthletes[club]) teamAthletes[club] = [];
                 teamAthletes[club].push(String(a.id));
@@ -742,24 +751,24 @@ export default function ScoreboardPage() {
                             return (
                                 <div
                                     key={ath.id}
-                                    className={`sb-row ${globalIdx < 3 && ath.total > 0 ? `sb-medal-${globalIdx + 1}` : ''}`}
+                                    className={`sb-row ${ath.rank <= 3 && ath.total > 0 ? `sb-medal-${ath.rank}` : ''}`}
                                     style={{ gridTemplateColumns: gridTemplate, animationDelay: `${localIdx * 0.04}s` }}
                                 >
                                     <div className="sb-cell sb-rank">
-                                        {ath.total > 0 && globalIdx < 3 ? (
-                                            <div className={`sb-medal-icon sb-medal-icon-${globalIdx + 1}`}>
-                                                {globalIdx + 1}
+                                        {ath.total > 0 && ath.rank <= 3 ? (
+                                            <div className={`sb-medal-icon sb-medal-icon-${ath.rank}`}>
+                                                {ath.rank}
                                             </div>
                                         ) : (
-                                            <span className="sb-rank-num">{ath.total > 0 ? globalIdx + 1 : '\u2014'}</span>
+                                            <span className="sb-rank-num">{ath.total > 0 ? ath.rank : '\u2014'}</span>
                                         )}
                                     </div>
                                     <div className="sb-cell sb-name-cell">
                                         <div className="sb-athlete-name">
                                             {ath.ad} {ath.soyad}
-                                            {ath.total > 0 && <span className="sb-rank-tag">({globalIdx + 1}.)</span>}
+                                            {ath.total > 0 && <span className="sb-rank-tag">({ath.rank}.)</span>}
                                         </div>
-                                        <div className="sb-athlete-club">{ath.kulup || ath.okul}</div>
+                                        <div className="sb-athlete-club">{ath.okul || ath.kulup}</div>
                                     </div>
                                     {isApparatusBased ? apparatusList.map(alet => {
                                         const val = ath.appScores[alet.id];

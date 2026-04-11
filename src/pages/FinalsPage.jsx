@@ -204,9 +204,12 @@ export default function FinalsPage() {
         let lastS = -1;
         let lastR = 0;
         const rankedResults = sortedResults.map((res, index) => {
-            if (res.totalScore !== lastS) { lastR = index + 1; }
-            lastS = res.totalScore;
-            return { ...res, totalRank: lastR };
+            if (res.totalScore > 0) {
+                const rounded = Math.round(res.totalScore * 1000) / 1000;
+                if (rounded !== lastS) { lastR = index + 1; }
+                lastS = rounded;
+            }
+            return { ...res, totalRank: res.totalScore > 0 ? lastR : null };
         });
 
         // Apparatus Ranks
@@ -420,11 +423,12 @@ export default function FinalsPage() {
         let ls = -1;
         let lr = 0;
         const rankedResults = sortedC.map((res, index) => {
-            if (res.totalScore !== ls) {
-                lr = index + 1;
+            if (res.totalScore > 0) {
+                const rounded = Math.round(res.totalScore * 1000) / 1000;
+                if (rounded !== ls) { lr = index + 1; }
+                ls = rounded;
             }
-            ls = res.totalScore;
-            return { ...res, totalRank: lr };
+            return { ...res, totalRank: res.totalScore > 0 ? lr : null };
         });
 
         const apparatusRanks = {};
@@ -996,7 +1000,7 @@ export default function FinalsPage() {
                                                 return (
                                                     <tr key={res.id} className={getMedalClass(rank)}>
                                                         <td className="td-center rank-col">
-                                                            <span className="rank-badge">{rank}</span>
+                                                            <span className="rank-badge">{rank ?? '—'}</span>
                                                         </td>
                                                         <td>
                                                             <div className="athlete-name">{res.soyad}, {res.ad}</div>

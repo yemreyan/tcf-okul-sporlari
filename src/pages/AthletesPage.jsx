@@ -163,6 +163,7 @@ export default function AthletesPage() {
         lisans: '',
         dob: '',
         okul: '',
+        kulup: '',   // okul ile her zaman senkron tutulur
         il: '',
         categoryId: '',
         yarismaTuru: 'ferdi'
@@ -291,7 +292,8 @@ export default function AthletesPage() {
                 tckn: athlete.tckn || '',
                 lisans: athlete.lisans || '',
                 dob: athlete.dob || '',
-                okul: athlete.okul || '',
+                okul: athlete.okul || athlete.kulup || '',
+                kulup: athlete.okul || athlete.kulup || '',   // okul ile senkron
                 il: athlete.il || '',
                 categoryId: athlete.categoryId || '',
                 yarismaTuru: athlete.yarismaTuru || 'ferdi'
@@ -331,6 +333,7 @@ export default function AthletesPage() {
                     updates[`${firebasePath}/${selectedCompId}/sporcular/${oldCatId}/${athId}`] = null;
                     updates[`${firebasePath}/${selectedCompId}/sporcular/${newCatId}/${athId}`] = {
                         ...formData,
+                        kulup: formData.okul,   // okul ile senkron
                         id: athId,
                         adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
                         soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
@@ -364,8 +367,8 @@ export default function AthletesPage() {
                     // Eski ve yeni kategori için takım türünü güncelle
                     await autoSyncTeamStatus(selectedCompId, [oldCatId, newCatId]);
                 } else {
-                    // Sadece güncelle
-                    await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), formData);
+                    // Sadece güncelle — kulup her zaman okul ile senkron
+                    await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), { ...formData, kulup: formData.okul });
                     // Aynı kategorideki okul takım türünü güncelle
                     await autoSyncTeamStatus(selectedCompId, [formData.categoryId]);
                 }
@@ -374,6 +377,7 @@ export default function AthletesPage() {
                 const newRef = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}`));
                 await set(newRef, {
                     ...formData,
+                    kulup: formData.okul,   // okul ile senkron
                     id: newRef.key,
                     adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
                     soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
@@ -2049,7 +2053,7 @@ export default function AthletesPage() {
                                         </button>
                                     )}
                                 </div>
-                                <input type="text" value={formData.okul} onChange={e => setFormData({ ...formData, okul: e.target.value })} />
+                                <input type="text" value={formData.okul} onChange={e => setFormData({ ...formData, okul: e.target.value, kulup: e.target.value })} />
                             </div>
 
                             <div className="modal__footer">

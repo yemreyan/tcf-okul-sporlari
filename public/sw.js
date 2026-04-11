@@ -11,7 +11,7 @@
  *      Bu service worker yalnızca uygulama shell cache'ini üstlenir.
  */
 
-const CACHE_NAME    = 'tcf-app-v1';
+const CACHE_NAME    = 'tcf-app-v2';
 const CACHE_TIMEOUT = 3000; // 3 saniye — cevap gelmezse cache'e dön
 
 /* ── Önbelleğe alınacak kaynaklar (uygulama kabuğu) ─────────── */
