@@ -506,14 +506,23 @@ export default function CompetitionSchedulePage() {
         const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
         const catGruplar = gruplar[catKey] || [];
         if (!catGruplar.length) { toast('Bu kategoride grup yok. Önce Çıkış Sırası sayfasından grupları oluşturun.', 'warning'); return; }
+        const numAlet = aletlerSirali.length;
         const newCatPlan = {};
         catGruplar.forEach((_, idx) => {
-            newCatPlan[idx] = { ...(rotasyonPlani[catKey]?.[idx] || {}), baslangicAleti: aletlerSirali[idx % aletlerSirali.length], bolunmus: false, bolumler: undefined };
+            const dalgaNo = Math.floor(idx / numAlet) + 1;
+            newCatPlan[idx] = { ...(rotasyonPlani[catKey]?.[idx] || {}), baslangicAleti: aletlerSirali[idx % numAlet], bolunmus: false, bolumler: undefined, dalgaNo };
         });
         setRotasyonPlani(prev => ({ ...prev, [catKey]: newCatPlan }));
         await saveRotasyonPlaniForCat(catKey, newCatPlan);
         toast(`${getCategoryLabel(catKey)} için olimpik sıraya göre atandı`, 'success');
     }, [gruplar, rotasyonPlani, saveRotasyonPlaniForCat, compKategoriler]);
+
+    const handleGroupDalgaNoChange = useCallback(async (catKey, idx, val) => {
+        const dalgaNo = val ? Number(val) : null;
+        const updatedCat = { ...(rotasyonPlani[catKey] || {}), [idx]: { ...(rotasyonPlani[catKey]?.[idx] || {}), dalgaNo } };
+        setRotasyonPlani(prev => ({ ...prev, [catKey]: updatedCat }));
+        await saveRotasyonPlaniForCat(catKey, updatedCat);
+    }, [rotasyonPlani, saveRotasyonPlaniForCat]);
 
     const handleGroupAletChange = useCallback(async (catKey, idx, aletKey) => {
         const updated = { ...rotasyonPlani, [catKey]: { ...(rotasyonPlani[catKey] || {}), [idx]: { ...(rotasyonPlani[catKey]?.[idx] || {}), baslangicAleti: aletKey } } };
@@ -691,10 +700,22 @@ export default function CompetitionSchedulePage() {
                       }
                     }
 
-                    // DALGALARA BÖL: her dalga numAlet slot içerir
+                    // DALGALARA BÖL: kullanıcı dalgaNo seçtiyse ona göre, yoksa otomatik numAlet'e göre
+                    const hasUserDalga = effGroups.some(g => catPlan[g.gi]?.dalgaNo != null);
                     const dalgalar = [];
-                    for (let i = 0; i < slots.length; i += numAlet) {
-                        dalgalar.push(slots.slice(i, i + numAlet));
+                    if (hasUserDalga) {
+                        const dalgaMap = {};
+                        slots.forEach(slot => {
+                            const dn = catPlan[slot[0].gi]?.dalgaNo || 1;
+                            if (!dalgaMap[dn]) dalgaMap[dn] = [];
+                            dalgaMap[dn].push(slot);
+                        });
+                        Object.entries(dalgaMap).sort(([a],[b]) => Number(a)-Number(b))
+                            .forEach(([,slotsArr]) => dalgalar.push(slotsArr));
+                    } else {
+                        for (let i = 0; i < slots.length; i += numAlet) {
+                            dalgalar.push(slots.slice(i, i + numAlet));
+                        }
                     }
 
                     curMin = skipMolalar(curMin);
@@ -860,10 +881,22 @@ export default function CompetitionSchedulePage() {
               }
             }
 
-            // Dalgalara böl
+            // Dalgalara böl (kullanıcı dalgaNo seçtiyse ona göre, yoksa otomatik)
+            const hasUserDalga2 = effGroups.some(g => catPlan[g.gi]?.dalgaNo != null);
             const dalgalar = [];
-            for (let i = 0; i < slots.length; i += numAlet) {
-                dalgalar.push(slots.slice(i, i + numAlet));
+            if (hasUserDalga2) {
+                const dalgaMap = {};
+                slots.forEach(slot => {
+                    const dn = catPlan[slot[0].gi]?.dalgaNo || 1;
+                    if (!dalgaMap[dn]) dalgaMap[dn] = [];
+                    dalgaMap[dn].push(slot);
+                });
+                Object.entries(dalgaMap).sort(([a],[b]) => Number(a)-Number(b))
+                    .forEach(([,slotsArr]) => dalgalar.push(slotsArr));
+            } else {
+                for (let i = 0; i < slots.length; i += numAlet) {
+                    dalgalar.push(slots.slice(i, i + numAlet));
+                }
             }
 
             // Her dalga için matris
@@ -1270,6 +1303,15 @@ export default function CompetitionSchedulePage() {
                                                                         <span className="rot-group-num">Grup {gi + 1}</span>
                                                                         <span className="rot-group-count">{athletes.length} sporcu</span>
                                                                         {gp.paralel && <span className="paralel-badge"><i className="material-icons-round">group_work</i>Paralel</span>}
+                                                                    </div>
+                                                                    <div className="rot-dalga-select">
+                                                                        <label>Dalga</label>
+                                                                        <select value={gp.dalgaNo ?? ''} onChange={e => handleGroupDalgaNoChange(catKey, gi, e.target.value)} disabled={!canEdit}>
+                                                                            <option value="">Oto</option>
+                                                                            {Array.from({ length: Math.max(catGruplar.length, 4) }, (_, i) => i + 1).map(n => (
+                                                                                <option key={n} value={n}>{n}. Dalga</option>
+                                                                            ))}
+                                                                        </select>
                                                                     </div>
                                                                     {!isBol && (
                                                                         <div className="rot-alet-select">
