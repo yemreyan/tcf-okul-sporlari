@@ -816,6 +816,13 @@
 .btn-bol .material-icons-round { font-size:15px; }
 .btn-bol.active { background:#a855f7; border-color:#a855f7; color:#fff; }
 .btn-bol:hover:not(.active) { border-color:#a855f7; color:#a855f7; }
+.btn-paralel { display:flex; align-items:center; gap:4px; padding:6px 12px; border:1.5px solid #e2e8f0; border-radius:8px; background:#fff; color:#64748b; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; }
+.btn-paralel .material-icons-round { font-size:15px; }
+.btn-paralel.active { background:#0891b2; border-color:#0891b2; color:#fff; }
+.btn-paralel:hover:not(.active) { border-color:#0891b2; color:#0891b2; }
+.rot-group-card.paralel { border-color:#0891b2; background:#f0f9ff; }
+.paralel-badge { display:inline-flex; align-items:center; gap:3px; background:#0891b2; color:#fff; border-radius:6px; padding:2px 7px; font-size:11px; font-weight:700; }
+.paralel-badge .material-icons-round { font-size:13px; }
 .rot-bolumler { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
 .rot-bolum { display:flex; align-items:center; gap:8px; background:#f3e8ff; border-radius:8px; padding:8px 12px; flex-wrap:wrap; }
 .bolum-badge { background:#a855f7; color:#fff; border-radius:6px; padding:2px 8px; font-size:12px; font-weight:700; }
@@ -939,6 +946,8 @@
 
 /* ── Dalga badge ── */
 .sess-dalga-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
+.sess-paralel-badge { display:inline-flex; align-items:center; gap:2px; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; background:#cffafe; color:#0e7490; }
+.sess-paralel-badge .material-icons-round { font-size:12px; }
 
 /* ── Matrix wave blocks ── */
 .matrix-wave-hint { font-size:11px; font-weight:400; color:#94a3b8; margin-left:8px; }

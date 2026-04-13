@@ -3,7 +3,7 @@
  * Vektörel PDF — jsPDF + jspdf-autotable
  */
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 /* ── Sabitler ── */
 const W = 210, H = 297;
@@ -305,7 +305,7 @@ export async function generateCompetitionPDF({
                         }),
                     ]);
 
-                    doc.autoTable({
+                    autoTable(doc, {
                         startY: y,
                         head,
                         body,
@@ -315,7 +315,7 @@ export async function generateCompetitionPDF({
                         tableLineColor: C.border,
                         tableLineWidth: 0.2,
                     });
-                    y = doc.lastAutoTable.finalY + 3;
+                    y = (doc.lastAutoTable?.finalY ?? y + 20) + 3;
                 }
 
                 /* Sporcu listeleri (her grup için) */
@@ -374,7 +374,7 @@ export async function generateCompetitionPDF({
                         ];
                     });
 
-                    doc.autoTable({
+                    autoTable(doc, {
                         startY: y,
                         head: athHead,
                         body: athBody,
@@ -394,7 +394,7 @@ export async function generateCompetitionPDF({
                         tableLineColor: C.border,
                         tableLineWidth: 0.15,
                     });
-                    y = doc.lastAutoTable.finalY + 3;
+                    y = (doc.lastAutoTable?.finalY ?? y + 20) + 3;
                 }
 
                 y += 3;

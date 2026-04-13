@@ -539,6 +539,14 @@ export default function CompetitionSchedulePage() {
         await saveRotasyonPlaniForCat(catKey, updatedCat);
     }, [rotasyonPlani, saveRotasyonPlaniForCat, compKategoriler]);
 
+    // Paralel grup: aynı anda aynı alette iki grup birden
+    const handleToggleParalel = useCallback(async (catKey, idx) => {
+        const cur = rotasyonPlani[catKey]?.[idx] || {};
+        const updatedCat = { ...(rotasyonPlani[catKey] || {}), [idx]: { ...cur, paralel: !cur.paralel } };
+        setRotasyonPlani(prev => ({ ...prev, [catKey]: updatedCat }));
+        await saveRotasyonPlaniForCat(catKey, updatedCat);
+    }, [rotasyonPlani, saveRotasyonPlaniForCat]);
+
     const handleBolumAletChange = useCallback(async (catKey, idx, bi, aletKey) => {
         const cur = rotasyonPlani[catKey]?.[idx] || {};
         const newBolumler = [...(cur.bolumler || [])];
@@ -655,22 +663,38 @@ export default function CompetitionSchedulePage() {
                             const gp = catPlan[gi] || {};
                             if (gp.bolunmus && gp.bolumler?.length >= 2) {
                                 gp.bolumler.forEach((b) => {
-                                    effGroups.push({ grupNo: gi + 1, bolumAdi: b.bolumAdi, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length), etiket: `Grup ${gi + 1}${b.bolumAdi}` });
+                                    effGroups.push({ gi, grupNo: gi + 1, bolumAdi: b.bolumAdi, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length), etiket: `Grup ${gi + 1}${b.bolumAdi}` });
                                 });
                             } else {
-                                effGroups.push({ grupNo: gi + 1, baslangicAleti: gp.baslangicAleti || '', count: athletes.length, etiket: `Grup ${gi + 1}` });
+                                effGroups.push({ gi, grupNo: gi + 1, baslangicAleti: gp.baslangicAleti || '', count: athletes.length, etiket: `Grup ${gi + 1}` });
                             }
                         });
                     } else {
                         const total = athleteCounts[catKey] || 0;
                         const ng = Math.max(1, Math.ceil(total / 8));
-                        for (let g = 0; g < ng; g++) effGroups.push({ grupNo: g + 1, baslangicAleti: '', count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
+                        for (let g = 0; g < ng; g++) effGroups.push({ gi: g, grupNo: g + 1, baslangicAleti: '', count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
                     }
 
-                    // DALGALARA BÖL: her dalga numAlet grup içerir
+                    // Paralel grupları eşleştir: paralel=true olan grup bir sonrakiyle aynı slot'ta
+                    const slots = [];
+                    { let si = 0;
+                      while (si < effGroups.length) {
+                        const grp = effGroups[si];
+                        const gp2 = catPlan[grp.gi] || {};
+                        if (gp2.paralel && !gp2.bolunmus && si + 1 < effGroups.length) {
+                            slots.push([grp, effGroups[si + 1]]);
+                            si += 2;
+                        } else {
+                            slots.push([grp]);
+                            si++;
+                        }
+                      }
+                    }
+
+                    // DALGALARA BÖL: her dalga numAlet slot içerir
                     const dalgalar = [];
-                    for (let i = 0; i < effGroups.length; i += numAlet) {
-                        dalgalar.push(effGroups.slice(i, i + numAlet));
+                    for (let i = 0; i < slots.length; i += numAlet) {
+                        dalgalar.push(slots.slice(i, i + numAlet));
                     }
 
                     curMin = skipMolalar(curMin);
@@ -679,8 +703,8 @@ export default function CompetitionSchedulePage() {
                         const dalga = dalgalar[dalgaIdx];
                         const dalgaNo = dalgaIdx + 1;
 
-                        // Rotasyon süresi bu dalganın max sporcu sayısına göre
-                        const rotSuresi = calcRotasyonSuresi(catKey, dalga);
+                        // Rotasyon süresi bu dalganın max sporcu sayısına göre (slot'lar düzleştirilir)
+                        const rotSuresi = calcRotasyonSuresi(catKey, dalga.flatMap(s => s));
 
                         // Isınma — her dalga için ayrı
                         if (planAyarlari.isinmaSuresi > 0) {
@@ -694,28 +718,33 @@ export default function CompetitionSchedulePage() {
                             advance(planAyarlari.isinmaSuresi);
                         }
 
-                        // numAlet adım rotasyon: her adımda dalganın TÜM grupları aynı anda farklı aparatlarda
+                        // numAlet adım rotasyon: her adımda dalganın TÜM slotları aynı anda farklı aparatlarda
                         for (let r = 0; r < numAlet; r++) {
                             const rotStart = minToTimeStr(curMin);
                             const rotEnd = minToTimeStr(curMin + rotSuresi);
 
-                            dalga.forEach((grp, wi) => {
+                            dalga.forEach((slot, wi) => {
+                                const firstGrp = slot[0];
                                 // Pozisyona göre başlangıç aleti: baslangicAleti yoksa wi pozisyonuna göre
-                                const startAletIdx = grp.baslangicAleti
-                                    ? aletlerSirali.indexOf(grp.baslangicAleti)
+                                const startAletIdx = firstGrp.baslangicAleti
+                                    ? aletlerSirali.indexOf(firstGrp.baslangicAleti)
                                     : wi;
-                                const si = startAletIdx >= 0 ? startAletIdx : wi % numAlet;
-                                const alet = aletlerSirali[(si + r) % numAlet];
-                                const k = push(ref(db, 'x')).key;
-                                newSessions[k] = {
-                                    tarih, tip: 'rotasyon', kategori: catKey, alet,
-                                    saat: rotStart, bitisSaat: rotEnd,
-                                    rotasyonNo: r + 1, dalgaNo,
-                                    grupNo: grp.grupNo, bolumAdi: grp.bolumAdi || null,
-                                    sporcu_sayisi: grp.count, rotasyonSuresiDk: rotSuresi,
-                                    aciklama: `${getCategoryLabel(catKey)} — ${dalgaNo}.Dalga ${grp.etiket} — ${getAletLabel(alet)} (${grp.count} sporcu, ${rotSuresi} dk)`,
-                                    durum: 'bekliyor'
-                                };
+                                const si2 = startAletIdx >= 0 ? startAletIdx : wi % numAlet;
+                                const alet = aletlerSirali[(si2 + r) % numAlet];
+                                const isParalelSlot = slot.length > 1;
+                                slot.forEach(grp => {
+                                    const k = push(ref(db, 'x')).key;
+                                    newSessions[k] = {
+                                        tarih, tip: 'rotasyon', kategori: catKey, alet,
+                                        saat: rotStart, bitisSaat: rotEnd,
+                                        rotasyonNo: r + 1, dalgaNo,
+                                        grupNo: grp.grupNo, bolumAdi: grp.bolumAdi || null,
+                                        sporcu_sayisi: grp.count, rotasyonSuresiDk: rotSuresi,
+                                        paralel: isParalelSlot,
+                                        aciklama: `${getCategoryLabel(catKey)} — ${dalgaNo}.Dalga ${grp.etiket}${isParalelSlot ? ' (PAR)' : ''} — ${getAletLabel(alet)} (${grp.count} sporcu, ${rotSuresi} dk)`,
+                                        durum: 'bekliyor'
+                                    };
+                                });
                             });
 
                             advance(rotSuresi);
@@ -810,30 +839,47 @@ export default function CompetitionSchedulePage() {
             catGruplar.forEach((athletes, gi) => {
                 const gp = catPlan[gi] || {};
                 if (gp.bolunmus && gp.bolumler?.length >= 2) {
-                    gp.bolumler.forEach(b => effGroups.push({ etiket: `G${gi + 1}${b.bolumAdi}`, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length) }));
+                    gp.bolumler.forEach(b => effGroups.push({ gi, etiket: `G${gi + 1}${b.bolumAdi}`, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length) }));
                 } else {
-                    effGroups.push({ etiket: `G${gi + 1}`, baslangicAleti: gp.baslangicAleti || '', count: athletes.length });
+                    effGroups.push({ gi, etiket: `G${gi + 1}`, baslangicAleti: gp.baslangicAleti || '', count: athletes.length, paralel: !!gp.paralel });
                 }
             });
 
+            // Paralel grupları slot'lara eşleştir
+            const slots = [];
+            { let si = 0;
+              while (si < effGroups.length) {
+                const grp = effGroups[si];
+                if (grp.paralel && !(catPlan[grp.gi]?.bolunmus) && si + 1 < effGroups.length) {
+                    slots.push([grp, effGroups[si + 1]]);
+                    si += 2;
+                } else {
+                    slots.push([grp]);
+                    si++;
+                }
+              }
+            }
+
             // Dalgalara böl
             const dalgalar = [];
-            for (let i = 0; i < effGroups.length; i += numAlet) {
-                dalgalar.push(effGroups.slice(i, i + numAlet));
+            for (let i = 0; i < slots.length; i += numAlet) {
+                dalgalar.push(slots.slice(i, i + numAlet));
             }
 
             // Her dalga için matris
-            const dalgaMatrisleri = dalgalar.map((dalga) => {
+            const dalgaMatrisleri = dalgalar.map((dalgaSlots) => {
                 const matrix = {};
                 aletlerSirali.forEach(a => { matrix[a] = {}; for (let r = 0; r < numAlet; r++) matrix[a][r] = []; });
-                dalga.forEach((grp, wi) => {
-                    const si = grp.baslangicAleti ? aletlerSirali.indexOf(grp.baslangicAleti) : wi % numAlet;
+                dalgaSlots.forEach((slot, wi) => {
+                    const firstGrp = slot[0];
+                    const si = firstGrp.baslangicAleti ? aletlerSirali.indexOf(firstGrp.baslangicAleti) : wi % numAlet;
                     const startIdx = si >= 0 ? si : wi % numAlet;
                     for (let r = 0; r < numAlet; r++) {
-                        matrix[aletlerSirali[(startIdx + r) % numAlet]][r].push(grp);
+                        slot.forEach(grp => matrix[aletlerSirali[(startIdx + r) % numAlet]][r].push(grp));
                     }
                 });
-                return { dalga, matrix };
+                const flatDalga = dalgaSlots.flatMap(s => s);
+                return { dalga: flatDalga, matrix };
             });
 
             result[catKey] = { aletlerSirali, numAlet, dalgaMatrisleri, effGroups };
@@ -1218,11 +1264,12 @@ export default function CompetitionSchedulePage() {
                                                         const startAlet = gp.baslangicAleti || '';
                                                         const startIdx = aletlerSirali.indexOf(startAlet);
                                                         return (
-                                                            <div key={gi} className={`rot-group-card ${isBol ? 'bolunmus' : ''}`}>
+                                                            <div key={gi} className={`rot-group-card ${isBol ? 'bolunmus' : ''} ${gp.paralel ? 'paralel' : ''}`}>
                                                                 <div className="rot-group-top">
                                                                     <div className="rot-group-id">
                                                                         <span className="rot-group-num">Grup {gi + 1}</span>
                                                                         <span className="rot-group-count">{athletes.length} sporcu</span>
+                                                                        {gp.paralel && <span className="paralel-badge"><i className="material-icons-round">group_work</i>Paralel</span>}
                                                                     </div>
                                                                     {!isBol && (
                                                                         <div className="rot-alet-select">
@@ -1237,6 +1284,12 @@ export default function CompetitionSchedulePage() {
                                                                         <button className={`btn-bol ${isBol ? 'active' : ''}`} onClick={() => handleToggleBolunme(catKey, gi)}>
                                                                             <i className="material-icons-round">{isBol ? 'call_merge' : 'call_split'}</i>
                                                                             {isBol ? 'Birleştir' : 'Böl'}
+                                                                        </button>
+                                                                    )}
+                                                                    {canEdit && !isBol && (
+                                                                        <button className={`btn-paralel ${gp.paralel ? 'active' : ''}`} onClick={() => handleToggleParalel(catKey, gi)} title="Bir sonraki grupla aynı alette eş zamanlı">
+                                                                            <i className="material-icons-round">group_work</i>
+                                                                            {gp.paralel ? 'Paralel İptal' : 'Paralel'}
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -1391,6 +1444,7 @@ export default function CompetitionSchedulePage() {
                                                                     )}
                                                                     {sess.dalgaNo > 0 && <span className="sess-dalga-badge">{sess.dalgaNo}.Dalga</span>}
                                                                     {sess.grupNo > 0 && <span className="sess-grup-badge">Grup {sess.grupNo}{sess.bolumAdi || ''}</span>}
+                                                                    {sess.paralel && <span className="sess-paralel-badge"><i className="material-icons-round">group_work</i>Par</span>}
                                                                     <span className="sched-session__cat">{getCategoryLabel(sess.kategori)}</span>
                                                                     {sess.alet && <span className="sched-session__alet">{getAletLabel(sess.alet)}</span>}
                                                                     <span className="sched-session__status" style={{ background: SESSION_COLORS[sess.durum || 'bekliyor'] }}>{SESSION_LABELS[sess.durum || 'bekliyor']}</span>
