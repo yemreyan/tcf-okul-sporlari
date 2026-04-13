@@ -1,47 +1,63 @@
 /**
- * TCF Yarışma Programı PDF Oluşturucu
- * Vektörel PDF — jsPDF + jspdf-autotable
+ * TCF Yarisma Programi PDF Olusturucu
+ * jsPDF + jspdf-autotable
  */
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-/* ── Sabitler ── */
+/* ── Sayfa boyutlari ── */
 const W = 210, H = 297;
-const ML = 12, MR = 12, MT = 14, MB = 14;
+const ML = 12, MR = 12, MT = 12, MB = 14;
 const CW = W - ML - MR;
 
+/* ── Renkler ── */
 const C = {
-    navy:     [18,  51,  89],   // #123359 — TCF ana mavi
-    navyMid:  [30,  58,  95],   // #1e3a5f
-    navyLight:[44,  82, 130],   // #2c5282
-    gold:     [212, 160,  23],  // #d4a017 — TCF altın
-    goldLight:[254, 243, 199],  // #fef3c7
-    purple:   [79,  70, 229],   // #4f46e5
-    purpleL:  [238,237,254],    // #eeeffe
-    amber:    [180, 100,   5],  // amber dark
-    amberBg:  [255, 237, 213],  // #ffedd5
-    green:    [ 22,101, 52],    // #166534
-    greenBg:  [240,253,244],    // #f0fdf4
-    red:      [153,  27,  27],
-    redBg:    [254, 226, 226],
+    navy:     [18,  51,  89],
+    navyMid:  [30,  58,  95],
+    gold:     [212, 160,  23],
+    goldBg:   [254, 243, 199],
+    purple:   [79,  70, 229],
+    purpleL:  [238,237,254],
+    amber:    [180, 100,   5],
+    amberBg:  [255, 237, 213],
+    green:    [ 22,101, 52],
+    greenBg:  [240,253,244],
     white:    [255, 255, 255],
     light:    [248, 250, 252],
-    border:   [226, 232, 240],
+    border:   [203, 213, 225],
     dark:     [ 15,  23,  42],
     mid:      [ 71,  85, 105],
     muted:    [148, 163, 184],
 };
 
+/* ── Turkce karakter donusumu (Helvetica uyumlu) ── */
+function tr(text) {
+    return String(text ?? '')
+        .replace(/\u011f/g, 'g').replace(/\u011e/g, 'G') // ğ Ğ
+        .replace(/\u015f/g, 's').replace(/\u015e/g, 'S') // ş Ş
+        .replace(/\u0131/g, 'i').replace(/\u0130/g, 'I') // ı İ
+        .replace(/\u00f6/g, 'o').replace(/\u00d6/g, 'O') // ö Ö
+        .replace(/\u00fc/g, 'u').replace(/\u00dc/g, 'U') // ü Ü
+        .replace(/\u00e7/g, 'c').replace(/\u00c7/g, 'C') // ç Ç
+        .replace(/\u00e2/g, 'a').replace(/\u00c2/g, 'A') // â Â
+        .replace(/\u00ee/g, 'i').replace(/\u00ce/g, 'I'); // î Î
+}
+
 const ALET_LABELS = {
     atlama:'Atlama', barfiks:'Barfiks', halka:'Halka',
     kulplu:'Kulplu Beygir', mantar:'Mantar Beygir',
-    paralel:'Paralel', yer:'Yer', denge:'Denge Aleti',
+    paralel:'Paralel', yer:'Yer', denge:'Denge',
     asimetrik:'Asimetrik Par.', serbest:'Serbest',
 };
-const aletL = (k) => ALET_LABELS[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : '');
-const catL  = (k) => k ? k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
+const aletL = (k) => tr(ALET_LABELS[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : ''));
+const catL  = (k) => tr(k ? k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '');
 
-/* ── Logo yükle ── */
+function parseMin(t) {
+    const [h, m] = (t || '00:00').split(':').map(Number);
+    return h * 60 + m;
+}
+
+/* ── Logo yukle ── */
 async function loadLogo() {
     try {
         const resp = await fetch('/logo.png');
@@ -56,12 +72,12 @@ async function loadLogo() {
     } catch { return null; }
 }
 
-/* ── Yardımcı çizim fonksiyonları ── */
+/* ── Cizim yardimcilari ── */
 function fillRect(doc, x, y, w, h, color) {
     doc.setFillColor(...color);
     doc.rect(x, y, w, h, 'F');
 }
-function strokeRect(doc, x, y, w, h, color, lw = 0.3) {
+function strokeRect(doc, x, y, w, h, color, lw = 0.25) {
     doc.setDrawColor(...color);
     doc.setLineWidth(lw);
     doc.rect(x, y, w, h, 'S');
@@ -73,44 +89,72 @@ function txt(doc, text, x, y, opts = {}) {
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     const options = { align };
     if (maxWidth) options.maxWidth = maxWidth;
-    doc.text(String(text), x, y, options);
+    doc.text(tr(String(text)), x, y, options);
 }
 
-/* ── Ana export fonksiyonu ── */
+/* ── autoTable tablo stili ── */
+function tableStyles() {
+    return {
+        styles: {
+            font: 'helvetica',
+            fontSize: 7.5,
+            cellPadding: [2, 3, 2, 3],
+            lineColor: C.border,
+            lineWidth: 0.2,
+            overflow: 'linebreak',
+        },
+        theme: 'grid',
+        tableLineColor: C.border,
+        tableLineWidth: 0.2,
+    };
+}
+
+/* autoTable icin Turkce donusumu uygula */
+function sanitizeTableData(data) {
+    if (Array.isArray(data)) return data.map(sanitizeTableData);
+    if (data && typeof data === 'object') {
+        const out = { ...data };
+        if (typeof out.content === 'string') out.content = tr(out.content);
+        return out;
+    }
+    if (typeof data === 'string') return tr(data);
+    return data;
+}
+
+/* ═══════════════════════════════════════════════════
+   ANA EXPORT
+═══════════════════════════════════════════════════ */
 export async function generateCompetitionPDF({
     selectedComp, compCatKeys, dateRange, sessionsByDate,
     gruplar, athleteCounts,
 }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
     const logoData = await loadLogo();
     let pageNum = 1;
     let y = MT;
 
-    /* ─── Footer ─── */
+    /* ── Footer ── */
     const drawFooter = () => {
-        fillRect(doc, 0, H - 9, W, 9, C.navy);
-        // Gradient line above footer
-        fillRect(doc, 0, H - 9, W * 0.35, 1.5, C.gold);
-        fillRect(doc, W * 0.35, H - 9, W * 0.35, 1.5, C.purple);
-        fillRect(doc, W * 0.70, H - 9, W * 0.30, 1.5, C.navyLight);
-
-        txt(doc, 'Turkiye Cimnastik Federasyonu | Yarisma Yonetim Sistemi', ML, H - 4.5, { size: 6.5, color: C.muted });
-        txt(doc, `Sayfa ${pageNum}`, W - MR, H - 4.5, { size: 6.5, color: C.muted, align: 'right' });
-        txt(doc, new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }), W / 2, H - 4.5, { size: 6.5, color: C.muted, align: 'center' });
+        fillRect(doc, 0, H - 8, W, 8, C.navy);
+        fillRect(doc, 0, H - 8, W * 0.4, 1, C.gold);
+        fillRect(doc, W * 0.4, H - 8, W * 0.3, 1, C.purple);
+        fillRect(doc, W * 0.7, H - 8, W * 0.3, 1, C.navyMid);
+        txt(doc, 'Turkiye Cimnastik Federasyonu', ML, H - 3.5, { size: 6, color: C.muted });
+        txt(doc, `Sayfa ${pageNum}`, W / 2, H - 3.5, { size: 6, color: C.muted, align: 'center' });
+        txt(doc, new Date().toLocaleDateString('tr-TR'), W - MR, H - 3.5, { size: 6, color: C.muted, align: 'right' });
     };
 
-    /* ─── Mini sayfa başlığı (2. sayfa ve sonrası) ─── */
+    /* ── Mini baslik (2+ sayfa) ── */
     const drawMiniHeader = () => {
         fillRect(doc, 0, 0, W, 10, C.navy);
-        fillRect(doc, 0, 10, W, 0.8, C.gold);
+        fillRect(doc, 0, 10, W, 0.7, C.gold);
         if (logoData) doc.addImage(logoData, 'PNG', ML, 1.5, 6.5, 6.5);
-        txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 8.5, 5, { size: 6.5, color: C.muted, bold: false });
-        txt(doc, (selectedComp?.isim || '').toUpperCase(), W - MR, 5, { size: 7, color: C.white, bold: true, align: 'right' });
+        txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 8.5, 4.8, { size: 6, color: C.muted });
+        txt(doc, tr((selectedComp?.isim || '').toUpperCase()), W - MR, 6.5, { size: 7.5, color: C.white, bold: true, align: 'right' });
         y = 14;
     };
 
-    /* ─── Sayfa kırılma kontrolü ─── */
+    /* ── Sayfa kirma ── */
     const ensureSpace = (needed) => {
         if (y + needed > H - MB - 10) {
             drawFooter();
@@ -120,92 +164,89 @@ export async function generateCompetitionPDF({
         }
     };
 
-    /* ═══════════════════════════════
-       KAPAK BAŞLIĞI (1. sayfa)
-    ═══════════════════════════════ */
-    // Navy header band
-    fillRect(doc, 0, 0, W, 42, C.navy);
-    // Decorative gold stripe left
-    fillRect(doc, 0, 0, 4, 42, C.gold);
-    // Bottom accent line
-    fillRect(doc, 0, 42, W, 1.2, C.gold);
-    fillRect(doc, 0, 43.2, W, 0.6, C.purple);
+    /* ══════════════════════════════
+       KAPAK (1. SAYFA)
+    ══════════════════════════════ */
+    // Ust bant
+    fillRect(doc, 0, 0, W, 46, C.navy);
+    fillRect(doc, 0, 0, 5, 46, C.gold);
+    fillRect(doc, 0, 46, W, 1.5, C.gold);
+    fillRect(doc, 0, 47.5, W, 0.5, C.purple);
 
     // Logo
     if (logoData) {
-        doc.addImage(logoData, 'PNG', ML + 2, 5, 28, 28);
+        doc.addImage(logoData, 'PNG', ML + 1, 5, 30, 30);
     } else {
-        // Fallback circle placeholder
         doc.setDrawColor(...C.gold);
         doc.setLineWidth(1);
-        doc.circle(ML + 16, 19, 12, 'S');
-        txt(doc, 'TCF', ML + 16, 21.5, { size: 9, color: C.gold, bold: true, align: 'center' });
+        doc.circle(ML + 16, 20, 12, 'S');
+        txt(doc, 'TCF', ML + 16, 22, { size: 10, color: C.gold, bold: true, align: 'center' });
     }
 
-    // TCF header text
-    txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 36, 14, { size: 10, color: C.gold, bold: true });
-    txt(doc, 'Yarisma Yonetim Sistemi — Resmi Program', ML + 36, 20, { size: 7.5, color: C.muted });
+    txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 38, 14, { size: 10, color: C.gold, bold: true });
+    txt(doc, 'Yarisma Yonetim Sistemi | Resmi Program', ML + 38, 20, { size: 7, color: C.muted });
+    const compName = tr((selectedComp?.isim || 'YARISMA PROGRAMI').toUpperCase());
+    // uzun isimler icin satir sar
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(...C.white);
+    const lines = doc.splitTextToSize(compName, CW - 44);
+    doc.text(lines, ML + 38, 30);
 
-    // Competition name
-    const compName = (selectedComp?.isim || 'YARISMA PROGRAMI').toUpperCase();
-    txt(doc, compName, ML + 36, 32, { size: 16, color: C.white, bold: true, maxWidth: CW - 40 });
+    y = 54;
 
-    y = 50;
-
-    // Metadata info boxes
-    const metaItems = [
-        { icon: 'Il:', value: selectedComp?.il || '—' },
-        {
-            icon: 'Tarih:',
-            value: selectedComp?.baslangicTarihi && selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi
-                ? `${selectedComp.baslangicTarihi} - ${selectedComp.bitisTarihi}`
-                : selectedComp?.baslangicTarihi || '—'
-        },
-        { icon: 'Kategoriler:', value: `${compCatKeys.length} kategori` },
-        { icon: 'Toplam Sporcu:', value: `${Object.values(athleteCounts).reduce((a, b) => a + b, 0)} sporcu` },
+    // Meta kutular
+    const totalAthletes = Object.values(athleteCounts).reduce((a, b) => a + b, 0);
+    const tarihStr = selectedComp?.baslangicTarihi && selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi
+        ? `${selectedComp.baslangicTarihi} - ${selectedComp.bitisTarihi}`
+        : selectedComp?.baslangicTarihi || '—';
+    const meta = [
+        { label: 'IL', val: tr(selectedComp?.il || '—') },
+        { label: 'TARIH', val: tarihStr },
+        { label: 'KATEGORI', val: `${compCatKeys.length} kategori` },
+        { label: 'SPORCU', val: `${totalAthletes} sporcu` },
     ];
-
-    const boxW = CW / metaItems.length - 2;
-    metaItems.forEach((item, i) => {
-        const bx = ML + i * (boxW + 2.67);
-        fillRect(doc, bx, y, boxW, 14, C.light);
-        strokeRect(doc, bx, y, boxW, 14, C.border, 0.2);
-        fillRect(doc, bx, y, boxW, 3, C.navy);
-        txt(doc, item.icon, bx + 2, y + 2.2, { size: 6, color: C.gold, bold: true });
-        txt(doc, item.value, bx + 2, y + 9.5, { size: 8, color: C.dark, bold: true, maxWidth: boxW - 4 });
+    const bw = (CW - 3 * 2) / 4;
+    meta.forEach((m, i) => {
+        const bx = ML + i * (bw + 2);
+        fillRect(doc, bx, y, bw, 16, C.light);
+        strokeRect(doc, bx, y, bw, 16, C.border);
+        fillRect(doc, bx, y, bw, 4, C.navyMid);
+        txt(doc, m.label, bx + 2, y + 3, { size: 5.5, color: C.gold, bold: true });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...C.dark);
+        const vLines = doc.splitTextToSize(m.val, bw - 4);
+        doc.text(vLines, bx + 2, y + 9.5);
     });
-
     y += 20;
 
-    // Separator
-    fillRect(doc, ML, y, CW, 0.4, C.border);
+    fillRect(doc, ML, y, CW, 0.3, C.border);
     y += 5;
 
-    /* ═══════════════════════════════
-       GÜN BAZLI PROGRAM
-    ═══════════════════════════════ */
+    /* ══════════════════════════════
+       GUN BAZLI PROGRAM
+    ══════════════════════════════ */
     for (const dateStr of dateRange) {
         const daySessions = sessionsByDate[dateStr] || [];
         if (!daySessions.length) continue;
 
-        ensureSpace(18);
+        ensureSpace(20);
 
-        // Day header
+        // Gun baslik
         fillRect(doc, ML, y, CW, 9, C.navy);
-        fillRect(doc, ML, y, 4, 9, C.gold); // left gold stripe
-
-        const dayLabel = new Date(dateStr + 'T12:00:00').toLocaleDateString('tr-TR', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-        }).toUpperCase();
-        txt(doc, dayLabel, ML + 7, y + 6, { size: 8.5, color: C.white, bold: true });
-
-        // Day session count badge
-        const dayCountTxt = `${daySessions.length} oturum`;
-        txt(doc, dayCountTxt, W - MR, y + 6, { size: 7, color: C.gold, align: 'right' });
-
+        fillRect(doc, ML, y, 5, 9, C.gold);
+        const dayLabel = (() => {
+            const d = new Date(dateStr + 'T12:00:00');
+            const days = ['Pazar','Pazartesi','Sali','Carsamba','Persembe','Cuma','Cumartesi'];
+            const months = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'];
+            return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        })();
+        txt(doc, dayLabel.toUpperCase(), ML + 8, y + 6, { size: 8.5, color: C.white, bold: true });
+        txt(doc, `${daySessions.length} oturum`, W - MR, y + 6, { size: 7, color: C.gold, align: 'right' });
         y += 12;
 
-        // Group by category
+        // Kategoriye gore grupla
         const catMap = {};
         daySessions.forEach(sess => {
             const ck = sess.kategori || '';
@@ -214,34 +255,54 @@ export async function generateCompetitionPDF({
         });
 
         for (const [catKey, catSessions] of Object.entries(catMap)) {
-            if (!catKey) continue;
-            ensureSpace(16);
-
-            // Category header
-            fillRect(doc, ML, y, CW, 7, C.purple);
-            fillRect(doc, ML, y, 3, 7, [139, 92, 246]); // lighter purple stripe
-            txt(doc, catL(catKey).toUpperCase(), ML + 6, y + 5, { size: 8, color: C.white, bold: true });
-
-            const catAthleteCount = athleteCounts[catKey] || 0;
-            txt(doc, `${catAthleteCount} sporcu`, W - MR, y + 5, { size: 7, color: [200, 180, 255], align: 'right' });
-
-            y += 9;
-
-            // Isınma info
-            const isinmaSessions = catSessions.filter(s => s.tip === 'isinma');
-            if (isinmaSessions.length) {
-                isinmaSessions.forEach(s => {
-                    ensureSpace(7);
-                    fillRect(doc, ML + 2, y, CW - 2, 5.5, C.goldLight);
-                    strokeRect(doc, ML + 2, y, CW - 2, 5.5, C.gold, 0.3);
-                    txt(doc, `ISINMA${s.dalgaNo ? ' — ' + s.dalgaNo + '. Dalga' : ''}: ${s.saat || ''} – ${s.bitisSaat || ''}`, ML + 5, y + 3.8, { size: 7.5, color: C.amber, bold: true });
+            if (!catKey) {
+                // Mola gibi kategorisiz oturumlar - basit satirla gec
+                catSessions.filter(s => s.tip === 'mola' && !s.rotasyonNo).forEach(s => {
+                    ensureSpace(8);
+                    fillRect(doc, ML, y, CW, 6, C.goldBg);
+                    strokeRect(doc, ML, y, CW, 6, C.gold, 0.25);
+                    txt(doc, `MOLA: ${tr(s.molaAdi || 'Mola')}`, ML + 4, y + 4, { size: 7.5, color: C.amber, bold: true });
+                    txt(doc, `${s.saat || ''} – ${s.bitisSaat || ''}`, W - MR, y + 4, { size: 7.5, color: C.amber, align: 'right' });
                     y += 7;
                 });
+                continue;
             }
 
-            // Group by wave
+            ensureSpace(16);
+
+            // Kategori baslik
+            fillRect(doc, ML, y, CW, 7.5, C.purple);
+            fillRect(doc, ML, y, 4, 7.5, [100, 90, 240]);
+            txt(doc, catL(catKey).toUpperCase(), ML + 7, y + 5.2, { size: 8, color: C.white, bold: true });
+            const catAthCnt = athleteCounts[catKey] || 0;
+            txt(doc, `${catAthCnt} sporcu`, W - MR, y + 5.2, { size: 7, color: [210,200,255], align: 'right' });
+            y += 10;
+
+            // Sabit molalar (kategorisiz)
+            const sabMolalar = catSessions.filter(s => s.tip === 'mola' && (!s.rotasyonNo || s.rotasyonNo === 0) && !s.dalgaNo);
+            sabMolalar.forEach(s => {
+                ensureSpace(7);
+                fillRect(doc, ML + 2, y, CW - 2, 5.5, C.goldBg);
+                strokeRect(doc, ML + 2, y, CW - 2, 5.5, C.gold, 0.25);
+                txt(doc, `MOLA: ${tr(s.molaAdi || s.aciklama || 'Mola')}  |  ${s.saat || ''} – ${s.bitisSaat || ''}`, ML + 5, y + 3.8, { size: 7, color: C.amber, bold: false });
+                y += 6.5;
+            });
+
+            // Isinma oturumlari
+            const isinmaList = catSessions.filter(s => s.tip === 'isinma');
+            isinmaList.forEach(s => {
+                ensureSpace(7);
+                fillRect(doc, ML + 2, y, CW - 2, 5.5, C.goldBg);
+                strokeRect(doc, ML + 2, y, CW - 2, 5.5, C.gold, 0.3);
+                const dLabel = s.dalgaNo ? `${s.dalgaNo}. Dalga ` : '';
+                txt(doc, `ISINMA  —  ${dLabel}${s.saat || ''} – ${s.bitisSaat || ''}`, ML + 5, y + 3.8, { size: 7.5, color: C.amber, bold: true });
+                y += 7;
+            });
+
+            // Dalga bazli rotasyonlar
+            const rotSessions = catSessions.filter(s => s.tip === 'rotasyon');
             const waveMap = {};
-            catSessions.filter(s => s.tip === 'rotasyon').forEach(s => {
+            rotSessions.forEach(s => {
                 const wk = s.dalgaNo || 1;
                 if (!waveMap[wk]) waveMap[wk] = {};
                 const rk = s.rotasyonNo || 1;
@@ -249,79 +310,85 @@ export async function generateCompetitionPDF({
                 waveMap[wk][rk].push(s);
             });
 
-            const molaSessions = catSessions.filter(s => s.tip === 'mola' && s.rotasyonNo > 0);
+            const rotMolalar = catSessions.filter(s => s.tip === 'mola' && s.rotasyonNo > 0);
 
             for (const [dalgaNo, rotMap] of Object.entries(waveMap).sort(([a],[b]) => +a - +b)) {
-                ensureSpace(22);
+                ensureSpace(26);
 
-                // Wave header
-                fillRect(doc, ML + 2, y, CW - 2, 6.5, C.amberBg);
-                strokeRect(doc, ML + 2, y, CW - 2, 6.5, [251, 191, 36], 0.4);
-                fillRect(doc, ML + 2, y, 3, 6.5, [245, 158, 11]);
+                // Dalga baslik
+                fillRect(doc, ML + 2, y, CW - 2, 7, C.amberBg);
+                strokeRect(doc, ML + 2, y, CW - 2, 7, [251,191,36], 0.35);
+                fillRect(doc, ML + 2, y, 3.5, 7, [245,158,11]);
 
-                const waveGroupList = [...new Set(
+                const waveGroups = [...new Set(
                     Object.values(rotMap).flat().map(s => `Grup ${s.grupNo}${s.bolumAdi || ''}`)
                 )].join(', ');
-                const firstSess = Object.values(rotMap)[0]?.[0];
-                const lastRotSess = Object.values(rotMap).slice(-1)[0];
-                const lastSess = lastRotSess?.[lastRotSess.length - 1];
+                const allSessFlat = Object.values(rotMap).flat().sort((a,b) => (a.saat||'').localeCompare(b.saat||''));
+                const firstSess = allSessFlat[0];
+                const lastSess = allSessFlat[allSessFlat.length - 1];
 
-                txt(doc, `${dalgaNo}. DALGA`, ML + 7, y + 4.5, { size: 8, color: C.amber, bold: true });
-                txt(doc, waveGroupList, ML + 30, y + 4.5, { size: 7, color: C.mid });
+                txt(doc, `${dalgaNo}. DALGA`, ML + 8, y + 4.8, { size: 8, color: C.amber, bold: true });
+                txt(doc, tr(waveGroups), ML + 28, y + 4.8, { size: 7, color: C.mid });
                 if (firstSess && lastSess) {
-                    txt(doc, `${firstSess.saat} – ${lastSess.bitisSaat}`, W - MR, y + 4.5, { size: 7, color: C.amber, align: 'right' });
+                    txt(doc, `${firstSess.saat} – ${lastSess.bitisSaat}`, W - MR, y + 4.8, { size: 7, color: C.amber, align: 'right' });
                 }
+                y += 9;
 
-                y += 8.5;
+                /* Rotasyon matrisi tablosu */
+                const rotNums = Object.keys(rotMap).map(Number).sort((a,b) => a-b);
+                const aletlerArr = [...new Set(Object.values(rotMap).flat().map(s => s.alet).filter(Boolean))];
 
-                /* Rotasyon özet tablosu (alet × rotasyon) */
-                ensureSpace(25);
-                const rotNums = Object.keys(rotMap).map(Number).sort((a, b) => a - b);
-                const aletlerSet = new Set();
-                Object.values(rotMap).flat().forEach(s => { if (s.alet) aletlerSet.add(s.alet); });
-                const aletler = [...aletlerSet];
+                if (aletlerArr.length && rotNums.length) {
+                    ensureSpace(18 + aletlerArr.length * 7);
 
-                if (aletler.length && rotNums.length) {
-                    const head = [[
-                        { content: 'ALET', styles: { halign: 'left', fontStyle: 'bold', fillColor: C.navyMid, textColor: [255,255,255] } },
+                    const headRow = [
+                        { content: 'ALET', styles: { halign: 'left', fontStyle: 'bold', fillColor: C.navyMid, textColor: [255,255,255], cellWidth: 35 } },
                         ...rotNums.map(r => {
-                            const s0 = rotMap[r]?.[0];
-                            const molaSonrasi = molaSessions.find(m => m.rotasyonNo === r && (m.dalgaNo || 1) == dalgaNo);
-                            return {
-                                content: `ROT. ${r}\n${s0?.saat || ''} – ${s0?.bitisSaat || ''}${molaSonrasi ? `\n(+${Math.round(parseTimeToMinLocal(molaSonrasi.bitisSaat) - parseTimeToMinLocal(molaSonrasi.saat))} dk mola)` : ''}`,
-                                styles: { halign: 'center', fontStyle: 'bold', fillColor: C.purple, textColor: [255,255,255] }
-                            };
+                            const s0 = (rotMap[r] || [])[0];
+                            const mola = rotMolalar.find(m => m.rotasyonNo === r && (m.dalgaNo||1) == dalgaNo);
+                            let txt2 = `ROT. ${r}`;
+                            if (s0?.saat) txt2 += `  ${s0.saat}-${s0.bitisSaat}`;
+                            if (mola) {
+                                const molaDk = Math.round(parseMin(mola.bitisSaat) - parseMin(mola.saat));
+                                txt2 += `  (+${molaDk}dk mola)`;
+                            }
+                            return { content: txt2, styles: { halign: 'center', fontStyle: 'bold', fillColor: C.purple, textColor: [255,255,255] } };
                         }),
-                    ]];
+                    ];
 
-                    const body = aletler.map(alet => [
+                    const bodyRows = aletlerArr.map(alet => [
                         { content: aletL(alet), styles: { fontStyle: 'bold', fillColor: C.light, textColor: C.dark } },
                         ...rotNums.map(r => {
                             const groups = (rotMap[r] || []).filter(s => s.alet === alet);
+                            const label = groups.map(s => {
+                                const pLabel = s.paralel ? '(P)' : '';
+                                return `G${s.grupNo}${s.bolumAdi || ''}${pLabel}`;
+                            }).join(' + ') || '-';
                             return {
-                                content: groups.map(s => `G${s.grupNo}${s.bolumAdi || ''}`).join('\n') || '—',
-                                styles: { halign: 'center', textColor: groups.length ? C.purple : C.muted, fontStyle: groups.length ? 'bold' : 'normal' }
+                                content: label,
+                                styles: {
+                                    halign: 'center',
+                                    textColor: groups.length ? C.purple : C.muted,
+                                    fontStyle: groups.length ? 'bold' : 'normal',
+                                },
                             };
                         }),
                     ]);
 
                     autoTable(doc, {
                         startY: y,
-                        head,
-                        body,
-                        margin: { left: ML + 2, right: MR },
-                        styles: { fontSize: 7.5, cellPadding: [2, 3, 2, 3], lineColor: C.border, lineWidth: 0.2 },
-                        theme: 'grid',
-                        tableLineColor: C.border,
-                        tableLineWidth: 0.2,
+                        head: [sanitizeTableData(headRow)],
+                        body: sanitizeTableData(bodyRows),
+                        margin: { left: ML + 2, right: MR + 2 },
+                        ...tableStyles(),
                     });
-                    y = (doc.lastAutoTable?.finalY ?? y + 20) + 3;
+                    y = (doc.lastAutoTable?.finalY ?? y + 15) + 4;
                 }
 
-                /* Sporcu listeleri (her grup için) */
+                /* Sporcu listeleri */
                 const groupKeys = [...new Set(
                     Object.values(rotMap).flat().map(s => `${s.grupNo}${s.bolumAdi || ''}`)
-                )].sort();
+                )].sort((a,b) => parseInt(a)-parseInt(b));
 
                 for (const groupKey of groupKeys) {
                     const gi = parseInt(groupKey) - 1;
@@ -336,89 +403,75 @@ export async function generateCompetitionPDF({
                     }
                     if (!athletes.length) continue;
 
-                    // Starting apparatus
-                    const startSess = Object.values(rotMap)[0]?.find(s => `${s.grupNo}${s.bolumAdi || ''}` === groupKey);
+                    const startSess = Object.values(rotMap)[0]?.find(s => `${s.grupNo}${s.bolumAdi||''}` === groupKey);
+                    const neededH = Math.min(athletes.length, 8) * 5.5 + 16;
+                    ensureSpace(neededH);
 
-                    ensureSpace(athletes.length * 5.5 + 14);
+                    // Grup alt baslik
+                    fillRect(doc, ML + 4, y, CW - 4, 6.5, C.purpleL);
+                    strokeRect(doc, ML + 4, y, CW - 4, 6.5, C.purple, 0.25);
+                    fillRect(doc, ML + 4, y, 3, 6.5, C.purple);
+                    const startLabel = startSess ? `  |  ${aletL(startSess.alet)} ile baslar` : '';
+                    txt(doc, `GRUP ${groupKey}${startLabel}`, ML + 9, y + 4.5, { size: 7.5, color: C.purple, bold: true });
+                    txt(doc, `${athletes.length} sporcu`, W - MR, y + 4.5, { size: 7, color: C.mid, align: 'right' });
+                    y += 8;
 
-                    // Group sub-header
-                    fillRect(doc, ML + 4, y, CW - 4, 6, C.purpleL);
-                    strokeRect(doc, ML + 4, y, CW - 4, 6, C.purple, 0.25);
-                    fillRect(doc, ML + 4, y, 2.5, 6, C.purple);
-                    txt(doc, `GRUP ${groupKey}${startSess ? '  —  ' + aletL(startSess.alet) + ' ile Baslar' : ''}`, ML + 9, y + 4.2, { size: 7.5, color: C.purple, bold: true });
-                    txt(doc, `${athletes.length} sporcu`, W - MR, y + 4.2, { size: 7, color: C.mid, align: 'right' });
-                    y += 7;
+                    // Sporcu tablosu
+                    const athHead = [sanitizeTableData([
+                        { content: '#', styles: { halign: 'center', fillColor: C.purple, textColor: [255,255,255], cellWidth: 9 } },
+                        { content: 'AD SOYAD', styles: { fillColor: C.purple, textColor: [255,255,255], cellWidth: 58 } },
+                        { content: 'KULUP / OKUL', styles: { fillColor: C.purple, textColor: [255,255,255], cellWidth: 65 } },
+                        { content: 'TIP', styles: { halign: 'center', fillColor: C.purple, textColor: [255,255,255], cellWidth: 18 } },
+                    ])];
 
-                    // Athlete table
-                    const athHead = [[
-                        { content: '#', styles: { halign: 'center', fillColor: C.purple, textColor: [255,255,255] } },
-                        { content: 'AD SOYAD', styles: { fillColor: C.purple, textColor: [255,255,255] } },
-                        { content: 'KULUP / OKUL', styles: { fillColor: C.purple, textColor: [255,255,255] } },
-                        { content: 'TIP', styles: { halign: 'center', fillColor: C.purple, textColor: [255,255,255] } },
-                    ]];
-
-                    const athBody = athletes.map((ath, ai) => {
+                    const athBody = sanitizeTableData(athletes.map((ath, ai) => {
                         const isTakim = (ath.yarismaTuru || 'ferdi').toLowerCase().includes('tak');
                         return [
                             { content: String(ath.sirasi || ai + 1), styles: { halign: 'center', textColor: C.mid } },
                             { content: `${ath.ad || ''} ${ath.soyad || ''}`.trim(), styles: { fontStyle: 'bold', textColor: C.dark } },
-                            { content: ath.kulup || ath.okul || '—', styles: { textColor: C.mid } },
+                            { content: ath.kulup || ath.okul || '-', styles: { textColor: C.mid } },
                             {
                                 content: isTakim ? 'TAKIM' : 'FERDI',
                                 styles: {
                                     halign: 'center', fontStyle: 'bold',
                                     textColor: isTakim ? C.green : C.purple,
                                     fillColor: isTakim ? C.greenBg : C.purpleL,
-                                }
+                                },
                             },
                         ];
-                    });
+                    }));
 
                     autoTable(doc, {
                         startY: y,
                         head: athHead,
                         body: athBody,
-                        margin: { left: ML + 4, right: MR },
+                        margin: { left: ML + 4, right: MR + 2 },
+                        ...tableStyles(),
                         styles: {
-                            fontSize: 7, cellPadding: [1.8, 3, 1.8, 3],
-                            lineColor: C.border, lineWidth: 0.15,
-                        },
-                        columnStyles: {
-                            0: { cellWidth: 9 },
-                            1: { cellWidth: 54 },
-                            2: { cellWidth: 65 },
-                            3: { cellWidth: 20 },
+                            ...tableStyles().styles,
+                            fontSize: 7,
+                            cellPadding: [1.8, 3, 1.8, 3],
                         },
                         alternateRowStyles: { fillColor: C.light },
-                        theme: 'grid',
-                        tableLineColor: C.border,
-                        tableLineWidth: 0.15,
                     });
-                    y = (doc.lastAutoTable?.finalY ?? y + 20) + 3;
+                    y = (doc.lastAutoTable?.finalY ?? y + 15) + 3;
                 }
 
                 y += 3;
             }
-            y += 5;
+
+            y += 4;
         }
 
-        // Day separator
-        fillRect(doc, ML, y, CW, 0.4, C.border);
+        fillRect(doc, ML, y, CW, 0.3, C.border);
         y += 6;
     }
 
     drawFooter();
 
-    // Save
-    const safeName = (selectedComp?.isim || 'Yarisma')
-        .replace(/[^a-zA-Z0-9çğışöüÇĞİŞÖÜ\s]/g, '')
-        .replace(/\s+/g, '_');
-    const dateStr = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
-    doc.save(`TCF_${safeName}_Program_${dateStr}.pdf`);
-}
-
-/* Yardımcı: lokal saat → dakika (util dosyasında erişilebilir) */
-function parseTimeToMinLocal(t) {
-    const [h, m] = (t || '00:00').split(':').map(Number);
-    return h * 60 + m;
+    // Dosya kaydet
+    const safeName = tr(selectedComp?.isim || 'Yarisma').replace(/[^a-zA-Z0-9\s_-]/g, '').replace(/\s+/g, '_');
+    const now = new Date();
+    const dateStamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    doc.save(`TCF_${safeName}_Program_${dateStamp}.pdf`);
 }
