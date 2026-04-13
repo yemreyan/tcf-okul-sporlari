@@ -470,6 +470,24 @@ export default function CompetitionSchedulePage() {
         savePlanAyar(updated);
     }, [planAyarlari, savePlanAyar]);
 
+    const handleReorderKategori = useCallback((tarih, fromIdx, toIdx) => {
+        const dayKats = [...(planAyarlari.gunAyarlari?.[tarih]?.kategoriSirasi ||
+            compCatKeys.filter(ck => (planAyarlari.kategoriGunAtamalari?.[ck] ?? 0) === dateRange.indexOf(tarih)))];
+        if (toIdx < 0 || toIdx >= dayKats.length) return;
+        const reordered = [...dayKats];
+        const [moved] = reordered.splice(fromIdx, 1);
+        reordered.splice(toIdx, 0, moved);
+        const updated = {
+            ...planAyarlari,
+            gunAyarlari: {
+                ...(planAyarlari.gunAyarlari || {}),
+                [tarih]: { ...(planAyarlari.gunAyarlari?.[tarih] || {}), kategoriSirasi: reordered }
+            }
+        };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, compCatKeys, dateRange, savePlanAyar]);
+
     const handleSetGunSayisi = useCallback(async (days) => {
         if (!selectedCompId || !selectedComp?.baslangicTarihi) return;
         const start = new Date(selectedComp.baslangicTarihi);
@@ -657,7 +675,12 @@ export default function CompetitionSchedulePage() {
             for (const tarih of dateRange) {
                 const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
                 let curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
-                const aktifKats = dayCategories[tarih] || [];
+                // Kullanıcı sırası varsa onu kullan, yoksa varsayılan sıra
+                const rawKats = dayCategories[tarih] || [];
+                const sirali = gunAyar.kategoriSirasi;
+                const aktifKats = sirali && sirali.length > 0
+                    ? [...sirali.filter(k => rawKats.includes(k)), ...rawKats.filter(k => !sirali.includes(k))]
+                    : rawKats;
                 const molaEklendi = new Set();
 
                 // Sabit molayı programasekle ve zamanı öne al
@@ -1225,6 +1248,47 @@ export default function CompetitionSchedulePage() {
                                                                     onChange={e => updateGunAyar(tarih, 'baslamaSaati', e.target.value)} />
                                                             </div>
                                                         </div>
+                                                        {(() => {
+                                                            const rawKats = compCatKeys.filter(ck => (planAyarlari.kategoriGunAtamalari?.[ck] ?? 0) === di);
+                                                            const sirali = planAyarlari.gunAyarlari?.[tarih]?.kategoriSirasi;
+                                                            const orderedKats = sirali && sirali.length > 0
+                                                                ? [...sirali.filter(k => rawKats.includes(k)), ...rawKats.filter(k => !sirali.includes(k))]
+                                                                : rawKats;
+                                                            if (orderedKats.length < 2) return null;
+                                                            return (
+                                                                <div className="gun-kat-sira">
+                                                                    <label className="gun-kat-sira-label">
+                                                                        <i className="material-icons-round">swap_vert</i> Kategori Sırası
+                                                                    </label>
+                                                                    <div className="gun-kat-list">
+                                                                        {orderedKats.map((ck, idx) => (
+                                                                            <div key={ck} className="gun-kat-row">
+                                                                                <span className="gun-kat-idx">{idx + 1}.</span>
+                                                                                <span className="gun-kat-name">{getCategoryLabel(ck)}</span>
+                                                                                <div className="gun-kat-btns">
+                                                                                    <button
+                                                                                        className="btn-kat-order"
+                                                                                        disabled={idx === 0}
+                                                                                        onClick={() => handleReorderKategori(tarih, idx, idx - 1)}
+                                                                                        title="Yukarı taşı"
+                                                                                    >
+                                                                                        <i className="material-icons-round">arrow_upward</i>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn-kat-order"
+                                                                                        disabled={idx === orderedKats.length - 1}
+                                                                                        onClick={() => handleReorderKategori(tarih, idx, idx + 1)}
+                                                                                        title="Aşağı taşı"
+                                                                                    >
+                                                                                        <i className="material-icons-round">arrow_downward</i>
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 );
                                             })}

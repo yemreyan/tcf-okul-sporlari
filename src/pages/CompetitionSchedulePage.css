@@ -788,6 +788,20 @@
 .gun-tarih { font-size:13px; color:#475569; font-weight:500; }
 .gun-ayar-fields { display:flex; flex-direction:column; gap:10px; }
 
+/* ── Kategori Sırası (Günlük Ayarlar) ── */
+.gun-kat-sira { margin-top:12px; padding-top:12px; border-top:1px dashed #e2e8f0; }
+.gun-kat-sira-label { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px; }
+.gun-kat-sira-label .material-icons-round { font-size:15px; color:#6366f1; }
+.gun-kat-list { display:flex; flex-direction:column; gap:6px; }
+.gun-kat-row { display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:7px 10px; }
+.gun-kat-idx { font-size:12px; font-weight:700; color:#94a3b8; min-width:18px; }
+.gun-kat-name { flex:1; font-size:13px; font-weight:500; color:#1e293b; }
+.gun-kat-btns { display:flex; gap:4px; }
+.btn-kat-order { background:none; border:1px solid #e2e8f0; border-radius:6px; padding:3px 5px; cursor:pointer; color:#6366f1; display:flex; align-items:center; transition:background .15s,border-color .15s; }
+.btn-kat-order:hover:not(:disabled) { background:#eef2ff; border-color:#6366f1; }
+.btn-kat-order:disabled { color:#cbd5e1; border-color:#f1f5f9; cursor:default; }
+.btn-kat-order .material-icons-round { font-size:15px; }
+
 /* ── Rotasyon Planı ── */
 .rot-cat-section { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:20px; }
 .rot-cat-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }

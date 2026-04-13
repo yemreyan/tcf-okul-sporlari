@@ -779,6 +779,153 @@
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
 }
 
+/* ===== Gruplama Modal (Kişi Bazlı / İlçe Bazlı) ===== */
+.grouping-modal {
+    background: white;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    max-width: 560px;
+    width: 92vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: modalIn 0.25s cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.grouping-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.grouping-modal__header i {
+    font-size: 1.6rem;
+    color: #4F46E5;
+}
+
+.grouping-modal__header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0;
+}
+
+.grouping-modal__desc {
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+}
+
+.grouping-modal__table {
+    border: 1px solid #E2E8F0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.grouping-modal__thead {
+    display: grid;
+    grid-template-columns: 1fr auto auto 80px;
+    gap: 0;
+    padding: 0.6rem 0.85rem;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.grouping-modal__row {
+    display: grid;
+    grid-template-columns: 1fr auto auto 80px;
+    gap: 0;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.15s;
+}
+
+.grouping-modal__row:last-child {
+    border-bottom: none;
+}
+
+.grouping-modal__row:hover {
+    background: #F8FAFC;
+}
+
+.grouping-modal__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E293B;
+    padding-right: 0.5rem;
+}
+
+.grouping-modal__type {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.4rem;
+    margin-right: 0.75rem;
+    white-space: nowrap;
+}
+
+.grouping-modal__type--coach {
+    background: #EEF2FF;
+    color: #4F46E5;
+}
+
+.grouping-modal__type--teacher {
+    background: #F0FDF4;
+    color: #16A34A;
+}
+
+.grouping-modal__count {
+    font-size: 0.875rem;
+    color: #64748B;
+    font-weight: 600;
+    min-width: 2.5rem;
+    text-align: center;
+    margin-right: 0.75rem;
+}
+
+.grouping-modal__input {
+    width: 70px;
+    padding: 0.4rem 0.5rem;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E293B;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.grouping-modal__input:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* İlçe öncelik modal: 3 sütun */
+.grouping-modal--district .grouping-modal__thead,
+.grouping-modal--district .grouping-modal__row {
+    grid-template-columns: 72px 1fr auto;
+}
+
+.grouping-modal__input--priority {
+    width: 56px;
+    margin-right: 0;
+}
+
 /* Responsive toast */
 @media (max-width: 480px) {
     .toast-container {

@@ -28,6 +28,10 @@ export default function StartOrderPage() {
     const [excelGenerating, setExcelGenerating] = useState(false);
     const [bulkAssigning, setBulkAssigning] = useState(false);
 
+    // Modals
+    const [personGroupModal, setPersonGroupModal] = useState(null);
+    const [districtModal, setDistrictModal] = useState(null);
+
     // Toast System
     const [toasts, setToasts] = useState([]);
     const toastIdRef = useRef(0);
@@ -51,6 +55,58 @@ export default function StartOrderPage() {
                 message,
                 onConfirm: () => { setConfirmModal(null); resolve(true); },
                 onCancel: () => { setConfirmModal(null); resolve(false); }
+            });
+        });
+    }, []);
+
+    // ── Uygulama verisinden antrenör/öğretmen haritası ──────────────────────────
+    const loadCoachMapForAthletes = useCallback(async (athletes) => {
+        const appIds = [...new Set(athletes.map(a => a.appId).filter(Boolean))];
+        if (appIds.length === 0) return {};
+        const appMap = {};
+        await Promise.all(appIds.map(async (appId) => {
+            try {
+                const snap = await get(ref(db, `applications/${appId}`));
+                if (snap.exists()) {
+                    const app = snap.val();
+                    const coachesRaw = app.antrenorler || app.coaches || [];
+                    const coaches = (Array.isArray(coachesRaw) ? coachesRaw : Object.values(coachesRaw)).filter(c => c && c.name);
+                    const teachersRaw = app.ogretmenler || [];
+                    const teachers = (Array.isArray(teachersRaw) ? teachersRaw : Object.values(teachersRaw)).filter(t => t && t.name);
+                    appMap[appId] = { coaches, teachers };
+                }
+            } catch { /* ignore */ }
+        }));
+        return appMap;
+    }, []);
+
+    // Sporcu için birincil antrenör/öğretmen adını döndürür
+    const getPersonName = (ath, appMap) => {
+        if (!ath.appId || !appMap[ath.appId]) return '';
+        const { coaches, teachers } = appMap[ath.appId];
+        if (coaches && coaches.length > 0) return (coaches[0].name || '').trim();
+        if (teachers && teachers.length > 0) return (teachers[0].name || '').trim();
+        return '';
+    };
+
+    // Kişi bazlı modal için Promise döndüren yardımcı
+    const showPersonGroupModal = useCallback((trainers) => {
+        return new Promise((resolve) => {
+            setPersonGroupModal({
+                trainers: trainers.map(t => ({ ...t, groupSize: Math.min(MAX_PER_ROTATION, t.athletes.length) })),
+                onConfirm: (result) => { setPersonGroupModal(null); resolve(result); },
+                onCancel: () => { setPersonGroupModal(null); resolve(null); }
+            });
+        });
+    }, []);
+
+    // İlçe bazlı modal için Promise döndüren yardımcı
+    const showDistrictPriorityModal = useCallback((districts) => {
+        return new Promise((resolve) => {
+            setDistrictModal({
+                districts: districts.map(d => ({ ...d, priority: '' })),
+                onConfirm: (result) => { setDistrictModal(null); resolve(result); },
+                onCancel: () => { setDistrictModal(null); resolve(null); }
             });
         });
     }, []);
@@ -385,11 +441,14 @@ export default function StartOrderPage() {
             });
 
             // ── Phase 2: Ferdi grupları (antrenöre göre) ─────────────────
+            // Antrenör/öğretmen bilgisini uygulama kaydından yükle
+            const appMap = await loadCoachMapForAthletes(individuals);
+
             const coachMap = {};
             const noCoach = [];
 
             individuals.forEach(ath => {
-                const coach = (ath.antrenor || ath.ogretmen || '').trim();
+                const coach = getPersonName(ath, appMap);
                 if (coach) {
                     if (!coachMap[coach]) coachMap[coach] = [];
                     coachMap[coach].push(ath);
@@ -450,6 +509,238 @@ export default function StartOrderPage() {
         } catch (err) {
             if (import.meta.env.DEV) console.error('Antrenör gruplama hatası:', err);
             showToast('Antrenör gruplamada hata oluştu: ' + err.message, 'error');
+        }
+    };
+
+    // -- Kişi Bazlı Gruplama (antrenör/öğretmen başına grup boyutu seçimi ile) --
+    const handleGroupByPerson = async () => {
+        if (!selectedCompId || !filterCategory) {
+            showToast('Lütfen yarışma ve kategori seçin.', 'warning');
+            return;
+        }
+        try {
+            let allAthletes = [...unassigned, ...rotations.flat()];
+            if (allAthletes.length === 0) {
+                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+                const data = snap.val();
+                if (data) allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+            }
+            if (allAthletes.length === 0) { showToast('Bu kategoride sporcu bulunamadı.', 'warning'); return; }
+            if (rotations.some(r => r.length > 0)) {
+                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
+                if (!confirmed) return;
+                allAthletes = [...unassigned, ...rotations.flat()];
+            }
+
+            // Takım / ferdi ayır
+            const teamsMap = {};
+            const individuals = [];
+            allAthletes.forEach(ath => {
+                const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
+                if (type === 'takim' || type === 'takım') {
+                    const school = ath.okul || 'Bilinmeyen Takım';
+                    if (!teamsMap[school]) teamsMap[school] = [];
+                    teamsMap[school].push(ath);
+                } else {
+                    individuals.push(ath);
+                }
+            });
+
+            // Antrenör/öğretmen bilgisini uygulama kaydından yükle
+            const appMap = await loadCoachMapForAthletes(individuals);
+
+            // Antrenör/öğretmen → sporcu listesi (uygulama kaydından)
+            const trainerMap = {};
+            const noTrainer = [];
+            individuals.forEach(ath => {
+                const name = getPersonName(ath, appMap);
+                if (name) {
+                    if (!trainerMap[name]) {
+                        // Türünü belirle: antrenör mü öğretmen mi?
+                        const appData = appMap[ath.appId];
+                        const isCoach = appData && appData.coaches && appData.coaches.length > 0;
+                        trainerMap[name] = { name, type: isCoach ? 'antrenör' : 'öğretmen', athletes: [] };
+                    }
+                    trainerMap[name].athletes.push(ath);
+                } else {
+                    noTrainer.push(ath);
+                }
+            });
+
+            // Antrenörleri alfabetik sırala
+            const trainerList = Object.values(trainerMap).sort((a, b) =>
+                a.name.localeCompare(b.name, 'tr-TR')
+            );
+            // Her antrenörün sporcularını ada göre sırala
+            trainerList.forEach(t => {
+                t.athletes.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'));
+            });
+
+            // Modal'ı göster ve kullanıcının grup boyutlarını belirlemesini bekle
+            const modalResult = await showPersonGroupModal(trainerList);
+            if (modalResult === null) return; // İptal
+
+            // Phase 1: Takım grupları (rastgele sıra)
+            const teamsList = Object.values(teamsMap).map(members =>
+                [...members].sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'))
+            );
+            const teamGroups = [];
+            const findBestTG = (n) => {
+                let bi = -1, bc = Infinity;
+                for (let i = 0; i < teamGroups.length; i++) {
+                    if (teamGroups[i].length + n <= MAX_PER_ROTATION && teamGroups[i].length < bc) { bc = teamGroups[i].length; bi = i; }
+                }
+                if (bi === -1) { teamGroups.push([]); bi = teamGroups.length - 1; }
+                return bi;
+            };
+            teamsList.forEach(members => { const ti = findBestTG(members.length); teamGroups[ti].push(...members); });
+
+            // Phase 2: Ferdi grupları — modal'dan gelen grup boyutları ile
+            const individualGroups = [];
+
+            modalResult.forEach(({ athletes, groupSize }) => {
+                const size = Math.max(1, Math.min(MAX_PER_ROTATION, groupSize));
+                for (let k = 0; k < athletes.length; k += size) {
+                    individualGroups.push(athletes.slice(k, k + size));
+                }
+            });
+
+            // Antrenörü olmayan sporcuları sona ekle (mevcut gruplara sığdır)
+            if (noTrainer.length > 0) {
+                noTrainer.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'));
+                const findBestIG = (n) => {
+                    let bi = -1, bc = Infinity;
+                    for (let i = 0; i < individualGroups.length; i++) {
+                        if (individualGroups[i].length + n <= MAX_PER_ROTATION && individualGroups[i].length < bc) { bc = individualGroups[i].length; bi = i; }
+                    }
+                    if (bi === -1) { individualGroups.push([]); bi = individualGroups.length - 1; }
+                    return bi;
+                };
+                noTrainer.forEach(ath => { const gi = findBestIG(1); individualGroups[gi].push(ath); });
+            }
+
+            const newRotations = [...teamGroups, ...individualGroups];
+            if (newRotations.length === 0) newRotations.push([]);
+            setUnassigned([]);
+            setRotations(newRotations);
+            const ok = await saveToFirebase(newRotations, [], true);
+            if (ok) showToast(`Kişi bazlı gruplama yapıldı. ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+            else showToast('Gruplama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Kişi bazlı gruplama hatası:', err);
+            showToast('Kişi bazlı gruplamada hata oluştu: ' + err.message, 'error');
+        }
+    };
+
+    // -- İlçe Bazlı Gruplama --
+    const handleGroupByDistrict = async () => {
+        if (!selectedCompId || !filterCategory) {
+            showToast('Lütfen yarışma ve kategori seçin.', 'warning');
+            return;
+        }
+        try {
+            let allAthletes = [...unassigned, ...rotations.flat()];
+            if (allAthletes.length === 0) {
+                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+                const data = snap.val();
+                if (data) allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+            }
+            if (allAthletes.length === 0) { showToast('Bu kategoride sporcu bulunamadı.', 'warning'); return; }
+            if (rotations.some(r => r.length > 0)) {
+                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
+                if (!confirmed) return;
+                allAthletes = [...unassigned, ...rotations.flat()];
+            }
+
+            // Takım / ferdi ayır
+            const teamsMap = {};
+            const individuals = [];
+            allAthletes.forEach(ath => {
+                const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
+                if (type === 'takim' || type === 'takım') {
+                    const school = ath.okul || 'Bilinmeyen Takım';
+                    if (!teamsMap[school]) teamsMap[school] = [];
+                    teamsMap[school].push(ath);
+                } else {
+                    individuals.push(ath);
+                }
+            });
+
+            // Phase 1: Takım grupları — ilçeye göre sıralı, ferdi üyeler ada göre
+            const sortedTeams = Object.values(teamsMap).map(members =>
+                [...members].sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'))
+            ).sort((a, b) => {
+                const ia = (a[0]?.ilce || '').toLocaleUpperCase('tr-TR');
+                const ib = (b[0]?.ilce || '').toLocaleUpperCase('tr-TR');
+                return ia.localeCompare(ib, 'tr-TR');
+            });
+            const teamGroups = [];
+            const findBestTGD = (n) => {
+                let bi = -1, bc = Infinity;
+                for (let i = 0; i < teamGroups.length; i++) {
+                    if (teamGroups[i].length + n <= MAX_PER_ROTATION && teamGroups[i].length < bc) { bc = teamGroups[i].length; bi = i; }
+                }
+                if (bi === -1) { teamGroups.push([]); bi = teamGroups.length - 1; }
+                return bi;
+            };
+            sortedTeams.forEach(members => { const ti = findBestTGD(members.length); teamGroups[ti].push(...members); });
+
+            // Phase 2: Ferdi sporcuları ilçeye göre grupla
+            const districtMap = {};
+            individuals.forEach(ath => {
+                const district = (ath.ilce || 'Bilinmeyen İlçe').toLocaleUpperCase('tr-TR');
+                if (!districtMap[district]) districtMap[district] = [];
+                districtMap[district].push(ath);
+            });
+
+            // İlçe listesini hazırla (sporcu sayısıyla birlikte)
+            const districtEntries = Object.entries(districtMap).map(([name, members]) => ({
+                name,
+                athletes: members.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR')),
+                count: members.length
+            })).sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
+
+            // Modal'ı göster — kullanıcı öncelik numarası girer
+            const modalResult = await showDistrictPriorityModal(districtEntries);
+            if (modalResult === null) return; // İptal
+
+            // Öncelik numarasına göre sırala: numaralı olanlar önce (küçükten büyüğe), geri kalanlar alfabetik
+            const prioritized = modalResult
+                .filter(d => d.priority !== '' && !isNaN(parseInt(d.priority)))
+                .sort((a, b) => parseInt(a.priority) - parseInt(b.priority));
+            const unprioritized = modalResult
+                .filter(d => d.priority === '' || isNaN(parseInt(d.priority)))
+                .sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
+            const sortedDistricts = [...prioritized, ...unprioritized];
+
+            const individualGroups = [];
+            const findBestIGD = (n) => {
+                let bi = -1, bc = Infinity;
+                for (let i = 0; i < individualGroups.length; i++) {
+                    if (individualGroups[i].length + n <= MAX_PER_ROTATION && individualGroups[i].length < bc) { bc = individualGroups[i].length; bi = i; }
+                }
+                if (bi === -1) { individualGroups.push([]); bi = individualGroups.length - 1; }
+                return bi;
+            };
+            sortedDistricts.forEach(d => {
+                for (let k = 0; k < d.athletes.length; k += MAX_PER_ROTATION) {
+                    const part = d.athletes.slice(k, k + MAX_PER_ROTATION);
+                    const gi = findBestIGD(part.length);
+                    individualGroups[gi].push(...part);
+                }
+            });
+
+            const newRotations = [...teamGroups, ...individualGroups];
+            if (newRotations.length === 0) newRotations.push([]);
+            setUnassigned([]);
+            setRotations(newRotations);
+            const ok = await saveToFirebase(newRotations, [], true);
+            const distCount = Object.keys(districtMap).length;
+            if (ok) showToast(`İlçe bazlı gruplama yapıldı. ${distCount} ilçe, ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+            else showToast('Gruplama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('İlçe bazlı gruplama hatası:', err);
+            showToast('İlçe bazlı gruplamada hata oluştu: ' + err.message, 'error');
         }
     };
 
@@ -1288,6 +1579,24 @@ export default function StartOrderPage() {
                                 <i className="material-icons-round">supervisor_account</i>
                                 Antrenöre Göre Grupla
                             </button>
+                            <button
+                                className="btn-random-assign"
+                                onClick={handleGroupByPerson}
+                                disabled={!selectedCompId || !filterCategory}
+                                title="Ferdi sporcuları antrenör adına göre alfabetik sırala, takım sporcuları önce gelir"
+                            >
+                                <i className="material-icons-round">sort_by_alpha</i>
+                                Kişi Bazlı Grupla
+                            </button>
+                            <button
+                                className="btn-random-assign"
+                                onClick={handleGroupByDistrict}
+                                disabled={!selectedCompId || !filterCategory}
+                                title="Sporcuları ilçeye göre grupla, takım sporcuları önce gelir"
+                            >
+                                <i className="material-icons-round">location_city</i>
+                                İlçe Bazlı Grupla
+                            </button>
                         </>
                     )}
                 </div>
@@ -1402,6 +1711,104 @@ export default function StartOrderPage() {
                             </button>
                             <button className="confirm-btn confirm-btn--ok" onClick={confirmModal.onConfirm}>
                                 Evet, Devam Et
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Kişi Bazlı Gruplama Modal */}
+            {personGroupModal && (
+                <div className="confirm-overlay" onClick={personGroupModal.onCancel}>
+                    <div className="grouping-modal" onClick={e => e.stopPropagation()}>
+                        <div className="grouping-modal__header">
+                            <i className="material-icons-round">sort_by_alpha</i>
+                            <h2>Kişi Bazlı Gruplama</h2>
+                        </div>
+                        <p className="grouping-modal__desc">Her antrenör/öğretmen için grup boyutunu belirleyin. Sporcular o boyutta gruplara bölünecektir.</p>
+                        <div className="grouping-modal__table">
+                            <div className="grouping-modal__thead">
+                                <span>Antrenör / Öğretmen</span>
+                                <span>Tür</span>
+                                <span>Sporcu</span>
+                                <span>Grup Boyutu</span>
+                            </div>
+                            {personGroupModal.trainers.map((trainer, idx) => (
+                                <div key={trainer.name} className="grouping-modal__row">
+                                    <span className="grouping-modal__name">{trainer.name}</span>
+                                    <span className={`grouping-modal__type grouping-modal__type--${trainer.type === 'antrenör' ? 'coach' : 'teacher'}`}>{trainer.type}</span>
+                                    <span className="grouping-modal__count">{trainer.athletes.length}</span>
+                                    <input
+                                        type="number"
+                                        className="grouping-modal__input"
+                                        min="1"
+                                        max={MAX_PER_ROTATION}
+                                        value={trainer.groupSize}
+                                        onChange={e => {
+                                            const val = Math.max(1, Math.min(MAX_PER_ROTATION, parseInt(e.target.value) || 1));
+                                            setPersonGroupModal(prev => ({
+                                                ...prev,
+                                                trainers: prev.trainers.map((t, i) => i === idx ? { ...t, groupSize: val } : t)
+                                            }));
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="confirm-modal__actions">
+                            <button className="confirm-btn confirm-btn--cancel" onClick={personGroupModal.onCancel}>
+                                İptal
+                            </button>
+                            <button className="confirm-btn confirm-btn--ok" onClick={() => personGroupModal.onConfirm(personGroupModal.trainers)}>
+                                Gruplamayı Başlat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* İlçe Öncelik Modal */}
+            {districtModal && (
+                <div className="confirm-overlay" onClick={districtModal.onCancel}>
+                    <div className="grouping-modal grouping-modal--district" onClick={e => e.stopPropagation()}>
+                        <div className="grouping-modal__header">
+                            <i className="material-icons-round">location_city</i>
+                            <h2>İlçe Öncelik Sıralaması</h2>
+                        </div>
+                        <p className="grouping-modal__desc">Önce çıkmasını istediğiniz ilçelere numara girin (1, 2, 3...). Numarasız ilçeler alfabetik sırada gelir.</p>
+                        <div className="grouping-modal__table">
+                            <div className="grouping-modal__thead">
+                                <span>Öncelik No</span>
+                                <span>İlçe</span>
+                                <span>Sporcu</span>
+                            </div>
+                            {districtModal.districts.map((district, idx) => (
+                                <div key={district.name} className="grouping-modal__row">
+                                    <input
+                                        type="number"
+                                        className="grouping-modal__input grouping-modal__input--priority"
+                                        min="1"
+                                        placeholder="—"
+                                        value={district.priority}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setDistrictModal(prev => ({
+                                                ...prev,
+                                                districts: prev.districts.map((d, i) => i === idx ? { ...d, priority: val } : d)
+                                            }));
+                                        }}
+                                    />
+                                    <span className="grouping-modal__name">{district.name}</span>
+                                    <span className="grouping-modal__count">{district.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="confirm-modal__actions">
+                            <button className="confirm-btn confirm-btn--cancel" onClick={districtModal.onCancel}>
+                                İptal
+                            </button>
+                            <button className="confirm-btn confirm-btn--ok" onClick={() => districtModal.onConfirm(districtModal.districts)}>
+                                Gruplamayı Başlat
                             </button>
                         </div>
                     </div>
