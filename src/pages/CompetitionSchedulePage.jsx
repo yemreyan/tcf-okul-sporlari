@@ -95,13 +95,13 @@ export default function CompetitionSchedulePage() {
     const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'program'
     const [planAyarlari, setPlanAyarlari] = useState({
         rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
-        kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {}
+        kategoriBeklemeSuresi: 20, defaultBaslama: '09:00',
+        gunAyarlari: {}, kategoriGunAtamalari: {}
     });
     const [rotasyonPlani, setRotasyonPlani] = useState({}); // {catKey: {0:{baslangicAleti,bolunmus,bolumler}}}
     const [gruplar, setGruplar] = useState({});             // {catKey: [[ath,...],...]  loaded from siralama
     const [savingPlan, setSavingPlan] = useState(false);    // eslint-disable-line no-unused-vars
     const [expandedSessions, setExpandedSessions] = useState(new Set());
-    const [printMode, setPrintMode] = useState(false);
 
     // Firebase — yarışmalar
     useEffect(() => {
@@ -124,7 +124,7 @@ export default function CompetitionSchedulePage() {
 
     // planAyarlari from Firebase
     useEffect(() => {
-        if (!selectedCompId) { setPlanAyarlari({ rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15, kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {} }); return; }
+        if (!selectedCompId) { setPlanAyarlari({ rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15, kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {}, kategoriGunAtamalari: {} }); return; }
         const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), s => {
             if (s.val()) setPlanAyarlari(prev => ({ ...prev, ...s.val() }));
         });
@@ -441,7 +441,7 @@ export default function CompetitionSchedulePage() {
     // ── Plan ayarları handlers ──
     const savePlanAyar = useCallback(async (updated) => {
         if (!selectedCompId) return;
-        try { await update(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), updated); }
+        try { await set(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), updated); }
         catch (err) { toast('Kayıt hatası: ' + err.message, 'error'); }
     }, [selectedCompId, firebasePath]);
 
@@ -453,6 +453,13 @@ export default function CompetitionSchedulePage() {
 
     const updateGunAyar = useCallback((tarih, field, value) => {
         const updated = { ...planAyarlari, gunAyarlari: { ...(planAyarlari.gunAyarlari || {}), [tarih]: { ...(planAyarlari.gunAyarlari?.[tarih] || {}), [field]: value } } };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const updateKategoriGun = useCallback((catKey, dayIdx) => {
+        const newAta = { ...(planAyarlari.kategoriGunAtamalari || {}), [catKey]: dayIdx };
+        const updated = { ...planAyarlari, kategoriGunAtamalari: newAta };
         setPlanAyarlari(updated);
         savePlanAyar(updated);
     }, [planAyarlari, savePlanAyar]);
@@ -518,10 +525,20 @@ export default function CompetitionSchedulePage() {
         setGenerating(true);
         try {
             const newSessions = {};
+            // Group categories by assigned day
+            const kategoriGunAta = planAyarlari.kategoriGunAtamalari || {};
+            const dayCategories = {};
+            dateRange.forEach((tarih) => { dayCategories[tarih] = []; });
+            compCatKeys.forEach(catKey => {
+                const dayIdx = kategoriGunAta[catKey] ?? 0;
+                const tarih = dateRange[Math.min(dayIdx, dateRange.length - 1)] || dateRange[0];
+                if (tarih) dayCategories[tarih].push(catKey);
+            });
+
             for (const tarih of dateRange) {
                 const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
                 let curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
-                const aktifKats = (gunAyar.aktifKategoriler?.length) ? gunAyar.aktifKategoriler : compCatKeys;
+                const aktifKats = dayCategories[tarih] || [];
                 for (const catKey of aktifKats) {
                     const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
                     if (!aletlerSirali.length) continue;
@@ -603,8 +620,7 @@ export default function CompetitionSchedulePage() {
     }, []);
 
     const handlePrint = useCallback(() => {
-        setPrintMode(true);
-        setTimeout(() => { window.print(); setTimeout(() => setPrintMode(false), 500); }, 100);
+        window.print();
     }, []);
 
     // rotationMatrix computed
@@ -798,7 +814,6 @@ export default function CompetitionSchedulePage() {
                                             <h3><i className="material-icons-round">date_range</i> Günlük Ayarlar</h3>
                                             {dateRange.map((tarih, di) => {
                                                 const ga = planAyarlari.gunAyarlari?.[tarih] || {};
-                                                const aktifKats = ga.aktifKategoriler;
                                                 return (
                                                     <div key={tarih} className="gun-ayar-block">
                                                         <div className="gun-ayar-header">
@@ -811,27 +826,45 @@ export default function CompetitionSchedulePage() {
                                                                 <input type="time" value={ga.baslamaSaati || planAyarlari.defaultBaslama || '09:00'}
                                                                     onChange={e => updateGunAyar(tarih, 'baslamaSaati', e.target.value)} />
                                                             </div>
-                                                            <div className="plan-field plan-field--cats">
-                                                                <label>Aktif Kategoriler <small>(boş = hepsi)</small></label>
-                                                                <div className="cat-check-list">
-                                                                    {compCatKeys.map(catKey => {
-                                                                        const checked = !aktifKats?.length || aktifKats.includes(catKey);
-                                                                        return (
-                                                                            <label key={catKey} className="cat-check-item">
-                                                                                <input type="checkbox" checked={checked} onChange={e => {
-                                                                                    const cur = aktifKats?.length ? aktifKats : [...compCatKeys];
-                                                                                    updateGunAyar(tarih, 'aktifKategoriler', e.target.checked ? [...cur, catKey] : cur.filter(k => k !== catKey));
-                                                                                }} />
-                                                                                <span>{getCategoryLabel(catKey)}</span>
-                                                                            </label>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
+                                        </div>
+                                    )}
+
+                                    {dateRange.length > 1 && compCatKeys.length > 0 && (
+                                        <div className="plan-card">
+                                            <h3><i className="material-icons-round">view_week</i> Kategori → Gün Ataması</h3>
+                                            <p className="plan-card-hint">Her kategori için hangi gün yarışılacağını seçin</p>
+                                            <div className="cat-day-assign-table">
+                                                <div className="cat-day-row cat-day-header">
+                                                    <span className="cat-day-name">Kategori</span>
+                                                    {dateRange.map((d, i) => (
+                                                        <span key={d} className="cat-day-col">
+                                                            <strong>{i + 1}. Gün</strong>
+                                                            <small>{new Date(d).toLocaleDateString('tr-TR', {day:'numeric', month:'short'})}</small>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                {compCatKeys.map(catKey => {
+                                                    const curDay = planAyarlari.kategoriGunAtamalari?.[catKey] ?? 0;
+                                                    return (
+                                                        <div key={catKey} className="cat-day-row">
+                                                            <span className="cat-day-name">{getCategoryLabel(catKey)}</span>
+                                                            {dateRange.map((d, i) => (
+                                                                <span key={d} className="cat-day-col">
+                                                                    <label className="cat-day-radio">
+                                                                        <input type="radio" name={`day-cat-${catKey}`} checked={curDay === i}
+                                                                            onChange={() => updateKategoriGun(catKey, i)} />
+                                                                        <span className={`cat-day-dot ${curDay === i ? 'active' : ''}`} />
+                                                                    </label>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1063,8 +1096,8 @@ export default function CompetitionSchedulePage() {
                                                                     )}
                                                                 </div>
                                                                 {sess.aciklama && <p className="sched-session__desc">{sess.aciklama}</p>}
-                                                                {/* Athlete list - shown when expanded or in print mode */}
-                                                                {rotAthletes.length > 0 && (isExpanded || printMode) && (
+                                                                {/* Athlete list - shown when expanded */}
+                                                                {rotAthletes.length > 0 && isExpanded && (
                                                                     <div className="sess-athlete-list">
                                                                         <div className="athlete-list-grid">
                                                                             {rotAthletes.map((ath, ai) => (
@@ -1093,6 +1126,121 @@ export default function CompetitionSchedulePage() {
                                         )}
                                     </div>
                                 ))}
+
+                                {/* ── Premium Print View (hidden normally, shown @media print) ── */}
+                                <div className="print-schedule-view">
+                                    {/* Header */}
+                                    <div className="psv-header">
+                                        <img src="/logo.png" alt="TCF Logo" className="psv-logo" />
+                                        <div className="psv-title-block">
+                                            <h1 className="psv-comp-name">{selectedComp?.isim}</h1>
+                                            <div className="psv-meta">
+                                                <span><i className="material-icons-round">location_on</i>{selectedComp?.il}</span>
+                                                <span><i className="material-icons-round">calendar_today</i>{selectedComp?.baslangicTarihi}{selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi ? ` — ${selectedComp.bitisTarihi}` : ''}</span>
+                                                <span><i className="material-icons-round">category</i>{compCatKeys.length} Kategori</span>
+                                                <span><i className="material-icons-round">groups</i>{Object.values(athleteCounts).reduce((a, b) => a + b, 0)} Sporcu</span>
+                                            </div>
+                                        </div>
+                                        <div className="psv-stamp">TÜRKİYE CİMNASTİK<br/>FEDERASYONU</div>
+                                    </div>
+                                    <div className="psv-divider" />
+
+                                    {/* Per-day sections */}
+                                    {dateRange.map((dateStr, di) => {
+                                        const daySessions = sessionsByDate[dateStr] || [];
+                                        if (!daySessions.length) return null;
+
+                                        // Group by category then by rotasyonNo+saat
+                                        const catSessions = {};
+                                        daySessions.forEach(sess => {
+                                            if (!catSessions[sess.kategori]) catSessions[sess.kategori] = { isinma: [], rotasyons: {}, molas: {} };
+                                            if (sess.tip === 'isinma') catSessions[sess.kategori].isinma.push(sess);
+                                            else if (sess.tip === 'rotasyon') {
+                                                const rk = `${sess.rotasyonNo}__${sess.saat}`;
+                                                if (!catSessions[sess.kategori].rotasyons[rk]) catSessions[sess.kategori].rotasyons[rk] = [];
+                                                catSessions[sess.kategori].rotasyons[rk].push(sess);
+                                            }
+                                        });
+
+                                        return (
+                                            <div key={dateStr} className="psv-day">
+                                                <div className="psv-day-header">
+                                                    <span className="psv-day-num">{di + 1}. GÜN</span>
+                                                    <span className="psv-day-date">{formatDateTR(dateStr)}</span>
+                                                </div>
+
+                                                {Object.entries(catSessions).map(([catKey, catData]) => (
+                                                    <div key={catKey} className="psv-cat-block">
+                                                        <div className="psv-cat-header">
+                                                            <span className="psv-cat-name">{getCategoryLabel(catKey)}</span>
+                                                            {catData.isinma[0] && <span className="psv-isinma">Isınma: {catData.isinma[0].saat} — {catData.isinma[0].bitisSaat}</span>}
+                                                        </div>
+
+                                                        {Object.entries(catData.rotasyons)
+                                                            .sort(([, a], [, b]) => (a[0]?.saat || '').localeCompare(b[0]?.saat || ''))
+                                                            .map(([rk, rotSessions]) => {
+                                                                const rotNo = rotSessions[0]?.rotasyonNo;
+                                                                const saat = rotSessions[0]?.saat;
+                                                                const bitisSaat = rotSessions[0]?.bitisSaat;
+                                                                return (
+                                                                    <div key={rk} className="psv-rotation-block">
+                                                                        <div className="psv-rot-header">
+                                                                            <span className="psv-rot-badge">ROT. {rotNo}</span>
+                                                                            <span className="psv-rot-time">{saat} — {bitisSaat}</span>
+                                                                        </div>
+                                                                        <table className="psv-rot-table">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    {rotSessions.map(sess => (
+                                                                                        <th key={sess.id} className="psv-group-th">
+                                                                                            <span className="psv-grp-badge">GRUP {sess.grupNo}{sess.bolumAdi || ''}</span>
+                                                                                            <span className="psv-alet-name">{getAletLabel(sess.alet)}</span>
+                                                                                        </th>
+                                                                                    ))}
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {(() => {
+                                                                                    const cols = rotSessions.map(sess => getRotationAthletes(sess));
+                                                                                    const maxLen = Math.max(...cols.map(c => c.length), 0);
+                                                                                    return Array.from({ length: maxLen }, (_, ai) => (
+                                                                                        <tr key={ai}>
+                                                                                            {cols.map((col, ci) => {
+                                                                                                const ath = col[ai];
+                                                                                                return (
+                                                                                                    <td key={ci} className="psv-ath-cell">
+                                                                                                        {ath ? (
+                                                                                                            <>
+                                                                                                                <span className="psv-ath-no">{ath.sirasi || ai + 1}</span>
+                                                                                                                <span className="psv-ath-name">{ath.ad} {ath.soyad}</span>
+                                                                                                                <span className="psv-ath-club">{ath.kulup || ath.okul || ''}</span>
+                                                                                                                <span className={`psv-ath-type ${(ath.yarismaTuru || 'ferdi').toLowerCase().includes('tak') ? 'takim' : 'ferdi'}`}>
+                                                                                                                    {(ath.yarismaTuru || 'ferdi').toLowerCase().includes('tak') ? 'TAK' : 'FRD'}
+                                                                                                                </span>
+                                                                                                            </>
+                                                                                                        ) : null}
+                                                                                                    </td>
+                                                                                                );
+                                                                                            })}
+                                                                                        </tr>
+                                                                                    ));
+                                                                                })()}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })}
+
+                                    <div className="psv-footer">
+                                        <span>Bu belge TCF Yarışma Yönetim Sistemi tarafından oluşturulmuştur.</span>
+                                        <span>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </>

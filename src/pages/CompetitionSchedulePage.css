@@ -892,30 +892,85 @@
 .print-header h1 { margin:0 0 8px; font-size:22px; color:#1e293b; }
 .print-meta { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:#475569; }
 
-@media print {
-    .no-print, .sched-header, .sched-selector, .sched-tabs,
-    .sched-program-actions, .sched-session__actions,
-    .btn-expand-athletes, .sched-comp-info { display:none !important; }
+/* ── Expanded session highlight ── */
+.sched-session.expanded { border-left-color: #6366f1; background: #fafbff; }
 
-    .print-only { display:block !important; }
+/* ── Category → Day Assignment Table ── */
+.plan-card-hint { font-size:12px; color:#64748b; margin:-4px 0 12px; }
+.cat-day-assign-table { border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
+.cat-day-row { display:flex; align-items:center; border-bottom:1px solid #f1f5f9; }
+.cat-day-row:last-child { border-bottom:none; }
+.cat-day-header { background:#f8fafc; font-weight:600; }
+.cat-day-name { flex:2; padding:10px 14px; font-size:13px; color:#334155; }
+.cat-day-col { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 4px; gap:2px; text-align:center; }
+.cat-day-col strong { font-size:12px; color:#1e293b; }
+.cat-day-col small { font-size:10px; color:#94a3b8; }
+.cat-day-radio { display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.cat-day-radio input { display:none; }
+.cat-day-dot { width:20px; height:20px; border-radius:50%; border:2px solid #cbd5e1; background:#fff; transition:all .15s; cursor:pointer; }
+.cat-day-dot.active { background:#6366f1; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.2); }
+
+/* ── Premium Print Schedule View ── */
+.print-schedule-view { display:none; }
+
+@media print {
+    /* Hide everything except print view */
+    .sched-header, .sched-selector, .sched-comp-info, .sched-tabs,
+    .sched-program-actions, .no-print, .sched-session__actions,
+    .btn-expand-athletes, .print-only { display:none !important; }
+
+    .print-schedule-view { display:block !important; }
+
+    /* Hide the normal timeline when printing */
+    .sched-day { display:none !important; }
 
     .schedule-page { background:#fff; }
     .sched-main { padding:0; }
     .sched-tab-content { padding:0; }
 
-    .sched-day { break-inside:avoid; margin-bottom:20px; border:none; }
-    .sched-day__header { background:#f1f5f9 !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-
-    .sched-session { break-inside:avoid; }
-    .sched-session--tip-mola { display:none; }
-
-    .sess-athlete-list { display:block !important; }
-    .athlete-list-grid { grid-template-columns:repeat(2, 1fr); }
-
-    .print-header { padding:0 0 12px; border-bottom:2px solid #1e293b; margin-bottom:16px; }
-
-    @page { margin:15mm; size:A4 portrait; }
+    @page { margin:12mm 15mm; size:A4 portrait; }
 }
 
-/* ── Expanded session highlight ── */
-.sched-session.expanded { border-left-color: #6366f1; background: #fafbff; }
+/* PSV = Print Schedule View */
+.psv-header { display:flex; align-items:flex-start; gap:16px; padding:20px 0 16px; }
+.psv-logo { width:80px; height:80px; object-fit:contain; }
+.psv-title-block { flex:1; }
+.psv-comp-name { margin:0 0 8px; font-size:22px; font-weight:800; color:#1e293b; }
+.psv-meta { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:#475569; }
+.psv-meta span { display:flex; align-items:center; gap:4px; }
+.psv-meta .material-icons-round { font-size:14px; color:#6366f1; }
+.psv-stamp { background:#1e3a5f; color:#fff; padding:8px 12px; border-radius:8px; font-size:10px; font-weight:700; text-align:center; line-height:1.4; white-space:nowrap; align-self:flex-start; }
+.psv-divider { height:3px; background:linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899); border-radius:2px; margin-bottom:16px; }
+
+.psv-day { margin-bottom:24px; break-inside:avoid; }
+.psv-day-header { display:flex; align-items:center; gap:12px; background:#1e3a5f; color:#fff; padding:8px 14px; border-radius:8px 8px 0 0; margin-bottom:0; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-day-num { font-size:11px; font-weight:800; letter-spacing:1px; background:rgba(255,255,255,.2); padding:2px 8px; border-radius:4px; }
+.psv-day-date { font-size:14px; font-weight:600; }
+
+.psv-cat-block { border:1px solid #e2e8f0; border-top:none; margin-bottom:12px; }
+.psv-cat-header { display:flex; align-items:center; gap:12px; background:#f0f4ff; padding:8px 14px; border-bottom:1px solid #e2e8f0; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-cat-name { font-size:14px; font-weight:700; color:#3730a3; flex:1; }
+.psv-isinma { font-size:11px; color:#6b7280; background:#fef9c3; padding:2px 8px; border-radius:10px; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+
+.psv-rotation-block { border-bottom:1px solid #f1f5f9; }
+.psv-rotation-block:last-child { border-bottom:none; }
+.psv-rot-header { display:flex; align-items:center; gap:10px; padding:6px 14px; background:#fafbff; border-bottom:1px solid #f1f5f9; }
+.psv-rot-badge { font-size:10px; font-weight:800; color:#fff; background:#6366f1; padding:2px 8px; border-radius:10px; letter-spacing:.5px; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-rot-time { font-size:13px; font-weight:700; color:#1e293b; font-variant-numeric:tabular-nums; }
+
+.psv-rot-table { width:100%; border-collapse:collapse; font-size:12px; }
+.psv-rot-table th, .psv-rot-table td { border:1px solid #e2e8f0; padding:0; vertical-align:top; }
+.psv-group-th { background:#ede9fe; padding:6px 10px; text-align:center; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-grp-badge { display:block; font-size:11px; font-weight:800; color:#4f46e5; }
+.psv-alet-name { display:block; font-size:12px; font-weight:600; color:#1e293b; margin-top:2px; }
+
+.psv-ath-cell { padding:5px 8px; vertical-align:middle; }
+.psv-ath-cell:nth-child(even) { background:#f8fafc; }
+.psv-ath-no { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:#6366f1; color:#fff; border-radius:50%; font-size:10px; font-weight:700; margin-right:6px; flex-shrink:0; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-ath-name { font-weight:600; color:#1e293b; font-size:12px; }
+.psv-ath-club { display:block; font-size:10px; color:#64748b; margin-left:24px; }
+.psv-ath-type { display:inline-block; font-size:9px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:4px; vertical-align:middle; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.psv-ath-type.takim { background:#dbeafe; color:#1d4ed8; }
+.psv-ath-type.ferdi { background:#f0fdf4; color:#166534; }
+
+.psv-footer { display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; padding-top:12px; border-top:1px solid #e2e8f0; margin-top:16px; }
