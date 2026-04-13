@@ -7,6 +7,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './CompetitionSchedulePage.css';
+import { generateCompetitionPDF } from '../utils/competitionPDF';
 
 /* ── Yardımcı fonksiyonlar ── */
 const getCategoryLabel = (catKey) =>
@@ -772,9 +773,27 @@ export default function CompetitionSchedulePage() {
         });
     }, []);
 
-    const handlePrint = useCallback(() => {
-        window.print();
-    }, []);
+    const [pdfGenerating, setPdfGenerating] = useState(false);
+
+    const handleDownloadPDF = useCallback(async () => {
+        if (!selectedComp) return;
+        setPdfGenerating(true);
+        try {
+            await generateCompetitionPDF({
+                selectedComp,
+                compCatKeys,
+                dateRange,
+                sessionsByDate,
+                gruplar,
+                athleteCounts,
+            });
+            toast('PDF indirildi', 'success');
+        } catch (err) {
+            toast('PDF oluşturma hatası: ' + err.message, 'error');
+        } finally {
+            setPdfGenerating(false);
+        }
+    }, [selectedComp, compCatKeys, dateRange, sessionsByDate, gruplar, athleteCounts]);
 
     // rotationMatrix — wave-aware: her dalga kendi matrisiyle gösterilir
     const rotationMatrix = useMemo(() => {
@@ -1316,15 +1335,6 @@ export default function CompetitionSchedulePage() {
                         {/* TAB: PROGRAM */}
                         {activeTab === 'program' && (
                             <div className="sched-tab-content">
-                                {/* Print-only header */}
-                                <div className="print-header print-only">
-                                    <h1>{selectedComp?.isim || 'Yarışma'}</h1>
-                                    <div className="print-meta">
-                                        <span><strong>İl:</strong> {selectedComp?.il || '—'}</span>
-                                        <span><strong>Tarih:</strong> {selectedComp?.baslangicTarihi} {selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi ? `— ${selectedComp.bitisTarihi}` : ''}</span>
-                                        <span><strong>Kategori:</strong> {compCatKeys.length} | <strong>Sporcu:</strong> {Object.values(athleteCounts).reduce((a, b) => a + b, 0)}</span>
-                                    </div>
-                                </div>
                                 {canCreate && (
                                     <div className="sched-program-actions">
                                         <button className="sched-auto-btn" onClick={handleAutoGenerate} disabled={generating}>
@@ -1336,9 +1346,11 @@ export default function CompetitionSchedulePage() {
                                             <div><strong>Rotasyon Planla</strong><small>Olimpik sıra ve grup ataması</small></div>
                                         </button>
                                         {totalSessions > 0 && (
-                                            <button className="sched-pdf-btn" onClick={handlePrint}>
-                                                <i className="material-icons-round">picture_as_pdf</i>
-                                                <div><strong>PDF İndir</strong><small>Programı yazdır / PDF kaydet</small></div>
+                                            <button className="sched-pdf-btn" onClick={handleDownloadPDF} disabled={pdfGenerating}>
+                                                {pdfGenerating
+                                                    ? <><div className="spinner-small" style={{borderTopColor:'#ea580c'}} /><div><strong>Oluşturuluyor...</strong><small>Lütfen bekleyin</small></div></>
+                                                    : <><i className="material-icons-round">picture_as_pdf</i><div><strong>PDF İndir</strong><small>TCF formatında program dosyası</small></div></>
+                                                }
                                             </button>
                                         )}
                                     </div>
@@ -1421,120 +1433,6 @@ export default function CompetitionSchedulePage() {
                                     </div>
                                 ))}
 
-                                {/* ── Premium Print View (hidden normally, shown @media print) ── */}
-                                <div className="print-schedule-view">
-                                    {/* Header */}
-                                    <div className="psv-header">
-                                        <img src="/logo.png" alt="TCF Logo" className="psv-logo" />
-                                        <div className="psv-title-block">
-                                            <h1 className="psv-comp-name">{selectedComp?.isim}</h1>
-                                            <div className="psv-meta">
-                                                <span><i className="material-icons-round">location_on</i>{selectedComp?.il}</span>
-                                                <span><i className="material-icons-round">calendar_today</i>{selectedComp?.baslangicTarihi}{selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi ? ` — ${selectedComp.bitisTarihi}` : ''}</span>
-                                                <span><i className="material-icons-round">category</i>{compCatKeys.length} Kategori</span>
-                                                <span><i className="material-icons-round">groups</i>{Object.values(athleteCounts).reduce((a, b) => a + b, 0)} Sporcu</span>
-                                            </div>
-                                        </div>
-                                        <div className="psv-stamp">TÜRKİYE CİMNASTİK<br/>FEDERASYONU</div>
-                                    </div>
-                                    <div className="psv-divider" />
-
-                                    {/* Per-day sections */}
-                                    {dateRange.map((dateStr, di) => {
-                                        const daySessions = sessionsByDate[dateStr] || [];
-                                        if (!daySessions.length) return null;
-
-                                        // Group by category then by rotasyonNo+saat
-                                        const catSessions = {};
-                                        daySessions.forEach(sess => {
-                                            if (!catSessions[sess.kategori]) catSessions[sess.kategori] = { isinma: [], rotasyons: {}, molas: {} };
-                                            if (sess.tip === 'isinma') catSessions[sess.kategori].isinma.push(sess);
-                                            else if (sess.tip === 'rotasyon') {
-                                                const rk = `${sess.rotasyonNo}__${sess.saat}`;
-                                                if (!catSessions[sess.kategori].rotasyons[rk]) catSessions[sess.kategori].rotasyons[rk] = [];
-                                                catSessions[sess.kategori].rotasyons[rk].push(sess);
-                                            }
-                                        });
-
-                                        return (
-                                            <div key={dateStr} className="psv-day">
-                                                <div className="psv-day-header">
-                                                    <span className="psv-day-num">{di + 1}. GÜN</span>
-                                                    <span className="psv-day-date">{formatDateTR(dateStr)}</span>
-                                                </div>
-
-                                                {Object.entries(catSessions).map(([catKey, catData]) => (
-                                                    <div key={catKey} className="psv-cat-block">
-                                                        <div className="psv-cat-header">
-                                                            <span className="psv-cat-name">{getCategoryLabel(catKey)}</span>
-                                                            {catData.isinma[0] && <span className="psv-isinma">Isınma: {catData.isinma[0].saat} — {catData.isinma[0].bitisSaat}</span>}
-                                                        </div>
-
-                                                        {Object.entries(catData.rotasyons)
-                                                            .sort(([, a], [, b]) => (a[0]?.saat || '').localeCompare(b[0]?.saat || ''))
-                                                            .map(([rk, rotSessions]) => {
-                                                                const rotNo = rotSessions[0]?.rotasyonNo;
-                                                                const saat = rotSessions[0]?.saat;
-                                                                const bitisSaat = rotSessions[0]?.bitisSaat;
-                                                                return (
-                                                                    <div key={rk} className="psv-rotation-block">
-                                                                        <div className="psv-rot-header">
-                                                                            <span className="psv-rot-badge">ROT. {rotNo}</span>
-                                                                            <span className="psv-rot-time">{saat} — {bitisSaat}</span>
-                                                                        </div>
-                                                                        <table className="psv-rot-table">
-                                                                            <thead>
-                                                                                <tr>
-                                                                                    {rotSessions.map(sess => (
-                                                                                        <th key={sess.id} className="psv-group-th">
-                                                                                            <span className="psv-grp-badge">GRUP {sess.grupNo}{sess.bolumAdi || ''}</span>
-                                                                                            <span className="psv-alet-name">{getAletLabel(sess.alet)}</span>
-                                                                                        </th>
-                                                                                    ))}
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {(() => {
-                                                                                    const cols = rotSessions.map(sess => getRotationAthletes(sess));
-                                                                                    const maxLen = Math.max(...cols.map(c => c.length), 0);
-                                                                                    return Array.from({ length: maxLen }, (_, ai) => (
-                                                                                        <tr key={ai}>
-                                                                                            {cols.map((col, ci) => {
-                                                                                                const ath = col[ai];
-                                                                                                return (
-                                                                                                    <td key={ci} className="psv-ath-cell">
-                                                                                                        {ath ? (
-                                                                                                            <>
-                                                                                                                <span className="psv-ath-no">{ath.sirasi || ai + 1}</span>
-                                                                                                                <span className="psv-ath-name">{ath.ad} {ath.soyad}</span>
-                                                                                                                <span className="psv-ath-club">{ath.kulup || ath.okul || ''}</span>
-                                                                                                                <span className={`psv-ath-type ${(ath.yarismaTuru || 'ferdi').toLowerCase().includes('tak') ? 'takim' : 'ferdi'}`}>
-                                                                                                                    {(ath.yarismaTuru || 'ferdi').toLowerCase().includes('tak') ? 'TAK' : 'FRD'}
-                                                                                                                </span>
-                                                                                                            </>
-                                                                                                        ) : null}
-                                                                                                    </td>
-                                                                                                );
-                                                                                            })}
-                                                                                        </tr>
-                                                                                    ));
-                                                                                })()}
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })}
-
-                                    <div className="psv-footer">
-                                        <span>Bu belge TCF Yarışma Yönetim Sistemi tarafından oluşturulmuştur.</span>
-                                        <span>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </>
