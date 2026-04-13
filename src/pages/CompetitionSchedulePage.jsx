@@ -833,7 +833,7 @@ export default function CompetitionSchedulePage() {
                                         </div>
                                     )}
 
-                                    {dateRange.length > 1 && compCatKeys.length > 0 && (
+                                    {compCatKeys.length > 0 && (
                                         <div className="plan-card">
                                             <h3><i className="material-icons-round">view_week</i> Kategori → Gün Ataması</h3>
                                             <p className="plan-card-hint">Her kategori için hangi gün yarışılacağını seçin</p>
@@ -854,11 +854,15 @@ export default function CompetitionSchedulePage() {
                                                             <span className="cat-day-name">{getCategoryLabel(catKey)}</span>
                                                             {dateRange.map((d, i) => (
                                                                 <span key={d} className="cat-day-col">
-                                                                    <label className="cat-day-radio">
-                                                                        <input type="radio" name={`day-cat-${catKey}`} checked={curDay === i}
-                                                                            onChange={() => updateKategoriGun(catKey, i)} />
-                                                                        <span className={`cat-day-dot ${curDay === i ? 'active' : ''}`} />
-                                                                    </label>
+                                                                    {dateRange.length === 1 ? (
+                                                                        <span className="cat-day-dot active" title="Tek gün — tüm kategoriler bu günde" />
+                                                                    ) : (
+                                                                        <label className="cat-day-radio">
+                                                                            <input type="radio" name={`day-cat-${catKey}`} checked={curDay === i}
+                                                                                onChange={() => updateKategoriGun(catKey, i)} />
+                                                                            <span className={`cat-day-dot ${curDay === i ? 'active' : ''}`} />
+                                                                        </label>
+                                                                    )}
                                                                 </span>
                                                             ))}
                                                         </div>
