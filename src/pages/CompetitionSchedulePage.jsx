@@ -457,6 +457,36 @@ export default function CompetitionSchedulePage() {
         savePlanAyar(updated);
     }, [planAyarlari, savePlanAyar]);
 
+    const handleSetGunSayisi = useCallback(async (days) => {
+        if (!selectedCompId || !selectedComp?.baslangicTarihi) return;
+        const start = new Date(selectedComp.baslangicTarihi);
+        const end = new Date(start);
+        end.setDate(start.getDate() + Math.max(1, days) - 1);
+        const bitisTarihi = end.toISOString().split('T')[0];
+        try {
+            await update(ref(db, `${firebasePath}/${selectedCompId}`), { bitisTarihi });
+            toast(`Yarışma süresi ${days} gün olarak güncellendi`, 'success');
+        } catch (err) { toast('Hata: ' + err.message, 'error'); }
+    }, [selectedCompId, selectedComp, firebasePath]);
+
+    const handleSetBaslangicTarihi = useCallback(async (tarih) => {
+        if (!selectedCompId) return;
+        try {
+            // Bitiş tarihi de güncelle (gün farkını koru)
+            const oldStart = new Date(selectedComp?.baslangicTarihi || tarih);
+            const oldEnd = new Date(selectedComp?.bitisTarihi || tarih);
+            const dayDiff = Math.round((oldEnd - oldStart) / 86400000);
+            const newStart = new Date(tarih);
+            const newEnd = new Date(newStart);
+            newEnd.setDate(newStart.getDate() + dayDiff);
+            await update(ref(db, `${firebasePath}/${selectedCompId}`), {
+                baslangicTarihi: tarih,
+                bitisTarihi: newEnd.toISOString().split('T')[0]
+            });
+            toast('Başlangıç tarihi güncellendi', 'success');
+        } catch (err) { toast('Hata: ' + err.message, 'error'); }
+    }, [selectedCompId, selectedComp, firebasePath]);
+
     const updateKategoriGun = useCallback((catKey, dayIdx) => {
         const newAta = { ...(planAyarlari.kategoriGunAtamalari || {}), [catKey]: dayIdx };
         const updated = { ...planAyarlari, kategoriGunAtamalari: newAta };
@@ -786,7 +816,40 @@ export default function CompetitionSchedulePage() {
                             <div className="sched-tab-content">
                                 <div className="plan-settings-grid">
                                     <div className="plan-card">
-                                        <h3><i className="material-icons-round">timer</i> Süre Ayarları</h3>
+                                        <h3><i className="material-icons-round">event</i> Yarışma Tarihleri</h3>
+                                        <div className="plan-field">
+                                            <label>Başlangıç Tarihi</label>
+                                            <input type="date" value={selectedComp?.baslangicTarihi || ''}
+                                                onChange={e => handleSetBaslangicTarihi(e.target.value)}
+                                                disabled={!canEdit} />
+                                        </div>
+                                        <div className="plan-field">
+                                            <label>Bitiş Tarihi</label>
+                                            <input type="date" value={selectedComp?.bitisTarihi || selectedComp?.baslangicTarihi || ''}
+                                                min={selectedComp?.baslangicTarihi || ''}
+                                                onChange={e => {
+                                                    if (!selectedCompId) return;
+                                                    update(ref(db, `${firebasePath}/${selectedCompId}`), { bitisTarihi: e.target.value })
+                                                        .then(() => toast('Bitiş tarihi güncellendi', 'success'))
+                                                        .catch(err => toast('Hata: ' + err.message, 'error'));
+                                                }}
+                                                disabled={!canEdit} />
+                                        </div>
+                                        <div className="plan-field">
+                                            <label>Toplam Gün Sayısı</label>
+                                            <div className="gun-sayisi-control">
+                                                <button className="gun-btn" onClick={() => handleSetGunSayisi(Math.max(1, dateRange.length - 1))} disabled={dateRange.length <= 1 || !canEdit}>
+                                                    <i className="material-icons-round">remove</i>
+                                                </button>
+                                                <span className="gun-count">{dateRange.length}</span>
+                                                <button className="gun-btn" onClick={() => handleSetGunSayisi(dateRange.length + 1)} disabled={!canEdit}>
+                                                    <i className="material-icons-round">add</i>
+                                                </button>
+                                                <span className="gun-count-label">gün</span>
+                                            </div>
+                                        </div>
+                                        <div className="plan-divider" />
+                                        <h3 style={{marginBottom:'12px'}}><i className="material-icons-round">timer</i> Süre Ayarları</h3>
                                         {[
                                             { field: 'defaultBaslama', label: 'Varsayılan Başlama Saati', type: 'time' },
                                             { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },

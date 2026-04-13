@@ -897,6 +897,16 @@
 
 /* ── Category → Day Assignment Table ── */
 .plan-card-hint { font-size:12px; color:#64748b; margin:-4px 0 12px; }
+
+/* ── Gün sayısı kontrolü ── */
+.gun-sayisi-control { display:flex; align-items:center; gap:8px; }
+.gun-btn { width:32px; height:32px; border:1.5px solid #cbd5e1; border-radius:8px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.gun-btn:hover:not(:disabled) { border-color:#6366f1; color:#6366f1; background:#ede9fe; }
+.gun-btn:disabled { opacity:.4; cursor:not-allowed; }
+.gun-btn .material-icons-round { font-size:16px; }
+.gun-count { min-width:36px; text-align:center; font-size:20px; font-weight:700; color:#1e293b; }
+.gun-count-label { font-size:13px; color:#64748b; }
+.plan-divider { height:1px; background:#e2e8f0; margin:16px 0; }
 .cat-day-assign-table { border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
 .cat-day-row { display:flex; align-items:center; border-bottom:1px solid #f1f5f9; }
 .cat-day-row:last-child { border-bottom:none; }
