@@ -96,7 +96,9 @@ export default function CompetitionSchedulePage() {
     const [planAyarlari, setPlanAyarlari] = useState({
         rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
         kategoriBeklemeSuresi: 20, defaultBaslama: '09:00',
-        gunAyarlari: {}, kategoriGunAtamalari: {}
+        sporculBasinaSure: 120, otomatikSureHesapla: true,
+        gunAyarlari: {}, kategoriGunAtamalari: {},
+        molalar: []  // [{ id, ad, baslangicSaat, bitisSaat }]
     });
     const [rotasyonPlani, setRotasyonPlani] = useState({}); // {catKey: {0:{baslangicAleti,bolunmus,bolumler}}}
     const [gruplar, setGruplar] = useState({});             // {catKey: [[ath,...],...]  loaded from siralama
@@ -545,6 +547,51 @@ export default function CompetitionSchedulePage() {
         await saveRotasyonPlaniForCat(catKey, updatedCat);
     }, [rotasyonPlani, saveRotasyonPlaniForCat]);
 
+    // ── Mola yönetimi ──
+    const addMola = useCallback(() => {
+        const newMola = { id: Date.now().toString(), ad: 'Öğle Arası', baslangicSaat: '12:00', bitisSaat: '13:00' };
+        const updated = { ...planAyarlari, molalar: [...(planAyarlari.molalar || []), newMola] };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const updateMola = useCallback((id, field, value) => {
+        const updated = { ...planAyarlari, molalar: (planAyarlari.molalar || []).map(m => m.id === id ? { ...m, [field]: value } : m) };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const removeMola = useCallback((id) => {
+        const updated = { ...planAyarlari, molalar: (planAyarlari.molalar || []).filter(m => m.id !== id) };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    // ── Rotasyon süresi hesapla (sporcu sayısına göre) ──
+    const calcRotasyonSuresi = useCallback((catKey, effGroups) => {
+        if (!planAyarlari.otomatikSureHesapla) return planAyarlari.rotasyonSuresi || 30;
+        const sn = planAyarlari.sporculBasinaSure || 120;
+        const maxCount = effGroups.reduce((mx, g) => Math.max(mx, g.count || 0), 0);
+        if (!maxCount) return planAyarlari.rotasyonSuresi || 30;
+        return Math.ceil((maxCount * sn) / 60); // dakika
+    }, [planAyarlari]);
+
+    // ── Mola kontrolü: curMin bir molaya denk geliyorsa molanın sonuna atla ──
+    const skipMolalar = useCallback((minTime) => {
+        let cur = minTime;
+        const molalar = (planAyarlari.molalar || []).slice().sort((a, b) => parseTimeToMin(a.baslangicSaat) - parseTimeToMin(b.baslangicSaat));
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const mola of molalar) {
+                const ms = parseTimeToMin(mola.baslangicSaat);
+                const me = parseTimeToMin(mola.bitisSaat);
+                if (cur >= ms && cur < me) { cur = me; changed = true; break; }
+            }
+        }
+        return cur;
+    }, [planAyarlari.molalar]);
+
     // NEW auto-generate that uses rotation plan
     const handleGenerateRotationSchedule = useCallback(async () => {
         if (!selectedCompId) return;
@@ -555,7 +602,6 @@ export default function CompetitionSchedulePage() {
         setGenerating(true);
         try {
             const newSessions = {};
-            // Group categories by assigned day
             const kategoriGunAta = planAyarlari.kategoriGunAtamalari || {};
             const dayCategories = {};
             dateRange.forEach((tarih) => { dayCategories[tarih] = []; });
@@ -565,17 +611,27 @@ export default function CompetitionSchedulePage() {
                 if (tarih) dayCategories[tarih].push(catKey);
             });
 
+            // Sabit molalar (öğle arası vb.)
+            const sabitMolalar = (planAyarlari.molalar || [])
+                .filter(m => m.baslangicSaat && m.bitisSaat)
+                .sort((a, b) => parseTimeToMin(a.baslangicSaat) - parseTimeToMin(b.baslangicSaat));
+
             for (const tarih of dateRange) {
                 const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
                 let curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
                 const aktifKats = dayCategories[tarih] || [];
+
+                // Gün başında sabit molaları ekle (ileride schedule'a eklenmek üzere takip)
+                const molaEklendi = new Set();
+
                 for (const catKey of aktifKats) {
                     const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
                     if (!aletlerSirali.length) continue;
                     const catGruplar = gruplar[catKey] || [];
                     const catPlan = rotasyonPlani[catKey] || {};
                     const numRot = aletlerSirali.length;
-                    // Build effective groups
+
+                    // Effective groups
                     const effGroups = [];
                     if (catGruplar.length) {
                         catGruplar.forEach((athletes, gi) => {
@@ -594,31 +650,67 @@ export default function CompetitionSchedulePage() {
                         const ng = Math.max(1, Math.ceil(total / 8));
                         for (let g = 0; g < ng; g++) effGroups.push({ grupNo: g + 1, baslangicAleti: aletlerSirali[g % numRot], count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
                     }
+
+                    // Bu kategorinin rotasyon süresi (sporcu sayısına göre)
+                    const rotSuresi = calcRotasyonSuresi(catKey, effGroups);
+
+                    // Mola kontrolü yaparak ilerle
+                    const advance = (dk) => {
+                        // Geçilecek sabit molaları ekle
+                        for (const mola of sabitMolalar) {
+                            const ms = parseTimeToMin(mola.baslangicSaat);
+                            const me = parseTimeToMin(mola.bitisSaat);
+                            if (!molaEklendi.has(mola.id) && curMin <= ms && curMin + dk > ms) {
+                                molaEklendi.add(mola.id);
+                                const k = push(ref(db, 'x')).key;
+                                newSessions[k] = { tarih, tip: 'mola', molaAdi: mola.ad || 'Mola', alet: '', saat: minToTimeStr(ms), bitisSaat: minToTimeStr(me), aciklama: mola.ad || 'Mola', durum: 'bekliyor', rotasyonNo: 0, grupNo: 0, kategori: catKey };
+                                curMin = me;
+                            }
+                        }
+                        curMin += dk;
+                        // Artık molaya denk geliyorsa atla
+                        curMin = skipMolalar(curMin);
+                    };
+
+                    // Mola kontrolü başlangıçta da yap
+                    curMin = skipMolalar(curMin);
+
                     // Isınma
                     if (planAyarlari.isinmaSuresi > 0) {
                         const k = push(ref(db, 'x')).key;
                         newSessions[k] = { tarih, tip: 'isinma', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.isinmaSuresi), aciklama: `${getCategoryLabel(catKey)} — Isınma`, durum: 'bekliyor', rotasyonNo: 0, grupNo: 0 };
-                        curMin += planAyarlari.isinmaSuresi;
+                        advance(planAyarlari.isinmaSuresi);
                     }
+
                     // Rotasyonlar
                     for (let r = 0; r < numRot; r++) {
                         const rotStart = minToTimeStr(curMin);
-                        const rotEnd = minToTimeStr(curMin + planAyarlari.rotasyonSuresi);
+                        const rotEnd = minToTimeStr(curMin + rotSuresi);
                         effGroups.forEach(grp => {
                             const si = aletlerSirali.indexOf(grp.baslangicAleti);
                             const ei = si >= 0 ? si : 0;
                             const alet = aletlerSirali[(ei + r) % numRot];
                             const k = push(ref(db, 'x')).key;
-                            newSessions[k] = { tarih, tip: 'rotasyon', kategori: catKey, alet, saat: rotStart, bitisSaat: rotEnd, rotasyonNo: r + 1, grupNo: grp.grupNo, bolumAdi: grp.bolumAdi || null, sporcu_sayisi: grp.count, aciklama: `${getCategoryLabel(catKey)} — ${grp.etiket} — ${getAletLabel(alet)}`, durum: 'bekliyor' };
+                            const sureDk = rotSuresi;
+                            newSessions[k] = {
+                                tarih, tip: 'rotasyon', kategori: catKey, alet,
+                                saat: rotStart, bitisSaat: rotEnd,
+                                rotasyonNo: r + 1, grupNo: grp.grupNo,
+                                bolumAdi: grp.bolumAdi || null,
+                                sporcu_sayisi: grp.count,
+                                rotasyonSuresiDk: sureDk,
+                                aciklama: `${getCategoryLabel(catKey)} — ${grp.etiket} — ${getAletLabel(alet)} (${grp.count} sporcu, ${sureDk} dk)`,
+                                durum: 'bekliyor'
+                            };
                         });
-                        curMin += planAyarlari.rotasyonSuresi;
+                        advance(rotSuresi);
                         if (r < numRot - 1 && planAyarlari.molaSuresi > 0) {
                             const k = push(ref(db, 'x')).key;
                             newSessions[k] = { tarih, tip: 'mola', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.molaSuresi), aciklama: `Rotasyon ${r + 1}→${r + 2} Arası Mola`, durum: 'bekliyor', rotasyonNo: r + 1, grupNo: 0 };
-                            curMin += planAyarlari.molaSuresi;
+                            advance(planAyarlari.molaSuresi);
                         }
                     }
-                    curMin += (planAyarlari.kategoriBeklemeSuresi || 20);
+                    advance(planAyarlari.kategoriBeklemeSuresi || 20);
                 }
             }
             await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newSessions);
@@ -626,7 +718,7 @@ export default function CompetitionSchedulePage() {
             setActiveTab('program');
         } catch (err) { toast('Hata: ' + err.message, 'error'); }
         finally { setGenerating(false); }
-    }, [selectedCompId, dateRange, planAyarlari, rotasyonPlani, gruplar, compCatKeys, sessions, athleteCounts, firebasePath]);
+    }, [selectedCompId, dateRange, planAyarlari, rotasyonPlani, gruplar, compCatKeys, sessions, athleteCounts, firebasePath, calcRotasyonSuresi, skipMolalar]);
 
     // Rotation athletes lookup
     const getRotationAthletes = useCallback((sess) => {
@@ -850,10 +942,10 @@ export default function CompetitionSchedulePage() {
                                         </div>
                                         <div className="plan-divider" />
                                         <h3 style={{marginBottom:'12px'}}><i className="material-icons-round">timer</i> Süre Ayarları</h3>
+                                        {/* Başlama saati + ısınma + kategoriler arası geçiş */}
                                         {[
                                             { field: 'defaultBaslama', label: 'Varsayılan Başlama Saati', type: 'time' },
                                             { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },
-                                            { field: 'rotasyonSuresi', label: 'Rotasyon Süresi (dk)', type: 'number', min: 10, max: 120 },
                                             { field: 'molaSuresi', label: 'Rotasyonlar Arası Mola (dk)', type: 'number', min: 0, max: 60 },
                                             { field: 'kategoriBeklemeSuresi', label: 'Kategoriler Arası Geçiş (dk)', type: 'number', min: 0, max: 120 },
                                         ].map(({ field, label, type, min, max }) => (
@@ -864,12 +956,90 @@ export default function CompetitionSchedulePage() {
                                                     onChange={e => updatePlanAyarlari(field, type === 'number' ? +e.target.value : e.target.value)} />
                                             </div>
                                         ))}
+
+                                        {/* Sporcu başına süre */}
+                                        <div className="plan-divider" />
+                                        <div className="plan-field plan-field--toggle">
+                                            <label>Rotasyon süresini otomatik hesapla</label>
+                                            <label className="toggle-switch">
+                                                <input type="checkbox" checked={!!planAyarlari.otomatikSureHesapla}
+                                                    onChange={e => updatePlanAyarlari('otomatikSureHesapla', e.target.checked)} />
+                                                <span className="toggle-track" />
+                                            </label>
+                                        </div>
+                                        {planAyarlari.otomatikSureHesapla ? (
+                                            <div className="plan-field">
+                                                <label>Sporcu başına süre (saniye)</label>
+                                                <input type="number" min={30} max={600} step={10}
+                                                    value={planAyarlari.sporculBasinaSure ?? 120}
+                                                    onChange={e => updatePlanAyarlari('sporculBasinaSure', +e.target.value)} />
+                                                <small className="plan-field-hint">Örn: 120 sn → 8 sporculuk grup = 16 dk rotasyon</small>
+                                            </div>
+                                        ) : (
+                                            <div className="plan-field">
+                                                <label>Sabit Rotasyon Süresi (dk)</label>
+                                                <input type="number" min={5} max={120}
+                                                    value={planAyarlari.rotasyonSuresi ?? 30}
+                                                    onChange={e => updatePlanAyarlari('rotasyonSuresi', +e.target.value)} />
+                                            </div>
+                                        )}
+
                                         {/* Süre Özeti */}
                                         <div className="plan-summary">
-                                            <strong>Kategori başına tahmini süre</strong>
-                                            <span>4 alet: {(planAyarlari.isinmaSuresi || 0) + 4 * (planAyarlari.rotasyonSuresi || 30) + 3 * (planAyarlari.molaSuresi || 10)} dk</span>
-                                            <span>6 alet: {(planAyarlari.isinmaSuresi || 0) + 6 * (planAyarlari.rotasyonSuresi || 30) + 5 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                            <strong>Rotasyon süresi tahmini</strong>
+                                            {planAyarlari.otomatikSureHesapla ? (
+                                                <>
+                                                    <span>6 sporcu: {Math.ceil(6 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                    <span>8 sporcu: {Math.ceil(8 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                    <span>10 sporcu: {Math.ceil(10 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>4 alet: {(planAyarlari.isinmaSuresi || 0) + 4 * (planAyarlari.rotasyonSuresi || 30) + 3 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                                    <span>6 alet: {(planAyarlari.isinmaSuresi || 0) + 6 * (planAyarlari.rotasyonSuresi || 30) + 5 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                                </>
+                                            )}
                                         </div>
+                                    </div>
+
+                                    {/* Sabit Molalar Kartı */}
+                                    <div className="plan-card plan-card--full">
+                                        <div className="plan-card-header">
+                                            <h3><i className="material-icons-round">free_breakfast</i> Sabit Molalar</h3>
+                                            {canEdit && (
+                                                <button className="btn-add-mola" onClick={addMola}>
+                                                    <i className="material-icons-round">add</i> Mola Ekle
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="plan-card-hint">Öğle arası veya diğer sabit molalar — program oluştururken otomatik eklenir</p>
+                                        {(planAyarlari.molalar || []).length === 0 && (
+                                            <div className="mola-empty">Henüz sabit mola eklenmedi</div>
+                                        )}
+                                        {(planAyarlari.molalar || []).map(mola => (
+                                            <div key={mola.id} className="mola-row">
+                                                <input className="mola-ad-input" type="text" placeholder="Mola adı"
+                                                    value={mola.ad || ''} onChange={e => updateMola(mola.id, 'ad', e.target.value)} />
+                                                <div className="mola-time-group">
+                                                    <span className="mola-time-label">Başlangıç</span>
+                                                    <input type="time" value={mola.baslangicSaat || '12:00'}
+                                                        onChange={e => updateMola(mola.id, 'baslangicSaat', e.target.value)} />
+                                                </div>
+                                                <div className="mola-time-group">
+                                                    <span className="mola-time-label">Bitiş</span>
+                                                    <input type="time" value={mola.bitisSaat || '13:00'}
+                                                        onChange={e => updateMola(mola.id, 'bitisSaat', e.target.value)} />
+                                                </div>
+                                                <span className="mola-dur">
+                                                    {Math.round(parseTimeToMin(mola.bitisSaat || '13:00') - parseTimeToMin(mola.baslangicSaat || '12:00'))} dk
+                                                </span>
+                                                {canEdit && (
+                                                    <button className="btn-remove-mola" onClick={() => removeMola(mola.id)}>
+                                                        <i className="material-icons-round">delete</i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
 
                                     {dateRange.length > 0 && (

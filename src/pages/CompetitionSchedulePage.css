@@ -907,6 +907,35 @@
 .gun-count { min-width:36px; text-align:center; font-size:20px; font-weight:700; color:#1e293b; }
 .gun-count-label { font-size:13px; color:#64748b; }
 .plan-divider { height:1px; background:#e2e8f0; margin:16px 0; }
+
+/* ── Toggle switch ── */
+.plan-field--toggle { flex-direction:row; align-items:center; justify-content:space-between; }
+.toggle-switch { position:relative; display:inline-flex; cursor:pointer; }
+.toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
+.toggle-track { width:44px; height:24px; background:#cbd5e1; border-radius:12px; transition:background .2s; position:relative; }
+.toggle-track::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle-switch input:checked + .toggle-track { background:#6366f1; }
+.toggle-switch input:checked + .toggle-track::after { transform:translateX(20px); }
+.plan-field-hint { font-size:11px; color:#94a3b8; margin-top:4px; display:block; }
+
+/* ── Mola yönetimi ── */
+.plan-card--full { grid-column: 1 / -1; }
+.plan-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.plan-card-header h3 { margin:0; }
+.btn-add-mola { display:flex; align-items:center; gap:4px; padding:6px 12px; background:#6366f1; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-add-mola:hover { background:#4f46e5; }
+.btn-add-mola .material-icons-round { font-size:16px; }
+.mola-empty { text-align:center; padding:12px; color:#94a3b8; font-size:13px; background:#f8fafc; border-radius:8px; margin-top:8px; }
+.mola-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#f8fafc; border-radius:10px; margin-top:8px; flex-wrap:wrap; }
+.mola-ad-input { flex:1; min-width:120px; padding:7px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; background:#fff; }
+.mola-ad-input:focus { outline:none; border-color:#6366f1; }
+.mola-time-group { display:flex; align-items:center; gap:6px; }
+.mola-time-label { font-size:11px; color:#64748b; font-weight:600; white-space:nowrap; }
+.mola-time-group input[type="time"] { padding:6px 8px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; background:#fff; }
+.mola-dur { font-size:12px; font-weight:700; color:#6366f1; background:#ede9fe; padding:3px 8px; border-radius:6px; white-space:nowrap; }
+.btn-remove-mola { width:30px; height:30px; border:none; background:none; cursor:pointer; color:#ef4444; border-radius:6px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+.btn-remove-mola:hover { background:#fee2e2; }
+.btn-remove-mola .material-icons-round { font-size:18px; }
 .cat-day-assign-table { border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
 .cat-day-row { display:flex; align-items:center; border-bottom:1px solid #f1f5f9; }
 .cat-day-row:last-child { border-bottom:none; }
