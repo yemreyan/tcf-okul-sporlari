@@ -62,6 +62,13 @@ function getOlimpikSira(catKey, aletler) {
 function parseTimeToMin(t) { const [h, m] = (t || '09:00').split(':').map(Number); return h * 60 + m; }
 function minToTimeStr(min) { const h = Math.floor(min / 60) % 24, m = min % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; }
 
+const PLAN_DEFAULTS = {
+    rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
+    kategoriBeklemeSuresi: 20, dalgaAraBekleme: 5, defaultBaslama: '09:00',
+    sporculBasinaSure: 120, otomatikSureHesapla: true,
+    gunAyarlari: {}, kategoriGunAtamalari: {}, molalar: []
+};
+
 export default function CompetitionSchedulePage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
@@ -94,13 +101,7 @@ export default function CompetitionSchedulePage() {
 
     // New state
     const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'program'
-    const [planAyarlari, setPlanAyarlari] = useState({
-        rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
-        kategoriBeklemeSuresi: 20, dalgaAraBekleme: 5, defaultBaslama: '09:00',
-        sporculBasinaSure: 120, otomatikSureHesapla: true,
-        gunAyarlari: {}, kategoriGunAtamalari: {},
-        molalar: []  // [{ id, ad, baslangicSaat, bitisSaat }]
-    });
+    const [planAyarlari, setPlanAyarlari] = useState(PLAN_DEFAULTS);
     const [rotasyonPlani, setRotasyonPlani] = useState({}); // {catKey: {0:{baslangicAleti,bolunmus,bolumler}}}
     const [gruplar, setGruplar] = useState({});             // {catKey: [[ath,...],...]  loaded from siralama
     const [savingPlan, setSavingPlan] = useState(false);    // eslint-disable-line no-unused-vars
@@ -127,9 +128,16 @@ export default function CompetitionSchedulePage() {
 
     // planAyarlari from Firebase
     useEffect(() => {
-        if (!selectedCompId) { setPlanAyarlari({ rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15, kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {}, kategoriGunAtamalari: {} }); return; }
+        if (!selectedCompId) { setPlanAyarlari(PLAN_DEFAULTS); return; }
+        setPlanAyarlari(PLAN_DEFAULTS); // yarışma değişince eski veriyi hemen temizle
         const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), s => {
-            if (s.val()) setPlanAyarlari(prev => ({ ...prev, ...s.val() }));
+            const data = s.val();
+            if (!data) return;
+            // Firebase array'leri object olarak saklıyor → geri array'e çevir
+            if (data.molalar && !Array.isArray(data.molalar)) {
+                data.molalar = Object.values(data.molalar);
+            }
+            setPlanAyarlari({ ...PLAN_DEFAULTS, ...data });
         });
         return () => unsub();
     }, [selectedCompId, firebasePath]);
@@ -137,6 +145,7 @@ export default function CompetitionSchedulePage() {
     // rotasyonPlani from Firebase
     useEffect(() => {
         if (!selectedCompId) { setRotasyonPlani({}); return; }
+        setRotasyonPlani({}); // yarışma değişince temizle
         const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/rotasyonPlani`), s => setRotasyonPlani(s.val() || {}));
         return () => unsub();
     }, [selectedCompId, firebasePath]);
@@ -144,6 +153,7 @@ export default function CompetitionSchedulePage() {
     // gruplar from siralama
     useEffect(() => {
         if (!selectedCompId) { setGruplar({}); return; }
+        setGruplar({}); // yarışma değişince temizle
         get(ref(db, `${firebasePath}/${selectedCompId}/siralama`)).then(snap => {
             const data = snap.val() || {};
             const result = {};
@@ -586,12 +596,21 @@ export default function CompetitionSchedulePage() {
     }, [planAyarlari, savePlanAyar]);
 
     // ── Rotasyon süresi hesapla (sporcu sayısına göre) ──
-    const calcRotasyonSuresi = useCallback((catKey, effGroups) => {
+    // dalgaSlots: array of slots, her slot [grp] veya [grp1, grp2] (paralel)
+    // Paralel slotta 2 grup aynı alette SIRAYLA yarışır → sporcu sayıları TOPLANIR
+    // Dalganın en yavaş slotu rotasyon süresini belirler (slot'lar farklı aletlerde aynı anda)
+    const calcRotasyonSuresi = useCallback((catKey, dalgaSlots) => {
         if (!planAyarlari.otomatikSureHesapla) return planAyarlari.rotasyonSuresi || 30;
         const sn = planAyarlari.sporculBasinaSure || 120;
-        const maxCount = effGroups.reduce((mx, g) => Math.max(mx, g.count || 0), 0);
-        if (!maxCount) return planAyarlari.rotasyonSuresi || 30;
-        return Math.ceil((maxCount * sn) / 60); // dakika
+        const maxSlotCount = (dalgaSlots || []).reduce((mx, slot) => {
+            // slot Array.isArray → paralel çift; değilse tek grup
+            const slotCount = Array.isArray(slot)
+                ? slot.reduce((s, g) => s + (g.count || 0), 0)
+                : (slot.count || 0);
+            return Math.max(mx, slotCount);
+        }, 0);
+        if (!maxSlotCount) return planAyarlari.rotasyonSuresi || 30;
+        return Math.ceil((maxSlotCount * sn) / 60);
     }, [planAyarlari]);
 
     // ── Mola kontrolü: curMin bir molaya denk geliyorsa molanın sonuna atla ──
@@ -724,8 +743,8 @@ export default function CompetitionSchedulePage() {
                         const dalga = dalgalar[dalgaIdx];
                         const dalgaNo = dalgaIdx + 1;
 
-                        // Rotasyon süresi bu dalganın max sporcu sayısına göre (slot'lar düzleştirilir)
-                        const rotSuresi = calcRotasyonSuresi(catKey, dalga.flatMap(s => s));
+                        // Rotasyon süresi: paralel slotlarda sporcu toplamı, tüm slotların maks'ı alınır
+                        const rotSuresi = calcRotasyonSuresi(catKey, dalga);
 
                         // Isınma — her dalga için ayrı
                         if (planAyarlari.isinmaSuresi > 0) {
