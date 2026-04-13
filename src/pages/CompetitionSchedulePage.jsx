@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -47,6 +47,20 @@ function generateDateRange(start, end) {
     return dates;
 }
 
+/* ── Rotasyon sabitleri ── */
+const OLIMPIK_SIRA_KIZ   = ['atlama', 'asimetrik', 'denge', 'serbest'];
+const OLIMPIK_SIRA_ERKEK = ['yer', 'kulplu', 'halka', 'atlama', 'paralel', 'barfiks', 'sirik'];
+
+function getOlimpikSira(catKey, aletler) {
+    const isKiz = catKey.toLowerCase().includes('kiz');
+    const ref2 = isKiz ? OLIMPIK_SIRA_KIZ : OLIMPIK_SIRA_ERKEK;
+    const ordered = ref2.filter(a => aletler.includes(a));
+    const extra = aletler.filter(a => !ordered.includes(a));
+    return [...ordered, ...extra];
+}
+function parseTimeToMin(t) { const [h, m] = (t || '09:00').split(':').map(Number); return h * 60 + m; }
+function minToTimeStr(min) { const h = Math.floor(min / 60) % 24, m = min % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; }
+
 export default function CompetitionSchedulePage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
@@ -77,6 +91,18 @@ export default function CompetitionSchedulePage() {
         durum: 'bekliyor',
     });
 
+    // New state
+    const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'program'
+    const [planAyarlari, setPlanAyarlari] = useState({
+        rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
+        kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {}
+    });
+    const [rotasyonPlani, setRotasyonPlani] = useState({}); // {catKey: {0:{baslangicAleti,bolunmus,bolumler}}}
+    const [gruplar, setGruplar] = useState({});             // {catKey: [[ath,...],...]  loaded from siralama
+    const [savingPlan, setSavingPlan] = useState(false);    // eslint-disable-line no-unused-vars
+    const [expandedSessions, setExpandedSessions] = useState(new Set());
+    const [printMode, setPrintMode] = useState(false);
+
     // Firebase — yarışmalar
     useEffect(() => {
         const unsub = onValue(ref(db, firebasePath), (s) => {
@@ -95,6 +121,46 @@ export default function CompetitionSchedulePage() {
         });
         return () => unsub();
     }, [selectedCompId]);
+
+    // planAyarlari from Firebase
+    useEffect(() => {
+        if (!selectedCompId) { setPlanAyarlari({ rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15, kategoriBeklemeSuresi: 20, defaultBaslama: '09:00', gunAyarlari: {} }); return; }
+        const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), s => {
+            if (s.val()) setPlanAyarlari(prev => ({ ...prev, ...s.val() }));
+        });
+        return () => unsub();
+    }, [selectedCompId, firebasePath]);
+
+    // rotasyonPlani from Firebase
+    useEffect(() => {
+        if (!selectedCompId) { setRotasyonPlani({}); return; }
+        const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/rotasyonPlani`), s => setRotasyonPlani(s.val() || {}));
+        return () => unsub();
+    }, [selectedCompId, firebasePath]);
+
+    // gruplar from siralama
+    useEffect(() => {
+        if (!selectedCompId) { setGruplar({}); return; }
+        get(ref(db, `${firebasePath}/${selectedCompId}/siralama`)).then(snap => {
+            const data = snap.val() || {};
+            const result = {};
+            Object.entries(data).forEach(([catKey, catData]) => {
+                if (!catData || typeof catData !== 'object') return;
+                const keys = Object.keys(catData).filter(k => k.startsWith('rotation_'));
+                const maxIdx = keys.length ? Math.max(...keys.map(k => parseInt(k.replace('rotation_', '')))) : -1;
+                const groups = [];
+                for (let i = 0; i <= maxIdx; i++) {
+                    const rotData = catData[`rotation_${i}`] || {};
+                    const athletes = typeof rotData === 'object'
+                        ? Object.values(rotData).filter(a => a && a.ad).sort((a, b) => (a.sirasi || 0) - (b.sirasi || 0))
+                        : [];
+                    if (athletes.length) groups.push(athletes);
+                }
+                if (groups.length) result[catKey] = groups;
+            });
+            setGruplar(result);
+        });
+    }, [selectedCompId, firebasePath]);
 
     // Filtrelenmiş yarışmalar
     const filteredComps = useMemo(
@@ -372,6 +438,205 @@ export default function CompetitionSchedulePage() {
         }
     };
 
+    // ── Plan ayarları handlers ──
+    const savePlanAyar = useCallback(async (updated) => {
+        if (!selectedCompId) return;
+        try { await update(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), updated); }
+        catch (err) { toast('Kayıt hatası: ' + err.message, 'error'); }
+    }, [selectedCompId, firebasePath]);
+
+    const updatePlanAyarlari = useCallback((field, value) => {
+        const updated = { ...planAyarlari, [field]: value };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const updateGunAyar = useCallback((tarih, field, value) => {
+        const updated = { ...planAyarlari, gunAyarlari: { ...(planAyarlari.gunAyarlari || {}), [tarih]: { ...(planAyarlari.gunAyarlari?.[tarih] || {}), [field]: value } } };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const saveRotasyonPlaniForCat = useCallback(async (catKey, catPlan) => {
+        if (!selectedCompId) return;
+        await set(ref(db, `${firebasePath}/${selectedCompId}/rotasyonPlani/${catKey}`), catPlan);
+    }, [selectedCompId, firebasePath]);
+
+    const handleAutoAssign = useCallback(async (catKey) => {
+        const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
+        const catGruplar = gruplar[catKey] || [];
+        if (!catGruplar.length) { toast('Bu kategoride grup yok. Önce Çıkış Sırası sayfasından grupları oluşturun.', 'warning'); return; }
+        const newCatPlan = {};
+        catGruplar.forEach((_, idx) => {
+            newCatPlan[idx] = { ...(rotasyonPlani[catKey]?.[idx] || {}), baslangicAleti: aletlerSirali[idx % aletlerSirali.length], bolunmus: false, bolumler: undefined };
+        });
+        setRotasyonPlani(prev => ({ ...prev, [catKey]: newCatPlan }));
+        await saveRotasyonPlaniForCat(catKey, newCatPlan);
+        toast(`${getCategoryLabel(catKey)} için olimpik sıraya göre atandı`, 'success');
+    }, [gruplar, rotasyonPlani, saveRotasyonPlaniForCat, compKategoriler]);
+
+    const handleGroupAletChange = useCallback(async (catKey, idx, aletKey) => {
+        const updated = { ...rotasyonPlani, [catKey]: { ...(rotasyonPlani[catKey] || {}), [idx]: { ...(rotasyonPlani[catKey]?.[idx] || {}), baslangicAleti: aletKey } } };
+        setRotasyonPlani(updated);
+        await saveRotasyonPlaniForCat(catKey, updated[catKey]);
+    }, [rotasyonPlani, saveRotasyonPlaniForCat]);
+
+    const handleToggleBolunme = useCallback(async (catKey, idx) => {
+        const cur = rotasyonPlani[catKey]?.[idx] || {};
+        const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
+        const isBol = cur.bolunmus;
+        const baseAlet = cur.baslangicAleti || aletlerSirali[0];
+        const baseIdx = aletlerSirali.indexOf(baseAlet);
+        const newPlan = {
+            ...cur, bolunmus: !isBol,
+            bolumler: !isBol ? [
+                { aletKey: baseAlet, bolumAdi: 'A' },
+                { aletKey: aletlerSirali[(baseIdx + 1) % aletlerSirali.length], bolumAdi: 'B' }
+            ] : undefined
+        };
+        const updatedCat = { ...(rotasyonPlani[catKey] || {}), [idx]: newPlan };
+        setRotasyonPlani(prev => ({ ...prev, [catKey]: updatedCat }));
+        await saveRotasyonPlaniForCat(catKey, updatedCat);
+    }, [rotasyonPlani, saveRotasyonPlaniForCat, compKategoriler]);
+
+    const handleBolumAletChange = useCallback(async (catKey, idx, bi, aletKey) => {
+        const cur = rotasyonPlani[catKey]?.[idx] || {};
+        const newBolumler = [...(cur.bolumler || [])];
+        newBolumler[bi] = { ...newBolumler[bi], aletKey };
+        const updatedCat = { ...(rotasyonPlani[catKey] || {}), [idx]: { ...cur, bolumler: newBolumler } };
+        setRotasyonPlani(prev => ({ ...prev, [catKey]: updatedCat }));
+        await saveRotasyonPlaniForCat(catKey, updatedCat);
+    }, [rotasyonPlani, saveRotasyonPlaniForCat]);
+
+    // NEW auto-generate that uses rotation plan
+    const handleGenerateRotationSchedule = useCallback(async () => {
+        if (!selectedCompId) return;
+        if (Object.keys(sessions).length > 0) {
+            const ok = await confirm('Mevcut program silinip rotasyon planına göre yeniden oluşturulacak. Onaylıyor musunuz?');
+            if (!ok) return;
+        }
+        setGenerating(true);
+        try {
+            const newSessions = {};
+            for (const tarih of dateRange) {
+                const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
+                let curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
+                const aktifKats = (gunAyar.aktifKategoriler?.length) ? gunAyar.aktifKategoriler : compCatKeys;
+                for (const catKey of aktifKats) {
+                    const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
+                    if (!aletlerSirali.length) continue;
+                    const catGruplar = gruplar[catKey] || [];
+                    const catPlan = rotasyonPlani[catKey] || {};
+                    const numRot = aletlerSirali.length;
+                    // Build effective groups
+                    const effGroups = [];
+                    if (catGruplar.length) {
+                        catGruplar.forEach((athletes, gi) => {
+                            const gp = catPlan[gi] || {};
+                            if (gp.bolunmus && gp.bolumler?.length >= 2) {
+                                gp.bolumler.forEach((b) => {
+                                    const half = Math.ceil(athletes.length / gp.bolumler.length);
+                                    effGroups.push({ grupNo: gi + 1, bolumAdi: b.bolumAdi, baslangicAleti: b.aletKey, count: half, etiket: `Grup ${gi + 1}${b.bolumAdi}` });
+                                });
+                            } else {
+                                effGroups.push({ grupNo: gi + 1, baslangicAleti: gp.baslangicAleti || aletlerSirali[gi % numRot], count: athletes.length, etiket: `Grup ${gi + 1}` });
+                            }
+                        });
+                    } else {
+                        const total = athleteCounts[catKey] || 0;
+                        const ng = Math.max(1, Math.ceil(total / 8));
+                        for (let g = 0; g < ng; g++) effGroups.push({ grupNo: g + 1, baslangicAleti: aletlerSirali[g % numRot], count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
+                    }
+                    // Isınma
+                    if (planAyarlari.isinmaSuresi > 0) {
+                        const k = push(ref(db, 'x')).key;
+                        newSessions[k] = { tarih, tip: 'isinma', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.isinmaSuresi), aciklama: `${getCategoryLabel(catKey)} — Isınma`, durum: 'bekliyor', rotasyonNo: 0, grupNo: 0 };
+                        curMin += planAyarlari.isinmaSuresi;
+                    }
+                    // Rotasyonlar
+                    for (let r = 0; r < numRot; r++) {
+                        const rotStart = minToTimeStr(curMin);
+                        const rotEnd = minToTimeStr(curMin + planAyarlari.rotasyonSuresi);
+                        effGroups.forEach(grp => {
+                            const si = aletlerSirali.indexOf(grp.baslangicAleti);
+                            const ei = si >= 0 ? si : 0;
+                            const alet = aletlerSirali[(ei + r) % numRot];
+                            const k = push(ref(db, 'x')).key;
+                            newSessions[k] = { tarih, tip: 'rotasyon', kategori: catKey, alet, saat: rotStart, bitisSaat: rotEnd, rotasyonNo: r + 1, grupNo: grp.grupNo, bolumAdi: grp.bolumAdi || null, sporcu_sayisi: grp.count, aciklama: `${getCategoryLabel(catKey)} — ${grp.etiket} — ${getAletLabel(alet)}`, durum: 'bekliyor' };
+                        });
+                        curMin += planAyarlari.rotasyonSuresi;
+                        if (r < numRot - 1 && planAyarlari.molaSuresi > 0) {
+                            const k = push(ref(db, 'x')).key;
+                            newSessions[k] = { tarih, tip: 'mola', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.molaSuresi), aciklama: `Rotasyon ${r + 1}→${r + 2} Arası Mola`, durum: 'bekliyor', rotasyonNo: r + 1, grupNo: 0 };
+                            curMin += planAyarlari.molaSuresi;
+                        }
+                    }
+                    curMin += (planAyarlari.kategoriBeklemeSuresi || 20);
+                }
+            }
+            await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newSessions);
+            toast(`${Object.keys(newSessions).length} oturum rotasyon programı oluşturuldu`, 'success');
+            setActiveTab('program');
+        } catch (err) { toast('Hata: ' + err.message, 'error'); }
+        finally { setGenerating(false); }
+    }, [selectedCompId, dateRange, planAyarlari, rotasyonPlani, gruplar, compCatKeys, sessions, athleteCounts, firebasePath]);
+
+    // Rotation athletes lookup
+    const getRotationAthletes = useCallback((sess) => {
+        if (sess.tip !== 'rotasyon' || !sess.grupNo) return [];
+        const catAthletes = gruplar[sess.kategori];
+        if (!catAthletes) return [];
+        const groupAthletes = catAthletes[sess.grupNo - 1] || [];
+        if (sess.bolumAdi) {
+            const half = Math.ceil(groupAthletes.length / 2);
+            return sess.bolumAdi === 'A' ? groupAthletes.slice(0, half) : groupAthletes.slice(half);
+        }
+        return groupAthletes;
+    }, [gruplar]);
+
+    const toggleSessionExpand = useCallback((sessId) => {
+        setExpandedSessions(prev => {
+            const next = new Set(prev);
+            if (next.has(sessId)) next.delete(sessId); else next.add(sessId);
+            return next;
+        });
+    }, []);
+
+    const handlePrint = useCallback(() => {
+        setPrintMode(true);
+        setTimeout(() => { window.print(); setTimeout(() => setPrintMode(false), 500); }, 100);
+    }, []);
+
+    // rotationMatrix computed
+    const rotationMatrix = useMemo(() => {
+        const result = {};
+        compCatKeys.forEach(catKey => {
+            const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
+            if (!aletlerSirali.length) return;
+            const catGruplar = gruplar[catKey] || [];
+            const catPlan = rotasyonPlani[catKey] || {};
+            const numRot = aletlerSirali.length;
+            const effGroups = [];
+            catGruplar.forEach((athletes, gi) => {
+                const gp = catPlan[gi] || {};
+                if (gp.bolunmus && gp.bolumler?.length >= 2) {
+                    gp.bolumler.forEach(b => effGroups.push({ etiket: `G${gi + 1}${b.bolumAdi}`, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length) }));
+                } else {
+                    effGroups.push({ etiket: `G${gi + 1}`, baslangicAleti: gp.baslangicAleti || aletlerSirali[gi % numRot], count: athletes.length });
+                }
+            });
+            const matrix = {};
+            aletlerSirali.forEach(a => { matrix[a] = {}; for (let r = 0; r < numRot; r++) matrix[a][r] = []; });
+            effGroups.forEach(grp => {
+                const si = aletlerSirali.indexOf(grp.baslangicAleti);
+                const ei = si >= 0 ? si : 0;
+                for (let r = 0; r < numRot; r++) matrix[aletlerSirali[(ei + r) % numRot]][r].push(grp);
+            });
+            result[catKey] = { aletlerSirali, numRot, matrix, effGroups };
+        });
+        return result;
+    }, [compCatKeys, gruplar, rotasyonPlani, compKategoriler]);
+
     // İstatistikler
     const totalSessions = Object.keys(sessions).length;
     const completedSessions = Object.values(sessions).filter(s => s.durum === 'tamamlandi').length;
@@ -485,124 +750,351 @@ export default function CompetitionSchedulePage() {
                             </div>
                         </div>
 
-                        {/* Otomatik Program Oluştur Butonu */}
-                        {canCreate && (
-                            <div className="sched-auto-generate">
-                                <button className="sched-auto-btn" onClick={handleAutoGenerate} disabled={generating}>
-                                    <i className="material-icons-round">{generating ? 'hourglass_top' : 'auto_fix_high'}</i>
-                                    <div>
-                                        <strong>{generating ? 'Program Oluşturuluyor...' : 'Otomatik Program Oluştur'}</strong>
-                                        <small>{generating ? 'Lütfen bekleyin' : 'Sporcu sayılarına göre oturumları otomatik planla'}</small>
-                                    </div>
+                        {/* NEW: Three tabs */}
+                        <div className="sched-tabs">
+                            {[
+                                { id: 'ayarlar', icon: 'tune', label: 'Ayarlar' },
+                                { id: 'rotasyon', icon: 'rotate_right', label: 'Rotasyon Planı' },
+                                { id: 'program', icon: 'calendar_view_week', label: 'Program' },
+                            ].map(tab => (
+                                <button key={tab.id} className={`sched-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+                                    <i className="material-icons-round">{tab.icon}</i>
+                                    {tab.label}
+                                    {tab.id === 'program' && totalSessions > 0 && <span className="tab-badge">{totalSessions}</span>}
                                 </button>
+                            ))}
+                        </div>
+
+                        {/* TAB: AYARLAR */}
+                        {activeTab === 'ayarlar' && (
+                            <div className="sched-tab-content">
+                                <div className="plan-settings-grid">
+                                    <div className="plan-card">
+                                        <h3><i className="material-icons-round">timer</i> Süre Ayarları</h3>
+                                        {[
+                                            { field: 'defaultBaslama', label: 'Varsayılan Başlama Saati', type: 'time' },
+                                            { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },
+                                            { field: 'rotasyonSuresi', label: 'Rotasyon Süresi (dk)', type: 'number', min: 10, max: 120 },
+                                            { field: 'molaSuresi', label: 'Rotasyonlar Arası Mola (dk)', type: 'number', min: 0, max: 60 },
+                                            { field: 'kategoriBeklemeSuresi', label: 'Kategoriler Arası Geçiş (dk)', type: 'number', min: 0, max: 120 },
+                                        ].map(({ field, label, type, min, max }) => (
+                                            <div key={field} className="plan-field">
+                                                <label>{label}</label>
+                                                <input type={type} min={min} max={max}
+                                                    value={planAyarlari[field] ?? ''}
+                                                    onChange={e => updatePlanAyarlari(field, type === 'number' ? +e.target.value : e.target.value)} />
+                                            </div>
+                                        ))}
+                                        {/* Süre Özeti */}
+                                        <div className="plan-summary">
+                                            <strong>Kategori başına tahmini süre</strong>
+                                            <span>4 alet: {(planAyarlari.isinmaSuresi || 0) + 4 * (planAyarlari.rotasyonSuresi || 30) + 3 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                            <span>6 alet: {(planAyarlari.isinmaSuresi || 0) + 6 * (planAyarlari.rotasyonSuresi || 30) + 5 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                        </div>
+                                    </div>
+
+                                    {dateRange.length > 0 && (
+                                        <div className="plan-card">
+                                            <h3><i className="material-icons-round">date_range</i> Günlük Ayarlar</h3>
+                                            {dateRange.map((tarih, di) => {
+                                                const ga = planAyarlari.gunAyarlari?.[tarih] || {};
+                                                const aktifKats = ga.aktifKategoriler;
+                                                return (
+                                                    <div key={tarih} className="gun-ayar-block">
+                                                        <div className="gun-ayar-header">
+                                                            <span className="gun-badge">{di + 1}. Gün</span>
+                                                            <span className="gun-tarih">{formatDateTR(tarih)}</span>
+                                                        </div>
+                                                        <div className="gun-ayar-fields">
+                                                            <div className="plan-field">
+                                                                <label>Başlama Saati</label>
+                                                                <input type="time" value={ga.baslamaSaati || planAyarlari.defaultBaslama || '09:00'}
+                                                                    onChange={e => updateGunAyar(tarih, 'baslamaSaati', e.target.value)} />
+                                                            </div>
+                                                            <div className="plan-field plan-field--cats">
+                                                                <label>Aktif Kategoriler <small>(boş = hepsi)</small></label>
+                                                                <div className="cat-check-list">
+                                                                    {compCatKeys.map(catKey => {
+                                                                        const checked = !aktifKats?.length || aktifKats.includes(catKey);
+                                                                        return (
+                                                                            <label key={catKey} className="cat-check-item">
+                                                                                <input type="checkbox" checked={checked} onChange={e => {
+                                                                                    const cur = aktifKats?.length ? aktifKats : [...compCatKeys];
+                                                                                    updateGunAyar(tarih, 'aktifKategoriler', e.target.checked ? [...cur, catKey] : cur.filter(k => k !== catKey));
+                                                                                }} />
+                                                                                <span>{getCategoryLabel(catKey)}</span>
+                                                                            </label>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
-                        {/* Gün bazlı takvim */}
-                        {dateRange.map(dateStr => (
-                            <div key={dateStr} className="sched-day">
-                                <div className="sched-day__header">
-                                    <div className="sched-day__date">
-                                        <span className="sched-day__num">{new Date(dateStr).getDate()}</span>
-                                        <div className="sched-day__meta">
-                                            <strong>{formatDateTR(dateStr)}</strong>
-                                            <span className="sched-day__count">
-                                                {(sessionsByDate[dateStr] || []).length} oturum
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {canCreate && (
-                                        <button className="sched-add-btn" onClick={() => openAddModal(dateStr)}>
-                                            <i className="material-icons-round">add</i>
-                                            Oturum Ekle
-                                        </button>
-                                    )}
-                                </div>
-
-                                {(sessionsByDate[dateStr] || []).length === 0 ? (
-                                    <div className="sched-day__empty">
-                                        <i className="material-icons-round">event_busy</i>
-                                        Bu gün için henüz oturum eklenmemiş
-                                    </div>
-                                ) : (
-                                    <div className="sched-day__timeline">
-                                        {(sessionsByDate[dateStr] || []).map(sess => (
-                                            <div
-                                                key={sess.id}
-                                                className={`sched-session sched-session--${sess.durum || 'bekliyor'}`}
-                                            >
-                                                <div className="sched-session__time">
-                                                    <span className="sched-session__start">{sess.saat}</span>
-                                                    <span className="sched-session__sep">—</span>
-                                                    <span className="sched-session__end">{sess.bitisSaat}</span>
-                                                </div>
-                                                <div className="sched-session__line" />
-                                                <div className="sched-session__body">
-                                                    <div className="sched-session__top">
-                                                        <span className="sched-session__cat">{getCategoryLabel(sess.kategori)}</span>
-                                                        {sess.alet && (
-                                                            <span className="sched-session__alet">{getAletLabel(sess.alet)}</span>
-                                                        )}
-                                                        <span
-                                                            className="sched-session__status"
-                                                            style={{ background: SESSION_COLORS[sess.durum || 'bekliyor'] }}
-                                                        >
-                                                            {SESSION_LABELS[sess.durum || 'bekliyor']}
-                                                        </span>
+                        {/* TAB: ROTASYON PLANI */}
+                        {activeTab === 'rotasyon' && (
+                            <div className="sched-tab-content">
+                                {compCatKeys.length === 0 && <div className="sched-empty"><i className="material-icons-round">category</i><p>Yarışmada kategori bulunamadı</p></div>}
+                                {compCatKeys.map(catKey => {
+                                    const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
+                                    const catGruplar = gruplar[catKey] || [];
+                                    const catPlan = rotasyonPlani[catKey] || {};
+                                    const mat = rotationMatrix[catKey];
+                                    return (
+                                        <div key={catKey} className="rot-cat-section">
+                                            {/* Category header */}
+                                            <div className="rot-cat-header">
+                                                <div className="rot-cat-title">
+                                                    <h3>{getCategoryLabel(catKey)}</h3>
+                                                    <div className="olimpik-sira-chips">
+                                                        <span className="olimpik-label">Olimpik Sıra:</span>
+                                                        {aletlerSirali.map((a, i) => (
+                                                            <span key={a}>{i > 0 && <span className="arrow-chip">→</span>}<span className="alet-chip-small">{getAletLabel(a)}</span></span>
+                                                        ))}
                                                     </div>
-                                                    {sess.aciklama && (
-                                                        <p className="sched-session__desc">{sess.aciklama}</p>
-                                                    )}
-                                                    {(canEdit || canDelete) && (
-                                                        <div className="sched-session__actions">
-                                                            {/* Durum toggle */}
-                                                            {canEdit && sess.durum !== 'tamamlandi' && (
-                                                                <button
-                                                                    className="sched-action sched-action--start"
-                                                                    onClick={() => handleStatusChange(sess.id, sess.durum === 'devam' ? 'tamamlandi' : 'devam')}
-                                                                    title={sess.durum === 'devam' ? 'Tamamla' : 'Başlat'}
-                                                                >
-                                                                    <i className="material-icons-round">
-                                                                        {sess.durum === 'devam' ? 'check_circle' : 'play_arrow'}
-                                                                    </i>
-                                                                </button>
-                                                            )}
-                                                            {canEdit && sess.durum === 'tamamlandi' && (
-                                                                <button
-                                                                    className="sched-action sched-action--undo"
-                                                                    onClick={() => handleStatusChange(sess.id, 'bekliyor')}
-                                                                    title="Geri Al"
-                                                                >
-                                                                    <i className="material-icons-round">undo</i>
-                                                                </button>
-                                                            )}
-                                                            {canEdit && (
-                                                                <button
-                                                                    className="sched-action sched-action--edit"
-                                                                    onClick={() => openEditModal(sess)}
-                                                                    title="Düzenle"
-                                                                >
-                                                                    <i className="material-icons-round">edit</i>
-                                                                </button>
-                                                            )}
-                                                            {canDelete && (
-                                                                <button
-                                                                    className="sched-action sched-action--delete"
-                                                                    onClick={() => handleDelete(sess.id)}
-                                                                    title="Sil"
-                                                                >
-                                                                    <i className="material-icons-round">delete</i>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
                                                 </div>
+                                                {canEdit && (
+                                                    <button className="btn-auto-assign" onClick={() => handleAutoAssign(catKey)}>
+                                                        <i className="material-icons-round">auto_fix_high</i>Olimpik Sıraya Göre Ata
+                                                    </button>
+                                                )}
                                             </div>
-                                        ))}
+
+                                            {catGruplar.length === 0 ? (
+                                                <div className="no-groups-msg">
+                                                    <i className="material-icons-round">info</i>
+                                                    Bu kategori için henüz çıkış sırası oluşturulmamış.
+                                                    <strong> Çıkış Sırası</strong> sayfasından grupları oluşturun.
+                                                </div>
+                                            ) : (
+                                                <div className="rot-groups-list">
+                                                    {catGruplar.map((athletes, gi) => {
+                                                        const gp = catPlan[gi] || {};
+                                                        const isBol = gp.bolunmus;
+                                                        const startAlet = gp.baslangicAleti || '';
+                                                        const startIdx = aletlerSirali.indexOf(startAlet);
+                                                        return (
+                                                            <div key={gi} className={`rot-group-card ${isBol ? 'bolunmus' : ''}`}>
+                                                                <div className="rot-group-top">
+                                                                    <div className="rot-group-id">
+                                                                        <span className="rot-group-num">Grup {gi + 1}</span>
+                                                                        <span className="rot-group-count">{athletes.length} sporcu</span>
+                                                                    </div>
+                                                                    {!isBol && (
+                                                                        <div className="rot-alet-select">
+                                                                            <label>Başlangıç Aleti</label>
+                                                                            <select value={startAlet} onChange={e => handleGroupAletChange(catKey, gi, e.target.value)} disabled={!canEdit}>
+                                                                                <option value="">— Seç —</option>
+                                                                                {aletlerSirali.map(a => <option key={a} value={a}>{getAletLabel(a)}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                    )}
+                                                                    {canEdit && aletlerSirali.length > 1 && (
+                                                                        <button className={`btn-bol ${isBol ? 'active' : ''}`} onClick={() => handleToggleBolunme(catKey, gi)}>
+                                                                            <i className="material-icons-round">{isBol ? 'call_merge' : 'call_split'}</i>
+                                                                            {isBol ? 'Birleştir' : 'Böl'}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                {isBol && gp.bolumler && (
+                                                                    <div className="rot-bolumler">
+                                                                        {gp.bolumler.map((b, bi) => (
+                                                                            <div key={bi} className="rot-bolum">
+                                                                                <span className="bolum-badge">{b.bolumAdi}</span>
+                                                                                <span className="bolum-count">~{Math.ceil(athletes.length / gp.bolumler.length)} sporcu</span>
+                                                                                <label>Alet:</label>
+                                                                                <select value={b.aletKey || ''} onChange={e => handleBolumAletChange(catKey, gi, bi, e.target.value)} disabled={!canEdit}>
+                                                                                    {aletlerSirali.map(a => <option key={a} value={a}>{getAletLabel(a)}</option>)}
+                                                                                </select>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {!isBol && startAlet && (
+                                                                    <div className="rot-sequence">
+                                                                        {aletlerSirali.map((_, ri) => {
+                                                                            const ai = (startIdx + ri) % aletlerSirali.length;
+                                                                            return (
+                                                                                <span key={ri} className="rot-seq-step">
+                                                                                    {ri > 0 && <i className="material-icons-round seq-arrow">arrow_forward</i>}
+                                                                                    <span className="seq-num">{ri + 1}</span>
+                                                                                    <span className="seq-alet">{getAletLabel(aletlerSirali[ai])}</span>
+                                                                                </span>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Rotation Matrix Preview */}
+                                            {mat && mat.effGroups.length > 0 && (
+                                                <div className="rot-matrix-section">
+                                                    <h4><i className="material-icons-round">grid_view</i> Rotasyon Matrisi</h4>
+                                                    <div className="rot-matrix-scroll">
+                                                        <table className="rot-matrix-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th className="alet-col">Alet</th>
+                                                                    {Array.from({ length: mat.numRot }, (_, r) => {
+                                                                        const bas = parseTimeToMin(planAyarlari.defaultBaslama || '09:00');
+                                                                        const sm = bas + (planAyarlari.isinmaSuresi || 15) + r * ((planAyarlari.rotasyonSuresi || 30) + (planAyarlari.molaSuresi || 10));
+                                                                        return <th key={r}><div className="rot-th-num">Rot. {r + 1}</div><div className="rot-th-time">{minToTimeStr(sm)}–{minToTimeStr(sm + (planAyarlari.rotasyonSuresi || 30))}</div></th>;
+                                                                    })}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {mat.aletlerSirali.map(alet => (
+                                                                    <tr key={alet}>
+                                                                        <td className="alet-name-cell"><span className="alet-badge">{getAletLabel(alet)}</span></td>
+                                                                        {Array.from({ length: mat.numRot }, (_, r) => (
+                                                                            <td key={r} className="group-cell">
+                                                                                {(mat.matrix[alet][r] || []).map((g, gi) => (
+                                                                                    <div key={gi} className="group-chip">
+                                                                                        <span>{g.etiket}</span>
+                                                                                        {g.count > 0 && <span className="chip-count">{g.count}</span>}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </td>
+                                                                        ))}
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {canCreate && compCatKeys.length > 0 && (
+                                    <div className="generate-wrapper">
+                                        <button className="btn-generate-rot" onClick={handleGenerateRotationSchedule} disabled={generating}>
+                                            {generating ? <><div className="spinner-small" /><span>Oluşturuluyor...</span></> : <><i className="material-icons-round">play_circle</i><span>Rotasyon Programını Oluştur ve Kaydet</span></>}
+                                        </button>
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )}
+
+                        {/* TAB: PROGRAM */}
+                        {activeTab === 'program' && (
+                            <div className="sched-tab-content">
+                                {/* Print-only header */}
+                                <div className="print-header print-only">
+                                    <h1>{selectedComp?.isim || 'Yarışma'}</h1>
+                                    <div className="print-meta">
+                                        <span><strong>İl:</strong> {selectedComp?.il || '—'}</span>
+                                        <span><strong>Tarih:</strong> {selectedComp?.baslangicTarihi} {selectedComp?.bitisTarihi && selectedComp.bitisTarihi !== selectedComp.baslangicTarihi ? `— ${selectedComp.bitisTarihi}` : ''}</span>
+                                        <span><strong>Kategori:</strong> {compCatKeys.length} | <strong>Sporcu:</strong> {Object.values(athleteCounts).reduce((a, b) => a + b, 0)}</span>
+                                    </div>
+                                </div>
+                                {canCreate && (
+                                    <div className="sched-program-actions">
+                                        <button className="sched-auto-btn" onClick={handleAutoGenerate} disabled={generating}>
+                                            <i className="material-icons-round">auto_fix_high</i>
+                                            <div><strong>Temel Otomatik Program</strong><small>Sporcu sayısına göre basit plan</small></div>
+                                        </button>
+                                        <button className="sched-rot-btn" onClick={() => setActiveTab('rotasyon')} disabled={generating}>
+                                            <i className="material-icons-round">rotate_right</i>
+                                            <div><strong>Rotasyon Planla</strong><small>Olimpik sıra ve grup ataması</small></div>
+                                        </button>
+                                        {totalSessions > 0 && (
+                                            <button className="sched-pdf-btn" onClick={handlePrint}>
+                                                <i className="material-icons-round">picture_as_pdf</i>
+                                                <div><strong>PDF İndir</strong><small>Programı yazdır / PDF kaydet</small></div>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                {dateRange.map(dateStr => (
+                                    <div key={dateStr} className="sched-day">
+                                        <div className="sched-day__header">
+                                            <div className="sched-day__date">
+                                                <span className="sched-day__num">{new Date(dateStr).getDate()}</span>
+                                                <div className="sched-day__meta">
+                                                    <strong>{formatDateTR(dateStr)}</strong>
+                                                    <span className="sched-day__count">{(sessionsByDate[dateStr] || []).length} oturum</span>
+                                                </div>
+                                            </div>
+                                            {canCreate && <button className="sched-add-btn" onClick={() => openAddModal(dateStr)}><i className="material-icons-round">add</i>Oturum Ekle</button>}
+                                        </div>
+                                        {(sessionsByDate[dateStr] || []).length === 0 ? (
+                                            <div className="sched-day__empty"><i className="material-icons-round">event_busy</i>Bu gün için oturum yok</div>
+                                        ) : (
+                                            <div className="sched-day__timeline">
+                                                {(sessionsByDate[dateStr] || []).map(sess => {
+                                                    const rotAthletes = getRotationAthletes(sess);
+                                                    const isExpanded = expandedSessions.has(sess.id);
+                                                    return (
+                                                        <div key={sess.id} className={`sched-session sched-session--${sess.durum || 'bekliyor'} sched-session--tip-${sess.tip || 'manuel'}${isExpanded ? ' expanded' : ''}`}>
+                                                            <div className="sched-session__time">
+                                                                <span className="sched-session__start">{sess.saat}</span>
+                                                                <span className="sched-session__sep">—</span>
+                                                                <span className="sched-session__end">{sess.bitisSaat}</span>
+                                                            </div>
+                                                            <div className="sched-session__line" />
+                                                            <div className="sched-session__body">
+                                                                <div className="sched-session__top">
+                                                                    {sess.tip && sess.tip !== 'manuel' && (
+                                                                        <span className={`sess-tip-badge sess-tip--${sess.tip}`}>
+                                                                            {sess.tip === 'isinma' ? 'Isınma' : sess.tip === 'mola' ? 'Mola' : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}` : sess.tip}
+                                                                        </span>
+                                                                    )}
+                                                                    {sess.grupNo > 0 && <span className="sess-grup-badge">Grup {sess.grupNo}{sess.bolumAdi || ''}</span>}
+                                                                    <span className="sched-session__cat">{getCategoryLabel(sess.kategori)}</span>
+                                                                    {sess.alet && <span className="sched-session__alet">{getAletLabel(sess.alet)}</span>}
+                                                                    <span className="sched-session__status" style={{ background: SESSION_COLORS[sess.durum || 'bekliyor'] }}>{SESSION_LABELS[sess.durum || 'bekliyor']}</span>
+                                                                    {rotAthletes.length > 0 && (
+                                                                        <button className="btn-expand-athletes no-print" onClick={() => toggleSessionExpand(sess.id)} title={isExpanded ? 'Sporcuları gizle' : 'Sporcuları göster'}>
+                                                                            <i className="material-icons-round">{isExpanded ? 'expand_less' : 'people'}</i>
+                                                                            <span>{rotAthletes.length} sporcu</span>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                {sess.aciklama && <p className="sched-session__desc">{sess.aciklama}</p>}
+                                                                {/* Athlete list - shown when expanded or in print mode */}
+                                                                {rotAthletes.length > 0 && (isExpanded || printMode) && (
+                                                                    <div className="sess-athlete-list">
+                                                                        <div className="athlete-list-grid">
+                                                                            {rotAthletes.map((ath, ai) => (
+                                                                                <div key={ath.id || ai} className="athlete-list-row">
+                                                                                    <span className="ath-order">{ath.sirasi || ai + 1}</span>
+                                                                                    <span className="ath-name">{ath.ad} {ath.soyad}</span>
+                                                                                    <span className="ath-club">{ath.kulup || ath.okul || ''}</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {(canEdit || canDelete) && (
+                                                                    <div className="sched-session__actions no-print">
+                                                                        {canEdit && sess.durum !== 'tamamlandi' && <button className="sched-action sched-action--start" onClick={() => handleStatusChange(sess.id, sess.durum === 'devam' ? 'tamamlandi' : 'devam')}><i className="material-icons-round">{sess.durum === 'devam' ? 'check_circle' : 'play_arrow'}</i></button>}
+                                                                        {canEdit && sess.durum === 'tamamlandi' && <button className="sched-action sched-action--undo" onClick={() => handleStatusChange(sess.id, 'bekliyor')}><i className="material-icons-round">undo</i></button>}
+                                                                        {canEdit && <button className="sched-action sched-action--edit" onClick={() => openEditModal(sess)}><i className="material-icons-round">edit</i></button>}
+                                                                        {canDelete && <button className="sched-action sched-action--delete" onClick={() => handleDelete(sess.id)}><i className="material-icons-round">delete</i></button>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
             </main>

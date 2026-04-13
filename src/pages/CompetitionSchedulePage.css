@@ -750,49 +750,172 @@
     margin-bottom: 20px;
 }
 
-.sched-auto-btn {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    cursor: pointer;
-    font-family: inherit;
-    text-align: left;
-    transition: all 0.2s;
-    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+/* ══════════════════════════
+   NEW: TABS & 3-PANEL LAYOUT
+   ══════════════════════════ */
+
+/* ── Tabs ── */
+.sched-tabs { display:flex; gap:4px; padding:0 0 16px; border-bottom:2px solid #e2e8f0; margin-bottom:20px; }
+.sched-tab { display:flex; align-items:center; gap:6px; padding:8px 16px; border:none; border-radius:8px 8px 0 0; background:transparent; color:#64748b; font-size:14px; font-weight:500; cursor:pointer; transition:all .2s; position:relative; }
+.sched-tab:hover { background:#f1f5f9; color:#334155; }
+.sched-tab.active { background:#6366f1; color:#fff; }
+.tab-badge { background:rgba(255,255,255,.3); color:#fff; font-size:11px; padding:1px 6px; border-radius:10px; font-weight:700; }
+.sched-tab:not(.active) .tab-badge { background:#6366f1; color:#fff; }
+
+/* ── Tab content ── */
+.sched-tab-content { animation: fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+/* ── Plan settings ── */
+.plan-settings-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; }
+.plan-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
+.plan-card h3 { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; color:#1e293b; margin:0 0 16px; }
+.plan-card h3 .material-icons-round { font-size:18px; color:#6366f1; }
+.plan-field { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.plan-field label { font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.5px; }
+.plan-field input[type=time],.plan-field input[type=number] { padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; transition:border-color .2s; }
+.plan-field input:focus { outline:none; border-color:#6366f1; }
+.plan-field--cats label small { text-transform:none; color:#94a3b8; font-weight:400; }
+.cat-check-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.cat-check-item { display:flex; align-items:center; gap:4px; padding:4px 10px; border:1px solid #e2e8f0; border-radius:20px; font-size:12px; cursor:pointer; transition:all .15s; }
+.cat-check-item:has(input:checked) { background:#ede9fe; border-color:#6366f1; color:#4f46e5; }
+.cat-check-item input { display:none; }
+.plan-summary { background:#f8fafc; border-radius:8px; padding:10px 14px; margin-top:4px; font-size:13px; display:flex; flex-direction:column; gap:4px; color:#475569; }
+.plan-summary strong { color:#1e293b; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+.gun-ayar-block { border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:12px; }
+.gun-ayar-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.gun-badge { background:#6366f1; color:#fff; border-radius:6px; padding:2px 10px; font-size:12px; font-weight:700; }
+.gun-tarih { font-size:13px; color:#475569; font-weight:500; }
+.gun-ayar-fields { display:flex; flex-direction:column; gap:10px; }
+
+/* ── Rotasyon Planı ── */
+.rot-cat-section { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:20px; }
+.rot-cat-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.rot-cat-title h3 { font-size:16px; font-weight:700; color:#1e293b; margin:0 0 6px; }
+.olimpik-sira-chips { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.olimpik-label { font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase; }
+.arrow-chip { color:#94a3b8; font-size:13px; }
+.alet-chip-small { background:#ede9fe; color:#4f46e5; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+.btn-auto-assign { display:flex; align-items:center; gap:6px; padding:8px 14px; background:#ede9fe; color:#4f46e5; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.btn-auto-assign:hover { background:#6366f1; color:#fff; }
+.btn-auto-assign .material-icons-round { font-size:16px; }
+.no-groups-msg { display:flex; align-items:center; gap:8px; padding:12px 16px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; font-size:13px; color:#92400e; }
+.no-groups-msg .material-icons-round { color:#f97316; font-size:18px; flex-shrink:0; }
+.rot-groups-list { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+.rot-group-card { border:1.5px solid #e2e8f0; border-radius:10px; padding:14px; transition:border-color .2s; }
+.rot-group-card.bolunmus { border-color:#a855f7; background:#faf5ff; }
+.rot-group-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.rot-group-id { display:flex; align-items:center; gap:6px; }
+.rot-group-num { font-size:14px; font-weight:700; color:#1e293b; }
+.rot-group-count { font-size:12px; color:#94a3b8; background:#f1f5f9; padding:2px 8px; border-radius:10px; }
+.rot-alet-select { display:flex; align-items:center; gap:6px; }
+.rot-alet-select label { font-size:12px; color:#64748b; font-weight:600; white-space:nowrap; }
+.rot-alet-select select { padding:6px 10px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13px; font-family:inherit; }
+.rot-alet-select select:focus { outline:none; border-color:#6366f1; }
+.btn-bol { display:flex; align-items:center; gap:4px; padding:6px 12px; border:1.5px solid #e2e8f0; border-radius:8px; background:#fff; color:#64748b; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; margin-left:auto; }
+.btn-bol .material-icons-round { font-size:15px; }
+.btn-bol.active { background:#a855f7; border-color:#a855f7; color:#fff; }
+.btn-bol:hover:not(.active) { border-color:#a855f7; color:#a855f7; }
+.rot-bolumler { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.rot-bolum { display:flex; align-items:center; gap:8px; background:#f3e8ff; border-radius:8px; padding:8px 12px; flex-wrap:wrap; }
+.bolum-badge { background:#a855f7; color:#fff; border-radius:6px; padding:2px 8px; font-size:12px; font-weight:700; }
+.bolum-count { font-size:12px; color:#6b21a8; }
+.rot-bolum label { font-size:12px; color:#6b21a8; font-weight:600; }
+.rot-bolum select { padding:5px 8px; border:1px solid #d8b4fe; border-radius:6px; font-size:12px; background:#fff; }
+.rot-sequence { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-top:10px; padding:8px 10px; background:#f8fafc; border-radius:8px; }
+.rot-seq-step { display:flex; align-items:center; gap:4px; }
+.seq-arrow { font-size:14px; color:#94a3b8; }
+.seq-num { background:#6366f1; color:#fff; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.seq-alet { font-size:12px; color:#334155; font-weight:500; }
+
+/* ── Rotation Matrix ── */
+.rot-matrix-section { border-top:1px solid #e2e8f0; padding-top:16px; }
+.rot-matrix-section h4 { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:#475569; margin:0 0 12px; }
+.rot-matrix-section h4 .material-icons-round { font-size:16px; color:#6366f1; }
+.rot-matrix-scroll { overflow-x:auto; }
+.rot-matrix-table { border-collapse:collapse; min-width:100%; font-size:13px; }
+.rot-matrix-table th, .rot-matrix-table td { border:1px solid #e2e8f0; padding:8px 12px; text-align:center; white-space:nowrap; }
+.rot-matrix-table thead th { background:#f8fafc; font-weight:600; color:#475569; }
+.rot-matrix-table thead th .rot-th-num { font-weight:700; color:#1e293b; }
+.rot-matrix-table thead th .rot-th-time { font-size:11px; color:#94a3b8; font-weight:400; }
+.alet-col { min-width:130px; text-align:left !important; }
+.alet-name-cell { text-align:left !important; }
+.alet-badge { display:inline-flex; padding:3px 10px; background:#ede9fe; color:#4f46e5; border-radius:12px; font-size:12px; font-weight:600; }
+.group-cell { min-width:100px; }
+.group-chip { display:inline-flex; align-items:center; gap:4px; background:#dbeafe; color:#1d4ed8; border-radius:8px; padding:3px 8px; font-size:12px; font-weight:600; margin:2px; }
+.chip-count { background:rgba(0,0,0,.1); border-radius:6px; padding:0 5px; font-size:11px; }
+.generate-wrapper { display:flex; justify-content:center; padding:24px 0 8px; }
+.btn-generate-rot { display:flex; align-items:center; gap:10px; padding:14px 32px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition:all .2s; box-shadow:0 4px 12px rgba(99,102,241,.3); }
+.btn-generate-rot:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 16px rgba(99,102,241,.4); }
+.btn-generate-rot:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.btn-generate-rot .material-icons-round { font-size:20px; }
+.spinner-small { width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:schedSpin .7s linear infinite; }
+
+/* ── Program tab actions ── */
+.sched-program-actions { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.sched-auto-btn, .sched-rot-btn { display:flex; align-items:center; gap:12px; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; transition:all .2s; flex:1; min-width:220px; }
+.sched-auto-btn { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; }
+.sched-rot-btn { background:#f0fdf4; border:1.5px solid #86efac; color:#166534; }
+.sched-auto-btn:hover,.sched-rot-btn:hover { transform:translateY(-1px); }
+.sched-auto-btn strong,.sched-rot-btn strong { display:block; font-size:14px; }
+.sched-auto-btn small,.sched-rot-btn small { font-size:11px; opacity:.8; }
+
+/* ── Session tip badges ── */
+.sess-tip-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; text-transform:uppercase; }
+.sess-tip--isinma { background:#fef9c3; color:#854d0e; }
+.sess-tip--rotasyon { background:#dbeafe; color:#1e40af; }
+.sess-tip--mola { background:#f1f5f9; color:#64748b; }
+.sess-grup-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:#ede9fe; color:#4f46e5; }
+
+/* ── PDF button ── */
+.sched-pdf-btn { display:flex; align-items:center; gap:12px; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; transition:all .2s; flex:1; min-width:180px; background:#fff7ed; border:1.5px solid #fed7aa; color:#9a3412; }
+.sched-pdf-btn:hover { transform:translateY(-1px); background:#ffedd5; }
+.sched-pdf-btn strong { display:block; font-size:14px; }
+.sched-pdf-btn small { font-size:11px; opacity:.8; }
+.sched-pdf-btn .material-icons-round { font-size:24px; color:#ea580c; }
+
+/* ── Athlete expand button ── */
+.btn-expand-athletes { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; background:#f0fdf4; border:1px solid #86efac; border-radius:10px; color:#166534; font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; margin-left:4px; }
+.btn-expand-athletes:hover { background:#dcfce7; }
+.btn-expand-athletes .material-icons-round { font-size:14px; }
+
+/* ── Athlete list in session ── */
+.sess-athlete-list { margin-top:10px; border-top:1px solid #e2e8f0; padding-top:8px; }
+.athlete-list-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:4px; }
+.athlete-list-row { display:flex; align-items:center; gap:8px; padding:5px 8px; background:#f8fafc; border-radius:6px; font-size:13px; }
+.ath-order { width:22px; height:22px; display:flex; align-items:center; justify-content:center; background:#6366f1; color:#fff; border-radius:50%; font-size:11px; font-weight:700; flex-shrink:0; }
+.ath-name { font-weight:600; color:#1e293b; flex:1; }
+.ath-club { font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+
+/* ── Print styles ── */
+.print-only { display:none; }
+.print-header h1 { margin:0 0 8px; font-size:22px; color:#1e293b; }
+.print-meta { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:#475569; }
+
+@media print {
+    .no-print, .sched-header, .sched-selector, .sched-tabs,
+    .sched-program-actions, .sched-session__actions,
+    .btn-expand-athletes, .sched-comp-info { display:none !important; }
+
+    .print-only { display:block !important; }
+
+    .schedule-page { background:#fff; }
+    .sched-main { padding:0; }
+    .sched-tab-content { padding:0; }
+
+    .sched-day { break-inside:avoid; margin-bottom:20px; border:none; }
+    .sched-day__header { background:#f1f5f9 !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+
+    .sched-session { break-inside:avoid; }
+    .sched-session--tip-mola { display:none; }
+
+    .sess-athlete-list { display:block !important; }
+    .athlete-list-grid { grid-template-columns:repeat(2, 1fr); }
+
+    .print-header { padding:0 0 12px; border-bottom:2px solid #1e293b; margin-bottom:16px; }
+
+    @page { margin:15mm; size:A4 portrait; }
 }
 
-.sched-auto-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
-}
-
-.sched-auto-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
-}
-
-.sched-auto-btn i {
-    font-size: 28px;
-    flex-shrink: 0;
-}
-
-.sched-auto-btn strong {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 800;
-}
-
-.sched-auto-btn small {
-    display: block;
-    font-size: 0.78rem;
-    opacity: 0.85;
-    margin-top: 2px;
-}
+/* ── Expanded session highlight ── */
+.sched-session.expanded { border-left-color: #6366f1; background: #fafbff; }
