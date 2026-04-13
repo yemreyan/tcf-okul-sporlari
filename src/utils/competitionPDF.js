@@ -31,16 +31,24 @@ const C = {
 };
 
 /* ── Turkce karakter donusumu (Helvetica uyumlu) ── */
+// charCode tablosu: regex yerine codePoint bazli - encoding sorunlarindan etkilenmez
+const TR_MAP = {
+    304:'I', 305:'i',   // İ ı
+    286:'G', 287:'g',   // Ğ ğ
+    350:'S', 351:'s',   // Ş ş
+    214:'O', 246:'o',   // Ö ö
+    220:'U', 252:'u',   // Ü ü
+    199:'C', 231:'c',   // Ç ç
+    194:'A', 226:'a',   // Â â
+    206:'I', 238:'i',   // Î î
+    219:'U', 251:'u',   // Û û
+    208:'D', 240:'d',   // Ð ð (olasi)
+};
 function tr(text) {
-    return String(text ?? '')
-        .replace(/\u011f/g, 'g').replace(/\u011e/g, 'G') // ğ Ğ
-        .replace(/\u015f/g, 's').replace(/\u015e/g, 'S') // ş Ş
-        .replace(/\u0131/g, 'i').replace(/\u0130/g, 'I') // ı İ
-        .replace(/\u00f6/g, 'o').replace(/\u00d6/g, 'O') // ö Ö
-        .replace(/\u00fc/g, 'u').replace(/\u00dc/g, 'U') // ü Ü
-        .replace(/\u00e7/g, 'c').replace(/\u00c7/g, 'C') // ç Ç
-        .replace(/\u00e2/g, 'a').replace(/\u00c2/g, 'A') // â Â
-        .replace(/\u00ee/g, 'i').replace(/\u00ce/g, 'I'); // î Î
+    return String(text ?? '').split('').map(c => {
+        const code = c.charCodeAt(0);
+        return TR_MAP[code] !== undefined ? TR_MAP[code] : c;
+    }).join('');
 }
 
 const ALET_LABELS = {
@@ -187,11 +195,7 @@ export async function generateCompetitionPDF({
     txt(doc, 'Yarisma Yonetim Sistemi | Resmi Program', ML + 38, 20, { size: 7, color: C.muted });
     const compName = tr((selectedComp?.isim || 'YARISMA PROGRAMI').toUpperCase());
     // uzun isimler icin satir sar
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.setTextColor(...C.white);
-    const lines = doc.splitTextToSize(compName, CW - 44);
-    doc.text(lines, ML + 38, 30);
+    txt(doc, compName, ML + 38, 30, { size: 15, color: C.white, bold: true, maxWidth: CW - 44 });
 
     y = 54;
 
@@ -213,11 +217,7 @@ export async function generateCompetitionPDF({
         strokeRect(doc, bx, y, bw, 16, C.border);
         fillRect(doc, bx, y, bw, 4, C.navyMid);
         txt(doc, m.label, bx + 2, y + 3, { size: 5.5, color: C.gold, bold: true });
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(...C.dark);
-        const vLines = doc.splitTextToSize(m.val, bw - 4);
-        doc.text(vLines, bx + 2, y + 9.5);
+        txt(doc, m.val, bx + 2, y + 10, { size: 8.5, color: C.dark, bold: true, maxWidth: bw - 4 });
     });
     y += 20;
 
