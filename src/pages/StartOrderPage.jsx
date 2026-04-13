@@ -311,6 +311,148 @@ export default function StartOrderPage() {
         }
     };
 
+    // -- Antrenöre Göre Gruplama --
+    const handleGroupByCoach = async () => {
+        if (!selectedCompId || !filterCategory) {
+            showToast('Lütfen yarışma ve kategori seçin.', 'warning');
+            return;
+        }
+
+        try {
+            let allAthletes = [...unassigned, ...rotations.flat()];
+
+            if (allAthletes.length === 0) {
+                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+                const data = snap.val();
+                if (data) {
+                    allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+                }
+            }
+
+            if (allAthletes.length === 0) {
+                showToast('Bu kategoride sporcu bulunamadı.', 'warning');
+                return;
+            }
+
+            if (rotations.some(r => r.length > 0)) {
+                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
+                if (!confirmed) return;
+                allAthletes = [...unassigned, ...rotations.flat()];
+                if (allAthletes.length === 0) {
+                    const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
+                    const data = snap.val();
+                    if (data) {
+                        allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+                    }
+                }
+            }
+
+            // Önce takım / ferdi ayrımı yap
+            const teamsMap = {};
+            const individuals = [];
+
+            allAthletes.forEach(ath => {
+                const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
+                if (type === 'takim' || type === 'takım') {
+                    const school = ath.okul || 'Bilinmeyen Takım';
+                    if (!teamsMap[school]) teamsMap[school] = [];
+                    teamsMap[school].push(ath);
+                } else {
+                    individuals.push(ath);
+                }
+            });
+
+            // ── Phase 1: Takım grupları (okula göre, rastgele sıra) ──────
+            const teamsList = Object.values(teamsMap);
+            shuffleArray(teamsList);
+
+            const teamGroups = [];
+            const findBestTeamGroup = (requiredSlots) => {
+                let bestIndex = -1, bestCount = Infinity;
+                for (let i = 0; i < teamGroups.length; i++) {
+                    if (teamGroups[i].length + requiredSlots <= MAX_PER_ROTATION && teamGroups[i].length < bestCount) {
+                        bestCount = teamGroups[i].length;
+                        bestIndex = i;
+                    }
+                }
+                if (bestIndex === -1) { teamGroups.push([]); bestIndex = teamGroups.length - 1; }
+                return bestIndex;
+            };
+
+            teamsList.forEach(teamMembers => {
+                const targetIndex = findBestTeamGroup(teamMembers.length);
+                teamGroups[targetIndex].push(...teamMembers);
+            });
+
+            // ── Phase 2: Ferdi grupları (antrenöre göre) ─────────────────
+            const coachMap = {};
+            const noCoach = [];
+
+            individuals.forEach(ath => {
+                const coach = (ath.antrenor || ath.ogretmen || '').trim();
+                if (coach) {
+                    if (!coachMap[coach]) coachMap[coach] = [];
+                    coachMap[coach].push(ath);
+                } else {
+                    noCoach.push(ath);
+                }
+            });
+
+            const coachGroupsList = Object.values(coachMap);
+            shuffleArray(coachGroupsList);
+            shuffleArray(noCoach);
+
+            const individualGroups = [];
+            const findBestIndGroup = (requiredSlots) => {
+                let bestIndex = -1, bestCount = Infinity;
+                for (let i = 0; i < individualGroups.length; i++) {
+                    if (individualGroups[i].length + requiredSlots <= MAX_PER_ROTATION && individualGroups[i].length < bestCount) {
+                        bestCount = individualGroups[i].length;
+                        bestIndex = i;
+                    }
+                }
+                if (bestIndex === -1) { individualGroups.push([]); bestIndex = individualGroups.length - 1; }
+                return bestIndex;
+            };
+
+            // Aynı antrenörün ferdilerini aynı gruba yerleştir
+            coachGroupsList.forEach(members => {
+                for (let i = 0; i < members.length; i += MAX_PER_ROTATION) {
+                    const chunk = members.slice(i, i + MAX_PER_ROTATION);
+                    const targetIndex = findBestIndGroup(chunk.length);
+                    individualGroups[targetIndex].push(...chunk);
+                }
+            });
+
+            // Antrenörü olmayanları mevcut ferdi gruplarına dengeli dağıt
+            noCoach.forEach(ath => {
+                const targetIndex = findBestIndGroup(1);
+                individualGroups[targetIndex].push(ath);
+            });
+
+            // Önce takım grupları, sonra ferdi grupları
+            const newRotations = [...teamGroups, ...individualGroups];
+            if (newRotations.length === 0) newRotations.push([]);
+
+            setUnassigned([]);
+            setRotations(newRotations);
+
+            const ok = await saveToFirebase(newRotations, [], true);
+            const coachCount = Object.keys(coachMap).length;
+            if (ok) {
+                showToast(
+                    `Antrenöre göre gruplama yapıldı. ${coachCount} antrenör grubu, ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`,
+                    'success'
+                );
+            } else {
+                showToast('Gruplama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
+            }
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Antrenör gruplama hatası:', err);
+            showToast('Antrenör gruplamada hata oluştu: ' + err.message, 'error');
+        }
+    };
+
     // Fisher-Yates shuffle
     const shuffleArray = (array) => {
         for (let i = array.length - 1; i > 0; i--) {
@@ -1137,6 +1279,15 @@ export default function StartOrderPage() {
                                 <i className="material-icons-round">auto_awesome</i>
                                 Rastgele Atama Yap
                             </button>
+                            <button
+                                className="btn-random-assign"
+                                onClick={handleGroupByCoach}
+                                disabled={!selectedCompId || !filterCategory}
+                                title="Aynı antrenör/öğretmene sahip sporcuları aynı gruba ata"
+                            >
+                                <i className="material-icons-round">supervisor_account</i>
+                                Antrenöre Göre Grupla
+                            </button>
                         </>
                     )}
                 </div>
@@ -1167,7 +1318,7 @@ export default function StartOrderPage() {
                                                 <i className="material-icons-round drag-handle">drag_indicator</i>
                                                 <div className="ath-info">
                                                     <strong>{ath.ad} {ath.soyad}</strong>
-                                                    <small>{ath.okul || 'Okul Yok'} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span></small>
+                                                    <small>{ath.okul || 'Okul Yok'} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span>{(ath.antrenor || ath.ogretmen) ? <span className="coach-badge"> · {ath.antrenor || ath.ogretmen}</span> : null}</small>
                                                 </div>
                                             </div>
                                         ))}
@@ -1199,7 +1350,7 @@ export default function StartOrderPage() {
                                                         <div className="order-number">{athIndex + 1}</div>
                                                         <div className="ath-info">
                                                             <strong>{ath.ad} {ath.soyad}</strong>
-                                                            <small>{ath.okul ? ath.okul.substring(0, 20) : ''} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span></small>
+                                                            <small>{ath.okul ? ath.okul.substring(0, 20) : ''} <span className={`type-badge ${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru || 'Ferdi'}</span>{(ath.antrenor || ath.ogretmen) ? <span className="coach-badge"> · {ath.antrenor || ath.ogretmen}</span> : null}</small>
                                                         </div>
                                                         <i className="material-icons-round drag-handle">drag_indicator</i>
                                                     </div>

@@ -445,6 +445,11 @@
     border: 1px solid #FDE68A;
 }
 
+.coach-badge {
+    color: #6366f1;
+    font-style: italic;
+}
+
 .btn-bento-secondary {
     background: rgba(255, 255, 255, 0.15);
     color: white;
