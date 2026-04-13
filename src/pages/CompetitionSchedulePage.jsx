@@ -95,7 +95,7 @@ export default function CompetitionSchedulePage() {
     const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'program'
     const [planAyarlari, setPlanAyarlari] = useState({
         rotasyonSuresi: 30, molaSuresi: 10, isinmaSuresi: 15,
-        kategoriBeklemeSuresi: 20, defaultBaslama: '09:00',
+        kategoriBeklemeSuresi: 20, dalgaAraBekleme: 5, defaultBaslama: '09:00',
         sporculBasinaSure: 120, otomatikSureHesapla: true,
         gunAyarlari: {}, kategoriGunAtamalari: {},
         molalar: []  // [{ id, ad, baslangicSaat, bitisSaat }]
@@ -592,7 +592,9 @@ export default function CompetitionSchedulePage() {
         return cur;
     }, [planAyarlari.molalar]);
 
-    // NEW auto-generate that uses rotation plan
+    // DALGA (WAVE) tabanlı program oluşturucu
+    // Mantık: numAlet adet alet varsa → bir dalgaya numAlet grup girer.
+    // Bu numAlet grup hepsi ayrı aparatta aynı anda başlar, numAlet rotasyon adımı yapar → TÜMÜbitince sonraki dalga gelir.
     const handleGenerateRotationSchedule = useCallback(async () => {
         if (!selectedCompId) return;
         if (Object.keys(sessions).length > 0) {
@@ -611,7 +613,6 @@ export default function CompetitionSchedulePage() {
                 if (tarih) dayCategories[tarih].push(catKey);
             });
 
-            // Sabit molalar (öğle arası vb.)
             const sabitMolalar = (planAyarlari.molalar || [])
                 .filter(m => m.baslangicSaat && m.bitisSaat)
                 .sort((a, b) => parseTimeToMin(a.baslangicSaat) - parseTimeToMin(b.baslangicSaat));
@@ -620,97 +621,127 @@ export default function CompetitionSchedulePage() {
                 const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
                 let curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
                 const aktifKats = dayCategories[tarih] || [];
-
-                // Gün başında sabit molaları ekle (ileride schedule'a eklenmek üzere takip)
                 const molaEklendi = new Set();
 
-                for (const catKey of aktifKats) {
+                // Sabit molayı programasekle ve zamanı öne al
+                const advance = (dk) => {
+                    for (const mola of sabitMolalar) {
+                        const ms = parseTimeToMin(mola.baslangicSaat);
+                        const me = parseTimeToMin(mola.bitisSaat);
+                        if (!molaEklendi.has(mola.id) && curMin <= ms && curMin + dk > ms) {
+                            molaEklendi.add(mola.id);
+                            const k = push(ref(db, 'x')).key;
+                            newSessions[k] = { tarih, tip: 'mola', molaAdi: mola.ad || 'Mola', alet: '', saat: minToTimeStr(ms), bitisSaat: minToTimeStr(me), aciklama: mola.ad || 'Mola', durum: 'bekliyor', rotasyonNo: 0, grupNo: 0, kategori: '' };
+                            curMin = me;
+                        }
+                    }
+                    curMin += dk;
+                    curMin = skipMolalar(curMin);
+                };
+
+                for (let catIdx = 0; catIdx < aktifKats.length; catIdx++) {
+                    const catKey = aktifKats[catIdx];
                     const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
                     if (!aletlerSirali.length) continue;
+                    const numAlet = aletlerSirali.length; // bir dalgadaki grup sayısı = alet sayısı
                     const catGruplar = gruplar[catKey] || [];
                     const catPlan = rotasyonPlani[catKey] || {};
-                    const numRot = aletlerSirali.length;
 
-                    // Effective groups
+                    // Tüm effective grupları oluştur
                     const effGroups = [];
                     if (catGruplar.length) {
                         catGruplar.forEach((athletes, gi) => {
                             const gp = catPlan[gi] || {};
                             if (gp.bolunmus && gp.bolumler?.length >= 2) {
                                 gp.bolumler.forEach((b) => {
-                                    const half = Math.ceil(athletes.length / gp.bolumler.length);
-                                    effGroups.push({ grupNo: gi + 1, bolumAdi: b.bolumAdi, baslangicAleti: b.aletKey, count: half, etiket: `Grup ${gi + 1}${b.bolumAdi}` });
+                                    effGroups.push({ grupNo: gi + 1, bolumAdi: b.bolumAdi, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length), etiket: `Grup ${gi + 1}${b.bolumAdi}` });
                                 });
                             } else {
-                                effGroups.push({ grupNo: gi + 1, baslangicAleti: gp.baslangicAleti || aletlerSirali[gi % numRot], count: athletes.length, etiket: `Grup ${gi + 1}` });
+                                effGroups.push({ grupNo: gi + 1, baslangicAleti: gp.baslangicAleti || '', count: athletes.length, etiket: `Grup ${gi + 1}` });
                             }
                         });
                     } else {
                         const total = athleteCounts[catKey] || 0;
                         const ng = Math.max(1, Math.ceil(total / 8));
-                        for (let g = 0; g < ng; g++) effGroups.push({ grupNo: g + 1, baslangicAleti: aletlerSirali[g % numRot], count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
+                        for (let g = 0; g < ng; g++) effGroups.push({ grupNo: g + 1, baslangicAleti: '', count: Math.ceil(total / ng), etiket: `Grup ${g + 1}` });
                     }
 
-                    // Bu kategorinin rotasyon süresi (sporcu sayısına göre)
-                    const rotSuresi = calcRotasyonSuresi(catKey, effGroups);
+                    // DALGALARA BÖL: her dalga numAlet grup içerir
+                    const dalgalar = [];
+                    for (let i = 0; i < effGroups.length; i += numAlet) {
+                        dalgalar.push(effGroups.slice(i, i + numAlet));
+                    }
 
-                    // Mola kontrolü yaparak ilerle
-                    const advance = (dk) => {
-                        // Geçilecek sabit molaları ekle
-                        for (const mola of sabitMolalar) {
-                            const ms = parseTimeToMin(mola.baslangicSaat);
-                            const me = parseTimeToMin(mola.bitisSaat);
-                            if (!molaEklendi.has(mola.id) && curMin <= ms && curMin + dk > ms) {
-                                molaEklendi.add(mola.id);
-                                const k = push(ref(db, 'x')).key;
-                                newSessions[k] = { tarih, tip: 'mola', molaAdi: mola.ad || 'Mola', alet: '', saat: minToTimeStr(ms), bitisSaat: minToTimeStr(me), aciklama: mola.ad || 'Mola', durum: 'bekliyor', rotasyonNo: 0, grupNo: 0, kategori: catKey };
-                                curMin = me;
-                            }
-                        }
-                        curMin += dk;
-                        // Artık molaya denk geliyorsa atla
-                        curMin = skipMolalar(curMin);
-                    };
-
-                    // Mola kontrolü başlangıçta da yap
                     curMin = skipMolalar(curMin);
 
-                    // Isınma
-                    if (planAyarlari.isinmaSuresi > 0) {
-                        const k = push(ref(db, 'x')).key;
-                        newSessions[k] = { tarih, tip: 'isinma', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.isinmaSuresi), aciklama: `${getCategoryLabel(catKey)} — Isınma`, durum: 'bekliyor', rotasyonNo: 0, grupNo: 0 };
-                        advance(planAyarlari.isinmaSuresi);
-                    }
+                    for (let dalgaIdx = 0; dalgaIdx < dalgalar.length; dalgaIdx++) {
+                        const dalga = dalgalar[dalgaIdx];
+                        const dalgaNo = dalgaIdx + 1;
 
-                    // Rotasyonlar
-                    for (let r = 0; r < numRot; r++) {
-                        const rotStart = minToTimeStr(curMin);
-                        const rotEnd = minToTimeStr(curMin + rotSuresi);
-                        effGroups.forEach(grp => {
-                            const si = aletlerSirali.indexOf(grp.baslangicAleti);
-                            const ei = si >= 0 ? si : 0;
-                            const alet = aletlerSirali[(ei + r) % numRot];
+                        // Rotasyon süresi bu dalganın max sporcu sayısına göre
+                        const rotSuresi = calcRotasyonSuresi(catKey, dalga);
+
+                        // Isınma — her dalga için ayrı
+                        if (planAyarlari.isinmaSuresi > 0) {
                             const k = push(ref(db, 'x')).key;
-                            const sureDk = rotSuresi;
                             newSessions[k] = {
-                                tarih, tip: 'rotasyon', kategori: catKey, alet,
-                                saat: rotStart, bitisSaat: rotEnd,
-                                rotasyonNo: r + 1, grupNo: grp.grupNo,
-                                bolumAdi: grp.bolumAdi || null,
-                                sporcu_sayisi: grp.count,
-                                rotasyonSuresiDk: sureDk,
-                                aciklama: `${getCategoryLabel(catKey)} — ${grp.etiket} — ${getAletLabel(alet)} (${grp.count} sporcu, ${sureDk} dk)`,
-                                durum: 'bekliyor'
+                                tarih, tip: 'isinma', kategori: catKey, alet: '',
+                                saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.isinmaSuresi),
+                                aciklama: `${getCategoryLabel(catKey)} — ${dalgaNo}. Dalga Isınma`,
+                                durum: 'bekliyor', rotasyonNo: 0, grupNo: 0, dalgaNo
                             };
-                        });
-                        advance(rotSuresi);
-                        if (r < numRot - 1 && planAyarlari.molaSuresi > 0) {
-                            const k = push(ref(db, 'x')).key;
-                            newSessions[k] = { tarih, tip: 'mola', kategori: catKey, alet: '', saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.molaSuresi), aciklama: `Rotasyon ${r + 1}→${r + 2} Arası Mola`, durum: 'bekliyor', rotasyonNo: r + 1, grupNo: 0 };
-                            advance(planAyarlari.molaSuresi);
+                            advance(planAyarlari.isinmaSuresi);
+                        }
+
+                        // numAlet adım rotasyon: her adımda dalganın TÜM grupları aynı anda farklı aparatlarda
+                        for (let r = 0; r < numAlet; r++) {
+                            const rotStart = minToTimeStr(curMin);
+                            const rotEnd = minToTimeStr(curMin + rotSuresi);
+
+                            dalga.forEach((grp, wi) => {
+                                // Pozisyona göre başlangıç aleti: baslangicAleti yoksa wi pozisyonuna göre
+                                const startAletIdx = grp.baslangicAleti
+                                    ? aletlerSirali.indexOf(grp.baslangicAleti)
+                                    : wi;
+                                const si = startAletIdx >= 0 ? startAletIdx : wi % numAlet;
+                                const alet = aletlerSirali[(si + r) % numAlet];
+                                const k = push(ref(db, 'x')).key;
+                                newSessions[k] = {
+                                    tarih, tip: 'rotasyon', kategori: catKey, alet,
+                                    saat: rotStart, bitisSaat: rotEnd,
+                                    rotasyonNo: r + 1, dalgaNo,
+                                    grupNo: grp.grupNo, bolumAdi: grp.bolumAdi || null,
+                                    sporcu_sayisi: grp.count, rotasyonSuresiDk: rotSuresi,
+                                    aciklama: `${getCategoryLabel(catKey)} — ${dalgaNo}.Dalga ${grp.etiket} — ${getAletLabel(alet)} (${grp.count} sporcu, ${rotSuresi} dk)`,
+                                    durum: 'bekliyor'
+                                };
+                            });
+
+                            advance(rotSuresi);
+
+                            // Rotasyonlar arası mola (son adımdan sonra değil)
+                            if (r < numAlet - 1 && planAyarlari.molaSuresi > 0) {
+                                const k = push(ref(db, 'x')).key;
+                                newSessions[k] = {
+                                    tarih, tip: 'mola', kategori: catKey, alet: '',
+                                    saat: minToTimeStr(curMin), bitisSaat: minToTimeStr(curMin + planAyarlari.molaSuresi),
+                                    aciklama: `${dalgaNo}.Dalga Rot.${r + 1}→${r + 2} Arası Mola`,
+                                    durum: 'bekliyor', rotasyonNo: r + 1, dalgaNo, grupNo: 0
+                                };
+                                advance(planAyarlari.molaSuresi);
+                            }
+                        }
+
+                        // Dalgalar arası geçiş (son dalga hariç)
+                        if (dalgaIdx < dalgalar.length - 1) {
+                            advance(planAyarlari.dalgaAraBekleme || 5);
                         }
                     }
-                    advance(planAyarlari.kategoriBeklemeSuresi || 20);
+
+                    // Kategoriler arası geçiş (son kategori hariç)
+                    if (catIdx < aktifKats.length - 1) {
+                        advance(planAyarlari.kategoriBeklemeSuresi || 20);
+                    }
                 }
             }
             await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newSessions);
@@ -745,32 +776,48 @@ export default function CompetitionSchedulePage() {
         window.print();
     }, []);
 
-    // rotationMatrix computed
+    // rotationMatrix — wave-aware: her dalga kendi matrisiyle gösterilir
     const rotationMatrix = useMemo(() => {
         const result = {};
         compCatKeys.forEach(catKey => {
             const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
             if (!aletlerSirali.length) return;
+            const numAlet = aletlerSirali.length;
             const catGruplar = gruplar[catKey] || [];
             const catPlan = rotasyonPlani[catKey] || {};
-            const numRot = aletlerSirali.length;
+
+            // Effective groups (split aware)
             const effGroups = [];
             catGruplar.forEach((athletes, gi) => {
                 const gp = catPlan[gi] || {};
                 if (gp.bolunmus && gp.bolumler?.length >= 2) {
                     gp.bolumler.forEach(b => effGroups.push({ etiket: `G${gi + 1}${b.bolumAdi}`, baslangicAleti: b.aletKey, count: Math.ceil(athletes.length / gp.bolumler.length) }));
                 } else {
-                    effGroups.push({ etiket: `G${gi + 1}`, baslangicAleti: gp.baslangicAleti || aletlerSirali[gi % numRot], count: athletes.length });
+                    effGroups.push({ etiket: `G${gi + 1}`, baslangicAleti: gp.baslangicAleti || '', count: athletes.length });
                 }
             });
-            const matrix = {};
-            aletlerSirali.forEach(a => { matrix[a] = {}; for (let r = 0; r < numRot; r++) matrix[a][r] = []; });
-            effGroups.forEach(grp => {
-                const si = aletlerSirali.indexOf(grp.baslangicAleti);
-                const ei = si >= 0 ? si : 0;
-                for (let r = 0; r < numRot; r++) matrix[aletlerSirali[(ei + r) % numRot]][r].push(grp);
+
+            // Dalgalara böl
+            const dalgalar = [];
+            for (let i = 0; i < effGroups.length; i += numAlet) {
+                dalgalar.push(effGroups.slice(i, i + numAlet));
+            }
+
+            // Her dalga için matris
+            const dalgaMatrisleri = dalgalar.map((dalga) => {
+                const matrix = {};
+                aletlerSirali.forEach(a => { matrix[a] = {}; for (let r = 0; r < numAlet; r++) matrix[a][r] = []; });
+                dalga.forEach((grp, wi) => {
+                    const si = grp.baslangicAleti ? aletlerSirali.indexOf(grp.baslangicAleti) : wi % numAlet;
+                    const startIdx = si >= 0 ? si : wi % numAlet;
+                    for (let r = 0; r < numAlet; r++) {
+                        matrix[aletlerSirali[(startIdx + r) % numAlet]][r].push(grp);
+                    }
+                });
+                return { dalga, matrix };
             });
-            result[catKey] = { aletlerSirali, numRot, matrix, effGroups };
+
+            result[catKey] = { aletlerSirali, numAlet, dalgaMatrisleri, effGroups };
         });
         return result;
     }, [compCatKeys, gruplar, rotasyonPlani, compKategoriler]);
@@ -948,6 +995,7 @@ export default function CompetitionSchedulePage() {
                                             { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },
                                             { field: 'molaSuresi', label: 'Rotasyonlar Arası Mola (dk)', type: 'number', min: 0, max: 60 },
                                             { field: 'kategoriBeklemeSuresi', label: 'Kategoriler Arası Geçiş (dk)', type: 'number', min: 0, max: 120 },
+                                            { field: 'dalgaAraBekleme', label: 'Dalgalar Arası Geçiş (dk)', type: 'number', min: 0, max: 60 },
                                         ].map(({ field, label, type, min, max }) => (
                                             <div key={field} className="plan-field">
                                                 <label>{label}</label>
@@ -1207,41 +1255,49 @@ export default function CompetitionSchedulePage() {
                                                 </div>
                                             )}
 
-                                            {/* Rotation Matrix Preview */}
-                                            {mat && mat.effGroups.length > 0 && (
+                                            {/* Rotation Matrix Preview — per wave */}
+                                            {mat && mat.dalgaMatrisleri?.length > 0 && (
                                                 <div className="rot-matrix-section">
-                                                    <h4><i className="material-icons-round">grid_view</i> Rotasyon Matrisi</h4>
-                                                    <div className="rot-matrix-scroll">
-                                                        <table className="rot-matrix-table">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th className="alet-col">Alet</th>
-                                                                    {Array.from({ length: mat.numRot }, (_, r) => {
-                                                                        const bas = parseTimeToMin(planAyarlari.defaultBaslama || '09:00');
-                                                                        const sm = bas + (planAyarlari.isinmaSuresi || 15) + r * ((planAyarlari.rotasyonSuresi || 30) + (planAyarlari.molaSuresi || 10));
-                                                                        return <th key={r}><div className="rot-th-num">Rot. {r + 1}</div><div className="rot-th-time">{minToTimeStr(sm)}–{minToTimeStr(sm + (planAyarlari.rotasyonSuresi || 30))}</div></th>;
-                                                                    })}
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {mat.aletlerSirali.map(alet => (
-                                                                    <tr key={alet}>
-                                                                        <td className="alet-name-cell"><span className="alet-badge">{getAletLabel(alet)}</span></td>
-                                                                        {Array.from({ length: mat.numRot }, (_, r) => (
-                                                                            <td key={r} className="group-cell">
-                                                                                {(mat.matrix[alet][r] || []).map((g, gi) => (
-                                                                                    <div key={gi} className="group-chip">
-                                                                                        <span>{g.etiket}</span>
-                                                                                        {g.count > 0 && <span className="chip-count">{g.count}</span>}
-                                                                                    </div>
+                                                    <h4><i className="material-icons-round">grid_view</i> Rotasyon Matrisi
+                                                        <span className="matrix-wave-hint">({mat.dalgaMatrisleri.length} dalga × {mat.numAlet} rotasyon adımı)</span>
+                                                    </h4>
+                                                    {mat.dalgaMatrisleri.map((dm, dalgaIdx) => (
+                                                        <div key={dalgaIdx} className="matrix-wave-block">
+                                                            <div className="matrix-wave-label">
+                                                                <span className="wave-badge">{dalgaIdx + 1}. Dalga</span>
+                                                                <span className="wave-groups">{dm.dalga.map(g => g.etiket).join(', ')}</span>
+                                                            </div>
+                                                            <div className="rot-matrix-scroll">
+                                                                <table className="rot-matrix-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th className="alet-col">Alet</th>
+                                                                            {Array.from({ length: mat.numAlet }, (_, r) => (
+                                                                                <th key={r}><div className="rot-th-num">Rot. {r + 1}</div></th>
+                                                                            ))}
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {mat.aletlerSirali.map(alet => (
+                                                                            <tr key={alet}>
+                                                                                <td className="alet-name-cell"><span className="alet-badge">{getAletLabel(alet)}</span></td>
+                                                                                {Array.from({ length: mat.numAlet }, (_, r) => (
+                                                                                    <td key={r} className="group-cell">
+                                                                                        {(dm.matrix[alet][r] || []).map((g, gi) => (
+                                                                                            <div key={gi} className="group-chip">
+                                                                                                <span>{g.etiket}</span>
+                                                                                                {g.count > 0 && <span className="chip-count">{g.count}</span>}
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </td>
                                                                                 ))}
-                                                                            </td>
+                                                                            </tr>
                                                                         ))}
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
@@ -1318,9 +1374,10 @@ export default function CompetitionSchedulePage() {
                                                                 <div className="sched-session__top">
                                                                     {sess.tip && sess.tip !== 'manuel' && (
                                                                         <span className={`sess-tip-badge sess-tip--${sess.tip}`}>
-                                                                            {sess.tip === 'isinma' ? 'Isınma' : sess.tip === 'mola' ? 'Mola' : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}` : sess.tip}
+                                                                            {sess.tip === 'isinma' ? 'Isınma' : sess.tip === 'mola' ? (sess.molaAdi || 'Mola') : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}` : sess.tip}
                                                                         </span>
                                                                     )}
+                                                                    {sess.dalgaNo > 0 && <span className="sess-dalga-badge">{sess.dalgaNo}.Dalga</span>}
                                                                     {sess.grupNo > 0 && <span className="sess-grup-badge">Grup {sess.grupNo}{sess.bolumAdi || ''}</span>}
                                                                     <span className="sched-session__cat">{getCategoryLabel(sess.kategori)}</span>
                                                                     {sess.alet && <span className="sched-session__alet">{getAletLabel(sess.alet)}</span>}

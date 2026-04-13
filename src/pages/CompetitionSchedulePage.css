@@ -936,6 +936,16 @@
 .btn-remove-mola { width:30px; height:30px; border:none; background:none; cursor:pointer; color:#ef4444; border-radius:6px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
 .btn-remove-mola:hover { background:#fee2e2; }
 .btn-remove-mola .material-icons-round { font-size:18px; }
+
+/* ── Dalga badge ── */
+.sess-dalga-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
+
+/* ── Matrix wave blocks ── */
+.matrix-wave-hint { font-size:11px; font-weight:400; color:#94a3b8; margin-left:8px; }
+.matrix-wave-block { margin-bottom:12px; }
+.matrix-wave-label { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.wave-badge { background:#f59e0b; color:#fff; font-size:11px; font-weight:700; padding:2px 10px; border-radius:10px; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.wave-groups { font-size:12px; color:#64748b; }
 .cat-day-assign-table { border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
 .cat-day-row { display:flex; align-items:center; border-bottom:1px solid #f1f5f9; }
 .cat-day-row:last-child { border-bottom:none; }
