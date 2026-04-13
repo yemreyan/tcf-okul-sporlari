@@ -294,7 +294,7 @@ export async function generateCompetitionPDF({
                 ensureSpace(7);
                 fillRect(doc, ML + 2, y, CW - 2, 5.5, C.goldBg);
                 strokeRect(doc, ML + 2, y, CW - 2, 5.5, C.gold, 0.3);
-                const dLabel = s.dalgaNo ? `${s.dalgaNo}. Dalga ` : '';
+                const dLabel = s.dalgaNo ? `${s.dalgaNo}. Seans ` : '';
                 txt(doc, `ISINMA  —  ${dLabel}${s.saat || ''} – ${s.bitisSaat || ''}`, ML + 5, y + 3.8, { size: 7.5, color: C.amber, bold: true });
                 y += 7;
             });
@@ -327,7 +327,7 @@ export async function generateCompetitionPDF({
                 const firstSess = allSessFlat[0];
                 const lastSess = allSessFlat[allSessFlat.length - 1];
 
-                txt(doc, `${dalgaNo}. DALGA`, ML + 8, y + 4.8, { size: 8, color: C.amber, bold: true });
+                txt(doc, `${dalgaNo}. SEANS`, ML + 8, y + 4.8, { size: 8, color: C.amber, bold: true });
                 txt(doc, tr(waveGroups), ML + 28, y + 4.8, { size: 7, color: C.mid });
                 if (firstSess && lastSess) {
                     txt(doc, `${firstSess.saat} – ${lastSess.bitisSaat}`, W - MR, y + 4.8, { size: 7, color: C.amber, align: 'right' });
