@@ -247,11 +247,13 @@ export async function generateCompetitionPDF({
             const dayD = new Date(d + 'T12:00:00');
             const days = ['Paz','Pzt','Sal','Car','Per','Cum','Cmt'];
             const months = ['Oca','Sub','Mar','Nis','May','Haz','Tem','Agu','Eyl','Eki','Kas','Ara'];
+            const odul = ds.filter(s => s.tip === 'odulToreni').length;
             return [
                 tr(`${days[dayD.getDay()]} ${dayD.getDate()} ${months[dayD.getMonth()]}`),
                 tr(`${ds.filter(s => s.tip === 'isinma').length} isinma`),
                 tr(`${ds.filter(s => s.tip === 'rotasyon').length} rotasyon`),
                 tr(`${ds.filter(s => s.tip === 'mola').length} mola`),
+                odul > 0 ? tr(`${odul} odul`) : '—',
                 tr(`${ds.length} toplam`),
             ];
         }).filter(Boolean);
@@ -259,7 +261,7 @@ export async function generateCompetitionPDF({
         if (summaryRows.length) {
             autoTable(doc, {
                 startY: y,
-                head: [sanitize(['GUN','ISINMA','ROTASYON','MOLA','TOPLAM'])],
+                head: [sanitize(['GUN','ISINMA','ROTASYON','MOLA','ODUL','TOPLAM'])],
                 body: sanitize(summaryRows),
                 margin: { left: ML, right: MR },
                 ...tblStyle(),
@@ -302,9 +304,15 @@ export async function generateCompetitionPDF({
         txt(doc, `${daySessions.length} oturum`, W - MR, y + 7, { size: 7.5, color: [180,180,220], align: 'right' });
         y += 13;
 
+        /* ── Ödül törenleri — günün başında kronolojik sıraya göre göster ── */
+        const odul_gold   = [180, 130,  10];
+        const odul_goldBg = [255, 248, 220];
+        const odul_goldBd = [245, 200,  80];
+
         /* ── Kategoriye göre grupla ── */
         const catMap = {};
         daySessions.forEach(sess => {
+            if (sess.tip === 'odulToreni') return; // ayrı işlenir
             const ck = sess.kategori || '__mola__';
             if (!catMap[ck]) catMap[ck] = [];
             catMap[ck].push(sess);
@@ -537,6 +545,23 @@ export async function generateCompetitionPDF({
 
             y += 3;
         }
+
+        /* ── Ödül törenleri ── */
+        const odulSessions = daySessions.filter(s => s.tip === 'odulToreni')
+            .sort((a, b) => (a.saat || '').localeCompare(b.saat || ''));
+
+        odulSessions.forEach(s => {
+            ensureSpace(12);
+            // Altın arka plan + sol şerit
+            fillRect(doc, ML, y, CW, 10, odul_goldBg);
+            strokeRect(doc, ML, y, CW, 10, odul_goldBd, 0.4);
+            fillRect(doc, ML, y, 4, 10, odul_gold);
+
+            const odulLabel = tr(s.aciklama || (s.kategori ? `${catL(s.kategori)} Odul Toreni` : 'Odul Toreni'));
+            txt(doc, '★  ' + odulLabel.toUpperCase(), ML + 8, y + 6.5, { size: 9, color: odul_gold, bold: true });
+            txt(doc, `${s.saat || ''} – ${s.bitisSaat || ''}`, W - MR, y + 6.5, { size: 8, color: odul_gold, align: 'right', bold: true });
+            y += 13;
+        });
 
         drawFooter();
     }

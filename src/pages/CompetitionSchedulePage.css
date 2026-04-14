@@ -890,7 +890,54 @@
 .sess-tip--isinma { background:#fef9c3; color:#854d0e; }
 .sess-tip--rotasyon { background:#dbeafe; color:#1e40af; }
 .sess-tip--mola { background:#f1f5f9; color:#64748b; }
+.sess-tip--odulToreni { background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; letter-spacing:.3px; }
 .sess-grup-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:#ede9fe; color:#4f46e5; }
+
+/* ── Award ceremony session card ── */
+.sched-session--tip-odulToreni {
+    border-left: 4px solid #f59e0b !important;
+    background: linear-gradient(to right, #fffbeb, #fff);
+}
+.sched-session--tip-odulToreni .sched-session__line { background: #f59e0b; }
+
+/* ── Day header buttons group ── */
+.sched-day-header-btns { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* ── Ödül Töreni button ── */
+.sched-odul-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
+    border-radius: 10px;
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+}
+.sched-odul-btn:hover { background: #fde68a; transform:translateY(-1px); box-shadow: 0 3px 10px rgba(245,158,11,.3); }
+.sched-odul-btn .material-icons-round { font-size: 18px; color: #d97706; }
+
+/* ── Modal tip type pills ── */
+.sched-tip-pills { display:flex; gap:8px; flex-wrap:wrap; }
+.sched-tip-pill {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.sched-tip-pill .material-icons-round { font-size: 16px; }
+.sched-tip-pill:hover { background: var(--bg-white); border-color: #94a3b8; }
+.sched-tip-pill--manuel.active { background:#eef2ff; border-color:#818cf8; color:#3730a3; }
+.sched-tip-pill--isinma.active { background:#fef9c3; border-color:#ca8a04; color:#854d0e; }
+.sched-tip-pill--mola.active { background:#f1f5f9; border-color:#94a3b8; color:#334155; }
+.sched-tip-pill--odulToreni.active { background:linear-gradient(135deg,#fef3c7,#fde68a); border-color:#f59e0b; color:#92400e; }
 
 /* ── Excel button ── */
 .sched-excel-btn { display:flex; align-items:center; gap:12px; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; transition:all .2s; flex:1; min-width:180px; background:#f0fdf4; border:1.5px solid #86efac; color:#14532d; }

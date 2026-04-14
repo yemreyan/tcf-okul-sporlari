@@ -94,6 +94,7 @@ export default function CompetitionSchedulePage() {
         tarih: '',
         saat: '09:00',
         bitisSaat: '10:00',
+        tip: 'manuel',
         kategori: '',
         alet: '',
         aciklama: '',
@@ -238,10 +239,12 @@ export default function CompetitionSchedulePage() {
     // ── Modal işlemleri ──
     const openAddModal = (tarih) => {
         setEditingSession(null);
+        setInsertAfterSession(null);
         setFormData({
             tarih: tarih || dateRange[0] || '',
             saat: '09:00',
             bitisSaat: '10:00',
+            tip: 'manuel',
             kategori: compCatKeys[0] || '',
             alet: '',
             aciklama: '',
@@ -252,10 +255,12 @@ export default function CompetitionSchedulePage() {
 
     const openEditModal = (sess) => {
         setEditingSession(sess);
+        setInsertAfterSession(null);
         setFormData({
             tarih: sess.tarih || '',
             saat: sess.saat || '09:00',
             bitisSaat: sess.bitisSaat || '10:00',
+            tip: sess.tip || 'manuel',
             kategori: sess.kategori || '',
             alet: sess.alet || '',
             aciklama: sess.aciklama || '',
@@ -279,6 +284,7 @@ export default function CompetitionSchedulePage() {
             tarih,
             saat: afterSess.bitisSaat || '09:00',
             bitisSaat: minToTimeStr(startMin + 30),
+            tip: 'manuel',
             kategori: afterSess.kategori || compCatKeys[0] || '',
             alet: afterSess.alet || '',
             aciklama: '',
@@ -287,9 +293,34 @@ export default function CompetitionSchedulePage() {
         setIsModalOpen(true);
     }, [compCatKeys]);
 
+    // Ödül töreni hızlı ekleme modalı
+    const openAwardCeremonyModal = useCallback((tarih) => {
+        setEditingSession(null);
+        setInsertAfterSession(null);
+        const daySessions = sessionsByDate[tarih] || [];
+        const lastSess = daySessions.length > 0 ? daySessions[daySessions.length - 1] : null;
+        const startTime = lastSess?.bitisSaat || '17:00';
+        const startMin = parseTimeToMin(startTime);
+        setFormData({
+            tarih,
+            saat: startTime,
+            bitisSaat: minToTimeStr(startMin + 45),
+            tip: 'odulToreni',
+            kategori: '',
+            alet: '',
+            aciklama: 'Ödül Töreni',
+            durum: 'bekliyor',
+        });
+        setIsModalOpen(true);
+    }, [sessionsByDate]);
+
     const handleSave = async () => {
-        if (!formData.saat || !formData.kategori) {
-            toast('Saat ve kategori zorunludur', 'error');
+        if (!formData.saat) {
+            toast('Saat zorunludur', 'error');
+            return;
+        }
+        if (formData.tip !== 'odulToreni' && !formData.kategori) {
+            toast('Kategori zorunludur', 'error');
             return;
         }
 
@@ -297,9 +328,13 @@ export default function CompetitionSchedulePage() {
             tarih: formData.tarih,
             saat: formData.saat,
             bitisSaat: formData.bitisSaat,
+            tip: formData.tip || 'manuel',
             kategori: formData.kategori,
             alet: formData.alet || '',
-            aciklama: formData.aciklama || `${getCategoryLabel(formData.kategori)}${formData.alet ? ' — ' + getAletLabel(formData.alet) : ''}`,
+            aciklama: formData.aciklama || (
+                formData.tip === 'odulToreni' ? 'Ödül Töreni' :
+                `${getCategoryLabel(formData.kategori)}${formData.alet ? ' — ' + getAletLabel(formData.alet) : ''}`
+            ),
             durum: formData.durum,
         };
 
@@ -924,7 +959,7 @@ export default function CompetitionSchedulePage() {
             const compName = selectedComp.isim || 'Yarışma';
             const compTarih = selectedComp.baslangicTarihi || '';
 
-            const TIP_LABELS = { isinma: 'Isınma', rotasyon: 'Rotasyon', mola: 'Mola', manuel: 'Manuel' };
+            const TIP_LABELS = { isinma: 'Isınma', rotasyon: 'Rotasyon', mola: 'Mola', manuel: 'Genel', odulToreni: 'Ödül Töreni' };
             const DURUM_LABELS = { bekliyor: 'Bekliyor', devam: 'Devam Ediyor', tamamlandi: 'Tamamlandı' };
 
             const tipLabel = (t) => TIP_LABELS[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Manuel');
@@ -1742,7 +1777,16 @@ export default function CompetitionSchedulePage() {
                                                     <span className="sched-day__count">{(sessionsByDate[dateStr] || []).length} oturum</span>
                                                 </div>
                                             </div>
-                                            {canCreate && <button className="sched-add-btn" onClick={() => openAddModal(dateStr)}><i className="material-icons-round">add</i>Oturum Ekle</button>}
+                                            {canCreate && (
+                                                <div className="sched-day-header-btns">
+                                                    <button className="sched-add-btn" onClick={() => openAddModal(dateStr)}>
+                                                        <i className="material-icons-round">add</i>Oturum Ekle
+                                                    </button>
+                                                    <button className="sched-odul-btn no-print" onClick={() => openAwardCeremonyModal(dateStr)} title="Gün sonuna ödül töreni ekle">
+                                                        <i className="material-icons-round">emoji_events</i>Ödül Töreni
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                         {(sessionsByDate[dateStr] || []).length === 0 ? (
                                             <div className="sched-day__empty"><i className="material-icons-round">event_busy</i>Bu gün için oturum yok</div>
@@ -1764,7 +1808,11 @@ export default function CompetitionSchedulePage() {
                                                                 <div className="sched-session__top">
                                                                     {sess.tip && sess.tip !== 'manuel' && (
                                                                         <span className={`sess-tip-badge sess-tip--${sess.tip}`}>
-                                                                            {sess.tip === 'isinma' ? 'Isınma' : sess.tip === 'mola' ? (sess.molaAdi || 'Mola') : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}` : sess.tip}
+                                                                            {sess.tip === 'isinma' ? 'Isınma'
+                                                                            : sess.tip === 'mola' ? (sess.molaAdi || 'Mola')
+                                                                            : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}`
+                                                                            : sess.tip === 'odulToreni' ? '🏆 Ödül Töreni'
+                                                                            : sess.tip}
                                                                         </span>
                                                                     )}
                                                                     {sess.dalgaNo > 0 && <span className="sess-dalga-badge">{sess.dalgaNo}.Dalga</span>}
@@ -1835,7 +1883,12 @@ export default function CompetitionSchedulePage() {
                 <div className="sched-overlay" onClick={closeModal}>
                     <div className="sched-modal" onClick={e => e.stopPropagation()}>
                         <div className="sched-modal__header">
-                            <h2>{editingSession ? 'Oturumu Düzenle' : insertAfterSession ? 'Araya Oturum Ekle' : 'Yeni Oturum'}</h2>
+                            <h2>
+                                {editingSession ? 'Oturumu Düzenle'
+                                : formData.tip === 'odulToreni' ? '🏆 Ödül Töreni Ekle'
+                                : insertAfterSession ? 'Araya Oturum Ekle'
+                                : 'Yeni Oturum'}
+                            </h2>
                             <button className="sched-modal__close" onClick={closeModal}>
                                 <i className="material-icons-round">close</i>
                             </button>
@@ -1849,6 +1902,34 @@ export default function CompetitionSchedulePage() {
                                     <span>Bu oturum eklendikten sonra <strong>{(sessionsByDate[formData.tarih] || []).filter(s => s.saat >= insertAfterSession.bitisSaat).length} oturum</strong> otomatik olarak kaydırılacak.</span>
                                 </div>
                             )}
+
+                            {/* Oturum Tipi */}
+                            <div className="sched-field">
+                                <label>Oturum Tipi</label>
+                                <div className="sched-tip-pills">
+                                    {[
+                                        { key: 'manuel', icon: 'event_note', label: 'Genel' },
+                                        { key: 'isinma', icon: 'directions_run', label: 'Isınma' },
+                                        { key: 'mola', icon: 'free_breakfast', label: 'Mola' },
+                                        { key: 'odulToreni', icon: 'emoji_events', label: 'Ödül Töreni' },
+                                    ].map(({ key, icon, label }) => (
+                                        <button key={key} type="button"
+                                            className={`sched-tip-pill sched-tip-pill--${key}${formData.tip === key ? ' active' : ''}`}
+                                            onClick={() => setFormData(p => ({
+                                                ...p,
+                                                tip: key,
+                                                aciklama: key === 'odulToreni' && !p.aciklama ? 'Ödül Töreni' : p.aciklama,
+                                                kategori: key === 'odulToreni' ? '' : p.kategori,
+                                                alet: key === 'odulToreni' ? '' : p.alet,
+                                            }))}
+                                        >
+                                            <i className="material-icons-round">{icon}</i>
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Tarih */}
                             <div className="sched-field">
                                 <label>Tarih</label>
@@ -1882,22 +1963,40 @@ export default function CompetitionSchedulePage() {
                                 </div>
                             </div>
 
-                            {/* Kategori */}
-                            <div className="sched-field">
-                                <label>Kategori</label>
-                                <select
-                                    value={formData.kategori}
-                                    onChange={e => setFormData(p => ({ ...p, kategori: e.target.value, alet: '' }))}
-                                >
-                                    <option value="">Seçin</option>
-                                    {compCatKeys.map(catKey => (
-                                        <option key={catKey} value={catKey}>{getCategoryLabel(catKey)}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            {/* Kategori — Ödül Töreninde opsiyonel, diğerlerinde zorunlu */}
+                            {formData.tip !== 'odulToreni' && (
+                                <div className="sched-field">
+                                    <label>Kategori</label>
+                                    <select
+                                        value={formData.kategori}
+                                        onChange={e => setFormData(p => ({ ...p, kategori: e.target.value, alet: '' }))}
+                                    >
+                                        <option value="">Seçin</option>
+                                        {compCatKeys.map(catKey => (
+                                            <option key={catKey} value={catKey}>{getCategoryLabel(catKey)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
-                            {/* Alet */}
-                            {formData.kategori && (
+                            {/* Ödül Töreni: opsiyonel kategori seçimi */}
+                            {formData.tip === 'odulToreni' && compCatKeys.length > 0 && (
+                                <div className="sched-field">
+                                    <label>Kategori (Opsiyonel — boş bırakılırsa genel tören)</label>
+                                    <select
+                                        value={formData.kategori}
+                                        onChange={e => setFormData(p => ({ ...p, kategori: e.target.value }))}
+                                    >
+                                        <option value="">— Tüm Kategoriler —</option>
+                                        {compCatKeys.map(catKey => (
+                                            <option key={catKey} value={catKey}>{getCategoryLabel(catKey)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Alet — Ödül Töreninde gizli */}
+                            {formData.tip !== 'odulToreni' && formData.kategori && (
                                 <div className="sched-field">
                                     <label>Alet (Opsiyonel)</label>
                                     <select
@@ -1914,12 +2013,12 @@ export default function CompetitionSchedulePage() {
 
                             {/* Açıklama */}
                             <div className="sched-field">
-                                <label>Açıklama (Opsiyonel)</label>
+                                <label>Açıklama {formData.tip === 'odulToreni' ? '' : '(Opsiyonel)'}</label>
                                 <input
                                     type="text"
                                     value={formData.aciklama}
                                     onChange={e => setFormData(p => ({ ...p, aciklama: e.target.value }))}
-                                    placeholder="Ör: Genç Erkek yer serileri"
+                                    placeholder={formData.tip === 'odulToreni' ? 'Ör: Küçük Erkek Ödül Töreni' : 'Ör: Genç Erkek yer serileri'}
                                 />
                             </div>
 
