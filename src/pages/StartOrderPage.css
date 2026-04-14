@@ -142,6 +142,7 @@
     gap: 2rem;
     flex: 1;
     min-height: 500px;
+    align-items: flex-start; /* sticky çalışması için zorunlu */
 }
 
 .order-panel {
@@ -153,10 +154,14 @@
     flex-direction: column;
 }
 
-/* Left Panel: Unassigned */
+/* Left Panel: Unassigned — sayfa kaydırıldığında ekranda sabit kalır */
 .unassigned-pool {
     width: 380px;
     flex-shrink: 0;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
 }
 
 .panel-header {
@@ -372,11 +377,13 @@
 @media (max-width: 1024px) {
     .order-workspace {
         flex-direction: column;
+        align-items: stretch;
     }
 
     .unassigned-pool {
         width: 100%;
         max-height: 400px;
+        position: static; /* mobilde sticky kaldır */
     }
 }
 
