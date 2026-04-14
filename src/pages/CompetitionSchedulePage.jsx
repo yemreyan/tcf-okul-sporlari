@@ -866,6 +866,154 @@ export default function CompetitionSchedulePage() {
     }, []);
 
     const [pdfGenerating, setPdfGenerating] = useState(false);
+    const [excelGenerating, setExcelGenerating] = useState(false);
+
+    // ── Excel Export ──
+    const handleDownloadExcel = useCallback(async () => {
+        if (!selectedComp) return;
+        if (excelGenerating) return;
+        setExcelGenerating(true);
+
+        try {
+            const XLSX = await import('xlsx');
+            const wb = XLSX.utils.book_new();
+
+            const compName = selectedComp.isim || 'Yarışma';
+            const compTarih = selectedComp.baslangicTarihi || '';
+
+            const TIP_LABELS = { isinma: 'Isınma', rotasyon: 'Rotasyon', mola: 'Mola', manuel: 'Manuel' };
+            const DURUM_LABELS = { bekliyor: 'Bekliyor', devam: 'Devam Ediyor', tamamlandi: 'Tamamlandı' };
+
+            const tipLabel = (t) => TIP_LABELS[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Manuel');
+            const durumLabel = (d) => DURUM_LABELS[d] || d || 'Bekliyor';
+            const catLabel = (k) => k ? k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
+            const aletLabel = (k) => {
+                const MAP = { atlama:'Atlama', barfiks:'Barfiks', halka:'Halka', kulplu:'Kulplu Beygir', mantar:'Mantar Beygir', paralel:'Paralel', yer:'Yer', denge:'Denge', asimetrik:'Asimetrik Paralel', serbest:'Serbest' };
+                return MAP[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : '');
+            };
+
+            // ── Tüm Program Sayfası (tüm günler tek sheet) ──────────────────────
+            const allRows = [];
+
+            // Başlık
+            allRows.push([compName]);
+            allRows.push([compTarih ? new Date(compTarih).toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' }) : '']);
+            allRows.push([]); // boş satır
+
+            // Tüm günleri sırayla ekle
+            let totalSes = 0;
+            for (const dateStr of dateRange) {
+                const daySessions = (sessionsByDate[dateStr] || []).slice();
+                if (!daySessions.length) continue;
+
+                const dateFmt = new Date(dateStr).toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+                allRows.push([dateFmt.toLocaleUpperCase('tr-TR')]);
+                allRows.push(['Saat', 'Bitiş', 'Süre (dk)', 'Tip', 'Kategori', 'Alet', 'Dalga', 'Grup', 'Sporcu', 'Açıklama', 'Durum']);
+
+                daySessions.forEach(sess => {
+                    let sureDk = '';
+                    if (sess.saat && sess.bitisSaat) {
+                        const [sh, sm] = sess.saat.split(':').map(Number);
+                        const [eh, em] = sess.bitisSaat.split(':').map(Number);
+                        sureDk = (eh * 60 + em) - (sh * 60 + sm);
+                    }
+                    allRows.push([
+                        sess.saat || '',
+                        sess.bitisSaat || '',
+                        sureDk || '',
+                        tipLabel(sess.tip),
+                        catLabel(sess.kategori),
+                        aletLabel(sess.alet),
+                        sess.dalgaNo || '',
+                        sess.grupNo ? `Grup ${sess.grupNo}${sess.bolumAdi ? sess.bolumAdi : ''}` : '',
+                        sess.sporcu_sayisi || '',
+                        sess.aciklama || '',
+                        durumLabel(sess.durum),
+                    ]);
+                    totalSes++;
+                });
+                allRows.push([]); // günler arası boşluk
+            }
+
+            const wsAll = XLSX.utils.aoa_to_sheet(allRows);
+            wsAll['!cols'] = [
+                { wch: 7 },   // Saat
+                { wch: 7 },   // Bitiş
+                { wch: 9 },   // Süre
+                { wch: 10 },  // Tip
+                { wch: 16 },  // Kategori
+                { wch: 16 },  // Alet
+                { wch: 6 },   // Dalga
+                { wch: 10 },  // Grup
+                { wch: 8 },   // Sporcu
+                { wch: 50 },  // Açıklama
+                { wch: 14 },  // Durum
+            ];
+            XLSX.utils.book_append_sheet(wb, wsAll, 'Tam Program');
+
+            // ── Gün bazlı ayrı sayfalar ───────────────────────────────────────
+            for (const dateStr of dateRange) {
+                const daySessions = (sessionsByDate[dateStr] || []).slice();
+                if (!daySessions.length) continue;
+
+                const dayRows = [];
+                const dateFmt = new Date(dateStr).toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+                dayRows.push([compName]);
+                dayRows.push([dateFmt]);
+                dayRows.push([]);
+                dayRows.push(['Saat', 'Bitiş', 'Süre (dk)', 'Tip', 'Kategori', 'Alet', 'Dalga', 'Grup', 'Sporcu', 'Açıklama', 'Durum']);
+
+                daySessions.forEach(sess => {
+                    let sureDk = '';
+                    if (sess.saat && sess.bitisSaat) {
+                        const [sh, sm] = sess.saat.split(':').map(Number);
+                        const [eh, em] = sess.bitisSaat.split(':').map(Number);
+                        sureDk = (eh * 60 + em) - (sh * 60 + sm);
+                    }
+                    dayRows.push([
+                        sess.saat || '',
+                        sess.bitisSaat || '',
+                        sureDk || '',
+                        tipLabel(sess.tip),
+                        catLabel(sess.kategori),
+                        aletLabel(sess.alet),
+                        sess.dalgaNo || '',
+                        sess.grupNo ? `Grup ${sess.grupNo}${sess.bolumAdi ? sess.bolumAdi : ''}` : '',
+                        sess.sporcu_sayisi || '',
+                        sess.aciklama || '',
+                        durumLabel(sess.durum),
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(dayRows);
+                ws['!cols'] = [
+                    { wch: 7 }, { wch: 7 }, { wch: 9 }, { wch: 10 },
+                    { wch: 16 }, { wch: 16 }, { wch: 6 }, { wch: 10 },
+                    { wch: 8 }, { wch: 50 }, { wch: 14 },
+                ];
+
+                // Sheet adı: "Gün 1 - 15 Nis" gibi (max 31 karakter)
+                const dayNum = dateRange.indexOf(dateStr) + 1;
+                const dayLabel = new Date(dateStr).toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+                const sheetName = `Gün ${dayNum} - ${dayLabel}`.substring(0, 31);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
+
+            if (wb.SheetNames.length === 0) {
+                toast('Program henüz oluşturulmamış.', 'warning');
+                return;
+            }
+
+            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
+            XLSX.writeFile(wb, `${safeCompName}_Program.xlsx`);
+            toast(`Excel indirildi. Toplam ${totalSes} oturum.`, 'success');
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Excel oluşturma hatası:', err);
+            toast('Excel oluşturulurken bir hata oluştu: ' + err.message, 'error');
+        } finally {
+            setExcelGenerating(false);
+        }
+    }, [selectedComp, dateRange, sessionsByDate, excelGenerating]);
 
     const handleDownloadPDF = useCallback(async () => {
         if (!selectedComp) return;
@@ -1524,12 +1672,20 @@ export default function CompetitionSchedulePage() {
                                             <div><strong>Rotasyon Planla</strong><small>Olimpik sıra ve grup ataması</small></div>
                                         </button>
                                         {totalSessions > 0 && (
-                                            <button className="sched-pdf-btn" onClick={handleDownloadPDF} disabled={pdfGenerating}>
-                                                {pdfGenerating
-                                                    ? <><div className="spinner-small" style={{borderTopColor:'#ea580c'}} /><div><strong>Oluşturuluyor...</strong><small>Lütfen bekleyin</small></div></>
-                                                    : <><i className="material-icons-round">picture_as_pdf</i><div><strong>PDF İndir</strong><small>TCF formatında program dosyası</small></div></>
-                                                }
-                                            </button>
+                                            <>
+                                                <button className="sched-excel-btn" onClick={handleDownloadExcel} disabled={excelGenerating}>
+                                                    {excelGenerating
+                                                        ? <><div className="spinner-small" style={{borderTopColor:'#16a34a'}} /><div><strong>Oluşturuluyor...</strong><small>Lütfen bekleyin</small></div></>
+                                                        : <><i className="material-icons-round">table_view</i><div><strong>Excel İndir</strong><small>Gün bazlı program tablosu</small></div></>
+                                                    }
+                                                </button>
+                                                <button className="sched-pdf-btn" onClick={handleDownloadPDF} disabled={pdfGenerating}>
+                                                    {pdfGenerating
+                                                        ? <><div className="spinner-small" style={{borderTopColor:'#ea580c'}} /><div><strong>Oluşturuluyor...</strong><small>Lütfen bekleyin</small></div></>
+                                                        : <><i className="material-icons-round">picture_as_pdf</i><div><strong>PDF İndir</strong><small>TCF formatında program dosyası</small></div></>
+                                                    }
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 )}

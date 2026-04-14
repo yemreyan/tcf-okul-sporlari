@@ -892,6 +892,14 @@
 .sess-tip--mola { background:#f1f5f9; color:#64748b; }
 .sess-grup-badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:#ede9fe; color:#4f46e5; }
 
+/* ── Excel button ── */
+.sched-excel-btn { display:flex; align-items:center; gap:12px; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; transition:all .2s; flex:1; min-width:180px; background:#f0fdf4; border:1.5px solid #86efac; color:#14532d; }
+.sched-excel-btn:hover { transform:translateY(-1px); background:#dcfce7; }
+.sched-excel-btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.sched-excel-btn strong { display:block; font-size:14px; }
+.sched-excel-btn small { font-size:11px; opacity:.8; }
+.sched-excel-btn .material-icons-round { font-size:24px; color:#16a34a; }
+
 /* ── PDF button ── */
 .sched-pdf-btn { display:flex; align-items:center; gap:12px; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; transition:all .2s; flex:1; min-width:180px; background:#fff7ed; border:1.5px solid #fed7aa; color:#9a3412; }
 .sched-pdf-btn:hover { transform:translateY(-1px); background:#ffedd5; }
