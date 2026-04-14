@@ -204,46 +204,38 @@ export default function StartOrderPage() {
             return;
         }
 
-        let allAthletes = [...unassigned, ...rotations.flat()];
+        const hasAssigned = rotations.some(r => r.length > 0);
 
-        if (allAthletes.length === 0) {
+        // Sadece atanmamış sporcuları kullan — mevcut gruplar korunur
+        let athletesToAssign = [...unassigned];
+
+        if (athletesToAssign.length === 0 && !hasAssigned) {
             const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
             const data = snap.val();
-            if (data) {
-                allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-            }
+            if (data) athletesToAssign = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
         }
 
-        if (allAthletes.length === 0) {
-            showToast('Bu kategoride sporcu bulunamadı.', 'warning');
+        if (athletesToAssign.length === 0) {
+            showToast(hasAssigned ? 'Atanacak sporcu yok. Gruplara eklemek için sporcuyu boş havuza çekin.' : 'Bu kategoride sporcu bulunamadı.', 'warning');
             return;
         }
 
-        if (rotations.some(r => r.length > 0)) {
-            const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
-            if (!confirmed) return;
-            allAthletes = [...unassigned, ...rotations.flat()];
-            if (allAthletes.length === 0) {
-                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
-                const data = snap.val();
-                if (data) {
-                    allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-                }
-            }
-        }
-
         // Firebase ID'ye göre küçükten büyüğe sırala (= kayıt/başvuru sırası)
-        allAthletes.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+        athletesToAssign.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-        // Gruplara böl (max MAX_PER_ROTATION)
-        const newRotations = [];
-        for (let i = 0; i < allAthletes.length; i += MAX_PER_ROTATION) {
-            newRotations.push(allAthletes.slice(i, i + MAX_PER_ROTATION));
+        const newGroups = [];
+        for (let i = 0; i < athletesToAssign.length; i += MAX_PER_ROTATION) {
+            newGroups.push(athletesToAssign.slice(i, i + MAX_PER_ROTATION));
         }
 
-        setRotations(newRotations);
+        // Mevcut grupları koru, yeni grupları sonuna ekle
+        const finalRotations = [...rotations.filter(r => r.length > 0), ...newGroups];
+        if (finalRotations.length === 0) finalRotations.push([]);
+
+        setRotations(finalRotations);
         setUnassigned([]);
-        showToast(`Kayıt sırasına göre atama yapıldı. ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+        showToast(`Kayıt sırasına göre atama yapıldı. ${athletesToAssign.length} sporcu ${newGroups.length} yeni gruba dağıtıldı.`, 'success');
+        await saveToFirebase(finalRotations, [], true);
     };
 
     // -- Random Assignment Logic --
@@ -255,43 +247,27 @@ export default function StartOrderPage() {
         }
 
         try {
-            // Eğer hiç sporcu yoksa, Firebase'den taze veri çek
-            let allAthletes = [...unassigned, ...rotations.flat()];
+            const hasAssigned = rotations.some(r => r.length > 0);
 
-            if (allAthletes.length === 0) {
-                // State boş olabilir, Firebase'den doğrudan oku
+            // Sadece atanmamış sporcuları kullan — mevcut gruplar korunur
+            let athletesToAssign = [...unassigned];
+
+            if (athletesToAssign.length === 0 && !hasAssigned) {
                 const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
                 const data = snap.val();
-                if (data) {
-                    allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-                }
+                if (data) athletesToAssign = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
             }
 
-            if (allAthletes.length === 0) {
-                showToast('Bu kategoride sporcu bulunamadı.', 'warning');
+            if (athletesToAssign.length === 0) {
+                showToast(hasAssigned ? 'Atanacak sporcu yok. Gruplara eklemek için sporcuyu boş havuza çekin.' : 'Bu kategoride sporcu bulunamadı.', 'warning');
                 return;
-            }
-
-            if (rotations.some(r => r.length > 0)) {
-                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
-                if (!confirmed) return;
-                // Confirm sonrası tüm sporcuları tekrar birleştir
-                allAthletes = [...unassigned, ...rotations.flat()];
-                // Eğer hala boşsa Firebase'den çek
-                if (allAthletes.length === 0) {
-                    const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
-                    const data = snap.val();
-                    if (data) {
-                        allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-                    }
-                }
             }
 
             // 1. Separate Teams from Individuals based on yarismaTuru
             const teamsMap = {}; // { 'Okul Adi': [Athletes] }
             const individuals = [];
 
-            allAthletes.forEach(ath => {
+            athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
                     const school = ath.okul || 'Bilinmeyen Takım';
@@ -345,19 +321,21 @@ export default function StartOrderPage() {
                 });
             }
 
-            // ===== Birleştir: önce takım grupları, sonra ferdi grupları =====
-            const newRotations = [...teamGroups, ...individualGroups];
+            // ===== Birleştir: mevcut gruplar + yeni takım grupları + yeni ferdi grupları =====
+            const newGroups = [...teamGroups, ...individualGroups];
+            if (newGroups.length === 0) newGroups.push([]);
 
-            // Ensure at least 1 group exists
-            if (newRotations.length === 0) newRotations.push([]);
+            // Mevcut grupları koru, yeni grupları sonuna ekle
+            const finalRotations = [...rotations.filter(r => r.length > 0), ...newGroups];
+            if (finalRotations.length === 0) finalRotations.push([]);
 
             setUnassigned([]);
-            setRotations(newRotations);
+            setRotations(finalRotations);
 
             // Otomatik kaydet
-            const ok = await saveToFirebase(newRotations, [], true);
+            const ok = await saveToFirebase(finalRotations, [], true);
             if (ok) {
-                showToast(`Rastgele atama yapıldı. ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+                showToast(`Rastgele atama yapıldı. ${athletesToAssign.length} sporcu ${newGroups.length} yeni gruba dağıtıldı.`, 'success');
             } else {
                 showToast('Atama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
             }
@@ -375,39 +353,27 @@ export default function StartOrderPage() {
         }
 
         try {
-            let allAthletes = [...unassigned, ...rotations.flat()];
+            const hasAssigned = rotations.some(r => r.length > 0);
 
-            if (allAthletes.length === 0) {
+            // Sadece atanmamış sporcuları kullan — mevcut gruplar korunur
+            let athletesToAssign = [...unassigned];
+
+            if (athletesToAssign.length === 0 && !hasAssigned) {
                 const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
                 const data = snap.val();
-                if (data) {
-                    allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-                }
+                if (data) athletesToAssign = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
             }
 
-            if (allAthletes.length === 0) {
-                showToast('Bu kategoride sporcu bulunamadı.', 'warning');
+            if (athletesToAssign.length === 0) {
+                showToast(hasAssigned ? 'Atanacak sporcu yok. Gruplara eklemek için sporcuyu boş havuza çekin.' : 'Bu kategoride sporcu bulunamadı.', 'warning');
                 return;
-            }
-
-            if (rotations.some(r => r.length > 0)) {
-                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
-                if (!confirmed) return;
-                allAthletes = [...unassigned, ...rotations.flat()];
-                if (allAthletes.length === 0) {
-                    const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
-                    const data = snap.val();
-                    if (data) {
-                        allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
-                    }
-                }
             }
 
             // Önce takım / ferdi ayrımı yap
             const teamsMap = {};
             const individuals = [];
 
-            allAthletes.forEach(ath => {
+            athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
                     const school = ath.okul || 'Bilinmeyen Takım';
@@ -489,18 +455,20 @@ export default function StartOrderPage() {
                 individualGroups[targetIndex].push(ath);
             });
 
-            // Önce takım grupları, sonra ferdi grupları
-            const newRotations = [...teamGroups, ...individualGroups];
-            if (newRotations.length === 0) newRotations.push([]);
+            // Mevcut grupları koru, yeni grupları sonuna ekle
+            const newGroups = [...teamGroups, ...individualGroups];
+            if (newGroups.length === 0) newGroups.push([]);
+            const finalRotations = [...rotations.filter(r => r.length > 0), ...newGroups];
+            if (finalRotations.length === 0) finalRotations.push([]);
 
             setUnassigned([]);
-            setRotations(newRotations);
+            setRotations(finalRotations);
 
-            const ok = await saveToFirebase(newRotations, [], true);
+            const ok = await saveToFirebase(finalRotations, [], true);
             const coachCount = Object.keys(coachMap).length;
             if (ok) {
                 showToast(
-                    `Antrenöre göre gruplama yapıldı. ${coachCount} antrenör grubu, ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`,
+                    `Antrenöre göre gruplama yapıldı. ${coachCount} antrenör grubu, ${athletesToAssign.length} sporcu ${newGroups.length} yeni gruba dağıtıldı.`,
                     'success'
                 );
             } else {
@@ -519,23 +487,24 @@ export default function StartOrderPage() {
             return;
         }
         try {
-            let allAthletes = [...unassigned, ...rotations.flat()];
-            if (allAthletes.length === 0) {
+            const hasAssigned = rotations.some(r => r.length > 0);
+
+            // Sadece atanmamış sporcuları kullan — mevcut gruplar korunur
+            let athletesToAssign = [...unassigned];
+            if (athletesToAssign.length === 0 && !hasAssigned) {
                 const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
                 const data = snap.val();
-                if (data) allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+                if (data) athletesToAssign = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
             }
-            if (allAthletes.length === 0) { showToast('Bu kategoride sporcu bulunamadı.', 'warning'); return; }
-            if (rotations.some(r => r.length > 0)) {
-                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
-                if (!confirmed) return;
-                allAthletes = [...unassigned, ...rotations.flat()];
+            if (athletesToAssign.length === 0) {
+                showToast(hasAssigned ? 'Atanacak sporcu yok. Gruplara eklemek için sporcuyu boş havuza çekin.' : 'Bu kategoride sporcu bulunamadı.', 'warning');
+                return;
             }
 
             // Takım / ferdi ayır
             const teamsMap = {};
             const individuals = [];
-            allAthletes.forEach(ath => {
+            athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
                     const school = ath.okul || 'Bilinmeyen Takım';
@@ -619,12 +588,14 @@ export default function StartOrderPage() {
                 noTrainer.forEach(ath => { const gi = findBestIG(1); individualGroups[gi].push(ath); });
             }
 
-            const newRotations = [...teamGroups, ...individualGroups];
-            if (newRotations.length === 0) newRotations.push([]);
+            const newGroups = [...teamGroups, ...individualGroups];
+            if (newGroups.length === 0) newGroups.push([]);
+            const finalRotations = [...rotations.filter(r => r.length > 0), ...newGroups];
+            if (finalRotations.length === 0) finalRotations.push([]);
             setUnassigned([]);
-            setRotations(newRotations);
-            const ok = await saveToFirebase(newRotations, [], true);
-            if (ok) showToast(`Kişi bazlı gruplama yapıldı. ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+            setRotations(finalRotations);
+            const ok = await saveToFirebase(finalRotations, [], true);
+            if (ok) showToast(`Kişi bazlı gruplama yapıldı. ${athletesToAssign.length} sporcu ${newGroups.length} yeni gruba dağıtıldı.`, 'success');
             else showToast('Gruplama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
         } catch (err) {
             if (import.meta.env.DEV) console.error('Kişi bazlı gruplama hatası:', err);
@@ -639,23 +610,24 @@ export default function StartOrderPage() {
             return;
         }
         try {
-            let allAthletes = [...unassigned, ...rotations.flat()];
-            if (allAthletes.length === 0) {
+            const hasAssigned = rotations.some(r => r.length > 0);
+
+            // Sadece atanmamış sporcuları kullan — mevcut gruplar korunur
+            let athletesToAssign = [...unassigned];
+            if (athletesToAssign.length === 0 && !hasAssigned) {
                 const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`));
                 const data = snap.val();
-                if (data) allAthletes = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
+                if (data) athletesToAssign = Object.keys(data).map(id => ({ ...data[id], id, categoryId: filterCategory }));
             }
-            if (allAthletes.length === 0) { showToast('Bu kategoride sporcu bulunamadı.', 'warning'); return; }
-            if (rotations.some(r => r.length > 0)) {
-                const confirmed = await showConfirm("Mevcut atanmış grupların üzerine yazılacak. Emin misiniz?");
-                if (!confirmed) return;
-                allAthletes = [...unassigned, ...rotations.flat()];
+            if (athletesToAssign.length === 0) {
+                showToast(hasAssigned ? 'Atanacak sporcu yok. Gruplara eklemek için sporcuyu boş havuza çekin.' : 'Bu kategoride sporcu bulunamadı.', 'warning');
+                return;
             }
 
             // Takım / ferdi ayır
             const teamsMap = {};
             const individuals = [];
-            allAthletes.forEach(ath => {
+            athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
                     const school = ath.okul || 'Bilinmeyen Takım';
@@ -730,13 +702,15 @@ export default function StartOrderPage() {
                 }
             });
 
-            const newRotations = [...teamGroups, ...individualGroups];
-            if (newRotations.length === 0) newRotations.push([]);
+            const newGroups = [...teamGroups, ...individualGroups];
+            if (newGroups.length === 0) newGroups.push([]);
+            const finalRotations = [...rotations.filter(r => r.length > 0), ...newGroups];
+            if (finalRotations.length === 0) finalRotations.push([]);
             setUnassigned([]);
-            setRotations(newRotations);
-            const ok = await saveToFirebase(newRotations, [], true);
+            setRotations(finalRotations);
+            const ok = await saveToFirebase(finalRotations, [], true);
             const distCount = Object.keys(districtMap).length;
-            if (ok) showToast(`İlçe bazlı gruplama yapıldı. ${distCount} ilçe, ${allAthletes.length} sporcu ${newRotations.length} gruba dağıtıldı.`, 'success');
+            if (ok) showToast(`İlçe bazlı gruplama yapıldı. ${distCount} ilçe, ${athletesToAssign.length} sporcu ${newGroups.length} yeni gruba dağıtıldı.`, 'success');
             else showToast('Gruplama yapıldı ama kaydetme başarısız oldu. Manuel kaydedin.', 'warning');
         } catch (err) {
             if (import.meta.env.DEV) console.error('İlçe bazlı gruplama hatası:', err);
