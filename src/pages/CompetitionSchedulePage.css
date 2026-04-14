@@ -920,6 +920,62 @@
 .ath-name { font-weight:600; color:#1e293b; flex:1; }
 .ath-club { font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
 
+/* ── Insert Between ── */
+.sched-session-wrapper { display:contents; }
+
+.insert-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}
+.sched-day__timeline:hover .insert-divider,
+.insert-divider:hover { opacity: 1; }
+
+.insert-divider__line {
+    flex: 1;
+    height: 1.5px;
+    background: linear-gradient(to right, transparent, #a5b4fc, transparent);
+    border-radius: 2px;
+}
+
+.insert-divider__btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: #eef2ff;
+    border: 1.5px dashed #818cf8;
+    border-radius: 20px;
+    color: #4f46e5;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.insert-divider__btn:hover { background: #e0e7ff; border-color: #4f46e5; }
+.insert-divider__btn .material-icons-round { font-size: 14px; }
+
+/* Insert bilgi banner */
+.insert-info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #eef2ff;
+    border: 1.5px solid #a5b4fc;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #3730a3;
+    line-height: 1.5;
+}
+.insert-info-banner .material-icons-round { font-size: 18px; color: #6366f1; flex-shrink: 0; margin-top: 1px; }
+
 /* ── Print styles ── */
 .print-only { display:none; }
 .print-header h1 { margin:0 0 8px; font-size:22px; color:#1e293b; }

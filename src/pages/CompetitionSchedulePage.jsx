@@ -88,6 +88,7 @@ export default function CompetitionSchedulePage() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSession, setEditingSession] = useState(null);
+    const [insertAfterSession, setInsertAfterSession] = useState(null); // araya ekleme modu
     const [generating, setGenerating] = useState(false);
     const [formData, setFormData] = useState({
         tarih: '',
@@ -266,7 +267,25 @@ export default function CompetitionSchedulePage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingSession(null);
+        setInsertAfterSession(null);
     };
+
+    // Oturumlar arasına ekleme modalı
+    const openInsertAfterModal = useCallback((afterSess, tarih) => {
+        setInsertAfterSession(afterSess);
+        setEditingSession(null);
+        const startMin = parseTimeToMin(afterSess.bitisSaat || '09:00');
+        setFormData({
+            tarih,
+            saat: afterSess.bitisSaat || '09:00',
+            bitisSaat: minToTimeStr(startMin + 30),
+            kategori: afterSess.kategori || compCatKeys[0] || '',
+            alet: afterSess.alet || '',
+            aciklama: '',
+            durum: 'bekliyor',
+        });
+        setIsModalOpen(true);
+    }, [compCatKeys]);
 
     const handleSave = async () => {
         if (!formData.saat || !formData.kategori) {
@@ -290,7 +309,31 @@ export default function CompetitionSchedulePage() {
                 toast('Oturum güncellendi', 'success');
             } else {
                 await push(ref(db, `${firebasePath}/${selectedCompId}/program`), sessionData);
-                toast('Oturum eklendi', 'success');
+
+                // ── Araya ekleme: sonraki oturumları kaydır ──────────────────
+                if (insertAfterSession) {
+                    const insertAtTime = insertAfterSession.bitisSaat; // ekleme noktası
+                    const newDurationMin = parseTimeToMin(formData.bitisSaat) - parseTimeToMin(formData.saat);
+                    if (newDurationMin > 0) {
+                        const daySessions = sessionsByDate[formData.tarih] || [];
+                        // Ekleme noktasından sonra gelen tüm oturumları kaydır
+                        const toShift = daySessions.filter(s => s.saat >= insertAtTime);
+                        if (toShift.length > 0) {
+                            const shiftUpdates = {};
+                            toShift.forEach(s => {
+                                shiftUpdates[`${firebasePath}/${selectedCompId}/program/${s.id}/saat`] =
+                                    minToTimeStr(parseTimeToMin(s.saat) + newDurationMin);
+                                shiftUpdates[`${firebasePath}/${selectedCompId}/program/${s.id}/bitisSaat`] =
+                                    minToTimeStr(parseTimeToMin(s.bitisSaat) + newDurationMin);
+                            });
+                            await update(ref(db), shiftUpdates);
+                            toast(`${toShift.length} oturum ${newDurationMin} dk ileriye kaydırıldı`, 'info');
+                        }
+                    }
+                    setInsertAfterSession(null);
+                } else {
+                    toast('Oturum eklendi', 'success');
+                }
             }
             closeModal();
         } catch (err) {
@@ -1705,11 +1748,12 @@ export default function CompetitionSchedulePage() {
                                             <div className="sched-day__empty"><i className="material-icons-round">event_busy</i>Bu gün için oturum yok</div>
                                         ) : (
                                             <div className="sched-day__timeline">
-                                                {(sessionsByDate[dateStr] || []).map(sess => {
+                                                {(sessionsByDate[dateStr] || []).map((sess, sessIdx, sessArr) => {
                                                     const rotAthletes = getRotationAthletes(sess);
                                                     const isExpanded = expandedSessions.has(sess.id);
                                                     return (
-                                                        <div key={sess.id} className={`sched-session sched-session--${sess.durum || 'bekliyor'} sched-session--tip-${sess.tip || 'manuel'}${isExpanded ? ' expanded' : ''}`}>
+                                                        <div key={sess.id} className="sched-session-wrapper">
+                                                        <div className={`sched-session sched-session--${sess.durum || 'bekliyor'} sched-session--tip-${sess.tip || 'manuel'}${isExpanded ? ' expanded' : ''}`}>
                                                             <div className="sched-session__time">
                                                                 <span className="sched-session__start">{sess.saat}</span>
                                                                 <span className="sched-session__sep">—</span>
@@ -1761,6 +1805,18 @@ export default function CompetitionSchedulePage() {
                                                                 )}
                                                             </div>
                                                         </div>
+                                                        {/* Araya ekle butonu — oturumlar arası */}
+                                                        {canCreate && sessIdx < sessArr.length - 1 && (
+                                                            <div className="insert-divider no-print" onClick={() => openInsertAfterModal(sess, dateStr)}>
+                                                                <span className="insert-divider__line" />
+                                                                <button className="insert-divider__btn" title={`${sess.bitisSaat} saatinden sonra oturum ekle — sonrakiler kaydırılır`}>
+                                                                    <i className="material-icons-round">add</i>
+                                                                    <span>Araya Ekle</span>
+                                                                </button>
+                                                                <span className="insert-divider__line" />
+                                                            </div>
+                                                        )}
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
@@ -1779,13 +1835,20 @@ export default function CompetitionSchedulePage() {
                 <div className="sched-overlay" onClick={closeModal}>
                     <div className="sched-modal" onClick={e => e.stopPropagation()}>
                         <div className="sched-modal__header">
-                            <h2>{editingSession ? 'Oturumu Düzenle' : 'Yeni Oturum'}</h2>
+                            <h2>{editingSession ? 'Oturumu Düzenle' : insertAfterSession ? 'Araya Oturum Ekle' : 'Yeni Oturum'}</h2>
                             <button className="sched-modal__close" onClick={closeModal}>
                                 <i className="material-icons-round">close</i>
                             </button>
                         </div>
 
                         <div className="sched-modal__body">
+                            {/* Araya ekleme bilgi notu */}
+                            {insertAfterSession && (
+                                <div className="insert-info-banner">
+                                    <i className="material-icons-round">info</i>
+                                    <span>Bu oturum eklendikten sonra <strong>{(sessionsByDate[formData.tarih] || []).filter(s => s.saat >= insertAfterSession.bitisSaat).length} oturum</strong> otomatik olarak kaydırılacak.</span>
+                                </div>
+                            )}
                             {/* Tarih */}
                             <div className="sched-field">
                                 <label>Tarih</label>
