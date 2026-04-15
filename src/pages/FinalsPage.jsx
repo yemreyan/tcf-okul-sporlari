@@ -290,7 +290,7 @@ export default function FinalsPage() {
             });
 
             const deductionTotal = Object.values(teamDeductions)
-                .filter(d => d.teamName === team.name)
+                .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
                 .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
 
             const finalScore = totalScore - deductionTotal;
@@ -333,6 +333,7 @@ export default function FinalsPage() {
             const newDeductionRef = push(deductionRef);
             await set(newDeductionRef, {
                 teamName: deductionForm.team,
+                categoryId: selectedCategoryId,
                 amount: amountNum.toFixed(3),
                 reason: deductionForm.reason,
                 timestamp: new Date().toISOString()
@@ -456,11 +457,11 @@ export default function FinalsPage() {
         });
 
         const results = rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
-        const teamResults = computeCatTeamResults(results, apparatusKeysList);
+        const teamResults = computeCatTeamResults(results, apparatusKeysList, catId);
         return { results, teamResults, apparatusKeysList, catName: catData.name || catData.ad || catId };
     };
 
-    const computeCatTeamResults = (resultsArr, appKeys) => {
+    const computeCatTeamResults = (resultsArr, appKeys, catId) => {
         const filtered = resultsArr.filter(res => {
             if (excludedTeams.has(res.okul)) return false;
             const t = (res.yarismaTuru || res.katilimTuru || '').toLowerCase();
@@ -488,7 +489,7 @@ export default function FinalsPage() {
             });
 
             const dTotal = Object.values(teamDeductions || {})
-                .filter(d => d.teamName === team.name)
+                .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === catId))
                 .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
             
             return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
@@ -1253,12 +1254,12 @@ export default function FinalsPage() {
                             </form>
 
                             <div className="existing-deductions">
-                                <h3>Mevcut Kesintiler</h3>
-                                {Object.keys(teamDeductions).length === 0 ? (
-                                    <p className="empty-text">Bu yarışma için henüz takım cezası tanımlanmamış.</p>
+                                <h3>Bu Kategorideki Kesintiler</h3>
+                                {Object.entries(teamDeductions).filter(([, d]) => !d.categoryId || d.categoryId === selectedCategoryId).length === 0 ? (
+                                    <p className="empty-text">Bu kategori için henüz takım cezası tanımlanmamış.</p>
                                 ) : (
                                     <div className="deduction-list">
-                                        {Object.entries(teamDeductions).map(([id, d]) => (
+                                        {Object.entries(teamDeductions).filter(([, d]) => !d.categoryId || d.categoryId === selectedCategoryId).map(([id, d]) => (
                                             <div key={id} className="deduction-item">
                                                 <div className="deduction-info">
                                                     <strong>{d.teamName}</strong>
