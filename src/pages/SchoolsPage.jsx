@@ -37,33 +37,52 @@ export default function SchoolsPage() {
       .catch(() => {});
   }, []);
 
-  // MEBBİS senkronizasyonunu tetikle (GitHub Actions workflow_dispatch)
+  // MEBBİS senkronizasyonunu tetikle (doğrudan GitHub Actions workflow_dispatch)
   const handleMebbisSync = async (options = {}) => {
     setSyncing(true);
     setSyncError('');
     try {
-      const res = await fetch('/api/trigger-scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          il: options.il || '',
-          testMode: options.testMode || false,
-        }),
-      });
-      // res.json() can fail if response is empty or HTML (e.g. 404 from dev server)
-      let data = {};
-      try {
-        const text = await res.text();
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = {};
+      // GitHub token'ı Firebase'den oku
+      const tokenSnap = await get(ref(db, 'settings/github_token'));
+      const githubToken = tokenSnap.exists() ? tokenSnap.val() : null;
+
+      if (!githubToken) {
+        setSyncError('GitHub token ayarlanmamış');
+        toast(
+          'GitHub token bulunamadı. Firebase RTDB > settings/github_token alanına GitHub Personal Access Token ekleyin (repo:workflow izni gerekli).',
+          'error'
+        );
+        return;
       }
-      if (res.ok && (data.success || res.status === 204)) {
-        toast('GitHub Actions iş akışı başlatıldı. İşlem tamamlanınca Firebase güncellenir.', 'success');
-      } else if (!res.ok && res.status === 404) {
-        toast('API endpoint bulunamadı — bu özellik sadece Vercel ortamında çalışır (prod/preview).', 'warning');
+
+      const githubRepo = 'yemreyan/tcf-okul-sporlari';
+      const inputs = {};
+      if (options.il && typeof options.il === 'string') {
+        inputs.il = options.il.trim().toUpperCase();
+      }
+      if (options.testMode === true) {
+        inputs.test_mode = 'true';
+      }
+
+      const response = await fetch(
+        `https://api.github.com/repos/${githubRepo}/actions/workflows/scrape-mebbis.yml/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `token ${githubToken}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ref: 'main', inputs }),
+        }
+      );
+
+      if (response.status === 204) {
+        toast('GitHub Actions iş akışı başlatıldı. İşlem tamamlanınca Firebase güncellenir (birkaç dakika sürebilir).', 'success');
       } else {
-        const msg = data.error || `HTTP ${res.status}`;
+        let errorData = {};
+        try { errorData = await response.json(); } catch {}
+        const msg = errorData.message || `GitHub API hata: ${response.status}`;
         setSyncError(msg);
         toast('Tetikleme başarısız: ' + msg, 'error');
       }
