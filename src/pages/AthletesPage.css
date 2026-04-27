@@ -297,6 +297,122 @@
     margin: 0 auto;
 }
 
+/* ── Tab Bar ── */
+.athletes-tab-bar {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.athletes-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.athletes-tab:hover {
+    background: var(--bg);
+    color: var(--text-primary);
+}
+
+.athletes-tab--active {
+    background: var(--primary, #6366F1);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.athletes-tab--active:hover {
+    background: var(--primary, #6366F1);
+    color: #fff;
+}
+
+.athletes-tab .material-icons-round { font-size: 20px; }
+
+.athletes-tab__count {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.athletes-tab--active .athletes-tab__count {
+    background: rgba(255,255,255,0.25);
+}
+
+/* ── Pagination ── */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 24px;
+    padding: 16px 0;
+}
+
+.pagination__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-white);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pagination__btn:hover:not(:disabled) {
+    background: var(--bg);
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+.pagination__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination__btn .material-icons-round { font-size: 20px; }
+
+.pagination__num {
+    padding: 0 12px;
+}
+
+.pagination__num--active {
+    background: var(--primary, #6366F1);
+    color: #fff;
+    border-color: var(--primary, #6366F1);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.pagination__num--active:hover {
+    background: var(--primary, #6366F1) !important;
+    color: #fff !important;
+}
+
 .athletes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
