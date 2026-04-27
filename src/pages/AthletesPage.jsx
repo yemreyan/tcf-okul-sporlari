@@ -1850,6 +1850,7 @@ export default function AthletesPage() {
             </main>
 
             {/* Toplu Okul Geri Döndürme Modal */}
+            {isRevertModalOpen && (
                 <div className="modal-overlay" onClick={() => !revertApplying && setIsRevertModalOpen(false)}>
                     <div className="modal revert-modal" onClick={e => e.stopPropagation()}>
                         <div className="modal__header">
