@@ -669,8 +669,19 @@ async function loadSchoolsForDistrict() {
     return;
   }
 
-  // Firebase'den okul listesini kontrol et (önce Firebase, sonra statik fallback)
-  // Anahtarlar schools.json gibi büyük harf (ADANA/ALADAĞ)
+  // 1) Önce statik schools.json'dan yükle (MEBBİS güncel verisi)
+  if (typeof schoolsData === 'object' && !Array.isArray(schoolsData)) {
+    const cityKey = findSchoolKey(schoolsData, city);
+    if (cityKey && schoolsData[cityKey]) {
+      const districtKey = findSchoolKey(schoolsData[cityKey], district);
+      if (districtKey && schoolsData[cityKey][districtKey]) {
+        currentSchools = [...schoolsData[cityKey][districtKey]];
+      }
+    }
+  }
+
+  // 2) Firebase'den ek okulları kontrol et ve merge et
+  // (Admin panelinden manuel eklenen okullar Firebase'de olabilir)
   const fbCity = city.toLocaleUpperCase('tr-TR');
   const fbDistrict = district.toLocaleUpperCase('tr-TR');
   try {
@@ -678,29 +689,19 @@ async function loadSchoolsForDistrict() {
     if (fbSnap.exists()) {
       const fbSchools = fbSnap.val();
       if (Array.isArray(fbSchools) && fbSchools.length > 0) {
-        currentSchools = fbSchools;
-        renderSchoolSelect('');
-        schoolSelect.style.display = 'block';
-        schoolFilter.style.display = 'block';
-        schoolSelect.required = true;
-        if (hint) hint.textContent = 'LİSTEDEN OKULUNUZU SEÇİNİZ VEYA FİLTRELEYİNİZ';
-        updateStepIndicators();
-        return; // Firebase'den yüklendi, statik dosyaya gerek yok
+        // Firebase'deki okulları statik listeye merge et (duplikasyon önle)
+        const existingSet = new Set(currentSchools.map(s => s.toLocaleUpperCase('tr-TR')));
+        fbSchools.forEach(s => {
+          if (!existingSet.has(s.toLocaleUpperCase('tr-TR'))) {
+            currentSchools.push(s);
+          }
+        });
+        // Merge sonrası sırala
+        currentSchools.sort((a, b) => a.localeCompare(b, 'tr-TR'));
       }
     }
   } catch (fbErr) {
-    // Firebase erişim hatası — statik dosyaya devam et
-    console.warn('Firebase okul yüklenemedi, statik dosya kullanılıyor:', fbErr);
-  }
-
-  if (typeof schoolsData === 'object' && !Array.isArray(schoolsData)) {
-    const cityKey = findSchoolKey(schoolsData, city);
-    if (cityKey && schoolsData[cityKey]) {
-      const districtKey = findSchoolKey(schoolsData[cityKey], district);
-      if (districtKey && schoolsData[cityKey][districtKey]) {
-        currentSchools = schoolsData[cityKey][districtKey];
-      }
-    }
+    console.warn('Firebase okul verisi alınamadı, statik veri kullanılıyor:', fbErr);
   }
 
   if (currentSchools.length > 0) {
