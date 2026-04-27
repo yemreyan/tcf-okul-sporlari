@@ -30,6 +30,11 @@ export default function SchoolsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState('');
 
+  // Ayarlar Modal State
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [githubToken, setGithubToken] = useState('');
+  const [savingToken, setSavingToken] = useState(false);
+
   // MEBBİS meta verisini Firebase'den yükle
   useEffect(() => {
     get(ref(db, '_meta/okullar_guncelleme'))
@@ -93,6 +98,29 @@ export default function SchoolsPage() {
       setSyncing(false);
     }
   };
+
+  // GitHub Token kaydet
+  const saveGithubToken = async () => {
+    setSavingToken(true);
+    try {
+      await set(ref(db, 'settings/github_token'), githubToken.trim());
+      toast('GitHub token başarıyla kaydedildi.', 'success');
+      setSettingsModalOpen(false);
+    } catch (err) {
+      toast('Token kaydedilemedi: ' + err.message, 'error');
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  // Modal açıldığında mevcut token'ı çek
+  useEffect(() => {
+    if (settingsModalOpen) {
+      get(ref(db, 'settings/github_token')).then(snap => {
+        if (snap.exists()) setGithubToken(snap.val());
+      }).catch(() => {});
+    }
+  }, [settingsModalOpen]);
 
   // Load static + Firebase data when il/ilce changes
   useEffect(() => {
@@ -247,6 +275,14 @@ export default function SchoolsPage() {
           </div>
         </div>
         <div className="page-header__right">
+          <button
+            className="action-btn-outline"
+            style={{ borderColor: 'var(--text-tertiary)', color: 'var(--text-secondary)', padding: '8px', minWidth: '40px' }}
+            onClick={() => setSettingsModalOpen(true)}
+            title="Sistem Ayarları (GitHub Token)"
+          >
+            <i className="material-icons-round">settings</i>
+          </button>
           <button
             className="action-btn-outline"
             style={{ borderColor: '#D97706', color: '#D97706' }}
@@ -577,6 +613,47 @@ export default function SchoolsPage() {
                 disabled={saving || !schoolInput.trim()}
               >
                 {saving ? 'Kaydediliyor...' : editingSchool !== null ? 'Güncelle' : 'Ekle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ayarlar Modal (GitHub Token) ── */}
+      {settingsModalOpen && (
+        <div className="modal-overlay" onClick={() => setSettingsModalOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal__header">
+              <h2><i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: 8 }}>settings</i>Sistem Ayarları</h2>
+              <button className="modal__close" onClick={() => setSettingsModalOpen(false)}>
+                <i className="material-icons-round">close</i>
+              </button>
+            </div>
+            <div className="modal__body" style={{ padding: '1.5rem' }}>
+              <div className="form-group">
+                <label>GitHub Personal Access Token</label>
+                <input
+                  type="password"
+                  value={githubToken}
+                  onChange={e => setGithubToken(e.target.value)}
+                  placeholder="github_pat_..."
+                  autoFocus
+                />
+                <p className="help-text" style={{ marginTop: 6 }}>
+                  MEBBİS senkronizasyonunu başlatmak için GitHub <code>repo:workflow</code> iznine sahip bir PAT girilmelidir. Bu token Firebase veritabanında şifresiz saklanır, sadece superadmin yetkilileri görebilir.
+                </p>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn--secondary" onClick={() => setSettingsModalOpen(false)}>
+                İptal
+              </button>
+              <button
+                className="btn btn--primary"
+                onClick={saveGithubToken}
+                disabled={savingToken}
+              >
+                {savingToken ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </div>
           </div>
