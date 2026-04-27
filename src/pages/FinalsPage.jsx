@@ -9,6 +9,24 @@ import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import "./FinalsPage.css";
 
+const OLIMPIK_SIRA_KIZ = ['atlama', 'asimetrik', 'denge', 'serbest'];
+const OLIMPIK_SIRA_ERKEK = ['yer', 'kulplu', 'halka', 'atlama', 'paralel', 'barfiks', 'sirik'];
+
+function getOlimpikSira(catKey, aletler) {
+    if (!catKey || !aletler || aletler.length === 0) return aletler || [];
+    const isKiz = catKey.toLowerCase().includes('kiz') || catKey.toLowerCase().includes('kız');
+    const sira = isKiz ? OLIMPIK_SIRA_KIZ : OLIMPIK_SIRA_ERKEK;
+    const sorted = [...aletler].sort((a, b) => {
+        const ia = sira.indexOf(a);
+        const ib = sira.indexOf(b);
+        if (ia === -1 && ib === -1) return 0;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+    });
+    return sorted;
+}
+
 const APPARATUS_INFO = {
     yer: { tr: 'Yer', en: 'FX', bg: '#fef3c7', color: '#d97706' },
     atlama: { tr: 'Atlama', en: 'VT', bg: '#fee2e2', color: '#dc2626' },
@@ -19,8 +37,16 @@ const APPARATUS_INFO = {
     kulplu: { tr: 'Kulplu Beygir', en: 'PH', bg: '#dcfce7', color: '#16a34a' },
     paralel: { tr: 'Paralel', en: 'PB', bg: '#e0e7ff', color: '#4f46e5' },
     sirik: { tr: 'Sırık', en: 'PV', bg: '#f3f4f6', color: '#4b5563' },
-    mantar: { tr: 'Mantar', en: 'MB', bg: '#dcfce7', color: '#16a34a' }
+    mantar: { tr: 'Mantar', en: 'MB', bg: '#dcfce7', color: '#16a34a' },
+    // Ritmik Cimnastik aletleri
+    top: { tr: 'Top', en: 'TOP', bg: '#fce7f3', color: '#db2777' },
+    kurdele: { tr: 'Kurdele', en: 'KRD', bg: '#ede9fe', color: '#7c3aed' },
 };
+
+// Ritmik Cimnastik kategorisi tespiti (alet listesine bakarak)
+// Ritmik'te puanlar athlete-first yapıda saklanır: puanlar[catId][athleteId][aletKey]
+// Artistik/diğerlerinde apparatus-first: puanlar[catId][aletKey][athleteId]
+const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'kurdele');
 
 export default function FinalsPage() {
     const navigate = useNavigate();
@@ -141,6 +167,7 @@ export default function FinalsPage() {
         } else {
             apparatusKeys = Object.keys(rawAletler);
         }
+        apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
 
         let participantIds = Object.keys(categoryAthletes);
         let useGlobalAthletes = false;
@@ -164,21 +191,38 @@ export default function FinalsPage() {
             const scores = {};
             const allScoreDetails = {};
 
+            const isRitmik = isRitmikCategory(apparatusKeys);
+
             apparatusKeys.forEach(key => {
-                let scoreData = categoryScores[key]?.[id];
-                if (!scoreData && categoryScores[id]?.[`${key}Puanlari`]) {
-                    const oldData = categoryScores[id][`${key}Puanlari`];
-                    scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
-                }
-                if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
-                    const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
-                    scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
+                let scoreData;
+                if (isRitmik) {
+                    // Ritmik: puanlar[catId][athleteId][aletKey]
+                    scoreData = categoryScores[id]?.[key];
+                } else {
+                    // Artistik/diğerleri: puanlar[catId][aletKey][athleteId]
+                    scoreData = categoryScores[key]?.[id];
+                    if (!scoreData && categoryScores[id]?.[`${key}Puanlari`]) {
+                        const oldData = categoryScores[id][`${key}Puanlari`];
+                        scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
+                    }
+                    if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
+                        const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
+                        scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
+                    }
                 }
 
-                let finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
-                let dScoreVal = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
-                let eScoreVal = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
-                let penVal = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
+                let finalScoreVal, dScoreVal, eScoreVal, penVal;
+                if (isRitmik) {
+                    finalScoreVal = scoreData?.sonuc || 0;
+                    dScoreVal     = scoreData?.dScore || 0;                    // DA+DB toplamı
+                    eScoreVal     = (parseFloat(scoreData?.aScore || 0)) + (parseFloat(scoreData?.eScore || 0)); // A+E toplamı
+                    penVal        = scoreData?.penaltyTotal || 0;
+                } else {
+                    finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
+                    dScoreVal     = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
+                    eScoreVal     = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
+                    penVal        = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
+                }
 
                 const score = parseFloat(finalScoreVal || 0);
                 const isGecersiz = !!(scoreData?.gecersiz);
@@ -258,6 +302,7 @@ export default function FinalsPage() {
         } else {
             apparatusKeys = Object.keys(categoryData.aletler);
         }
+        apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
     }
 
     // Teams Processing
@@ -278,9 +323,13 @@ export default function FinalsPage() {
             apparatusKeys.forEach(key => clubScores[res.okul].scores[key].push(res.scores[key]));
         });
 
+        const catKey = (selectedCategoryId || '').toLowerCase();
+        const isRitmikTeam = isRitmikCategory(apparatusKeys);
+        const topN = isRitmikTeam ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
+
         const teamList = Object.values(clubScores).map(team => {
             let totalScore = 0;
-            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, 3).reduce((sum, s) => sum + s, 0);
+            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, topN).reduce((sum, s) => sum + s, 0);
             const apparatusTotals = {};
 
             apparatusKeys.forEach(key => {
@@ -373,6 +422,7 @@ export default function FinalsPage() {
         } else {
             apparatusKeysList = Object.keys(catData?.aletler || {});
         }
+        apparatusKeysList = getOlimpikSira(catId, apparatusKeysList);
 
         let catAth = compAthletes[catId] || {};
         let catSco = compScores[catId] || {};
@@ -383,6 +433,8 @@ export default function FinalsPage() {
             participantIds = Object.keys(competitionData.katilimcilar);
             useGlobalAthletes = true;
         }
+
+        const isRitmikCat = isRitmikCategory(apparatusKeysList);
 
         const sortedC = participantIds.map(id => {
             const athlete = useGlobalAthletes ? globalAthletes[id] : catAth[id];
@@ -399,20 +451,33 @@ export default function FinalsPage() {
             const allScoreDetails = {};
 
             apparatusKeysList.forEach(key => {
-                let scoreData = catSco[key]?.[id];
-                if (!scoreData && catSco[id]?.[`${key}Puanlari`]) {
-                    const oldData = catSco[id][`${key}Puanlari`];
-                    scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
-                }
-                if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
-                    const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
-                    scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
+                let scoreData;
+                if (isRitmikCat) {
+                    scoreData = catSco[id]?.[key];
+                } else {
+                    scoreData = catSco[key]?.[id];
+                    if (!scoreData && catSco[id]?.[`${key}Puanlari`]) {
+                        const oldData = catSco[id][`${key}Puanlari`];
+                        scoreData = { finalScore: oldData.sonuc || oldData.sonPuan || 0, dScore: oldData.dToplami || oldData.dPuani || 0, eScore: oldData.ePuani || 0, neutralDeductions: oldData.tarafsiz || oldData.TarafsizKesinti || 0 };
+                    }
+                    if (!scoreData && competitionData.cimnastikVerileri?.[`${key}Puanlari`]?.[id]) {
+                        const superOldData = competitionData.cimnastikVerileri[`${key}Puanlari`][id];
+                        scoreData = { finalScore: superOldData.sonPuan || superOldData.sonuc || 0, dScore: superOldData.dToplami || superOldData.dPuani || 0, eScore: superOldData.ePuani || 0, neutralDeductions: superOldData.TarafsizKesinti || superOldData.eksikElementKesintisi || 0 };
+                    }
                 }
 
-                let finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
-                let dScoreVal = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
-                let eScoreVal = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
-                let penVal = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
+                let finalScoreVal, dScoreVal, eScoreVal, penVal;
+                if (isRitmikCat) {
+                    finalScoreVal = scoreData?.sonuc || 0;
+                    dScoreVal     = scoreData?.dScore || 0;
+                    eScoreVal     = (parseFloat(scoreData?.aScore || 0)) + (parseFloat(scoreData?.eScore || 0));
+                    penVal        = scoreData?.penaltyTotal || 0;
+                } else {
+                    finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
+                    dScoreVal     = scoreData?.dScore || scoreData?.calc_D || scoreData?.dToplami || scoreData?.dPuani || 0;
+                    eScoreVal     = scoreData?.eScore || scoreData?.calc_E || scoreData?.ePuani || 0;
+                    penVal        = scoreData?.neutralDeductions || scoreData?.calc_MissingPen || scoreData?.tarafsiz || scoreData?.TarafsizKesinti || 0;
+                }
 
                 const score = parseFloat(finalScoreVal || 0);
                 scores[key] = score;
@@ -478,9 +543,13 @@ export default function FinalsPage() {
             appKeys.forEach(k => clubScores[res.okul].scores[k].push(res.scores[k]));
         });
 
+        const catKeyC = (catId || '').toLowerCase();
+        const isRitmikC = isRitmikCategory(appKeys);
+        const topNC = isRitmikC ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);
+
         const teamsList = Object.values(clubScores).map(team => {
             let total = 0;
-            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, 3).reduce((s, x) => s + x, 0);
+            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, topNC).reduce((s, x) => s + x, 0);
             const appTotals = {};
             appKeys.forEach(k => {
                 const t = topScores(team.scores[k]);
@@ -530,6 +599,11 @@ export default function FinalsPage() {
                 });
             } catch (e) { /* logo optional */ }
 
+            const hexToRgb = (hex) => {
+                const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return r ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16)] : [80, 120, 180];
+            };
+
             const normalizeTR = (text) => {
                 if (typeof text !== 'string') return String(text || '');
                 return text.replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's')
@@ -548,7 +622,6 @@ export default function FinalsPage() {
             const mg = 10;
             let pageCount = 0;
 
-            // Competition info
             const compName = normalizeTR(competitionData.isim || '');
             const compCity = normalizeTR(competitionData.il || '');
             const compDateRaw = competitionData.tarih || competitionData.baslangicTarihi || '';
@@ -566,74 +639,55 @@ export default function FinalsPage() {
             const drawHeader = (catName, subtitle) => {
                 if (pageCount > 0) doc.addPage();
                 pageCount++;
-
                 const headerH = 40;
                 const centerX = pageW / 2;
-
-                // Border box
                 doc.setDrawColor(0, 56, 117);
                 doc.setLineWidth(0.6);
                 doc.rect(mg, 5, pageW - 2 * mg, headerH, 'S');
-
-                // Thin inner line separating logo area
                 doc.setDrawColor(200, 210, 220);
                 doc.setLineWidth(0.2);
                 doc.line(mg + 30, 5, mg + 30, 5 + headerH);
                 doc.line(pageW - mg - 30, 5, pageW - mg - 30, 5 + headerH);
-
-                // Logo left
-                if (logoData) {
-                    try { doc.addImage(logoData, 'PNG', mg + 4, 9, 22, 22); } catch(e) {}
-                }
-
-                // Center text
+                if (logoData) { try { doc.addImage(logoData, 'PNG', mg + 4, 9, 22, 22); } catch(e) {} }
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(13);
                 doc.setTextColor(0, 56, 117);
                 doc.text(normalizeTR("TURKIYE CIMNASTIK FEDERASYONU"), centerX, 14, { align: 'center' });
-
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
                 doc.setTextColor(30, 41, 59);
                 doc.text(compName, centerX, 20, { align: 'center' });
-
                 if (dateStr || compCity) {
                     doc.text(normalizeTR(`${dateStr}${compCity ? ' / ' + compCity : ''}`), centerX, 25, { align: 'center' });
                 }
-
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(12);
                 doc.setTextColor(0, 56, 117);
                 doc.text(normalizeTR(catName.toUpperCase()), centerX, 32, { align: 'center' });
-
                 doc.setFontSize(10);
                 doc.text(normalizeTR(subtitle), centerX, 38, { align: 'center' });
-
-                // Logo right (same logo mirrored)
-                if (logoData) {
-                    try { doc.addImage(logoData, 'PNG', pageW - mg - 26, 9, 22, 22); } catch(e) {}
-                }
+                if (logoData) { try { doc.addImage(logoData, 'PNG', pageW - mg - 26, 9, 22, 22); } catch(e) {} }
             };
 
-            // Table styles matching screenshot
             const headStyles = {
                 fillColor: [0, 56, 117],
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
                 halign: 'center',
-                valign: 'middle',
-                fontSize: 8,
-                cellPadding: 3,
+                valign: 'bottom',
+                fontSize: 7.5,
+                cellPadding: { top: 8, right: 2, bottom: 2, left: 2 },
                 lineWidth: 0.2,
-                lineColor: [0, 56, 117]
+                lineColor: [0, 56, 117],
+                minCellHeight: 16
             };
             const bodyStyles = {
                 textColor: [15, 23, 42],
-                fontSize: 8.5,
+                fontSize: 7.5,
                 valign: 'middle',
                 lineWidth: 0.1,
                 lineColor: [200, 210, 220],
-                cellPadding: 2.5
+                cellPadding: 2
             };
             const alternateRowStyles = { fillColor: [240, 244, 248] };
 
@@ -645,55 +699,95 @@ export default function FinalsPage() {
                 }
             };
 
-            const categoryIds = Object.keys(competitionData.kategoriler || {});
+            // Kategori seçiliyse sadece o kategori, seçili değilse tüm kategoriler
+            const categoryIds = selectedCategoryId
+                ? [selectedCategoryId]
+                : Object.keys(competitionData.kategoriler || {});
 
             categoryIds.forEach((cId) => {
-                const catData = competitionData.kategoriler[cId];
+                const catData = competitionData.kategoriler?.[cId];
+                if (!catData) return;
                 const { results, teamResults, apparatusKeysList, catName } = computeCategoryResults(cId, catData, compAthletes, compScores);
 
-                // Yarışmış sporcular: puanı olan veya gecersiz/yarismadi işaretli
                 const scoredResults = results.filter(r => r.hasParticipated);
                 if (scoredResults.length === 0) return;
 
                 const appCount = apparatusKeysList.length;
 
+                // Usable width calculations
+                const usableW = pageW - 2 * mg;
+                const fixedW = 10 + 26 + 26 + 36 + 16; // sira+ad+soyad+okul+toplam
+                const appColW = Math.max(28, Math.min(38, (usableW - fixedW) / Math.max(appCount, 1)));
+
                 // ── BIREYSEL GENEL TASNIF ──
                 drawHeader(catName, 'GENEL TASNIF');
 
+                // Header: apparatus columns have colored badge drawn in didDrawCell
                 const indHead = [[
-                    'Sira', 'Adi', 'Soyadi', 'Okul',
+                    { content: 'Sira' },
+                    { content: 'Adi' },
+                    { content: 'Soyadi' },
+                    { content: 'Okul' },
                     ...apparatusKeysList.map(k => {
                         const info = APPARATUS_INFO[k];
-                        return info ? normalizeTR(info.en) : normalizeTR(k);
+                        return { content: info ? normalizeTR(info.tr) : normalizeTR(k) };
                     }),
-                    'Toplam'
+                    { content: 'Toplam' },
+                    { content: 'Fark' }
                 ]];
 
-                const indBody = scoredResults.map((r) => {
+                // Body: each apparatus cell has Final(rank) + D/E + Penalty lines
+                const leader = scoredResults[0]?.totalScore || 0;
+                const indBody = scoredResults.map((r, idx) => {
                     const row = [
-                        `${r.totalRank}-`,
-                        normalizeTR((r.ad || '').toUpperCase()),
-                        normalizeTR((r.soyad || '').toUpperCase()),
-                        normalizeTR(r.okul || r.kulup || '-')
+                        { content: r.totalRank ? `${r.totalRank}.` : '-', styles: { fontStyle: 'bold', halign: 'center', valign: 'middle' } },
+                        { content: normalizeTR((r.ad || '').toUpperCase()), styles: { fontStyle: 'bold', valign: 'middle' } },
+                        { content: normalizeTR((r.soyad || '').toUpperCase()), styles: { fontStyle: 'bold', valign: 'middle' } },
+                        { content: normalizeTR(r.okul || r.kulup || '-'), styles: { valign: 'middle', fontSize: 7 } }
                     ];
                     apparatusKeysList.forEach(k => {
-                        const score = r.allScoreDetails[k]?.final || 0;
-                        row.push(fmtScore(score));
+                        const det = r.allScoreDetails[k];
+                        const appRank = r.apparatusRanks?.[k];
+                        if (!det || (det.final === 0 && !det.isGecersiz && !det.isDNS)) {
+                            row.push({ content: '-', styles: { halign: 'center', valign: 'middle', textColor: [180, 180, 180] } });
+                        } else if (det.isGecersiz) {
+                            row.push({ content: 'GEC', styles: { halign: 'center', valign: 'middle', textColor: [180, 50, 50], fontStyle: 'bold' } });
+                        } else if (det.isDNS) {
+                            row.push({ content: 'DNS', styles: { halign: 'center', valign: 'middle', textColor: [140, 140, 140] } });
+                        } else {
+                            const rankStr = appRank ? ` (${appRank}.)` : '';
+                            const hasP = det.P > 0.0005;
+                            // Include placeholder for penalty line so autotable reserves height,
+                            // but leave it blank — didDrawCell will paint it red
+                            const content = hasP
+                                ? `${fmtScore(det.final)}${rankStr}\nD:${fmtScore(det.D)}  E:${fmtScore(det.E)}\n `
+                                : `${fmtScore(det.final)}${rankStr}\nD:${fmtScore(det.D)}  E:${fmtScore(det.E)}`;
+                            row.push({ content, styles: { halign: 'center', valign: 'middle', fontSize: 7 } });
+                        }
                     });
-                    row.push(fmtScore(r.totalScore));
+                    row.push({ content: fmtScore(r.totalScore), styles: { fontStyle: 'bold', halign: 'center', valign: 'middle' } });
+                    // Fark sütunu: ilk sporcu için '-', diğerleri için negatif fark
+                    if (idx === 0) {
+                        row.push({ content: '-', styles: { halign: 'center', valign: 'middle', textColor: [150, 150, 150] } });
+                    } else {
+                        const diff = r.totalScore - leader;
+                        const diffStr = diff.toFixed(3).replace('.', ',');
+                        row.push({ content: diffStr, styles: { halign: 'center', valign: 'middle', textColor: [190, 40, 40], fontSize: 7.5 } });
+                    }
                     return row;
                 });
 
                 const indColStyles = {
-                    0: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
-                    1: { cellWidth: 30, fontStyle: 'bold' },
-                    2: { cellWidth: 30, fontStyle: 'bold' },
-                    3: { cellWidth: 42 }
+                    0: { halign: 'center', cellWidth: 10, fontStyle: 'bold' },
+                    1: { cellWidth: 26, fontStyle: 'bold' },
+                    2: { cellWidth: 26, fontStyle: 'bold' },
+                    3: { cellWidth: 34 }
                 };
                 for (let i = 0; i < appCount; i++) {
-                    indColStyles[4 + i] = { halign: 'center' };
+                    indColStyles[4 + i] = { halign: 'center', cellWidth: appColW };
                 }
-                indColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold', cellWidth: 18 };
+                indColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold', cellWidth: 16 };
+                indColStyles[5 + appCount] = { halign: 'center', cellWidth: 14 };
 
                 autoTable(doc, {
                     startY: 50,
@@ -705,7 +799,53 @@ export default function FinalsPage() {
                     alternateRowStyles,
                     margin: { left: mg, right: mg },
                     columnStyles: indColStyles,
-                    didParseCell: function(data) { medalRowStyle(data); }
+                    didParseCell: function(data) {
+                        medalRowStyle(data);
+                        // Apparatus header cells: text pushed to bottom by padding
+                        if (data.section === 'head') {
+                            const appIdx = data.column.index - 4;
+                            if (appIdx >= 0 && appIdx < appCount) {
+                                data.cell.styles.valign = 'bottom';
+                            }
+                        }
+                    },
+                    didDrawCell: function(data) {
+                        // Draw colored apparatus badge in header cells
+                        if (data.section === 'head') {
+                            const appIdx = data.column.index - 4;
+                            if (appIdx >= 0 && appIdx < appCount) {
+                                const appKey = apparatusKeysList[appIdx];
+                                const info = APPARATUS_INFO[appKey];
+                                if (info) {
+                                    const rgb = hexToRgb(info.color);
+                                    const { x, y, width } = data.cell;
+                                    doc.setFillColor(...rgb);
+                                    doc.roundedRect(x + 1.5, y + 1.5, width - 3, 6.5, 1, 1, 'F');
+                                    doc.setTextColor(255, 255, 255);
+                                    doc.setFontSize(6.5);
+                                    doc.setFont("helvetica", "bold");
+                                    doc.text(info.en, x + width / 2, y + 6.2, { align: 'center' });
+                                }
+                            }
+                        }
+                        // Draw penalty line in red (content has blank 3rd line as height placeholder)
+                        if (data.section === 'body') {
+                            const appIdx = data.column.index - 4;
+                            if (appIdx >= 0 && appIdx < appCount) {
+                                const r = scoredResults[data.row.index];
+                                if (!r) return;
+                                const det = r.allScoreDetails[apparatusKeysList[appIdx]];
+                                if (det && det.P > 0.0005 && !det.isGecersiz && !det.isDNS) {
+                                    const { x, y, width, height } = data.cell;
+                                    const lineH = height / 3;
+                                    doc.setTextColor(200, 30, 30);
+                                    doc.setFontSize(6.5);
+                                    doc.setFont("helvetica", "normal");
+                                    doc.text(`-P:${fmtScore(det.P)}`, x + width / 2, y + lineH * 2.7, { align: 'center' });
+                                }
+                            }
+                        }
+                    }
                 });
 
                 // ── TAKIM GENEL TASNIF ──
@@ -713,33 +853,39 @@ export default function FinalsPage() {
                     drawHeader(catName, 'TAKIM TASNIF');
 
                     const teamHead = [[
-                        'Sira', 'Takim',
+                        { content: 'Sira' },
+                        { content: 'Takim' },
                         ...apparatusKeysList.map(k => {
                             const info = APPARATUS_INFO[k];
-                            return info ? normalizeTR(info.en) : normalizeTR(k);
+                            return { content: info ? normalizeTR(info.tr) : normalizeTR(k) };
                         }),
-                        'Alet Top.', 'Kesinti', 'Net Skor'
+                        { content: 'Alet Top.' },
+                        { content: 'Kesinti' },
+                        { content: 'Net Skor' }
                     ]];
 
                     const teamBody = teamResults.map((t) => {
-                        const row = [`${t.rank}-`, normalizeTR(t.name)];
-                        apparatusKeysList.forEach(k => row.push(fmtScore(t.apparatusTotals[k])));
-                        row.push(fmtScore(t.totalScore));
-                        row.push(t.deduction > 0 ? `-${fmtScore(t.deduction)}` : '0,000');
-                        row.push(fmtScore(t.finalScore));
+                        const row = [
+                            { content: `${t.rank}.`, styles: { fontStyle: 'bold', halign: 'center' } },
+                            { content: normalizeTR(t.name), styles: { fontStyle: 'bold' } }
+                        ];
+                        apparatusKeysList.forEach(k => row.push({ content: fmtScore(t.apparatusTotals[k]), styles: { halign: 'center' } }));
+                        row.push({ content: fmtScore(t.totalScore), styles: { halign: 'center' } });
+                        row.push({ content: t.deduction > 0 ? `-${fmtScore(t.deduction)}` : '-', styles: { halign: 'center', textColor: t.deduction > 0 ? [200, 30, 30] : [140, 140, 140] } });
+                        row.push({ content: fmtScore(t.finalScore), styles: { halign: 'center', fontStyle: 'bold' } });
                         return row;
                     });
 
                     const teamColStyles = {
-                        0: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
-                        1: { cellWidth: 55, fontStyle: 'bold' }
+                        0: { halign: 'center', cellWidth: 10, fontStyle: 'bold' },
+                        1: { cellWidth: 52, fontStyle: 'bold' }
                     };
                     for (let i = 0; i < appCount; i++) {
-                        teamColStyles[2 + i] = { halign: 'center' };
+                        teamColStyles[2 + i] = { halign: 'center', cellWidth: appColW };
                     }
-                    teamColStyles[2 + appCount] = { halign: 'center' };
-                    teamColStyles[3 + appCount] = { halign: 'center', textColor: [220, 38, 38] };
-                    teamColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold' };
+                    teamColStyles[2 + appCount] = { halign: 'center', cellWidth: 16 };
+                    teamColStyles[3 + appCount] = { halign: 'center', cellWidth: 16 };
+                    teamColStyles[4 + appCount] = { halign: 'center', fontStyle: 'bold', cellWidth: 16 };
 
                     autoTable(doc, {
                         startY: 50,
@@ -751,7 +897,34 @@ export default function FinalsPage() {
                         alternateRowStyles,
                         margin: { left: mg, right: mg },
                         columnStyles: teamColStyles,
-                        didParseCell: function(data) { medalRowStyle(data); }
+                        didParseCell: function(data) {
+                            medalRowStyle(data);
+                            if (data.section === 'head') {
+                                const appIdx = data.column.index - 2;
+                                if (appIdx >= 0 && appIdx < appCount) {
+                                    data.cell.styles.valign = 'bottom';
+                                }
+                            }
+                        },
+                        didDrawCell: function(data) {
+                            if (data.section === 'head') {
+                                const appIdx = data.column.index - 2;
+                                if (appIdx >= 0 && appIdx < appCount) {
+                                    const appKey = apparatusKeysList[appIdx];
+                                    const info = APPARATUS_INFO[appKey];
+                                    if (info) {
+                                        const rgb = hexToRgb(info.color);
+                                        const { x, y, width } = data.cell;
+                                        doc.setFillColor(...rgb);
+                                        doc.roundedRect(x + 1.5, y + 1.5, width - 3, 6.5, 1, 1, 'F');
+                                        doc.setTextColor(255, 255, 255);
+                                        doc.setFontSize(6.5);
+                                        doc.setFont("helvetica", "bold");
+                                        doc.text(info.en, x + width / 2, y + 6.2, { align: 'center' });
+                                    }
+                                }
+                            }
+                        }
                     });
                 }
             });
@@ -770,8 +943,9 @@ export default function FinalsPage() {
                 doc.text(`Sayfa ${i} / ${totalPages}`, pageW - mg, pageH - 6, { align: 'right' });
             }
 
+            const catSuffix = selectedCategoryId ? `_${normalizeTR(competitionData.kategoriler?.[selectedCategoryId]?.name || selectedCategoryId).replace(/[^a-z0-9]/gi, '_').toLowerCase()}` : '_tum_kategoriler';
             const fName = normalizeTR(competitionData.isim || 'sonuclar').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            doc.save(`${fName}_sonuclar.pdf`);
+            doc.save(`${fName}${catSuffix}_sonuclar.pdf`);
             toast("PDF başarıyla indirildi.", "success");
         } catch (error) {
             if (import.meta.env.DEV) console.error("PDF Export Error:", error);
@@ -1002,11 +1176,14 @@ export default function FinalsPage() {
                                                     )
                                                 })}
                                                 <th className="th-right th-highlight">Toplam</th>
+                                                <th className="th-right th-diff">Fark</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {fullResults.map((res) => {
+                                            {fullResults.map((res, idx) => {
                                                 const rank = res.totalRank;
+                                                const leaderScore = fullResults[0]?.totalScore || 0;
+                                                const diff = idx === 0 ? null : res.totalScore - leaderScore;
                                                 return (
                                                     <tr key={res.id} className={getMedalClass(rank)}>
                                                         <td className="td-center rank-col">
@@ -1037,11 +1214,14 @@ export default function FinalsPage() {
                                                             return <td key={key} className="td-center text-muted">-</td>;
                                                         })}
                                                         <td className="td-right total-col">{formatScore(res.totalScore)}</td>
+                                                        <td className="td-right diff-col">
+                                                            {diff === null ? <span className="diff-leader">—</span> : <span className="diff-neg">{diff.toFixed(3)}</span>}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}
                                             {fullResults.length === 0 && (
-                                                <tr><td colSpan={apparatusKeys.length + 4} className="td-center">Sporcu verisi bulunamadı.</td></tr>
+                                                <tr><td colSpan={apparatusKeys.length + 5} className="td-center">Sporcu verisi bulunamadı.</td></tr>
                                             )}
                                         </tbody>
                                     </table>

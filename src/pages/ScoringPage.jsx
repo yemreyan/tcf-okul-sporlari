@@ -66,6 +66,9 @@ export default function ScoringPage() {
     // Yarışmadı (DNS) state
     const [yarismadi, setYarismadi] = useState(false);
 
+    // Manuel bonus (D puanına eklenir)
+    const [manualBonus, setManualBonus] = useState(0);
+
     // Difficulty Mode State (yıldız/genç kategoriler için)
     const [difficultyMoves, setDifficultyMoves] = useState({});
     const [crValue, setCrValue] = useState(0);          // Kız kategoriler (tek CR)
@@ -247,6 +250,8 @@ export default function ScoringPage() {
         setCrGroupValues(scores.crGroupValues ?? [0, 0, 0, 0]);
         setCvValue(scores.cvScore_val ?? 0);
         setBtrsValue(scores.btrsScore_val ?? 0);
+        // Manuel bonus
+        setManualBonus(scores.manualBonus ?? 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
 
@@ -426,23 +431,17 @@ export default function ScoringPage() {
     const E_SCORE_BASE = 10.0;
     const currentEScore = Math.max(0, E_SCORE_BASE - avgEDeduction);
 
-    // Bonus
-    let bonusValue = 0;
-    if (currentCriteria?.bonus && currentCriteria.bonus.value > 0) {
-        const reqD = parseFloat(currentCriteria.bonus.requiredD || 0);
-        const maxE = parseFloat(currentCriteria.bonus.maxE !== undefined ? currentCriteria.bonus.maxE : 10);
-        const eDed = E_SCORE_BASE - currentEScore;
-        if (calculatedDScore >= reqD && eDed <= maxE) {
-            bonusValue = parseFloat(currentCriteria.bonus.value);
-        }
-    }
+    // Bonus (D puanına eklenir — kriter sayfasında aktif edilirse manuel giriş gösterilir)
+    const bonusEnabled = currentCriteria?.bonus?.enabled === true;
+    const bonusValue = bonusEnabled ? (parseFloat(manualBonus) || 0) : 0;
+    const effectiveDScore = calculatedDScore + bonusValue;
 
     // Final Score
     const tarafsizKesinti = parseFloat(neutralDeductions) || 0;
     // D puanı 0 ise sporcu puanı da 0 olur
     const finalScore = calculatedDScore === 0
         ? '0.000'
-        : Math.max(0, calculatedDScore + currentEScore - missingPenalty - tarafsizKesinti + bonusValue).toFixed(3);
+        : Math.max(0, effectiveDScore + currentEScore - missingPenalty - tarafsizKesinti).toFixed(3);
 
     // Handlers
     const handleSelectAthlete = (athlete) => {
@@ -475,6 +474,7 @@ export default function ScoringPage() {
             setCrGroupValues(prevScore.crGroupValues || [0, 0, 0, 0]);
             setCvValue(prevScore.cvScore_val || 0);
             setBtrsValue(prevScore.btrsScore_val || 0);
+            setManualBonus(prevScore.manualBonus || 0);
             const panels = {};
             for (let i = 1; i <= 10; i++) {
                 const key = `e${i}`;
@@ -508,6 +508,7 @@ export default function ScoringPage() {
         setCrGroupValues([0, 0, 0, 0]);
         setCvValue(0);
         setBtrsValue(0);
+        setManualBonus(0);
     };
 
     // Kilit açma — super admin veya komite şifresi ile
@@ -709,7 +710,7 @@ export default function ScoringPage() {
         // Özel onay popup'ı göster
         setConfirmModal({
             athlete: selectedAthlete,
-            dScore: calculatedDScore,
+            dScore: effectiveDScore,
             eScore: currentEScore,
             missingPen: missingPenalty,
             neutralPen: tarafsizKesinti,
@@ -760,11 +761,12 @@ export default function ScoringPage() {
                 ...difficultyData,
                 [scorePath + '/scoringMode']: scoringMode,
                 [scorePath + '/combinedEDeduction']: scoringMode === 'combined' ? parseFloat(combinedEDeduction) || 0 : null,
-                [scorePath + '/dScore']: calculatedDScore,
-                [scorePath + '/calc_D']: calculatedDScore,
+                [scorePath + '/dScore']: effectiveDScore,
+                [scorePath + '/calc_D']: effectiveDScore,
                 [scorePath + '/calc_E']: currentEScore,
                 [scorePath + '/calc_MissingPen']: missingPenalty,
                 [scorePath + '/calc_Bonus']: bonusValue,
+                [scorePath + '/manualBonus']: bonusEnabled ? bonusValue : null,
                 [scorePath + '/tarafsiz']: tarafsizKesinti,
                 [scorePath + '/neutralDeductions']: tarafsizKesinti,
                 [scorePath + '/eksikSayisi']: missingCount,
@@ -1224,6 +1226,38 @@ export default function ScoringPage() {
                                     </div>
                                 </div>
 
+                                {/* Bonus Paneli — sadece kriterde aktif edilmişse gösterilir */}
+                                {bonusEnabled && (
+                                    <div className="score-card card-purple">
+                                        <div className="sc-header card-header-purple">
+                                            <h3><i className="material-icons-round" style={{marginRight:'6px',verticalAlign:'middle',fontSize:'1rem'}}>star</i>Bonus (D'ye Eklenir)</h3>
+                                        </div>
+                                        <div className="sc-body">
+                                            <div className="d-input-wrapper">
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    value={manualBonus}
+                                                    onChange={e => { setManualBonus(e.target.value); setScoringFieldsTouched(true); }}
+                                                    className="giant-num-input input-purple"
+                                                />
+                                            </div>
+                                            <div className="quick-d-buttons">
+                                                {[0.1, 0.2, 0.3, 0.5, 1.0].map(val => (
+                                                    <button key={val} className="btn-quick-purple" onClick={() => { setManualBonus(val); setScoringFieldsTouched(true); }}>
+                                                        +{val.toFixed(1)}
+                                                    </button>
+                                                ))}
+                                                <button className="btn-quick-gray clear-btn" onClick={() => { setManualBonus(0); setScoringFieldsTouched(true); }}>Sıfırla</button>
+                                            </div>
+                                            <div className="dynamic-score-display" style={{color:'#7c3aed'}}>
+                                                D + Bonus = {effectiveDScore.toFixed(3)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* E-Score Panel */}
                                 <div className="score-card card-green">
                                     <div className="sc-header card-header-green">
@@ -1353,7 +1387,10 @@ export default function ScoringPage() {
 
                             <div className="final-score-bar-light">
                                 <div className="fs-calc">
-                                    <span className="fs-part score-chip-blue">D: {calculatedDScore.toFixed(3)}</span>
+                                    <span className="fs-part score-chip-blue">
+                                        D: {effectiveDScore.toFixed(3)}
+                                        {bonusValue > 0 && <span style={{fontSize:'0.75em',opacity:0.8,marginLeft:3}}>(+{bonusValue.toFixed(1)} bonus)</span>}
+                                    </span>
                                     <span className="fs-math">+</span>
                                     <span className="fs-part score-chip-green">E: {currentEScore.toFixed(3)}</span>
                                     {missingPenalty > 0 && (
@@ -1366,12 +1403,6 @@ export default function ScoringPage() {
                                         <>
                                             <span className="fs-math">−</span>
                                             <span className="fs-part score-chip-orange">Trfs: {tarafsizKesinti.toFixed(1)}</span>
-                                        </>
-                                    )}
-                                    {bonusValue > 0 && (
-                                        <>
-                                            <span className="fs-math">+</span>
-                                            <span className="fs-part score-chip-purple">Bonus: {bonusValue.toFixed(1)}</span>
                                         </>
                                     )}
                                     <span className="fs-math">=</span>

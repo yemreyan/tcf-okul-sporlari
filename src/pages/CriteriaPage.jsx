@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import { useAuth } from '../lib/AuthContext';
 import { DEFAULT_CRITERIA } from '../data/criteriaDefaults.js';
+import { logAction } from '../lib/auditLogger';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './CriteriaPage.css';
 
@@ -53,7 +54,7 @@ const EMPTY_HAREKET = () => ({
 
 export default function CriteriaPage() {
     const navigate = useNavigate();
-    const { hasPermission } = useAuth();
+    const { hasPermission, currentUser } = useAuth();
     const { routePrefix } = useDiscipline();
     const canEdit = hasPermission('criteria', 'duzenle');
 
@@ -239,7 +240,7 @@ export default function CriteriaPage() {
     const updateEditField = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
     const updateBonus = (field, value) => setEditData(prev => ({
         ...prev,
-        bonus: { ...prev.bonus, [field]: Number(value) || 0 }
+        bonus: { ...prev.bonus, [field]: field === 'enabled' ? value : (Number(value) || 0) }
     }));
 
     const addHareket = () => {
@@ -456,27 +457,19 @@ export default function CriteriaPage() {
                                         )}
                                     </div>
                                     <div className="setting-field">
-                                        <label>Max E Puanı</label>
+                                        <label>Bonus Aktif</label>
                                         {canEdit ? (
-                                            <input type="number" min="0" max="20" step="0.5" value={editData.bonus?.maxE ?? 10} onChange={e => updateBonus('maxE', e.target.value)} />
+                                            <label className="toggle-switch" style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer'}}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editData.bonus?.enabled === true}
+                                                    onChange={e => updateBonus('enabled', e.target.checked)}
+                                                    style={{width:'18px',height:'18px',cursor:'pointer'}}
+                                                />
+                                                <span style={{fontWeight:500}}>{editData.bonus?.enabled ? 'Evet' : 'Hayır'}</span>
+                                            </label>
                                         ) : (
-                                            <span className="setting-value">{editData.bonus?.maxE ?? 10}</span>
-                                        )}
-                                    </div>
-                                    <div className="setting-field">
-                                        <label>Gerekli D Puanı</label>
-                                        {canEdit ? (
-                                            <input type="number" min="0" step="0.5" value={editData.bonus?.requiredD ?? 0} onChange={e => updateBonus('requiredD', e.target.value)} />
-                                        ) : (
-                                            <span className="setting-value">{editData.bonus?.requiredD ?? 0}</span>
-                                        )}
-                                    </div>
-                                    <div className="setting-field">
-                                        <label>Bonus Değeri</label>
-                                        {canEdit ? (
-                                            <input type="number" min="0" step="0.5" value={editData.bonus?.value ?? 0} onChange={e => updateBonus('value', e.target.value)} />
-                                        ) : (
-                                            <span className="setting-value">{editData.bonus?.value ?? 0}</span>
+                                            <span className="setting-value">{editData.bonus?.enabled ? 'Evet' : 'Hayır'}</span>
                                         )}
                                     </div>
                                 </div>

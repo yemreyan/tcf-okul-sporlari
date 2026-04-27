@@ -113,6 +113,7 @@ export default function CompetitionsPage() {
         baslangicTarihi: todayStr,
         bitisTarihi: todayStr,
         il: '',
+        tur: 'il',
         komiteSifresi: '',
         basvuruKapanmaGunu: 2,
         basvuruKapaliMi: false,
@@ -238,13 +239,14 @@ export default function CompetitionsPage() {
                 bitisTarihi: comp.bitisTarihi || '',
                 il: comp.city || '',
                 komiteSifresi: comp.komiteSifresi || '',
+                tur: comp.tur || 'il',
                 basvuruKapanmaGunu: comp.basvuruKapanmaGunu != null ? comp.basvuruKapanmaGunu : 2,
                 basvuruKapaliMi: comp.basvuruKapaliMi || false,
                 selectedCats: comp.kategoriler ? Object.keys(comp.kategoriler) : []
             });
         } else {
             setEditingComp(null);
-            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', komiteSifresi: '', basvuruKapanmaGunu: 2, basvuruKapaliMi: false, selectedCats: [] });
+            setFormData({ isim: '', baslangicTarihi: todayStr, bitisTarihi: todayStr, il: '', tur: 'il', komiteSifresi: '', basvuruKapanmaGunu: 2, basvuruKapaliMi: false, selectedCats: [] });
         }
         setIsModalOpen(true);
     };
@@ -263,7 +265,7 @@ export default function CompetitionsPage() {
             toast("Bitiş tarihi başlangıç tarihinden önce olamaz!", "warning");
             return;
         }
-        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il, komiteSifresi: formData.komiteSifresi || null, basvuruKapanmaGunu: Number(formData.basvuruKapanmaGunu) || 0, basvuruKapaliMi: formData.basvuruKapaliMi || false };
+        const saveData = { isim: formData.isim, baslangicTarihi: formData.baslangicTarihi, bitisTarihi: formData.bitisTarihi, il: formData.il, tur: formData.tur || 'il', komiteSifresi: formData.komiteSifresi || null, basvuruKapanmaGunu: Number(formData.basvuruKapanmaGunu) || 0, basvuruKapaliMi: formData.basvuruKapaliMi || false };
 
         // Criteria'dan aktif aletleri çekmek için get kullanalım
         let liveCriteriaData = {};
@@ -280,11 +282,14 @@ export default function CompetitionsPage() {
         const generateKategoriler = (currentKategoriler = {}) => {
             const nextKategoriler = { ...currentKategoriler };
             formData.selectedCats.forEach(catKey => {
-                // Artistik: alet listesini criteria'dan al; Aerobik/Trampolin: alet yok
+                // Artistik: alet listesini criteria'dan al; Ritmik: catConfig.aletler; Aerobik/Trampolin/Parkur: alet yok
                 let activeAletler = [];
                 if (disciplineId === 'artistik') {
                     const sourceData = liveCriteriaData[catKey] || DEFAULT_CRITERIA[catKey];
                     activeAletler = Object.keys(sourceData || {}).filter(k => k !== 'metadata' && sourceData[k].isActive !== false);
+                } else if (catConfig.aletler && catConfig.aletler.length > 0) {
+                    // Ritmik ve diğer branşlarda kategori konfigürasyonundaki alet listesini kullan
+                    activeAletler = catConfig.aletler;
                 }
                 const catConfig = disciplineCategoryMap[catKey] || {};
                 if (!nextKategoriler[catKey]) {
@@ -867,8 +872,21 @@ export default function CompetitionsPage() {
                                 <input type="text" required value={formData.isim} onChange={e => setFormData({ ...formData, isim: e.target.value })} />
                             </div>
                             <div className="form-group form-group--full">
-                                <label>İl *</label>
-                                <select required value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })}>
+                                <label>Yarışma Türü</label>
+                                <select value={formData.tur || 'il'} onChange={e => setFormData({ ...formData, tur: e.target.value })}>
+                                    <option value="il">İl Yarışması</option>
+                                    <option value="bolgesel">Bölgesel Yarışma</option>
+                                    <option value="turkiye">Türkiye Şampiyonası</option>
+                                </select>
+                                {formData.tur === 'turkiye' && (
+                                    <p className="help-text" style={{color:'#d97706',fontWeight:600}}>
+                                        Türkiye Şampiyonası için tüm illerden başvuru kabul edilir.
+                                    </p>
+                                )}
+                            </div>
+                            <div className="form-group form-group--full">
+                                <label>İl {formData.tur !== 'turkiye' ? '*' : '(Şehir)'}</label>
+                                <select required={formData.tur !== 'turkiye'} value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })}>
                                     <option value="">-- İl Seçiniz --</option>
                                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
                                 </select>

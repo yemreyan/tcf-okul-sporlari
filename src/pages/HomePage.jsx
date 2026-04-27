@@ -25,6 +25,7 @@ const MENU_ITEMS_BASE = [
     { id: 'announcements',icon: 'campaign',              label: 'Duyurular',      desc: 'Yarışma duyuruları yönetimi',       color: '#4F46E5', subpath: '/announcements',   permKey: 'announcements',   disciplines: null },
     { id: 'certificates', icon: 'card_membership',       label: 'Sertifikalar',   desc: 'Katılım ve derece belgeleri',       color: '#D97706', subpath: '/certificates',    permKey: 'certificates',    disciplines: null },
     { id: 'coaches',      icon: 'sports',                label: 'Antrenörler',    desc: 'Kayıtlı antrenör listesi yönetimi', color: '#0891B2', subpath: '/coaches',         permKey: 'coaches',         disciplines: null },
+    { id: 'kategori-yonetimi', icon: 'category',        label: 'Kategori Yönetimi', desc: 'Yaş grubu ve okul türü yapılandırması', color: '#6D28D9', globalPath: '/kategori-yonetimi', permKey: 'role_management', superAdminOnly: true, disciplines: null },
 ];
 
 // Branşa göre ikon
@@ -60,7 +61,7 @@ export default function HomePage() {
     const MENU_ITEMS = useMemo(() =>
         MENU_ITEMS_BASE
             .filter(item => !item.disciplines || item.disciplines.includes(disciplineId))
-            .map(item => ({ ...item, path: `${routePrefix}${item.subpath}` })),
+            .map(item => ({ ...item, path: item.globalPath || `${routePrefix}${item.subpath}` })),
         [routePrefix, disciplineId]
     );
 
@@ -158,7 +159,7 @@ export default function HomePage() {
 
     // Menüyü izinlere göre filtrele
     const visibleMenuItems = isAuthenticated
-        ? MENU_ITEMS.filter(item => hasPermission(item.permKey))
+        ? MENU_ITEMS.filter(item => item.superAdminOnly ? isSuperAdmin() : hasPermission(item.permKey))
         : MENU_ITEMS;
 
     const handleMenuClick = (item) => {

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCF OKUL SPORLARI - YARIŞMA BAŞVURU FORMU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#E30613;--primary-dark:#b8050f;--primary-light:#ff3d48;
+  --bg-start:#f8fafc;--bg-end:#eef2ff;
+  --surface:#fff;--surface-hover:#fafafa;
+  --text:#1e293b;--text-secondary:#64748b;--text-muted:#94a3b8;
+  --border:#e2e8f0;--border-focus:#E30613;
+  --success:#10b981;--warning:#f59e0b;--error:#ef4444;
+  --radius:12px;--radius-sm:8px;--radius-xs:6px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -2px rgba(0,0,0,.05);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+  --transition:200ms cubic-bezier(.4,0,.2,1);
+}
+body{
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  background:linear-gradient(135deg,var(--bg-start),var(--bg-end));
+  color:var(--text);min-height:100vh;line-height:1.6;
+  padding:1rem;
+}
+.container{max-width:760px;margin:0 auto;padding-bottom:3rem}
+.header{text-align:center;padding:2.5rem 1rem 1.5rem;margin-bottom:1.5rem}
+.header-logo{
+  width:72px;height:72px;border-radius:50%;
+  background:var(--primary);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:2rem;margin-bottom:.75rem;
+  box-shadow:0 4px 14px rgba(227,6,19,.3);
+}
+.header h1{font-size:1.5rem;font-weight:800;color:var(--text);margin-bottom:.25rem}
+.header p{color:var(--text-secondary);font-size:.9rem}
+.steps{display:flex;justify-content:center;gap:.5rem;margin-bottom:2rem;flex-wrap:wrap}
+.step-dot{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.4rem .8rem;border-radius:999px;
+  background:var(--surface);border:1.5px solid var(--border);
+  font-size:.78rem;font-weight:600;color:var(--text-muted);
+  transition:all var(--transition);cursor:default;
+}
+.step-dot .num{
+  width:22px;height:22px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;
+  background:var(--border);color:var(--text-muted);
+  transition:all var(--transition);
+}
+.step-dot.active{border-color:var(--primary);color:var(--primary)}
+.step-dot.active .num{background:var(--primary);color:#fff}
+.step-dot.done{border-color:var(--success);color:var(--success)}
+.step-dot.done .num{background:var(--success);color:#fff}
+.card{
+  background:var(--surface);border-radius:var(--radius);
+  box-shadow:var(--shadow);border:1px solid var(--border);
+  margin-bottom:1.25rem;overflow:hidden;
+  animation:cardIn .4s ease both;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card-header{
+  padding:1rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.6rem;
+  background:linear-gradient(to right,#fef2f2,#fff);
+}
+.card-header .material-icons-round{color:var(--primary);font-size:1.3rem}
+.card-header h2{font-size:1rem;font-weight:700}
+.card-body{padding:1.25rem}
+.form-group{margin-bottom:1rem}
+.form-group:last-child{margin-bottom:0}
+label{display:block;font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
+label .req{color:var(--primary);margin-left:2px}
+input,select,textarea{
+  width:100%;padding:.65rem .85rem;
+  border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  font-family:inherit;font-size:.88rem;color:var(--text);
+  background:var(--surface);
+  transition:border-color var(--transition),box-shadow var(--transition);
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--border-focus);
+  box-shadow:0 0 0 3px rgba(227,6,19,.08);
+}
+input.invalid,select.invalid{border-color:var(--error);background:#fef2f2;box-shadow:0 0 0 3px rgba(239,68,68,.1)}
+input.valid,select.valid{border-color:var(--success);box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+input,select,textarea,option{text-transform:uppercase}
+input::placeholder{text-transform:uppercase}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%2394a3b8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center}
+label,.btn,.toggle-btn,.card-header h2,.header h1,.header p,.step-dot,.hint,.info-box,.warning-box,.toast,.modal h3,.modal p{text-transform:uppercase}
+label{font-weight:600;letter-spacing:.02em}
+.hint{font-size:.75rem;color:var(--text-muted);margin-top:.25rem;text-transform:uppercase}
+.row{display:flex;gap:.75rem;flex-wrap:wrap}
+.row .form-group{flex:1;min-width:180px}
+.row-3 .form-group{min-width:140px}
+.dynamic-row{
+  display:flex;gap:.5rem;align-items:flex-start;
+  padding:.75rem;border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin-bottom:.5rem;
+  background:var(--surface-hover);
+  animation:rowIn .3s ease both;
+}
+@keyframes rowIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.dynamic-row .fields{flex:1;display:flex;gap:.5rem;flex-wrap:wrap}
+.dynamic-row .fields input{flex:1;min-width:120px;padding:.5rem .7rem;font-size:.82rem}
+.dynamic-row .row-num{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:.35rem;
+}
+.btn-remove-row{
+  background:none;border:none;color:var(--text-muted);
+  cursor:pointer;padding:4px;border-radius:50%;
+  transition:all var(--transition);flex-shrink:0;margin-top:.25rem;
+}
+.btn-remove-row:hover{color:var(--error);background:#fef2f2}
+.btn{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.55rem 1rem;border-radius:var(--radius-sm);
+  font-family:inherit;font-size:.82rem;font-weight:600;
+  cursor:pointer;border:none;transition:all var(--transition);
+}
+.btn-outline{
+  background:var(--surface);border:1.5px solid var(--border);color:var(--text);
+}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);background:#fef2f2}
+.btn-primary{
+  background:var(--primary);color:#fff;
+  box-shadow:0 2px 8px rgba(227,6,19,.25);
+}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-primary .material-icons-round{font-size:1.1rem}
+.btn-submit{
+  width:100%;padding:.85rem;font-size:1rem;
+  justify-content:center;border-radius:var(--radius);
+  margin-top:.5rem;
+}
+.btn-submit .spinner{
+  display:none;width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+.btn-submit.loading .spinner{display:block}
+.btn-submit.loading .btn-text{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.warning-box{
+  display:none;padding:.75rem 1rem;border-radius:var(--radius-sm);
+  background:#fffbeb;border:1px solid #fde68a;
+  font-size:.82rem;color:#92400e;margin-bottom:1rem;
+}
+.warning-box.show{display:flex;gap:.5rem;align-items:flex-start}
+.warning-box .material-icons-round{font-size:1.1rem;color:var(--warning);flex-shrink:0;margin-top:1px}
+.info-box{
+  padding:.75rem 1rem;border-radius:var(--radius-sm);
+  background:#eff6ff;border:1px solid #bfdbfe;
+  font-size:.82rem;color:#1e40af;margin-bottom:1rem;
+  display:flex;gap:.5rem;align-items:flex-start;
+}
+.info-box .material-icons-round{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.checkbox-group{
+  display:flex;align-items:flex-start;gap:.6rem;
+  padding:.75rem;border-radius:var(--radius-sm);
+  background:var(--surface-hover);border:1px solid var(--border);
+  cursor:pointer;
+}
+.checkbox-group input[type=checkbox]{
+  width:18px;height:18px;flex-shrink:0;margin-top:2px;
+  accent-color:var(--primary);cursor:pointer;
+}
+.checkbox-group span{font-size:.82rem;line-height:1.5}
+.toast-container{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;align-items:center;gap:.5rem;
+  pointer-events:none;
+}
+.toast{
+  padding:.65rem 1.2rem;border-radius:999px;
+  font-size:.82rem;font-weight:600;
+  color:#fff;pointer-events:auto;
+  box-shadow:var(--shadow-lg);
+  animation:toastIn .3s ease,toastOut .3s ease 2.7s forwards;
+}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--error)}
+.toast.warning{background:var(--warning);color:#78350f}
+.toast.info{background:#3b82f6}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(12px)}}
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.4);z-index:10000;
+  align-items:center;justify-content:center;padding:1rem;
+}
+.modal-overlay.show{display:flex}
+.modal{
+  background:var(--surface);border-radius:var(--radius);
+  padding:2rem;max-width:520px;width:100%;
+  box-shadow:var(--shadow-lg);text-align:center;
+  animation:modalIn .3s ease;
+}
+.modal-athlete-list{list-style:none;padding:0;margin:.75rem 0;text-align:left}
+.modal-athlete-list li{padding:.5rem .75rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:.35rem;font-size:.82rem;display:flex;justify-content:space-between;align-items:center}
+.modal-athlete-list li .ath-name{font-weight:700;color:#1e293b}
+.modal-athlete-list li .ath-school{font-size:.75rem;color:#64748b;margin-left:.5rem}
+.modal-athlete-list li .ath-badge{font-size:.68rem;font-weight:700;padding:.15rem .4rem;border-radius:4px;text-transform:uppercase}
+.modal-athlete-list li .ath-badge.pending{background:#fef3c7;color:#92400e}
+.modal-athlete-list li .ath-badge.approved{background:#dcfce7;color:#166534}
+.modal-icon.success{background:#ecfdf5;color:#059669}
+.modal-icon.warning{background:#fef3c7;color:#d97706}
+.modal-icon.info{background:#eff6ff;color:#2563eb}
+.modal-icon.error{background:#fef2f2;color:var(--error)}
+.modal .btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:.65rem 1.5rem;border-radius:var(--radius-sm);font-weight:700;cursor:pointer}
+.modal .btn-secondary:hover{background:#e2e8f0}
+@keyframes modalIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.modal .modal-icon{
+  width:56px;height:56px;border-radius:50%;
+  background:#fef2f2;color:var(--error);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:1.8rem;margin-bottom:1rem;
+}
+.modal h3{font-size:1.1rem;margin-bottom:.5rem}
+.modal p{font-size:.88rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5}
+.modal .btn{margin:0 auto}
+#schoolFilter{border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+#schoolSelect{max-height:300px}
+select optgroup{font-weight:700;font-size:.78rem;color:var(--text-muted);text-transform:uppercase}
+.toggle-group{display:flex;gap:0;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.toggle-btn{
+  flex:1;padding:.55rem;text-align:center;
+  font-size:.82rem;font-weight:600;cursor:pointer;
+  background:var(--surface);color:var(--text-secondary);
+  border:none;font-family:inherit;
+  transition:all var(--transition);
+}
+.toggle-btn.active{background:var(--primary);color:#fff}
+@media(max-width:600px){
+  .row{flex-direction:column;gap:.5rem}
+  .row .form-group{min-width:100%}
+  .dynamic-row .fields{flex-direction:column}
+  .dynamic-row .fields input{min-width:100%}
+  .steps{gap:.35rem}
+  .step-dot{padding:.3rem .6rem;font-size:.72rem}
+  .step-dot .label-text{display:none}
+}
+</style>
+  <script type="module" crossorigin src="/okulspor/assets/index-D2K5te2i.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-logo"><span class="material-icons-round">sports_gymnastics</span></div>
+    <h1>TCF OKUL SPORLARI</h1>
+    <p>CİMNASTİK YARIŞMASI BAŞVURU FORMU</p>
+  </div>
+
+  <div class="steps" id="stepIndicators">
+    <div class="step-dot active" data-step="1"><span class="num">1</span><span class="label-text">YARIŞMA</span></div>
+    <div class="step-dot" data-step="2"><span class="num">2</span><span class="label-text">ANTRENÖR</span></div>
+    <div class="step-dot" data-step="3"><span class="num">3</span><span class="label-text">ÖĞRETMEN</span></div>
+    <div class="step-dot" data-step="4"><span class="num">4</span><span class="label-text">SPORCULAR</span></div>
+    <div class="step-dot" data-step="5"><span class="num">5</span><span class="label-text">GÖNDER</span></div>
+  </div>
+
+  <form id="applicationForm" novalidate>
+    <div class="card" data-section="1">
+      <div class="card-header">
+        <span class="material-icons-round">emoji_events</span>
+        <h2>YARIŞMA &amp; KATEGORİ BİLGİLERİ</h2>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="form-group">
+            <label>İL<span class="req">*</span></label>
+            <select id="citySelect" required><option value="">İL SEÇİNİZ</option></select>
+          </div>
+          <div class="form-group">
+            <label>İLÇE<span class="req">*</span></label>
+            <select id="districtSelect" required><option value="">ÖNCE İL SEÇİNİZ</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>BRANŞ<span class="req">*</span></label>
+          <select id="branchSelect" required>
+            <option value="Artistik" selected>ARTİSTİK CİMNASTİK</option>
+            <option value="Ritmik">RİTMİK CİMNASTİK</option>
+            <option value="Parkur">PARKUR</option>
+            <option value="Aerobik">AEROBİK CİMNASTİK</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>YARIŞMA<span class="req">*</span></label>
+          <select id="competitionSelect" required><option value="">YÜKLENİYOR...</option></select>
+        </div>
+        <div class="form-group">
+          <label>OKUL<span class="req">*</span></label>
+          <input type="text" id="schoolFilter" placeholder="OKUL FİLTRELE..." autocomplete="off" style="display:none;margin-bottom:.5rem">
+          <select id="schoolSelect" required style="display:none">
+            <option value="">ÖNCE İLÇE SEÇİNİZ</option>
+          </select>
+          <input type="text" id="schoolName" placeholder="OKUL ADI GİRİNİZ..." required maxlength="200" style="display:none">
+          <div class="hint">İLÇE SEÇTİKTEN SONRA OKUL LİSTESİ GÖRÜNECEK</div>
+        </div>
+        <div class="form-group">
+          <label>KATEGORİ<span class="req">*</span></label>
+          <select id="categorySelect" required><option value="">ÖNCE YARIŞMA SEÇİNİZ</option></select>
+        </div>
+        <div class="form-group">
+          <label>KATILIM TÜRÜ<span class="req">*</span></label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-value="Ferdi" id="btnFerdi">FERDİ</button>
+            <button type="button" class="toggle-btn" data-value="Takım" id="btnTakim">TAKIM</button>
+          </div>
+          <input type="hidden" id="participationType" value="Ferdi">
+        </div>
+        <div class="warning-box" id="teamWarning">
+          <span class="material-icons-round">info</span>
+          <span id="teamWarningText"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-section="2">
+      <div class="card-header">
+        <span class="material-icons-round">person</span>
+        <h2>ANTRENÖR / İDARECİ BİLGİLERİ</h2>
+      </div>
+      <div class="card-body">
+        <div id="coachRows"></div>
+        <button type="button" class="btn btn-outline" id="addCoachBtn">
+          <span class="material-icons-round">add</span> ANTRENÖR EKLE
+        </button>
+      </div>
+    </div>
+
+    <div class="card" data-section="3">
+      <div class="card-header">
+        <span class="material-icons-round">school</span>
+        <h2>ÖĞRETMEN BİLGİLERİ</h2>
+      </div>
+      <div class="card-body">
+        <div id="teacherRows"></div>
+        <button type="button" class="btn btn-outline" id="addTeacherBtn">
+          <span class="material-icons-round">add</span> ÖĞRETMEN EKLE
+        </button>
+      </div>
+    </div>
+
+    <div class="card" data-section="4">
+      <div class="card-header">
+        <span class="material-icons-round">groups</span>
+        <h2>SPORCU LİSTESİ</h2>
+      </div>
+      <div class="card-body">
+        <div class="info-box" id="athleteInfo">
+          <span class="material-icons-round">info</span>
+          <span>SPORCU EKLEMEK İÇİN AŞAĞIDAKİ BUTONA TIKLAYINIZ.</span>
+        </div>
+        <div id="athleteRows"></div>
+        <button type="button" class="btn btn-outline" id="addAthleteBtn">
+          <span class="material-icons-round">add</span> SPORCU EKLE
+        </button>
+      </div>
+    </div>
+
+    <div class="card" data-section="5">
+      <div class="card-header">
+        <span class="material-icons-round">verified</span>
+        <h2>ONAY &amp; GÖNDER</h2>
+      </div>
+      <div class="card-body">
+        <label class="checkbox-group">
+          <input type="checkbox" id="kvkkCheckbox" required>
+          <span>6698 SAYILI KİŞİSEL VERİLERİN KORUNMASI KANUNU KAPSAMINDA, BAŞVURU FORMUNDA YER ALAN KİŞİSEL VERİLERİN TÜRKİYE CİMNASTİK FEDERASYONU VE İLGİLİ KURULUŞLAR TARAFINDAN YARIŞMA ORGANİZASYONU AMACIYLA İŞLENMESİNE ONAY VERİYORUM.</span>
+        </label>
+        <button type="submit" class="btn btn-primary btn-submit" id="submitBtn" disabled>
+          <span class="spinner"></span>
+          <span class="btn-text"><span class="material-icons-round">send</span> BAŞVURUYU GÖNDER</span>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="errorModal">
+  <div class="modal">
+    <div class="modal-icon" id="modalIconWrap"><span class="material-icons-round" id="modalIcon">error_outline</span></div>
+    <h3 id="modalTitle">HATA</h3>
+    <div id="modalMessage" style="font-size:.88rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;text-align:left;max-height:50vh;overflow-y:auto"></div>
+    <div id="modalActions" style="display:flex;gap:.5rem;justify-content:center">
+      <button type="button" class="btn btn-primary" id="modalCloseBtn">TAMAM</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vite bundled & obfuscated module -->
+</body>
+</html>

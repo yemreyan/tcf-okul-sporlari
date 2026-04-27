@@ -388,12 +388,12 @@
     color: var(--rtm-primary);
 }
 
-/* DA — Alet Zorluğu girişi */
+/* DA/DB/Ceza — Manuel giriş alanı */
 .rtm-da-input-row {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 0 4px;
+    padding: 14px 18px;
     flex-wrap: wrap;
 }
 .rtm-da-input {
@@ -659,6 +659,97 @@
 }
 .rtm-unlock-input:focus { outline: none; border-color: var(--rtm-primary); }
 .rtm-unlock-error { color: var(--rtm-red); font-size: 13px; text-align: center; }
+
+/* ── Alet Tabs (Top / Kurdele) ── */
+.rtm-alet-tabs {
+    display: flex;
+    gap: 10px;
+}
+.rtm-alet-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--rtm-border);
+    background: var(--rtm-surface);
+    color: var(--rtm-text-sec);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+.rtm-alet-tab .material-icons-round { font-size: 18px; }
+.rtm-alet-tab:hover { border-color: var(--rtm-primary); color: var(--rtm-text); }
+.rtm-alet-tab--active {
+    border-color: var(--rtm-primary) !important;
+    background: var(--rtm-primary-muted) !important;
+    color: var(--rtm-primary) !important;
+}
+.rtm-alet-tab--tamamlandi { border-color: rgba(34,197,94,0.4); }
+.rtm-alet-tab--kilitli    { border-color: rgba(251,191,36,0.4); }
+.rtm-alet-tab-check {
+    font-size: 16px !important;
+    margin-left: auto;
+}
+.rtm-alet-tab--tamamlandi .rtm-alet-tab-check { color: var(--rtm-green); }
+.rtm-alet-tab--kilitli    .rtm-alet-tab-check { color: var(--rtm-amber); }
+
+/* ── Athlete list alet dots ── */
+.rtm-ath-alet-dots {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.rtm-alet-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    border: 1.5px solid;
+}
+.rtm-alet-dot--bekliyor   { background: transparent; border-color: var(--rtm-text-sec); color: var(--rtm-text-sec); }
+.rtm-alet-dot--tamamlandi { background: rgba(34,197,94,0.2); border-color: var(--rtm-green); color: var(--rtm-green); }
+.rtm-alet-dot--kilitli    { background: rgba(251,191,36,0.2); border-color: var(--rtm-amber); color: var(--rtm-amber); }
+
+/* ── Toplam bar (below final score in final bar) ── */
+.rtm-toplam-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--rtm-text-sec);
+    background: var(--rtm-surface2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-top: -6px;
+}
+.rtm-toplam-bar strong {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--rtm-primary);
+}
+
+/* ── Final bar alet label ── */
+.rtm-final-alet-badge {
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--rtm-primary-muted);
+    color: var(--rtm-primary);
+    border-radius: 6px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
 
 /* ── Responsive ── */
 @media (max-width: 768px) {

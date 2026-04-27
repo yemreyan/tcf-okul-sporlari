@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { logAction } from '../lib/auditLogger';
 import { maskTckn } from '../lib/privacy';
 import './AthletesPage.css';
 
@@ -264,6 +265,7 @@ export default function AthletesPage() {
 
             if (Object.keys(updates).length > 0) {
                 await update(ref(db), updates);
+                logAction('athlete_update', `Takım durumu otomatik senkronize edildi (${Object.keys(updates).length} sporcu)`, { user: currentUser?.displayName || currentUser?.email || '', competitionId: compId });
             }
         }
     };

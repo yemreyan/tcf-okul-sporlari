@@ -1,0 +1,704 @@
+/* ===================================================
+   KategoriYonetimiPage.css
+   =================================================== */
+
+.kyp-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg, #F8FAFC);
+}
+
+/* ── Header ─────────────────────────────────────── */
+.kyp-header {
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    border-radius: 0 0 1.5rem 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 10;
+}
+
+.kyp-header__left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.kyp-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.kyp-back-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.kyp-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.kyp-subtitle {
+    margin: 0.2rem 0 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Discipline Tabs ─────────────────────────────── */
+.kyp-disc-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.25rem 2rem 0;
+    flex-wrap: wrap;
+}
+
+.kyp-disc-tab {
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    border: 1.5px solid var(--border, #E2E8F0);
+    background: var(--card-bg, #fff);
+    color: var(--text-muted, #64748B);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.kyp-disc-tab:hover {
+    border-color: var(--primary, #4F46E5);
+    color: var(--primary, #4F46E5);
+    background: color-mix(in srgb, var(--primary, #4F46E5) 6%, transparent);
+}
+
+.kyp-disc-tab--active {
+    background: var(--primary, #4F46E5);
+    border-color: var(--primary, #4F46E5);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+.kyp-disc-tab--active:hover {
+    background: var(--primary, #4F46E5);
+    color: #fff;
+}
+
+/* ── Content ─────────────────────────────────────── */
+.kyp-content {
+    padding: 1.25rem 2rem 2rem;
+    flex: 1;
+}
+
+/* ── Category Table ──────────────────────────────── */
+.kyp-cat-table {
+    background: var(--card-bg, #fff);
+    border-radius: 1rem;
+    border: 1px solid var(--border, #E2E8F0);
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.kyp-cat-table__head {
+    display: grid;
+    grid-template-columns: 1fr 110px 1fr 1fr 100px;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--bg, #F8FAFC);
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.kyp-cat-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 1fr 1fr 100px;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
+    align-items: center;
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    transition: background 0.12s;
+}
+
+.kyp-cat-row:last-child {
+    border-bottom: none;
+}
+
+.kyp-cat-row:hover {
+    background: color-mix(in srgb, var(--primary, #4F46E5) 3%, transparent);
+}
+
+.kyp-cat-label {
+    font-weight: 600;
+    color: var(--text-primary, #1E293B);
+    font-size: 0.9rem;
+}
+
+/* ── Badges ──────────────────────────────────────── */
+.kyp-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.kyp-badge--kız {
+    background: #FCE7F3;
+    color: #9D174D;
+}
+
+.kyp-badge--erkek {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.kyp-badge--karma {
+    background: #EDE9FE;
+    color: #5B21B6;
+}
+
+/* ── School Chips ─────────────────────────────────── */
+.kyp-okul-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.kyp-okul-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 2rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.kyp-okul-chip--ilkokul {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.kyp-okul-chip--ortaokul {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.kyp-okul-chip--lise {
+    background: #E0E7FF;
+    color: #3730A3;
+}
+
+/* ── DOB Chips ───────────────────────────────────── */
+.kyp-dob-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.kyp-dob-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    font-family: monospace;
+    background: #F1F5F9;
+    color: var(--text-primary, #1E293B);
+    border: 1px solid var(--border, #E2E8F0);
+}
+
+.kyp-no-rule {
+    color: var(--text-muted, #94A3B8);
+    font-size: 0.85rem;
+}
+
+/* ── Cat Actions ─────────────────────────────────── */
+.kyp-cat-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Empty State ─────────────────────────────────── */
+.kyp-empty {
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--text-muted, #64748B);
+    font-size: 0.95rem;
+}
+
+/* ── Buttons ─────────────────────────────────────── */
+.kyp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.6rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.kyp-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.kyp-btn .material-icons {
+    font-size: 1.1rem;
+}
+
+.kyp-btn--primary {
+    background: var(--primary, #4F46E5);
+    color: white;
+    border-color: var(--primary, #4F46E5);
+}
+
+.kyp-btn--primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #4F46E5) 85%, black);
+}
+
+.kyp-btn--secondary {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.kyp-btn--secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.kyp-btn--ghost {
+    background: transparent;
+    color: var(--text-muted, #64748B);
+    border-color: var(--border, #E2E8F0);
+}
+
+.kyp-btn--ghost:hover:not(:disabled) {
+    background: var(--bg, #F8FAFC);
+    color: var(--text-primary, #1E293B);
+}
+
+.kyp-btn--edit {
+    background: transparent;
+    color: var(--primary, #4F46E5);
+    border-color: color-mix(in srgb, var(--primary, #4F46E5) 35%, transparent);
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
+}
+
+.kyp-btn--edit:hover {
+    background: color-mix(in srgb, var(--primary, #4F46E5) 8%, transparent);
+}
+
+.kyp-btn--danger-ghost {
+    background: transparent;
+    color: #DC2626;
+    border-color: transparent;
+    padding: 0.35rem;
+}
+
+.kyp-btn--danger-ghost:hover {
+    background: #FEF2F2;
+}
+
+.kyp-btn--icon {
+    padding: 0.35rem;
+}
+
+.kyp-btn--sm {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+}
+
+/* ── Modal ───────────────────────────────────────── */
+.kyp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    backdrop-filter: blur(2px);
+}
+
+.kyp-modal {
+    background: var(--card-bg, #fff);
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 620px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.kyp-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    flex-shrink: 0;
+}
+
+.kyp-modal__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary, #1E293B);
+    margin: 0;
+}
+
+.kyp-modal__title .material-icons {
+    color: var(--primary, #4F46E5);
+    font-size: 1.2rem;
+}
+
+.kyp-modal__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #64748B);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.kyp-modal__close:hover {
+    background: var(--bg, #F8FAFC);
+    color: var(--text-primary, #1E293B);
+}
+
+.kyp-modal__body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.kyp-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border, #E2E8F0);
+    flex-shrink: 0;
+}
+
+/* ── Edit Sections ───────────────────────────────── */
+.kyp-edit-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.kyp-edit-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kyp-edit-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── Cinsiyet Buttons ────────────────────────────── */
+.kyp-cinsiyet-btns {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.kyp-cinsiyet-btn {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.65rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    background: var(--bg, #F8FAFC);
+    color: var(--text-muted, #64748B);
+}
+
+.kyp-cinsiyet-btn--kız {
+    border-color: #F9A8D4;
+}
+
+.kyp-cinsiyet-btn--kız.kyp-cinsiyet-btn--active {
+    background: #FCE7F3;
+    color: #9D174D;
+    border-color: #F472B6;
+}
+
+.kyp-cinsiyet-btn--erkek {
+    border-color: #93C5FD;
+}
+
+.kyp-cinsiyet-btn--erkek.kyp-cinsiyet-btn--active {
+    background: #DBEAFE;
+    color: #1E40AF;
+    border-color: #60A5FA;
+}
+
+.kyp-cinsiyet-btn--karma {
+    border-color: #C4B5FD;
+}
+
+.kyp-cinsiyet-btn--karma.kyp-cinsiyet-btn--active {
+    background: #EDE9FE;
+    color: #5B21B6;
+    border-color: #A78BFA;
+}
+
+/* ── Okul Checkboxes ─────────────────────────────── */
+.kyp-okul-checkboxes {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.kyp-okul-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    color: var(--text-primary, #1E293B);
+    cursor: pointer;
+    user-select: none;
+}
+
+.kyp-okul-check-label input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--primary, #4F46E5);
+    cursor: pointer;
+}
+
+/* ── DOB Rule Rows ───────────────────────────────── */
+.kyp-dob-empty {
+    font-size: 0.85rem;
+    color: var(--text-muted, #94A3B8);
+    font-style: italic;
+    margin: 0;
+}
+
+.kyp-dob-rule-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    background: var(--bg, #F8FAFC);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+}
+
+.kyp-dob-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.kyp-dob-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.kyp-dob-preview {
+    display: flex;
+    align-items: center;
+    padding-bottom: 0.1rem;
+    margin-left: auto;
+}
+
+.kyp-input {
+    background: var(--card-bg, #fff);
+    border: 1.5px solid var(--border, #E2E8F0);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.875rem;
+    color: var(--text-primary, #1E293B);
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 0;
+}
+
+.kyp-input:focus {
+    border-color: var(--primary, #4F46E5);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #4F46E5) 15%, transparent);
+}
+
+select.kyp-input {
+    min-width: 7rem;
+    cursor: pointer;
+}
+
+input[type="number"].kyp-input {
+    width: 6rem;
+}
+
+/* ── Spin animation ──────────────────────────────── */
+@keyframes kyp-spin {
+    to { transform: rotate(360deg); }
+}
+
+.kyp-spin {
+    animation: kyp-spin 0.9s linear infinite;
+    display: inline-block;
+}
+
+/* ── Toast ───────────────────────────────────────── */
+.kyp-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    animation: kyp-toast-in 0.2s ease;
+    white-space: nowrap;
+}
+
+.kyp-toast--success {
+    background: #1E293B;
+    color: white;
+}
+
+.kyp-toast--success .material-icons {
+    color: #34D399;
+}
+
+.kyp-toast--error {
+    background: #7F1D1D;
+    color: white;
+}
+
+.kyp-toast--error .material-icons {
+    color: #FCA5A5;
+}
+
+@keyframes kyp-toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Access Denied ───────────────────────────────── */
+.kyp-access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 1rem;
+    padding: 4rem 2rem;
+    color: var(--text-muted, #64748B);
+    text-align: center;
+}
+
+.kyp-access-denied .material-icons {
+    font-size: 3rem;
+    color: #CBD5E1;
+}
+
+.kyp-access-denied p {
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+    .kyp-header {
+        padding: 1.25rem 1rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+
+    .kyp-disc-tabs {
+        padding: 1rem 1rem 0;
+    }
+
+    .kyp-content {
+        padding: 1rem;
+    }
+
+    .kyp-cat-table__head {
+        display: none;
+    }
+
+    .kyp-cat-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .kyp-cat-actions {
+        justify-content: flex-start;
+    }
+
+    .kyp-dob-rule-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .kyp-dob-preview {
+        margin-left: 0;
+    }
+
+    .kyp-modal {
+        max-height: 95vh;
+        border-radius: 1rem;
+    }
+}

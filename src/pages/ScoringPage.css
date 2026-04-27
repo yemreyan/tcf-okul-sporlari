@@ -881,6 +881,15 @@
     border-bottom: 1px solid #FED7AA;
 }
 
+/* Purple — Bonus Panel */
+.card-purple { border: 1px solid #DDD6FE; }
+.card-header-purple {
+    background: #F5F3FF;
+    border-bottom: 1px solid #DDD6FE;
+}
+.card-header-purple h3 { color: #5B21B6; }
+.card-header-purple i { color: #7C3AED; }
+
 /* Card Header */
 .sc-header {
     padding: 1rem 1.25rem;
@@ -949,6 +958,52 @@
     border-color: #3B82F6;
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     background: white;
+}
+
+.input-purple {
+    color: #5B21B6;
+    border: 2px solid #DDD6FE;
+    background: #F8FAFC;
+}
+
+.input-purple:focus {
+    border-color: #7C3AED;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+    background: white;
+}
+
+.btn-quick-purple {
+    background: #F5F3FF;
+    border: 1px solid #DDD6FE;
+    color: #7C3AED;
+    padding: 0.75rem 0;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-quick-purple:hover {
+    background: #7C3AED;
+    color: white;
+    border-color: #7C3AED;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+.btn-quick-purple:active { transform: scale(0.96); }
+
+.btn-quick-gray {
+    background: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    color: #64748B;
+    padding: 0.6rem 0;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .quick-d-buttons {

@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { logAction } from '../lib/auditLogger';
 import './CompetitionSchedulePage.css';
 import { generateCompetitionPDF } from '../utils/competitionPDF';
 

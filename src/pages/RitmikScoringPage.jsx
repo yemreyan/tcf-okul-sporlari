@@ -4,10 +4,7 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import {
     RITMIK_CATEGORIES,
-    RITMIK_ELEMENT_FAMILIES,
-    RITMIK_DIFFICULTY_VALUES,
-    RITMIK_PENALTY_TYPES,
-    RITMIK_FAMILY_CONSTRAINTS,
+    RITMIK_ALETLER,
 } from '../data/ritmikCriteriaDefaults';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
@@ -36,15 +33,17 @@ export default function RitmikScoringPage() {
     const [selectedAthlete, setSelectedAthlete]       = useState(null);
     const [isAthleteCalled, setIsAthleteCalled]       = useState(false);
 
+    // ─── Alet (Top / Kurdele) ───
+    const [selectedAlet, setSelectedAlet] = useState('top');
+
     // ─── Scoring ───
-    const [aPanelLocal, setAPanelLocal]           = useState({});       // A: artistlik kesintileri (4 hakem)
-    const [ePanelLocal, setEPanelLocal]           = useState({});       // E: icra kesintileri (4 hakem)
-    const [selectedElements, setSelectedElements] = useState([]);       // DB: vücut elementleri
-    const [daScoreInput, setDaScoreInput]         = useState('');       // DA: alet zorluğu (2 hakem mutabık)
-    const [penalties, setPenalties]               = useState({});       // Cezalar
+    const [aPanelLocal, setAPanelLocal] = useState({});   // A: artistlik kesintileri (4 hakem)
+    const [ePanelLocal, setEPanelLocal] = useState({});   // E: icra kesintileri (4 hakem)
+    const [dbScoreInput, setDbScoreInput] = useState(''); // DB: vücut zorluğu (manuel)
+    const [daScoreInput, setDaScoreInput] = useState(''); // DA: alet zorluğu (manuel)
+    const [penaltyInput, setPenaltyInput] = useState(''); // Toplam ceza (manuel)
 
     // ─── Lock ───
-    const [scoreLocked, setScoreLocked]               = useState(false);
     const [unlockModal, setUnlockModal]               = useState(null);
     const [unlockPassword, setUnlockPassword]         = useState('');
     const [unlockError, setUnlockError]               = useState('');
@@ -52,11 +51,10 @@ export default function RitmikScoringPage() {
     const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
 
     // ─── UI ───
-    const [sidebarOpen, setSidebarOpen]       = useState(true);
-    const [isSubmitting, setIsSubmitting]     = useState(false);
-    const [confirmModal, setConfirmModal]     = useState(null);
-    const [successModal, setSuccessModal]     = useState(null);
-    const [showElementPicker, setShowElementPicker] = useState(false);
+    const [sidebarOpen, setSidebarOpen]   = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const [successModal, setSuccessModal] = useState(null);
 
     // ─── Firebase: Yarışmalar ───
     useEffect(() => {
@@ -118,30 +116,32 @@ export default function RitmikScoringPage() {
         return () => { unsubOrder(); unsubScores(); };
     }, [selectedCompId, selectedCategory, firebasePath]);
 
-    // ─── Sync lock state ───
-    useEffect(() => {
-        if (!selectedAthlete) return;
-        setScoreLocked(existingScores[selectedAthlete.id]?.kilitli === true);
-    }, [existingScores, selectedAthlete?.id]);
-
-    // Puan verisi geç geldiğinde formu doldur (kullanıcı henüz dokunmadıysa)
+    // ─── Sync panel when athlete or alet changes ───
     useEffect(() => {
         if (!selectedAthlete || scoringFieldsTouched) return;
-        const scores = existingScores[selectedAthlete.id];
-        if (!scores) return;
-        setAPanelLocal(scores.aPanel || {});
-        setEPanelLocal(scores.ePanel || {});
-        setSelectedElements(scores.dElements || []);
-        setDaScoreInput(scores.daScore != null ? String(scores.daScore) : '');
-        setPenalties(scores.penalties || {});
+        const aletScore = existingScores[selectedAthlete.id]?.[selectedAlet];
+        if (aletScore) {
+            setAPanelLocal(aletScore.aPanel || {});
+            setEPanelLocal(aletScore.ePanel || {});
+            setDbScoreInput(aletScore.dbScore != null ? String(aletScore.dbScore) : '');
+            setDaScoreInput(aletScore.daScore != null ? String(aletScore.daScore) : '');
+            setPenaltyInput(aletScore.penaltyTotal != null ? String(aletScore.penaltyTotal) : '');
+        } else {
+            setAPanelLocal({});
+            setEPanelLocal({});
+            setDbScoreInput('');
+            setDaScoreInput('');
+            setPenaltyInput('');
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [existingScores, selectedAthlete?.id]);
+    }, [existingScores, selectedAthlete?.id, selectedAlet]);
 
     // ─── Derived ───
-    const catConfig   = RITMIK_CATEGORIES[selectedCategory] || {};
-    const maxElements = catConfig.maxElements || 10;
-    const judgeCount  = catConfig.judgeCount  || 4;
-    const hasDA       = catConfig.hasDA === true;
+    const catConfig  = RITMIK_CATEGORIES[selectedCategory] || {};
+    const judgeCount = catConfig.judgeCount || 4;
+
+    // Per-alet lock check
+    const scoreLocked = existingScores[selectedAthlete?.id]?.[selectedAlet]?.kilitli === true;
 
     const availableCities = [...new Set(
         Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean)
@@ -160,7 +160,6 @@ export default function RitmikScoringPage() {
 
     // ─── Score Calculations ───
 
-    // Yardımcı: panel kesintilerinden puan hesapla (4 hakem, en yük/düşük atılır → avg → 10 − avg)
     const calcPanelScore = (panelLocal) => {
         const vals = [];
         for (let i = 1; i <= judgeCount; i++) {
@@ -178,48 +177,61 @@ export default function RitmikScoringPage() {
         return Math.max(0, 10 - avg);
     };
 
-    // A: artistlik kesintileri → A = 10 − ortalama
-    // E: icra kesintileri → E = 10 − ortalama
-    // DB: vücut element değerlerinin toplamı
-    // DA: alet zorluk puanı (2 hakem mutabık → doğrudan girilir), yalnızca hasDA kategorilerde
-    const aScore   = calcPanelScore(aPanelLocal);
-    const eScore   = calcPanelScore(ePanelLocal);
-    const dbScore  = selectedElements.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
-    const daScoreNum = hasDA ? (parseFloat(daScoreInput) || 0) : 0;
-    const totalPenalties = Object.values(penalties).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
-
-    // TCF/FIG Ritmik Formülü:
-    //   hasDA  → DA + DB + E + A − Ceza (FIG Gençler kuralları: Minikler A, Küçükler, Yıldızlar, Gençler)
-    //   !hasDA → DB + E + A − Ceza     (Minikler B serbest seri — alet yok)
-    // DB=0 → final=0 (hiç vücut elementi girilmemişse geçersiz performans)
+    const aScore          = calcPanelScore(aPanelLocal);
+    const eScore          = calcPanelScore(ePanelLocal);
+    const dbScore         = parseFloat(dbScoreInput) || 0;
+    const daScoreNum      = parseFloat(daScoreInput) || 0;
+    const totalPenalties  = parseFloat(penaltyInput) || 0;
     const totalDifficulty = daScoreNum + dbScore;
-    const finalScore = dbScore === 0
-        ? '0.000'
-        : Math.max(0, totalDifficulty + eScore + aScore - totalPenalties).toFixed(3);
+
+    // Formül: DA + DB + A + E − Ceza
+    const finalScore = Math.max(0, totalDifficulty + eScore + aScore - totalPenalties).toFixed(3);
 
     // ─── Handlers ───
     const resetPanel = useCallback(() => {
         setAPanelLocal({});
         setEPanelLocal({});
-        setSelectedElements([]);
+        setDbScoreInput('');
         setDaScoreInput('');
-        setPenalties({});
+        setPenaltyInput('');
         setScoringFieldsTouched(false);
     }, []);
 
     const handleSelectAthlete = (athlete) => {
         if (selectedAthlete?.id === athlete.id) return;
-        const prev = existingScores[athlete.id];
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
-        setScoreLocked(prev?.kilitli === true);
         setScoringFieldsTouched(false);
-        if (prev) {
-            setAPanelLocal(prev.aPanel || {});
-            setEPanelLocal(prev.ePanel || {});
-            setSelectedElements(prev.dElements || []);
-            setDaScoreInput(prev.daScore != null ? String(prev.daScore) : '');
-            setPenalties(prev.penalties || {});
+        setSelectedAlet('top'); // alet seçimini sıfırla
+        const aletScore = existingScores[athlete.id]?.['top'];
+        if (aletScore) {
+            setAPanelLocal(aletScore.aPanel || {});
+            setEPanelLocal(aletScore.ePanel || {});
+            setDbScoreInput(aletScore.dbScore != null ? String(aletScore.dbScore) : '');
+            setDaScoreInput(aletScore.daScore != null ? String(aletScore.daScore) : '');
+            setPenaltyInput(aletScore.penaltyTotal != null ? String(aletScore.penaltyTotal) : '');
+        } else {
+            resetPanel();
+        }
+    };
+
+    const handleSelectAlet = (aletKey) => {
+        if (aletKey === selectedAlet) return;
+        setSelectedAlet(aletKey);
+        setScoringFieldsTouched(false);
+        // Sync aktifAlet so A/E panel judges know which apparatus is active
+        if (isAthleteCalled && selectedCompId && selectedCategory) {
+            update(ref(db), {
+                [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]: aletKey,
+            }).catch(() => {});
+        }
+        const aletScore = existingScores[selectedAthlete?.id]?.[aletKey];
+        if (aletScore) {
+            setAPanelLocal(aletScore.aPanel || {});
+            setEPanelLocal(aletScore.ePanel || {});
+            setDbScoreInput(aletScore.dbScore != null ? String(aletScore.dbScore) : '');
+            setDaScoreInput(aletScore.daScore != null ? String(aletScore.daScore) : '');
+            setPenaltyInput(aletScore.penaltyTotal != null ? String(aletScore.penaltyTotal) : '');
         } else {
             resetPanel();
         }
@@ -229,7 +241,8 @@ export default function RitmikScoringPage() {
         setIsAthleteCalled(true);
         try {
             await update(ref(db), {
-                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id
+                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id,
+                [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]: selectedAlet,
             });
         } catch (e) { if (import.meta.env.DEV) console.error('aktifSporcu error', e); }
     };
@@ -242,102 +255,91 @@ export default function RitmikScoringPage() {
         return all[idx + 1];
     };
 
-    // ─── Element Picker ───
-    const addElement = (family, value) => {
-        if (selectedElements.length >= maxElements) {
-            return toast(`Bu kategoride en fazla ${maxElements} element eklenebilir.`, 'warning');
-        }
-        const familyCount = selectedElements.filter(el => el.familyId === family.id).length;
-        if (familyCount >= RITMIK_FAMILY_CONSTRAINTS.maxPerFamily) {
-            return toast(`Aynı aileden en fazla ${RITMIK_FAMILY_CONSTRAINTS.maxPerFamily} element eklenebilir (${family.name}).`, 'warning');
-        }
-        setSelectedElements(prev => [...prev, {
-            id: Date.now(),
-            group: family.group,
-            groupLabel: family.groupLabel,
-            familyId: family.id,
-            familyName: family.name,
-            value: parseFloat(value),
-        }]);
-        setShowElementPicker(false);
-    };
-
-    const removeElement = (id) => {
-        setSelectedElements(prev => prev.filter(el => el.id !== id));
-    };
-
     // ─── Submit ───
     const handleSubmitScore = () => {
         if (!selectedAthlete) return toast('Lütfen bir sporcu seçin.', 'warning');
-        if (scoreLocked)       return toast('Bu sporcunun puanı kilitli. Kilidi açmak için kilit ikonuna tıklayın.', 'warning');
+        if (scoreLocked)       return toast('Bu aletin puanı kilitli. Kilidi açmak için kilit ikonuna tıklayın.', 'warning');
 
         const filledA = Object.values(aPanelLocal).filter(v => v !== '' && !isNaN(parseFloat(v)));
-        if (filledA.length === 0) return toast('A (Artistlik) puanı girilmeden kayıt yapılamaz. En az bir hakem notu giriniz.', 'warning');
+        if (filledA.length === 0) return toast('A (Artistlik) puanı girilmeden kayıt yapılamaz.', 'warning');
 
         const filledE = Object.values(ePanelLocal).filter(v => v !== '' && !isNaN(parseFloat(v)));
-        if (filledE.length === 0) return toast('E (İcra) puanı girilmeden kayıt yapılamaz. En az bir hakem notu giriniz.', 'warning');
+        if (filledE.length === 0) return toast('E (İcra) puanı girilmeden kayıt yapılamaz.', 'warning');
 
-        if (selectedElements.length === 0) {
-            return toast('DB puanı 0 — hiç vücut elementi eklenmemiş. Element ekleyiniz.', 'warning');
+        if (dbScoreInput === '' || isNaN(parseFloat(dbScoreInput))) {
+            return toast('DB (Vücut Zorluğu) puanı girilmeden kayıt yapılamaz.', 'warning');
         }
 
-        if (hasDA && (daScoreInput === '' || isNaN(parseFloat(daScoreInput)))) {
-            return toast('DA (Alet Zorluğu) puanı girilmeden kayıt yapılamaz. DA hakemleri mutabık kaldıktan sonra değeri girin.', 'warning');
-        }
-
-        const uniqueFamilies = new Set(selectedElements.map(el => el.familyId));
-        if (uniqueFamilies.size < RITMIK_FAMILY_CONSTRAINTS.minFamilies) {
-            return toast(`En az ${RITMIK_FAMILY_CONSTRAINTS.minFamilies} farklı element ailesi kullanılmalıdır (şu an: ${uniqueFamilies.size}).`, 'warning');
+        if (daScoreInput === '' || isNaN(parseFloat(daScoreInput))) {
+            return toast('DA (Alet Zorluğu) puanı girilmeden kayıt yapılamaz.', 'warning');
         }
 
         const fVal = parseFloat(finalScore);
         if (isNaN(fVal)) return toast('Final puanı hesaplanamadı.', 'error');
 
+        const aletLabel = RITMIK_ALETLER[selectedAlet]?.label || selectedAlet;
         setConfirmModal({
             athlete: selectedAthlete,
-            hasDA, daScore: daScoreNum, dbScore, eScore, aScore, totalPenalties, finalScore, fVal,
+            aletLabel,
+            daScore: daScoreNum, dbScore, eScore, aScore, totalPenalties, finalScore, fVal,
         });
     };
 
     const handleConfirmSubmit = async () => {
         if (!confirmModal) return;
         setIsSubmitting(true);
+        const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}`;
+
         try {
-            const scoreData = {
-                aPanel:      aPanelLocal,
-                ePanel:      ePanelLocal,
-                dElements:   selectedElements,
-                penalties:   penalties,
-                aScore:      parseFloat(aScore.toFixed(3)),
-                eScore:      parseFloat(eScore.toFixed(3)),
-                dbScore:     parseFloat(dbScore.toFixed(3)),
-                daScore:     hasDA ? parseFloat(daScoreNum.toFixed(3)) : 0,
-                dScore:      parseFloat(totalDifficulty.toFixed(3)),  // geriye dönük uyumluluk için DA+DB toplamı
-                sonuc:       parseFloat(confirmModal.finalScore),
-                durum:       'tamamlandi',
-                kilitli:     true,
-                ad:          selectedAthlete.ad || selectedAthlete.name || '',
-                soyad:       selectedAthlete.soyad || '',
-                okul:        selectedAthlete.okul || '',
-                timestamp:   Date.now(),
-                hakem:       currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
+            const aletScoreData = {
+                aPanel:       aPanelLocal,
+                ePanel:       ePanelLocal,
+                dbScore:      parseFloat(dbScore.toFixed(3)),
+                daScore:      parseFloat(daScoreNum.toFixed(3)),
+                penaltyTotal: parseFloat(totalPenalties.toFixed(3)),
+                aScore:       parseFloat(aScore.toFixed(3)),
+                eScore:       parseFloat(eScore.toFixed(3)),
+                dScore:       parseFloat(totalDifficulty.toFixed(3)),
+                sonuc:        parseFloat(confirmModal.finalScore),
+                durum:        'tamamlandi',
+                kilitli:      true,
+                timestamp:    Date.now(),
+                hakem:        currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
             };
 
-            await offlineWrite({
-                [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}`]: scoreData
-            });
+            // Diğer aletin mevcut puanını oku
+            const otherAlet  = selectedAlet === 'top' ? 'kurdele' : 'top';
+            const otherScore = existingScores[selectedAthlete.id]?.[otherAlet];
+            const otherSonuc = otherScore?.durum === 'tamamlandi' ? (parseFloat(otherScore.sonuc) || 0) : 0;
+            const bothDone   = otherScore?.durum === 'tamamlandi';
+            const newToplam  = aletScoreData.sonuc + otherSonuc;
+
+            const updates = {
+                [`${basePath}/${selectedAlet}`]:  aletScoreData,
+                [`${basePath}/sonuc`]:             newToplam,
+                [`${basePath}/durum`]:             bothDone ? 'tamamlandi' : 'kismitamamlandi',
+                [`${basePath}/ad`]:                selectedAthlete.ad || selectedAthlete.name || '',
+                [`${basePath}/soyad`]:             selectedAthlete.soyad || '',
+                [`${basePath}/okul`]:              selectedAthlete.okul || '',
+                [`${basePath}/timestamp`]:         Date.now(),
+                [`${basePath}/hakem`]:             aletScoreData.hakem,
+            };
+
+            await offlineWrite(updates);
 
             await logAction('score_submitted', {
                 competitionId: selectedCompId,
-                category: selectedCategory,
-                athleteId: selectedAthlete.id,
-                finalScore: confirmModal.finalScore,
-                discipline: 'ritmik',
+                category:      selectedCategory,
+                athleteId:     selectedAthlete.id,
+                alet:          selectedAlet,
+                finalScore:    confirmModal.finalScore,
+                discipline:    'ritmik',
             });
 
             const next = getNextAthlete();
-            setSuccessModal({ athlete: selectedAthlete, finalScore: confirmModal.finalScore, next });
+            setSuccessModal({ athlete: selectedAthlete, finalScore: confirmModal.finalScore, aletLabel: confirmModal.aletLabel, next });
             setConfirmModal(null);
+            setScoringFieldsTouched(false);
         } catch (err) {
             toast('Kayıt sırasında hata: ' + err.message, 'error');
         } finally {
@@ -353,7 +355,7 @@ export default function RitmikScoringPage() {
             const inputPwd = unlockPassword.trim();
             const inputHash = await hashPassword(inputPwd);
 
-            const compKomiteSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/komiteSifresi`));
+            const compKomiteSnap  = await get(ref(db, `${firebasePath}/${selectedCompId}/komiteSifresi`));
             const globalKomiteSnap = await get(ref(db, 'ayarlar/komiteSifresi'));
             const komiteSifre = compKomiteSnap.val() || globalKomiteSnap.val();
             const isKomiteMatch = komiteSifre && inputPwd === komiteSifre;
@@ -367,14 +369,14 @@ export default function RitmikScoringPage() {
             }
 
             if (isKomiteMatch || isUserMatch) {
+                const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}`;
                 await offlineWrite({
-                    [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${unlockModal.athleteId}/kilitli`]: false
+                    [`${basePath}/${unlockModal.aletKey}/kilitli`]: false,
                 });
-                setScoreLocked(false);
                 setUnlockModal(null);
                 setUnlockPassword('');
-                toast('Puan kilidi kaldırıldı. Düzenleme yapabilirsiniz.', 'success');
-                logAction('score_unlock', `[Ritmik] ${unlockModal.athleteId} — puan kilidi kaldırıldı`, {
+                toast(`${RITMIK_ALETLER[unlockModal.aletKey]?.label || unlockModal.aletKey} puan kilidi kaldırıldı.`, 'success');
+                logAction('score_unlock', `[Ritmik] ${unlockModal.athleteId} ${unlockModal.aletKey} — puan kilidi kaldırıldı`, {
                     user: currentUser?.kullaniciAdi || 'admin',
                     competitionId: selectedCompId,
                 });
@@ -388,20 +390,24 @@ export default function RitmikScoringPage() {
         }
     };
 
-    const handleLock = async () => {
-        if (!selectedAthlete) return;
-        await offlineWrite({
-            [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/kilitli`]: true
-        });
-        setScoreLocked(true);
-        toast('Puan kilitlendi.', 'success');
-    };
-
     // ─── Score Status ───
     const getAthleteStatus = (athlete) => {
         const score = existingScores[athlete.id];
         if (!score) return 'bekliyor';
-        if (score.kilitli) return 'kilitli';
+        const topDone     = score.top?.durum     === 'tamamlandi';
+        const kurdeleDone = score.kurdele?.durum === 'tamamlandi';
+        const topLocked   = score.top?.kilitli     === true;
+        const kurdeleLocked = score.kurdele?.kilitli === true;
+        if (topLocked && kurdeleLocked) return 'kilitli';
+        if (topDone && kurdeleDone) return 'tamamlandi';
+        if (topDone || kurdeleDone) return 'kismi';
+        return 'bekliyor';
+    };
+
+    const getAletStatus = (athlete, aletKey) => {
+        const sc = existingScores[athlete?.id]?.[aletKey];
+        if (!sc || sc.durum !== 'tamamlandi') return 'bekliyor';
+        if (sc.kilitli) return 'kilitli';
         return 'tamamlandi';
     };
 
@@ -482,6 +488,8 @@ export default function RitmikScoringPage() {
                                         {rot.map((ath, ai) => {
                                             const status   = getAthleteStatus(ath);
                                             const isActive = selectedAthlete?.id === ath.id;
+                                            const topSt    = getAletStatus(ath, 'top');
+                                            const kurdSt   = getAletStatus(ath, 'kurdele');
                                             return (
                                                 <button
                                                     key={ath.id}
@@ -492,10 +500,9 @@ export default function RitmikScoringPage() {
                                                     <span className="rtm-ath-name">
                                                         {ath.soyad ? `${ath.soyad} ${ath.ad || ''}` : ath.name || ath.ad || 'İsimsiz'}
                                                     </span>
-                                                    <span className={`rtm-ath-badge rtm-ath-badge--${status}`}>
-                                                        {status === 'kilitli'    ? <i className="material-icons-round">lock</i>
-                                                        : status === 'tamamlandi' ? <i className="material-icons-round">check_circle</i>
-                                                        : <i className="material-icons-round">radio_button_unchecked</i>}
+                                                    <span className="rtm-ath-alet-dots">
+                                                        <span className={`rtm-alet-dot rtm-alet-dot--${topSt}`} title="Top">T</span>
+                                                        <span className={`rtm-alet-dot rtm-alet-dot--${kurdSt}`} title="Kurdele">K</span>
                                                     </span>
                                                 </button>
                                             );
@@ -531,9 +538,6 @@ export default function RitmikScoringPage() {
                                     {selectedAthlete.okul && <span><i className="material-icons-round">school</i>{selectedAthlete.okul}</span>}
                                     {selectedAthlete.il   && <span><i className="material-icons-round">location_on</i>{selectedAthlete.il}</span>}
                                     <span><i className="material-icons-round">category</i>{RITMIK_CATEGORIES[selectedCategory]?.label || selectedCategory}</span>
-                                    {RITMIK_CATEGORIES[selectedCategory]?.alet && (
-                                        <span><i className="material-icons-round">sports</i>{RITMIK_CATEGORIES[selectedCategory].alet}</span>
-                                    )}
                                 </div>
                             </div>
                             <div className="rtm-athlete-actions">
@@ -545,90 +549,92 @@ export default function RitmikScoringPage() {
                                     <span className="rtm-called-badge"><i className="material-icons-round">campaign</i> Çağrıldı</span>
                                 )}
                                 {scoreLocked ? (
-                                    <button className="rtm-btn rtm-btn--unlock" onClick={() => setUnlockModal({ athleteId: selectedAthlete.id })}>
+                                    <button className="rtm-btn rtm-btn--unlock" onClick={() => setUnlockModal({ athleteId: selectedAthlete.id, aletKey: selectedAlet })}>
                                         <i className="material-icons-round">lock</i> Kilitli
                                     </button>
-                                ) : existingScores[selectedAthlete.id] ? (
-                                    <button className="rtm-btn rtm-btn--lock" onClick={handleLock}>
+                                ) : existingScores[selectedAthlete.id]?.[selectedAlet] ? (
+                                    <button className="rtm-btn rtm-btn--lock" onClick={async () => {
+                                        await offlineWrite({
+                                            [`${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/${selectedAlet}/kilitli`]: true
+                                        });
+                                        toast(`${RITMIK_ALETLER[selectedAlet]?.label} puanı kilitlendi.`, 'success');
+                                    }}>
                                         <i className="material-icons-round">lock_open</i> Kilitle
                                     </button>
                                 ) : null}
                             </div>
                         </div>
 
+                        {/* ── Alet Sekmeleri ── */}
+                        <div className="rtm-alet-tabs">
+                            {Object.values(RITMIK_ALETLER).map(alet => {
+                                const st = getAletStatus(selectedAthlete, alet.key);
+                                const isActive = selectedAlet === alet.key;
+                                return (
+                                    <button
+                                        key={alet.key}
+                                        className={`rtm-alet-tab${isActive ? ' rtm-alet-tab--active' : ''} rtm-alet-tab--${st}`}
+                                        onClick={() => handleSelectAlet(alet.key)}
+                                    >
+                                        <i className="material-icons-round">{alet.icon}</i>
+                                        {alet.label}
+                                        {st === 'tamamlandi' && <i className="material-icons-round rtm-alet-tab-check">check_circle</i>}
+                                        {st === 'kilitli'    && <i className="material-icons-round rtm-alet-tab-check">lock</i>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
                         {scoreLocked && (
                             <div className="rtm-locked-banner">
                                 <i className="material-icons-round">lock</i>
-                                Bu sporcunun puanı kilitlenmiştir. Düzenlemek için kilidi açın.
+                                {RITMIK_ALETLER[selectedAlet]?.label} puanı kilitlenmiştir. Düzenlemek için kilidi açın.
                             </div>
                         )}
 
-                        {/* ── DA Puanı — Alet Zorluğu (yalnızca alet kullanan kategoriler) ── */}
-                        {hasDA && (
-                            <div className="rtm-card">
-                                <div className="rtm-card-header">
-                                    <span className="rtm-card-label rtm-card-label--d">DA</span>
-                                    <span className="rtm-card-title">Alet Zorluğu</span>
-                                    <span className="rtm-card-desc">2 hakem · mutabık kalınan puanı girin</span>
-                                    <span className="rtm-score-chip rtm-score-chip--d">{daScoreNum.toFixed(3)}</span>
-                                </div>
-                                <div className="rtm-da-input-row">
-                                    <input
-                                        type="number"
-                                        className="rtm-da-input"
-                                        min="0"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        value={daScoreInput}
-                                        disabled={scoreLocked}
-                                        onChange={e => setDaScoreInput(e.target.value)}
-                                    />
-                                    <span className="rtm-da-hint">DA hakemleri değerlendirmelerini karşılaştırarak mutabık kaldıkları alet zorluk puanını giriniz ({catConfig.alet})</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── DB Puanı — Vücut Element Seçimi ── */}
+                        {/* ── DA Puanı — Alet Zorluğu ── */}
                         <div className="rtm-card">
                             <div className="rtm-card-header">
-                                <span className="rtm-card-label rtm-card-label--d">{hasDA ? 'DB' : 'D'}</span>
-                                <span className="rtm-card-title">{hasDA ? 'Vücut Zorluğu' : 'Zorluk Puanı'}</span>
-                                <span className="rtm-card-desc">
-                                    {selectedElements.length}/{maxElements} element · toplam {dbScore.toFixed(2)}
-                                </span>
+                                <span className="rtm-card-label rtm-card-label--d">DA</span>
+                                <span className="rtm-card-title">Alet Zorluğu</span>
+                                <span className="rtm-card-desc">2 hakem · mutabık kalınan puanı girin ({RITMIK_ALETLER[selectedAlet]?.label})</span>
+                                <span className="rtm-score-chip rtm-score-chip--d">{daScoreNum.toFixed(3)}</span>
+                            </div>
+                            <div className="rtm-da-input-row">
+                                <input
+                                    type="number"
+                                    className="rtm-da-input"
+                                    min="0"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    value={daScoreInput}
+                                    disabled={scoreLocked}
+                                    onChange={e => { setDaScoreInput(e.target.value); setScoringFieldsTouched(true); }}
+                                />
+                                <span className="rtm-da-hint">DA hakemleri değerlendirmelerini karşılaştırarak mutabık kaldıkları alet zorluk puanını giriniz</span>
+                            </div>
+                        </div>
+
+                        {/* ── DB Puanı — Vücut Zorluğu (manuel giriş) ── */}
+                        <div className="rtm-card">
+                            <div className="rtm-card-header">
+                                <span className="rtm-card-label rtm-card-label--d">DB</span>
+                                <span className="rtm-card-title">Vücut Zorluğu</span>
+                                <span className="rtm-card-desc">2 hakem · mutabık kalınan vücut zorluk puanını girin</span>
                                 <span className="rtm-score-chip rtm-score-chip--d">{dbScore.toFixed(3)}</span>
                             </div>
-                            <div className="rtm-element-body">
-                                <div className="rtm-element-list">
-                                    {selectedElements.length === 0 && (
-                                        <p className="rtm-element-hint">Henüz element eklenmedi. Aşağıdaki butona tıklayarak ekleyin.</p>
-                                    )}
-                                    {selectedElements.map((el, idx) => (
-                                        <div key={el.id} className="rtm-element-row">
-                                            <span className="rtm-el-num">{idx + 1}</span>
-                                            <span className={`rtm-group-badge rtm-group-${el.group}`}>{el.group}</span>
-                                            <span className="rtm-el-family">{el.familyName}</span>
-                                            <span className="rtm-el-value">{el.value.toFixed(1)}</span>
-                                            {!scoreLocked && (
-                                                <button className="rtm-el-remove" onClick={() => removeElement(el.id)}>
-                                                    <i className="material-icons-round">close</i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                                {!scoreLocked && selectedElements.length < maxElements && (
-                                    <button className="rtm-btn-add-element" onClick={() => setShowElementPicker(true)}>
-                                        <i className="material-icons-round">add_circle</i>
-                                        Element Ekle
-                                    </button>
-                                )}
-                                {selectedElements.length > 0 && (
-                                    <div className="rtm-d-summary">
-                                        <span>{selectedElements.length} element</span>
-                                        <strong className="rtm-d-total">= {dbScore.toFixed(3)}</strong>
-                                    </div>
-                                )}
+                            <div className="rtm-da-input-row">
+                                <input
+                                    type="number"
+                                    className="rtm-da-input"
+                                    min="0"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    value={dbScoreInput}
+                                    disabled={scoreLocked}
+                                    onChange={e => { setDbScoreInput(e.target.value); setScoringFieldsTouched(true); }}
+                                />
+                                <span className="rtm-da-hint">DB hakemleri değerlendirmelerini karşılaştırarak mutabık kaldıkları vücut zorluk puanını giriniz</span>
                             </div>
                         </div>
 
@@ -654,7 +660,7 @@ export default function RitmikScoringPage() {
                                                 placeholder="0.0"
                                                 value={val}
                                                 disabled={scoreLocked}
-                                                onChange={e => setAPanelLocal(p => ({ ...p, [key]: e.target.value }))}
+                                                onChange={e => { setAPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }}
                                             />
                                             {!isNaN(num) && val !== '' && (
                                                 <span className="rtm-judge-result">{Math.max(0, 10 - num).toFixed(1)}</span>
@@ -687,7 +693,7 @@ export default function RitmikScoringPage() {
                                                 placeholder="0.0"
                                                 value={val}
                                                 disabled={scoreLocked}
-                                                onChange={e => setEPanelLocal(p => ({ ...p, [key]: e.target.value }))}
+                                                onChange={e => { setEPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }}
                                             />
                                             {!isNaN(num) && val !== '' && (
                                                 <span className="rtm-judge-result">{Math.max(0, 10 - num).toFixed(1)}</span>
@@ -698,62 +704,66 @@ export default function RitmikScoringPage() {
                             </div>
                         </div>
 
-                        {/* ── Cezalar ── */}
+                        {/* ── Ceza Kesintileri (manuel giriş) ── */}
                         <div className="rtm-card">
                             <div className="rtm-card-header">
                                 <span className="rtm-card-label rtm-card-label--ded">−</span>
-                                <span className="rtm-card-title">Ceza Kesintileri</span>
-                                <span className="rtm-card-desc">Teknik ihlaller</span>
-                                <span className="rtm-score-chip rtm-score-chip--ded">
-                                    −{totalPenalties.toFixed(3)}
-                                </span>
+                                <span className="rtm-card-title">Ceza Kesintisi</span>
+                                <span className="rtm-card-desc">Toplam ceza (alet düşmesi, alan dışı, süre vb.)</span>
+                                <span className="rtm-score-chip rtm-score-chip--ded">−{totalPenalties.toFixed(3)}</span>
                             </div>
-                            <div className="rtm-ded-section">
-                                <div className="rtm-penalties-grid">
-                                    {Object.entries(RITMIK_PENALTY_TYPES).map(([key, pt]) => (
-                                        <div key={key} className="rtm-penalty-item">
-                                            <label>{pt.label}</label>
-                                            <div className="rtm-penalty-options">
-                                                {pt.options.map(v => (
-                                                    <button
-                                                        key={v}
-                                                        className={`rtm-pen-btn${parseFloat(penalties[key] || 0) === v ? ' rtm-pen-btn--active' : ''}`}
-                                                        disabled={scoreLocked}
-                                                        onClick={() => setPenalties(p => ({ ...p, [key]: v }))}
-                                                    >
-                                                        {v.toFixed(1)}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            <div className="rtm-da-input-row">
+                                <input
+                                    type="number"
+                                    className="rtm-da-input"
+                                    min="0"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    value={penaltyInput}
+                                    disabled={scoreLocked}
+                                    onChange={e => { setPenaltyInput(e.target.value); setScoringFieldsTouched(true); }}
+                                />
+                                <span className="rtm-da-hint">Koordinatör/Baş Hakem tarafından belirlenen toplam ceza kesintisini giriniz</span>
                             </div>
                         </div>
 
                         {/* ── Final Skor Bar ── */}
                         <div className="rtm-final-bar">
                             <div className="rtm-final-breakdown">
-                                {hasDA && <>
-                                    <span>DA <strong>{daScoreNum.toFixed(3)}</strong></span>
-                                    <span>+</span>
-                                </>}
-                                <span>{hasDA ? 'DB' : 'D'} <strong>{dbScore.toFixed(3)}</strong></span>
+                                <span>DA <strong>{daScoreNum.toFixed(3)}</strong></span>
+                                <span>+</span>
+                                <span>DB <strong>{dbScore.toFixed(3)}</strong></span>
                                 <span>+</span>
                                 <span>A <strong>{aScore.toFixed(3)}</strong></span>
                                 <span>+</span>
                                 <span>E <strong>{eScore.toFixed(3)}</strong></span>
                                 <span>−</span>
                                 <span>Ceza <strong>{totalPenalties.toFixed(3)}</strong></span>
+                                <span className="rtm-final-alet-badge">{RITMIK_ALETLER[selectedAlet]?.label}</span>
                             </div>
                             <div className="rtm-final-score">{finalScore}</div>
+                            {/* Toplam (her iki alet) */}
+                            {(() => {
+                                const otherAlet = selectedAlet === 'top' ? 'kurdele' : 'top';
+                                const otherSonuc = existingScores[selectedAthlete.id]?.[otherAlet]?.sonuc;
+                                if (otherSonuc != null) {
+                                    const toplam = parseFloat(finalScore) + parseFloat(otherSonuc);
+                                    return (
+                                        <div className="rtm-toplam-bar">
+                                            <span>Toplam (Top + Kurdele):</span>
+                                            <strong>{toplam.toFixed(3)}</strong>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                             <button
                                 className="rtm-btn rtm-btn--submit"
                                 disabled={scoreLocked || isSubmitting}
                                 onClick={handleSubmitScore}
                             >
                                 <i className="material-icons-round">save</i>
-                                {isSubmitting ? 'Kaydediliyor…' : 'Kaydet'}
+                                {isSubmitting ? 'Kaydediliyor…' : `${RITMIK_ALETLER[selectedAlet]?.label} Kaydet`}
                             </button>
                         </div>
 
@@ -761,70 +771,19 @@ export default function RitmikScoringPage() {
                 )}
             </main>
 
-            {/* ── Element Picker Modal ── */}
-            {showElementPicker && (
-                <div className="rtm-modal-overlay" onClick={() => setShowElementPicker(false)}>
-                    <div className="rtm-element-picker" onClick={e => e.stopPropagation()}>
-                        <div className="rtm-picker-header">
-                            <i className="material-icons-round">add_circle</i>
-                            <h2>Element Seç ({selectedElements.length}/{maxElements})</h2>
-                        </div>
-                        <div className="rtm-picker-body">
-                            {RITMIK_ELEMENT_FAMILIES.map(family => {
-                                const familyCount  = selectedElements.filter(el => el.familyId === family.id).length;
-                                const isFamilyFull = familyCount >= RITMIK_FAMILY_CONSTRAINTS.maxPerFamily;
-                                return (
-                                    <div key={family.id} className={`rtm-family-section${isFamilyFull ? ' rtm-family-full' : ''}`}>
-                                        <div className="rtm-family-header">
-                                            <span className={`rtm-group-badge rtm-group-${family.group}`}>{family.group}</span>
-                                            <strong>{family.name}</strong>
-                                            <span className="rtm-family-desc">{family.description}</span>
-                                            {isFamilyFull && (
-                                                <span className="rtm-family-limit-badge">
-                                                    Dolu ({familyCount}/{RITMIK_FAMILY_CONSTRAINTS.maxPerFamily})
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="rtm-value-btns">
-                                            {RITMIK_DIFFICULTY_VALUES.map(v => (
-                                                <button
-                                                    key={v}
-                                                    className="rtm-value-btn"
-                                                    onClick={() => addElement(family, v)}
-                                                    disabled={isFamilyFull}
-                                                >
-                                                    {v.toFixed(1)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="rtm-picker-actions">
-                            <button className="rtm-btn rtm-btn--cancel" onClick={() => setShowElementPicker(false)}>
-                                Kapat
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* ── Confirm Modal ── */}
             {confirmModal && (
                 <div className="rtm-modal-overlay" onClick={() => setConfirmModal(null)}>
                     <div className="rtm-modal" onClick={e => e.stopPropagation()}>
-                        <div className="rtm-modal-title">Puanı Onayla</div>
+                        <div className="rtm-modal-title">Puanı Onayla — {confirmModal.aletLabel}</div>
                         <div className="rtm-modal-athlete">
                             {confirmModal.athlete.soyad
                                 ? `${confirmModal.athlete.soyad} ${confirmModal.athlete.ad || ''}`
                                 : confirmModal.athlete.name || ''}
                         </div>
                         <div className="rtm-modal-breakdown">
-                            {confirmModal.hasDA && (
-                                <div><span>DA (Alet Zorluğu)</span><strong>{confirmModal.daScore.toFixed(3)}</strong></div>
-                            )}
-                            <div><span>{confirmModal.hasDA ? 'DB (Vücut Zorluğu)' : 'D (Zorluk)'}</span><strong>{confirmModal.dbScore.toFixed(3)}</strong></div>
+                            <div><span>DA (Alet Zorluğu)</span><strong>{confirmModal.daScore.toFixed(3)}</strong></div>
+                            <div><span>DB (Vücut Zorluğu)</span><strong>{confirmModal.dbScore.toFixed(3)}</strong></div>
                             <div><span>A (Artistlik)</span><strong>{confirmModal.aScore.toFixed(3)}</strong></div>
                             <div><span>E (İcra)</span><strong>{confirmModal.eScore.toFixed(3)}</strong></div>
                             <div><span>Ceza</span><strong>−{confirmModal.totalPenalties.toFixed(3)}</strong></div>
@@ -845,7 +804,7 @@ export default function RitmikScoringPage() {
                 <div className="rtm-modal-overlay" onClick={() => setSuccessModal(null)}>
                     <div className="rtm-modal rtm-modal--success" onClick={e => e.stopPropagation()}>
                         <i className="material-icons-round rtm-modal-icon">check_circle</i>
-                        <div className="rtm-modal-title">Puan Kaydedildi</div>
+                        <div className="rtm-modal-title">{successModal.aletLabel} Puanı Kaydedildi</div>
                         <div className="rtm-modal-athlete">
                             {successModal.athlete.soyad
                                 ? `${successModal.athlete.soyad} ${successModal.athlete.ad || ''}`
@@ -872,7 +831,7 @@ export default function RitmikScoringPage() {
             {unlockModal && (
                 <div className="rtm-modal-overlay" onClick={() => setUnlockModal(null)}>
                     <div className="rtm-modal" onClick={e => e.stopPropagation()}>
-                        <div className="rtm-modal-title">Kilidi Aç</div>
+                        <div className="rtm-modal-title">Kilidi Aç — {RITMIK_ALETLER[unlockModal.aletKey]?.label}</div>
                         <p style={{ color: 'var(--rtm-text-sec)', marginBottom: '1rem', textAlign: 'center' }}>
                             Komite şifresini girin.
                         </p>

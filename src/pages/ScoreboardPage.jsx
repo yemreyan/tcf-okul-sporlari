@@ -346,6 +346,9 @@ export default function ScoreboardPage() {
             }
         });
 
+        const sbCatKey = (currentView?.catId || '').toLowerCase();
+        const sbTopN = (sbCatKey.includes('yildiz') || sbCatKey.includes('genc')) ? 2 : 3;
+
         const teams = [];
         Object.entries(teamAthletes).forEach(([teamName, members]) => {
             let grandTotal = 0;
@@ -361,10 +364,10 @@ export default function ScoreboardPage() {
                         if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                     });
                     scoresArr.sort((x, y) => y - x);
-                    const top3Sum = scoresArr.slice(0, 3).reduce((x, y) => x + y, 0);
-                    appTotals[alet.id] = top3Sum;
-                    grandTotal += top3Sum;
-                    if (top3Sum > 0) hasScore = true;
+                    const topSum = scoresArr.slice(0, sbTopN).reduce((x, y) => x + y, 0);
+                    appTotals[alet.id] = topSum;
+                    grandTotal += topSum;
+                    if (topSum > 0) hasScore = true;
                 });
             } else {
                 // Non-apparatus: doğrudan sporcu toplam puanları
@@ -374,10 +377,10 @@ export default function ScoreboardPage() {
                     if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                 });
                 scoresArr.sort((x, y) => y - x);
-                const top3Sum = scoresArr.slice(0, 3).reduce((x, y) => x + y, 0);
-                appTotals['_total'] = top3Sum;
-                grandTotal = top3Sum;
-                if (top3Sum > 0) hasScore = true;
+                const topSum = scoresArr.slice(0, sbTopN).reduce((x, y) => x + y, 0);
+                appTotals['_total'] = topSum;
+                grandTotal = topSum;
+                if (topSum > 0) hasScore = true;
             }
 
             if (hasScore) {

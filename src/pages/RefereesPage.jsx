@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
+import { logAction } from '../lib/auditLogger';
 import './RefereesPage.css';
 
 // ─── Hakem Hesap Oluşturma Yardımcı Fonksiyonlar ───
@@ -59,7 +60,7 @@ function createRefereePermissions() {
 
 export default function RefereesPage() {
     const navigate = useNavigate();
-    const { hasPermission, hashPassword, isSuperAdmin } = useAuth();
+    const { hasPermission, hashPassword, isSuperAdmin, currentUser } = useAuth();
     const { toast, confirm } = useNotification();
     const { firebasePath, routePrefix } = useDiscipline();
 
@@ -184,6 +185,7 @@ export default function RefereesPage() {
         if (ok) {
             try {
                 await remove(ref(db, `referees/${refId}`));
+                logAction('referee_delete', `Hakem silindi: ${name}`, { user: currentUser?.displayName || currentUser?.email || '' });
                 if (selectedReferee && selectedReferee.id === refId) {
                     setSelectedReferee(null);
                 }

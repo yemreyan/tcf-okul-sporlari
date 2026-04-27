@@ -1,9 +1,20 @@
 /**
  * Ritmik Cimnastik — Kriter Sabitleri
  * TCF Okul Sporları Talinamesi'ne göre hazırlanmıştır.
+ * 2025-2026 sezonu: tüm kategorilerde Top ve Kurdele aletleriyle yarışılır.
  */
 
+// ─── Aletler ─────────────────────────────────────────────────────────────────
+export const RITMIK_ALETLER = {
+    top: { key: 'top', label: 'Top', icon: 'sports_handball' },
+    kurdele: { key: 'kurdele', label: 'Kurdele', icon: 'gesture' },
+};
+
 // ─── Kategoriler ─────────────────────────────────────────────────────────────
+// Her kategoride sporcular Top ve Kurdele ile ayrı ayrı yarışır.
+// Takım kuralları (TCF/MEB 2025-2026 Uygulama Esasları):
+//   Minikler B, A · Küçükler · Yıldızlar : en az 2, en fazla 4 sporcu (2 asil + 2 yedek)
+//   Gençler                               : en az 2, en fazla 3 sporcu (2 asil + 1 yedek)
 export const RITMIK_CATEGORIES = {
     minik_b_kiz: {
         label: 'Minik B Kız',
@@ -12,11 +23,11 @@ export const RITMIK_CATEGORIES = {
         kademe: 'Minik B',
         yarismaSeviye: 'Mahalli',
         dobYears: [2017, 2018, 2019],
-        maxElements: 6,
         judgeCount: 4,
-        athleteCount: 1,
-        alet: 'Serbest',
-        hasDA: false,  // Serbest seri — alet yok, DA puanı uygulanmaz
+        aletler: ['top', 'kurdele'],
+        hasDA: true,
+        // Takım kadrosu
+        minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
     },
     minik_a_kiz: {
         label: 'Minik A Kız',
@@ -25,11 +36,10 @@ export const RITMIK_CATEGORIES = {
         kademe: 'Minik A',
         yarismaSeviye: 'Mahalli',
         dobYears: [2014, 2015, 2016],
-        maxElements: 5,
         judgeCount: 4,
-        athleteCount: 1,
-        alet: 'İp',
-        hasDA: true,   // FIG Gençler Kuralları — DA + DB geçerli
+        aletler: ['top', 'kurdele'],
+        hasDA: true,
+        minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
     },
     kucuk_kiz: {
         label: 'Küçük Kız',
@@ -38,11 +48,10 @@ export const RITMIK_CATEGORIES = {
         kademe: 'Küçük',
         yarismaSeviye: 'Mahalli / Ulusal',
         dobYears: [2013, 2014],
-        maxElements: 7,
         judgeCount: 4,
-        athleteCount: 1,
-        alet: 'İp',
-        hasDA: true,   // FIG Gençler Kuralları — DA + DB geçerli
+        aletler: ['top', 'kurdele'],
+        hasDA: true,
+        minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
     },
     yildiz_kiz: {
         label: 'Yıldız Kız',
@@ -51,107 +60,48 @@ export const RITMIK_CATEGORIES = {
         kademe: 'Yıldız',
         yarismaSeviye: 'Mahalli / Ulusal',
         dobYears: [2010, 2011, 2012],
-        maxElements: 8,
         judgeCount: 4,
-        athleteCount: 1,
-        alet: 'Çember',
-        hasDA: true,   // FIG Gençler Kuralları — DA + DB geçerli
+        aletler: ['top', 'kurdele'],
+        hasDA: true,
+        minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
     },
-    genc_b_kiz: {
-        label: 'Genç B Kız',
-        group: 'Genç B',
+    genc_kiz: {
+        label: 'Genç Kız',
+        group: 'Genç',
         cinsiyet: 'K',
-        kademe: 'Genç B',
+        kademe: 'Genç',
         yarismaSeviye: 'Mahalli / Ulusal',
-        dobYears: [2008, 2009, 2010],
-        maxElements: 9,
+        dobYears: [2006, 2007, 2008, 2009, 2010],
         judgeCount: 4,
-        athleteCount: 1,
-        alet: 'Çember / Labut',
-        hasDA: true,   // FIG Gençler Kuralları — DA + DB geçerli
-    },
-    genc_a_kiz: {
-        label: 'Genç A Kız',
-        group: 'Genç A',
-        cinsiyet: 'K',
-        kademe: 'Genç A',
-        yarismaSeviye: 'Mahalli / Ulusal',
-        dobYears: [2006, 2007, 2008],
-        maxElements: 10,
-        judgeCount: 4,
-        athleteCount: 1,
-        alet: 'Çember / Labut',
-        hasDA: true,   // FIG Gençler Kuralları — DA + DB geçerli
+        aletler: ['top', 'kurdele'],
+        hasDA: true,
+        minTeam: 2, maxTeam: 3, asiSayisi: 2, yedekSayisi: 1,
     },
 };
 
-// ─── Element Aileleri ─────────────────────────────────────────────────────────
-// Ritmik Cimnastik'te vücut unsurları 4 ana aileye ayrılır
+// ─── Geriye dönük uyumluluk — eski genc_a/genc_b başvurularını genc_kiz'e yönlendir ───
+export const RITMIK_CATEGORY_ALIASES = {
+    genc_a_kiz: 'genc_kiz',
+    genc_b_kiz: 'genc_kiz',
+};
+
+// ─── Element Aileleri (referans — artık puanlama ekranında kullanılmıyor) ────
 export const RITMIK_ELEMENT_FAMILIES = [
-    {
-        id: 'denge_esneklik',
-        group: 'A',
-        groupLabel: 'A',
-        name: 'Denge ve Esneklik',
-        description: 'Denge duruşları, esneklik serileri, dalga hareketleri',
-    },
-    {
-        id: 'sicrama_atlama',
-        group: 'B',
-        groupLabel: 'B',
-        name: 'Sıçrama ve Atlama',
-        description: 'Sıçramalar, atlamalar, şaseler',
-    },
-    {
-        id: 'donme_piruet',
-        group: 'C',
-        groupLabel: 'C',
-        name: 'Dönme ve Pirüet',
-        description: 'Pirüetler, şalite dönmeleri, seri dönmeler',
-    },
-    {
-        id: 'akrobatik',
-        group: 'D',
-        groupLabel: 'D',
-        name: 'Akrobatik Unsurlar',
-        description: 'Amut, takla, akrobatik geçişler',
-    },
+    { id: 'denge_esneklik', group: 'A', groupLabel: 'A', name: 'Denge ve Esneklik', description: 'Denge duruşları, esneklik serileri, dalga hareketleri' },
+    { id: 'sicrama_atlama', group: 'B', groupLabel: 'B', name: 'Sıçrama ve Atlama', description: 'Sıçramalar, atlamalar, şaseler' },
+    { id: 'donme_piruet',   group: 'C', groupLabel: 'C', name: 'Dönme ve Pirüet',   description: 'Pirüetler, şalite dönmeleri, seri dönmeler' },
+    { id: 'akrobatik',      group: 'D', groupLabel: 'D', name: 'Akrobatik Unsurlar', description: 'Amut, takla, akrobatik geçişler' },
 ];
 
-// ─── Zorluk Değerleri ─────────────────────────────────────────────────────────
 export const RITMIK_DIFFICULTY_VALUES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
 
-// ─── Aile Kısıtlamaları ───────────────────────────────────────────────────────
-export const RITMIK_FAMILY_CONSTRAINTS = {
-    maxPerFamily: 3,   // Aynı aileden en fazla 3 element
-    minFamilies: 2,    // En az 2 farklı aile kullanılmalı
-};
+export const RITMIK_FAMILY_CONSTRAINTS = { maxPerFamily: 3, minFamilies: 2 };
 
-// ─── Ceza Tipleri ─────────────────────────────────────────────────────────────
+// ─── Ceza Tipleri (referans — artık tek manuel giriş ile değiştirildi) ───────
 export const RITMIK_PENALTY_TYPES = {
-    alet_dusme: {
-        label: 'Alet Düşmesi',
-        icon: 'do_not_touch',
-        options: [0, 0.5, 1.0],
-    },
-    alan_disi: {
-        label: 'Alan Dışı',
-        icon: 'crop_free',
-        options: [0, 0.3, 0.5],
-    },
-    sure: {
-        label: 'Süre İhlali',
-        icon: 'timer_off',
-        options: [0, 0.3, 0.5, 1.0],
-    },
-    teknik: {
-        label: 'Teknik Hata',
-        icon: 'warning',
-        options: [0, 0.3, 0.5],
-    },
-    kiyafet: {
-        label: 'Kıyafet İhlali',
-        icon: 'checkroom',
-        options: [0, 0.3],
-    },
+    alet_dusme: { label: 'Alet Düşmesi', icon: 'do_not_touch', options: [0, 0.5, 1.0] },
+    alan_disi:  { label: 'Alan Dışı',    icon: 'crop_free',    options: [0, 0.3, 0.5] },
+    sure:       { label: 'Süre İhlali',  icon: 'timer_off',    options: [0, 0.3, 0.5, 1.0] },
+    teknik:     { label: 'Teknik Hata',  icon: 'warning',      options: [0, 0.3, 0.5] },
+    kiyafet:    { label: 'Kıyafet İhlali', icon: 'checkroom',  options: [0, 0.3] },
 };

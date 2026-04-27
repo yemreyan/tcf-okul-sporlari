@@ -69,6 +69,14 @@
     font-weight: 800;
 }
 
+.epanel-header .header-alet {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 600;
+    margin-top: 2px;
+    opacity: 0.8;
+}
+
 .epanel-header .panel-badge {
     background: rgba(88, 166, 255, 0.15);
     color: var(--primary);

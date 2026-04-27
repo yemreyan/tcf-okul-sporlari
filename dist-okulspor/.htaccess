@@ -1,0 +1,90 @@
+# ====================================
+# HTTPS Yönlendirme
+# ====================================
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ====================================
+# Güvenlik Header'ları
+# ====================================
+<IfModule mod_headers.c>
+    # XSS koruması
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # MIME-type sniffing engelleme
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Clickjacking koruması
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # HTTPS zorunlu kılma (1 yıl)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Referrer politikası
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # İzin politikası (gereksiz API'leri devre dışı bırak)
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+
+    # Content Security Policy
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com; frame-src 'none'; object-src 'none'; base-uri 'self';"
+</IfModule>
+
+# ====================================
+# SPA (Single Page Application) Routing
+# React Router için — tüm yolları index.html'e yönlendir
+# ====================================
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/basvuru
+RewriteRule ^(.*)$ /index.html [L,QSA]
+
+# ====================================
+# Dosya Güvenliği
+# ====================================
+# .env dosyalarına erişimi engelle
+<FilesMatch "^\.env">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# .git dizinine erişimi engelle
+RedirectMatch 404 /\.git
+
+# Hassas dosya uzantılarını engelle
+<FilesMatch "\.(json|lock|log|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Assets klasörüne izin ver
+<FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# ====================================
+# Önbellekleme
+# ====================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # HTML — önbellek kullanma (her zaman güncel)
+    ExpiresByType text/html "access plus 0 seconds"
+    # CSS/JS — hash'li dosyalar, uzun önbellek
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    # Fontlar
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    # Görseller
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
+
+# Gzip sıkıştırma
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

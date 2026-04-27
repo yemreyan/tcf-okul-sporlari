@@ -1,570 +1,286 @@
 #!/usr/bin/env node
 /**
- * MEBBİS Okul Listesi Scraper
+ * MEBBİS Okul Listesi Scraper v2
  * ─────────────────────────────────────────────────────────────────────────────
  * Kullanım:
  *   node scripts/scrape-mebbis.mjs               # Tüm iller
  *   node scripts/scrape-mebbis.mjs --il ANKARA   # Sadece belirtilen il
- *   node scripts/scrape-mebbis.mjs --test        # İlk 2 il, 3 ilçe (test)
+ *   node scripts/scrape-mebbis.mjs --test        # İlk 3 il
+ *   node scripts/scrape-mebbis.mjs --json-only   # Sadece schools.json
  *
- * Environment değişkenleri:
- *   FIREBASE_DATABASE_URL      — Firebase RTDB URL (zorunlu)
- *   FIREBASE_SERVICE_ACCOUNT   — Service account JSON (base64 veya JSON string)
- *                                Yoksa: firebase-service-account.json dosyasına bakılır
- *
- * Firebase yazma yapısı:
- *   okullar/{IL}/{ILCE} = ["Okul1", "Okul2", ...]
- *   _meta/okullar_guncelleme = { tarih, toplamOkul, toplamIl, durum, hatalar }
- *
- * MEBBİS Sitesi: https://mebbis.meb.gov.tr/kurumlistesi.aspx
- *   - DevExpress ASP.NET WebForms
- *   - Dropdown ID'leri: cmbKurumTuru, cmbil, cmbilce
- *   - Listeleme butonu: btnKurumListelex
+ * Önemli: Postback sonrası page navigation olur → waitForNavigation gerekli
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { chromium } from 'playwright';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getDatabase } from 'firebase-admin/database';
-import { readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MEBBIS_URL = 'https://mebbis.meb.gov.tr/kurumlistesi.aspx';
-const DELAY_MS = 600;        // ilçeler arası bekleme
-const CITY_DELAY_MS = 1200;  // iller arası bekleme
+const OUTPUT_PATH = join(__dirname, '../public/data/schools.json');
 
-// ── CLI argümanları ──────────────────────────────────────────────────────────
+// ── CLI ──────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const singleIl = args.includes('--il') ? args[args.indexOf('--il') + 1] : null;
-const testMode = args.includes('--test'); // Sadece ilk 2 il, 3 ilçe
+const singleIl = args.includes('--il') ? args[args.indexOf('--il') + 1]?.toUpperCase() : null;
+const testMode = args.includes('--test');
+const jsonOnly = args.includes('--json-only');
 
-// ── Firebase Admin başlatma ──────────────────────────────────────────────────
-function initFirebase() {
-  if (getApps().length > 0) return getDatabase();
-
-  let serviceAccount;
-  const saEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-  if (saEnv) {
-    try {
-      const decoded = Buffer.from(saEnv, 'base64').toString('utf8');
-      serviceAccount = JSON.parse(decoded);
-    } catch {
-      try {
-        serviceAccount = JSON.parse(saEnv);
-      } catch (e) {
-        console.error('FIREBASE_SERVICE_ACCOUNT parse edilemedi:', e.message);
-        process.exit(1);
-      }
-    }
-  } else {
-    const saPath = join(__dirname, '../firebase-service-account.json');
-    try {
-      serviceAccount = JSON.parse(readFileSync(saPath, 'utf8'));
-    } catch (e) {
-      console.error('Service account dosyası bulunamadı:', saPath);
-      console.error('FIREBASE_SERVICE_ACCOUNT env değişkeni veya firebase-service-account.json gerekli');
-      process.exit(1);
-    }
-  }
-
-  initializeApp({
-    credential: cert(serviceAccount),
-    databaseURL:
-      process.env.FIREBASE_DATABASE_URL ||
-      'https://okulsporlari-6db6e-default-rtdb.firebaseio.com',
-  });
-
-  return getDatabase();
-}
-
-// ── Yardımcı fonksiyonlar ────────────────────────────────────────────────────
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function normalizeKey(str) {
-  return str.replace(/[.#$[\]/]/g, '_');
-}
-
-/** networkidle veya timeout — hangisi önce gelirse */
-async function waitForIdle(page, timeout = 8000) {
-  await page.waitForLoadState('networkidle', { timeout }).catch(() => {});
-}
-
-// ── DevExpress: Il seç ve ilçe dropdown'ını bekle ────────────────────────────
-async function selectIl(page, city) {
-  // Strateji 1: DevExpress JS API
-  const ok = await page.evaluate((val) => {
-    try {
-      const tryNs = (ns) => {
-        const ctrl = ns?.GetControlCollection?.()?.Get?.('cmbil');
-        if (!ctrl) return false;
-        if (ctrl.SetValue) { ctrl.SetValue(val); return true; }
-        if (ctrl.GetItemCount) {
-          for (let i = 0; i < ctrl.GetItemCount(); i++) {
-            const item = ctrl.GetItem(i);
-            if (item && (item.GetValue?.() === val || item.GetText?.() === val)) {
-              ctrl.SetSelectedItem(item);
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-      if (tryNs(window.ASPxClientControl) || tryNs(window.ASPx)) return true;
-      for (const k of Object.keys(window)) {
-        if (k.startsWith('ASPx') && window[k]?.GetControlCollection && tryNs(window[k])) return true;
-      }
-    } catch {}
-    return false;
-  }, city).catch(() => false);
-
-  if (!ok) {
-    // Strateji 2: dropdown tıkla → listeden seç
-    try {
-      const btn = await page.$('#cmbil_B') || await page.$('#cmbil_I');
-      if (btn) await btn.click({ timeout: 5000 });
-      await sleep(400);
-      const clicked = await page.evaluate((val) => {
-        const list = document.querySelector('#cmbil_DDD_L');
-        if (!list) return false;
-        for (const cell of list.querySelectorAll('td')) {
-          if (cell.textContent.trim() === val || cell.textContent.trim().includes(val)) {
-            cell.click(); return true;
-          }
-        }
-        return false;
-      }, city);
-      if (!clicked) throw new Error('list item not found');
-    } catch {
-      // Strateji 3: fill + Enter
-      try {
-        await page.fill('#cmbil_I', city, { timeout: 3000 });
-        await sleep(200);
-        await page.keyboard.press('Enter');
-      } catch {}
-    }
-  }
-
-  // İlçe dropdown'ının dolmasını bekle (max 10s)
-  await waitForIdle(page, 10000);
-  await sleep(500);
-}
-
-// ── DevExpress: İlçe seç ─────────────────────────────────────────────────────
-async function selectIlce(page, district) {
-  const ok = await page.evaluate((val) => {
-    try {
-      const tryNs = (ns) => {
-        const ctrl = ns?.GetControlCollection?.()?.Get?.('cmbilce');
-        if (!ctrl) return false;
-        if (ctrl.SetValue) { ctrl.SetValue(val); return true; }
-        if (ctrl.GetItemCount) {
-          for (let i = 0; i < ctrl.GetItemCount(); i++) {
-            const item = ctrl.GetItem(i);
-            if (item && (item.GetValue?.() === val || item.GetText?.() === val)) {
-              ctrl.SetSelectedItem(item);
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-      if (tryNs(window.ASPxClientControl) || tryNs(window.ASPx)) return true;
-      for (const k of Object.keys(window)) {
-        if (k.startsWith('ASPx') && window[k]?.GetControlCollection && tryNs(window[k])) return true;
-      }
-    } catch {}
-    return false;
-  }, district).catch(() => false);
-
-  if (!ok) {
-    try {
-      const btn = await page.$('#cmbilce_B') || await page.$('#cmbilce_I');
-      if (btn) await btn.click({ timeout: 5000 });
-      await sleep(400);
-      const clicked = await page.evaluate((val) => {
-        const list = document.querySelector('#cmbilce_DDD_L');
-        if (!list) return false;
-        for (const cell of list.querySelectorAll('td')) {
-          if (cell.textContent.trim() === val || cell.textContent.trim().includes(val)) {
-            cell.click(); return true;
-          }
-        }
-        return false;
-      }, district);
-      if (!clicked) throw new Error('list item not found');
-    } catch {
-      try {
-        await page.fill('#cmbilce_I', district, { timeout: 3000 });
-        await sleep(200);
-        await page.keyboard.press('Enter');
-      } catch {}
-    }
-  }
-
-  await waitForIdle(page, 8000);
-  await sleep(300);
-}
-
-// ── DevExpress: İlçe listesini oku ──────────────────────────────────────────
-async function getIlceOptions(page) {
-  // Strateji 1: DevExpress JS API
-  const fromApi = await page.evaluate(() => {
-    const results = [];
-    try {
-      const tryNs = (ns) => {
-        const ctrl = ns?.GetControlCollection?.()?.Get?.('cmbilce');
-        if (ctrl && ctrl.GetItemCount) {
-          const count = ctrl.GetItemCount();
-          for (let i = 0; i < count; i++) {
-            const item = ctrl.GetItem(i);
-            if (item) {
-              const text = item.GetText?.() || item.GetValue?.() || '';
-              if (text) results.push(text);
-            }
-          }
-          return results.length > 0;
-        }
-        return false;
-      };
-      if (tryNs(window.ASPxClientControl) || tryNs(window.ASPx)) return results;
-      for (const k of Object.keys(window)) {
-        if (k.startsWith('ASPx') && window[k]?.GetControlCollection && tryNs(window[k])) return results;
-      }
-    } catch {}
-    return null;
-  }).catch(() => null);
-
-  if (fromApi && fromApi.length > 0) return fromApi;
-
-  // Strateji 2: Dropdown'ı açarak DOM'dan oku
+// ── Firebase (opsiyonel) ─────────────────────────────────────────────────────
+async function initFirebase() {
+  if (jsonOnly) return null;
   try {
-    const btn = await page.$('#cmbilce_B') || await page.$('#cmbilce_I');
-    if (btn) {
-      await btn.click({ timeout: 5000 });
-      // Liste görünür olana kadar bekle (max 5s)
-      await page.waitForSelector('#cmbilce_DDD_L', { state: 'visible', timeout: 5000 }).catch(() => {});
-      await sleep(300);
-
-      const fromDom = await page.evaluate(() => {
-        const list = document.querySelector('#cmbilce_DDD_L');
-        if (!list) return [];
-        return Array.from(list.querySelectorAll('td'))
-          .map(c => c.textContent.trim())
-          .filter(t => t.length > 0);
-      });
-
-      // Dropdown'ı kapat
-      await page.keyboard.press('Escape');
-      await sleep(200);
-
-      if (fromDom.length > 0) return fromDom;
+    const { initializeApp, cert, getApps } = await import('firebase-admin/app');
+    const { getDatabase } = await import('firebase-admin/database');
+    if (getApps().length > 0) return getDatabase();
+    let sa;
+    const saEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (saEnv) {
+      try { sa = JSON.parse(Buffer.from(saEnv, 'base64').toString('utf8')); }
+      catch { try { sa = JSON.parse(saEnv); } catch { return null; } }
+    } else {
+      const p = join(__dirname, '../firebase-service-account.json');
+      if (!existsSync(p)) return null;
+      sa = JSON.parse(readFileSync(p, 'utf8'));
     }
-  } catch {}
-
-  // Strateji 3: Gizli select element
-  const fromSelect = await page.evaluate(() => {
-    const el = document.querySelector('#cmbilce');
-    if (el && el.tagName === 'SELECT') {
-      return Array.from(el.options).map(o => o.text || o.value).filter(t => t);
-    }
-    return [];
-  }).catch(() => []);
-
-  return fromSelect;
+    initializeApp({ credential: cert(sa), databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://okulsporlari-6db6e-default-rtdb.firebaseio.com' });
+    return getDatabase();
+  } catch { return null; }
 }
 
-// ── Kurum Listele tıkla ──────────────────────────────────────────────────────
-async function clickKurumListele(page) {
-  const selectors = [
-    '#btnKurumListelex',
-    'input[id*="btnKurumListelex"]',
-    'button[id*="btnKurumListelex"]',
-    '[id*="KurumListele"]',
-  ];
+// ── Yardımcı ─────────────────────────────────────────────────────────────────
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function normalizeKey(str) { return str.replace(/[.#$[\]/]/g, '_').toLocaleUpperCase('tr-TR'); }
 
-  for (const sel of selectors) {
-    try {
-      const el = await page.$(sel);
-      if (el) {
-        await el.click({ timeout: 5000 });
-        await waitForIdle(page, 15000);
-        return;
-      }
-    } catch {}
-  }
-
-  // Fallback: "Listele" veya "Ara" butonu
-  try {
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('input[type="button"], input[type="submit"], button');
-      for (const btn of btns) {
-        const val = (btn.value || btn.textContent || '').toLowerCase();
-        if (val.includes('listele') || val.includes('ara')) { btn.click(); return; }
-      }
-    });
-    await waitForIdle(page, 15000);
-  } catch {
-    await page.keyboard.press('Enter');
-    await waitForIdle(page, 10000);
-  }
+// ── Sayfaya git ve kontrollerin yüklenmesini bekle ──────────────────────────
+async function loadMebbisPage(page) {
+  await page.goto(MEBBIS_URL, { waitUntil: 'load', timeout: 60000 });
+  // DevExpress kontrollerinin yüklenmesini bekle
+  await page.waitForFunction(
+    () => typeof window.cmbKurumTuru !== 'undefined' && typeof window.cmbil !== 'undefined',
+    { timeout: 15000 }
+  );
+  await sleep(1000);
 }
 
-// ── Okul listesini çek ───────────────────────────────────────────────────────
-async function extractSchools(page) {
+// ── İl listesini al ─────────────────────────────────────────────────────────
+async function getCityList(page) {
   return page.evaluate(() => {
-    const schools = new Set();
-    const schoolKeywords = [
-      'OKUL', 'LİSE', 'LISE', 'ORTAOKUL', 'İLKOKUL', 'ILKOKUL',
-      'ANAOKUL', 'KOLEJ', 'ÖZEL', 'OZEL', 'MESLEKİ', 'MESLEKI',
-      'İMAM', 'IMAM', 'ANADOLU', 'FEN', 'SOSYAL', 'SANATLAR',
-    ];
-
-    // Strateji 1: ASPxGridView grid hücreleri
-    const gridSelectors = [
-      '#grdKurum_DXMainTable td:first-child',
-      '[id*="grdKurum"] td:first-child',
-      '[id*="GridKurum"] td:first-child',
-      'td.dxgv',
-      'td[class*="dxgv"]',
-    ];
-    for (const sel of gridSelectors) {
-      const cells = document.querySelectorAll(sel);
-      if (cells.length > 1) {
-        cells.forEach((cell) => {
-          const text = cell.textContent.trim();
-          if (text.length >= 4 && !text.toLowerCase().includes('seçiniz') && !/^\d+$/.test(text)) {
-            schools.add(text);
-          }
-        });
-        if (schools.size > 0) return [...schools];
+    const ctrl = window.cmbil;
+    if (!ctrl || !ctrl.GetItemCount) return [];
+    const list = [];
+    for (let i = 0; i < ctrl.GetItemCount(); i++) {
+      const item = ctrl.GetItem(i);
+      const text = (item?.text || '').trim();
+      if (text && text !== 'Seçiniz' && text !== 'Seçiniz!') {
+        list.push({ index: i, text });
       }
     }
+    return list;
+  });
+}
 
-    // Strateji 2: Okul anahtar kelimeleri içeren hücreler
-    const allCells = document.querySelectorAll('td');
-    allCells.forEach((cell) => {
-      const text = cell.textContent.trim();
-      const upper = text.toUpperCase();
-      if (
-        text.length > 5 && text.length < 200 &&
-        schoolKeywords.some((k) => upper.includes(k)) &&
-        !text.includes('\n')
-      ) {
-        schools.add(text);
+// ── Seçim yap + Listele + Postback bekle ────────────────────────────────────
+async function selectCityAndSearch(page, cityIndex) {
+  // İl seç
+  await page.evaluate((idx) => {
+    window.cmbKurumTuru.SetSelectedIndex(1); // Resmi Kurumlar
+    window.cmbil.SetSelectedIndex(idx);
+  }, cityIndex);
+  await sleep(500);
+
+  // "Kurum Listele" butonuna tıkla ve postback navigation'ı bekle
+  // page.click + waitForNavigation aynı anda çalışmalı
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load', timeout: 60000 }),
+    page.click('#btnKurumListelex'),
+  ]);
+
+  // İçeriğin tam yüklenmesini bekle
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  await sleep(1000);
+}
+
+// ── Grid'den tüm satırları çek ──────────────────────────────────────────────
+async function extractAllRows(page) {
+  return page.evaluate(() => {
+    const rows = document.querySelectorAll('[id^="gvKurumListe_DXDataRow"]');
+    if (rows.length > 0) {
+      return Array.from(rows).map(row => {
+        const tds = row.querySelectorAll('td');
+        return {
+          ilce: (tds[2]?.textContent || '').trim(),
+          kurum: (tds[3]?.textContent || '').trim(),
+        };
+      }).filter(r => r.kurum.length > 0);
+    }
+    // Fallback: normal table rows
+    const table = document.getElementById('gvKurumListe');
+    if (!table) return [];
+    const trs = table.querySelectorAll('tr');
+    const results = [];
+    for (let i = 1; i < trs.length; i++) {
+      const tds = trs[i].querySelectorAll('td');
+      if (tds.length >= 4) {
+        const kurum = (tds[3]?.textContent || '').trim();
+        const ilce = (tds[2]?.textContent || '').trim();
+        if (kurum) results.push({ ilce, kurum });
       }
-    });
-
-    return [...schools];
+    }
+    return results;
   }).catch(() => []);
 }
 
-// ── Kurum Türü seç (Resmi Kurumlar) ─────────────────────────────────────────
-async function selectKurumTuru(page) {
-  const ok = await page.evaluate(() => {
-    try {
-      const tryNs = (ns) => {
-        const ctrl = ns?.GetControlCollection?.()?.Get?.('cmbKurumTuru');
-        if (!ctrl) return false;
-        if (ctrl.SetValue) { ctrl.SetValue('Resmi Kurumlar'); return true; }
-        if (ctrl.GetItemCount) {
-          for (let i = 0; i < ctrl.GetItemCount(); i++) {
-            const item = ctrl.GetItem(i);
-            if (item && (item.GetText?.() === 'Resmi Kurumlar' || item.GetValue?.() === 'Resmi Kurumlar')) {
-              ctrl.SetSelectedItem(item);
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-      if (tryNs(window.ASPxClientControl) || tryNs(window.ASPx)) return true;
-      for (const k of Object.keys(window)) {
-        if (k.startsWith('ASPx') && window[k]?.GetControlCollection && tryNs(window[k])) return true;
-      }
-    } catch {}
-    return false;
-  }).catch(() => false);
-
-  if (!ok) {
-    try {
-      const btn = await page.$('#cmbKurumTuru_B') || await page.$('#cmbKurumTuru_I');
-      if (btn) await btn.click({ timeout: 5000 });
-      await sleep(400);
-      await page.evaluate(() => {
-        const list = document.querySelector('#cmbKurumTuru_DDD_L');
-        if (!list) return;
-        for (const cell of list.querySelectorAll('td')) {
-          if (cell.textContent.trim().includes('Resmi')) { cell.click(); return; }
-        }
-      });
-    } catch {}
-  }
-
-  await waitForIdle(page, 8000);
-  await sleep(500);
+// ── Toplam kayıt sayısı ─────────────────────────────────────────────────────
+async function getTotalCount(page) {
+  return page.evaluate(() => {
+    const match = document.body.innerText.match(/(\d+)\s*adet\s*kay[ıi]t/i);
+    return match ? parseInt(match[1], 10) : 0;
+  }).catch(() => 0);
 }
 
-// ── Ana Scraper ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
 async function scrape() {
-  const db = initFirebase();
+  console.log('\n🏫 MEBBİS Okul Listesi Scraper v2');
+  console.log('═'.repeat(60));
 
-  const turkeyDataPath = join(__dirname, '../src/data/turkey_data.json');
-  let turkeyData;
-  try {
-    turkeyData = JSON.parse(readFileSync(turkeyDataPath, 'utf8'));
-  } catch (e) {
-    console.error('turkey_data.json okunamadı:', e.message);
-    process.exit(1);
+  let existingData = {};
+  if (existsSync(OUTPUT_PATH)) {
+    try {
+      existingData = JSON.parse(readFileSync(OUTPUT_PATH, 'utf8'));
+      console.log(`📂 Mevcut schools.json: ${Object.keys(existingData).length} il`);
+    } catch { existingData = {}; }
   }
 
-  let cities = Object.keys(turkeyData).sort();
-
-  if (singleIl) {
-    cities = cities.filter((c) => c.toUpperCase().includes(singleIl.toUpperCase()));
-    if (cities.length === 0) { console.error(`"${singleIl}" ile eşleşen il bulunamadı`); process.exit(1); }
-    console.log(`Tek il modu: ${cities.join(', ')}`);
-  }
-
-  if (testMode) {
-    cities = cities.slice(0, 2);
-    console.log(`Test modu aktif: ${cities.join(', ')}`);
-  }
-
-  console.log(`\nScraping başlıyor: ${cities.length} il işlenecek\n`);
+  const firebaseDb = await initFirebase();
+  console.log(firebaseDb ? '🔥 Firebase bağlı' : '📝 Sadece JSON');
 
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
+  const page = await (await browser.newContext({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    viewport: { width: 1280, height: 900 },
+  })).newPage();
 
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    viewport: { width: 1280, height: 800 },
-  });
+  console.log('\n🌐 MEBBİS yükleniyor...');
+  await loadMebbisPage(page);
+  console.log('✓ Sayfa yüklendi');
 
-  const page = await context.newPage();
+  // İl listesi
+  const allCities = await getCityList(page);
+  console.log(`📋 ${allCities.length} il`);
 
-  console.log('MEBBİS sayfası yükleniyor...');
-  await page.goto(MEBBIS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await waitForIdle(page, 15000);
-  console.log('Sayfa yüklendi');
+  let cities = allCities;
+  if (singleIl) {
+    cities = cities.filter(c => c.text.toLocaleUpperCase('tr-TR').includes(singleIl));
+    if (cities.length === 0) { console.error(`❌ "${singleIl}" bulunamadı`); process.exit(1); }
+    console.log(`🎯 ${cities.map(c => c.text).join(', ')}`);
+  }
+  if (testMode) {
+    cities = cities.slice(0, 3);
+    console.log(`🧪 Test: ${cities.map(c => c.text).join(', ')}`);
+  }
 
-  await selectKurumTuru(page);
-  console.log('Kurum türü: Resmi Kurumlar seçildi\n');
+  console.log(`${'─'.repeat(60)}`);
 
   let totalSchools = 0;
   let processedCities = 0;
   const errors = [];
+  const allData = { ...existingData };
 
-  for (const city of cities) {
-    const cityKey = normalizeKey(city.toLocaleUpperCase('tr-TR'));
+  for (const { index: cityIdx, text: cityName } of cities) {
     processedCities++;
-    console.log(`[${processedCities}/${cities.length}] ${city} işleniyor...`);
+    const cityKey = normalizeKey(cityName);
+    console.log(`\n[${processedCities}/${cities.length}] 🏙 ${cityName}`);
 
     try {
-      await selectIl(page, city);
-      await sleep(CITY_DELAY_MS);
+      // Seç + Listele + Postback bekle
+      await selectCityAndSearch(page, cityIdx);
 
-      const districts = await getIlceOptions(page);
-      const validDistricts = districts.filter(
-        (d) => d && d !== 'Seçiniz!' && d !== '-' && d.trim() !== ''
-      );
+      const total = await getTotalCount(page);
+      console.log(`   📊 ${total} kayıt`);
 
-      if (testMode) validDistricts.splice(3);
-
-      console.log(`  ${validDistricts.length} ilçe bulundu`);
-
-      if (validDistricts.length === 0) {
-        console.log(`  Uyarı: ${city} için ilçe listesi boş`);
-        errors.push(`${city}: ilçe listesi boş`);
-        // Sayfayı yenile ve devam et
-        await page.goto(MEBBIS_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await waitForIdle(page, 10000);
-        await selectKurumTuru(page);
+      if (total === 0) {
+        errors.push(`${cityName}: kayıt yok`);
+        await loadMebbisPage(page);
         continue;
       }
 
-      const citySchoolData = {};
+      // Tüm satırları çek (DOM'da hepsi var, sayfalama yok)
+      const records = await extractAllRows(page);
+      console.log(`   ✓ ${records.length} okul çekildi`);
 
-      for (const district of validDistricts) {
-        const districtKey = normalizeKey(district.toLocaleUpperCase('tr-TR'));
-        try {
-          await selectIlce(page, district);
-          await sleep(300);
-          await clickKurumListele(page);
-          await sleep(DELAY_MS);
-
-          const schools = await extractSchools(page);
-
-          citySchoolData[districtKey] = schools;
-          if (schools.length > 0) {
-            totalSchools += schools.length;
-            console.log(`    + ${district}: ${schools.length} okul`);
-          } else {
-            console.log(`    ~ ${district}: okul bulunamadı`);
-          }
-        } catch (err) {
-          console.error(`    ! ${district} hatası: ${err.message}`);
-          errors.push(`${city}/${district}: ${err.message}`);
-          citySchoolData[districtKey] = [];
+      // İlçeye göre grupla
+      const cityData = {};
+      for (const rec of records) {
+        const ilceKey = normalizeKey(rec.ilce || 'BİLİNMEYEN');
+        if (!cityData[ilceKey]) cityData[ilceKey] = [];
+        if (!cityData[ilceKey].includes(rec.kurum)) {
+          cityData[ilceKey].push(rec.kurum);
         }
       }
-
-      // Firebase'e yaz
-      if (Object.keys(citySchoolData).length > 0) {
-        const updates = {};
-        Object.entries(citySchoolData).forEach(([dist, schools]) => {
-          updates[`okullar/${cityKey}/${dist}`] = schools;
-        });
-        await db.ref('/').update(updates);
-        const cityTotal = Object.values(citySchoolData).reduce((s, a) => s + a.length, 0);
-        console.log(`  Firebase'e yazildi: ${Object.keys(citySchoolData).length} ilçe, ${cityTotal} okul`);
+      for (const k of Object.keys(cityData)) {
+        cityData[k].sort((a, b) => a.localeCompare(b, 'tr-TR'));
       }
+
+      const cityTotal = Object.values(cityData).reduce((s, a) => s + a.length, 0);
+      totalSchools += cityTotal;
+      allData[cityKey] = cityData;
+      console.log(`   📁 ${Object.keys(cityData).length} ilçe, ${cityTotal} okul`);
+
+      // Firebase
+      if (firebaseDb) {
+        try {
+          const updates = {};
+          Object.entries(cityData).forEach(([dist, schools]) => {
+            updates[`okullar/${cityKey}/${dist}`] = schools;
+          });
+          await firebaseDb.ref('/').update(updates);
+          console.log(`   🔥 Firebase güncellendi`);
+        } catch (e) { console.warn(`   ⚠ Firebase: ${e.message}`); }
+      }
+
+      // Her il sonrası kaydet
+      writeFileSync(OUTPUT_PATH, JSON.stringify(allData, null, 2), 'utf8');
+
+      // Sonraki il için sayfayı yenile
+      await loadMebbisPage(page);
+
     } catch (err) {
-      console.error(`  !! ${city} hata: ${err.message}`);
-      errors.push(`${city}: ${err.message}`);
-
-      console.log('  Sayfa yenileniyor...');
-      try {
-        await page.goto(MEBBIS_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await waitForIdle(page, 10000);
-        await selectKurumTuru(page);
-        await sleep(2000);
-        console.log('  Sayfa yenilendi, devam ediliyor');
-      } catch (recoverErr) {
-        console.error('  Kurtarma başarısız:', recoverErr.message);
-      }
+      console.error(`   ❌ ${err.message}`);
+      errors.push(`${cityName}: ${err.message}`);
+      try { await loadMebbisPage(page); } catch {}
     }
   }
 
-  await db.ref('_meta/okullar_guncelleme').set({
-    tarih: new Date().toISOString(),
-    toplamOkul: totalSchools,
-    toplamIl: processedCities,
-    durum: errors.length === 0 ? 'tamamlandi' : 'hatalarla_tamamlandi',
-    hatalar: errors.slice(0, 20),
-  });
+  // Final kaydet
+  writeFileSync(OUTPUT_PATH, JSON.stringify(allData, null, 2), 'utf8');
+  writeFileSync(join(__dirname, '../schools.json'), JSON.stringify(allData, null, 2), 'utf8');
+  console.log(`\n💾 schools.json güncellendi`);
+
+  if (firebaseDb) {
+    try {
+      await firebaseDb.ref('_meta/okullar_guncelleme').set({
+        tarih: new Date().toISOString(), toplamOkul: totalSchools,
+        toplamIl: processedCities,
+        durum: errors.length === 0 ? 'tamamlandi' : 'hatalarla_tamamlandi',
+        hatalar: errors.slice(0, 20),
+      });
+    } catch {}
+  }
 
   await browser.close();
 
-  console.log('\n=== Scraping Tamamlandi ===');
-  console.log(`Toplam okul   : ${totalSchools}`);
-  console.log(`Islenen il    : ${processedCities}`);
-  console.log(`Hata sayisi   : ${errors.length}`);
+  console.log(`\n${'═'.repeat(60)}`);
+  console.log(`📊 Toplam: ${totalSchools.toLocaleString('tr-TR')} okul, ${processedCities} il`);
   if (errors.length > 0) {
-    console.log('Ilk 5 hata:');
-    errors.slice(0, 5).forEach((e) => console.log(' -', e));
+    console.log(`⚠ ${errors.length} hata:`);
+    errors.slice(0, 5).forEach(e => console.log(`  - ${e}`));
   }
-
-  return { totalSchools, processedCities, errors };
+  console.log(`${'═'.repeat(60)}\n`);
 }
 
-scrape().catch((err) => {
-  console.error('Scraper kritik hata:', err);
-  process.exit(1);
-});
+scrape().catch(err => { console.error('❌ Kritik hata:', err); process.exit(1); });

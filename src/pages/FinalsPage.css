@@ -682,3 +682,27 @@ input:checked+.slider:before {
     font-weight: 600;
     color: var(--text-secondary);
 }
+/* Fark sütunu */
+.th-diff {
+    color: #94a3b8;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: right;
+    padding-right: 10px;
+    font-size: 0.78rem;
+    min-width: 60px;
+}
+.diff-col {
+    text-align: right;
+    padding-right: 10px;
+    white-space: nowrap;
+}
+.diff-leader {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+.diff-neg {
+    color: #ef4444;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
