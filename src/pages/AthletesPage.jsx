@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, remove, push, set, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -10,6 +10,8 @@ import { useDiscipline } from '../lib/DisciplineContext';
 import { logAction } from '../lib/auditLogger';
 import { maskTckn } from '../lib/privacy';
 import './AthletesPage.css';
+
+const ITEMS_PER_PAGE = 25;
 
 // ─── Okul Benzerlik Algılama ───
 function normalizeSchoolName(name) {
@@ -133,7 +135,6 @@ export default function AthletesPage() {
     // Tab ve Sayfalama
     const [activeTab, setActiveTab] = useState('sporcular'); // 'sporcular' | 'takimlar'
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 25;
 
     // Bulk Edit State
     const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
@@ -533,9 +534,9 @@ export default function AthletesPage() {
         [competitions, filterCity]
     );
 
-    // Global Search Logic
+    // Global Search Logic — sadece modal açıkken hesapla
     const globalSearchResults = useMemo(() => {
-        if (!globalSearchText || globalSearchText.length < 3) return [];
+        if (!isGlobalModalOpen || !globalSearchText || globalSearchText.length < 3) return [];
         const resultsMap = {};
         const searchLower = globalSearchText.toLowerCase();
 
@@ -584,7 +585,7 @@ export default function AthletesPage() {
             const nameB = `${b.athlete.ad} ${b.athlete.soyad}`.toLowerCase();
             return nameA.localeCompare(nameB);
         });
-    }, [competitions, globalSearchText]);
+    }, [competitions, globalSearchText, isGlobalModalOpen]);
 
     const filteredAthletes = useMemo(() => athletes.filter(ath => {
         const fullName = `${ath.ad || ''} ${ath.soyad || ''}`.toLowerCase();
@@ -618,6 +619,32 @@ export default function AthletesPage() {
         () => [...new Set(athletes.map(a => a.okul || a.kulup || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR')),
         [athletes]
     );
+
+    // Kontenjan paneli verilerini ön-hesapla (ağır işlem — sadece athletes/competitions değiştiğinde yeniden çalışır)
+    const quotaPanels = useMemo(() => {
+        if (!selectedCompId) return [];
+        const catsToShow = filterCategory
+            ? [filterCategory]
+            : [...new Set(athletes.map(a => a.categoryId))];
+
+        return catsToShow.map(catId => {
+            const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || catId;
+            const rules = getTeamRules(catName || catId);
+            if (!rules) return null;
+            const catAthletes = athletes.filter(a => a.categoryId === catId);
+            const schoolMap = {};
+            catAthletes.forEach(a => {
+                const okul = (a.okul || a.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
+                const il = (a.il || '').toLocaleUpperCase('tr-TR');
+                const key = `${il}___${okul}`;
+                if (!schoolMap[key]) schoolMap[key] = { count: 0, il, okul, athletes: [] };
+                schoolMap[key].count++;
+                schoolMap[key].athletes.push(a);
+            });
+            if (Object.keys(schoolMap).length === 0) return null;
+            return { catId, catName, rules, schoolMap };
+        }).filter(Boolean);
+    }, [athletes, selectedCompId, filterCategory, competitions]);
     const uniqueTurTypes = useMemo(
         () => [...new Set(athletes.map(a => (a.yarismaTuru || 'ferdi').toLowerCase()))].sort(),
         [athletes]
@@ -670,12 +697,16 @@ export default function AthletesPage() {
 
     // Transfer: hedef yarışmanın kategorileri
     const transferTargetComp = transferTargetCompId ? competitions[transferTargetCompId] : null;
-    const transferTargetCategories = transferTargetComp?.kategoriler ? Object.keys(transferTargetComp.kategoriler) : [];
+    const transferTargetCategories = useMemo(
+        () => transferTargetComp?.kategoriler ? Object.keys(transferTargetComp.kategoriler) : [],
+        [transferTargetComp]
+    );
 
     // Transfer: filtrelenmiş sporcular (kategori bazlı)
-    const transferFilteredAthletes = transferCategory
-        ? athletes.filter(a => a.categoryId === transferCategory)
-        : athletes;
+    const transferFilteredAthletes = useMemo(
+        () => transferCategory ? athletes.filter(a => a.categoryId === transferCategory) : athletes,
+        [athletes, transferCategory]
+    );
 
     // Toplu geri döndürme modal — tüm sporcuları tara, okul adı değişmiş olanları listele
     const handleOpenRevertModal = async () => {
@@ -1759,37 +1790,16 @@ export default function AthletesPage() {
                         )}
 
                         {/* ═══ Takım Kontenjan Tab ═══ */}
-                        {activeTab === 'takimlar' && (() => {
-                            const catsToShow = filterCategory ? [filterCategory] : [...new Set(athletes.map(a => a.categoryId))];
-                            const panels = catsToShow.map(catId => {
-                                const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || catId;
-                                const rules = getTeamRules(catName || catId);
-                                if (!rules) return null;
-                                const catAthletes = athletes.filter(a => a.categoryId === catId);
-                                const schoolMap = {};
-                                catAthletes.forEach(a => {
-                                    const okul = (a.okul || a.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
-                                    const il = (a.il || '').toLocaleUpperCase('tr-TR');
-                                    const key = `${il}___${okul}`;
-                                    if (!schoolMap[key]) schoolMap[key] = { count: 0, il, okul };
-                                    schoolMap[key].count++;
-                                });
-                                if (Object.keys(schoolMap).length === 0) return null;
-                                return { catId, catName, rules, schoolMap };
-                            }).filter(Boolean);
-
-                            if (panels.length === 0) return (
-                                <div className="empty-state"><div className="empty-state__icon"><i className="material-icons-round">bar_chart</i></div><p>Bu yarışmada takım kuralı tanımlı kategori bulunamadı.</p></div>
-                            );
-
-                            return (
-                                <div className="quota-panel">
-                                    <div className="quota-panel__header"><i className="material-icons-round">bar_chart</i><span>Okul Kontenjanları</span></div>
-                                    {panels.map(({ catId, catName, rules, schoolMap }) => (
-                                        <div key={catId} className="quota-category">
-                                            {!filterCategory && <div className="quota-category__title">{catName || catId}</div>}
-                                            <div className="quota-schools">
-                                                {Object.entries(schoolMap).sort((a, b) => b[1].count - a[1].count).map(([schoolKey2, { count, il, okul }]) => {
+                        {activeTab === 'takimlar' && (quotaPanels.length === 0 ? (
+                            <div className="empty-state"><div className="empty-state__icon"><i className="material-icons-round">bar_chart</i></div><p>Bu yarışmada takım kuralı tanımlı kategori bulunamadı.</p></div>
+                        ) : (
+                            <div className="quota-panel">
+                                <div className="quota-panel__header"><i className="material-icons-round">bar_chart</i><span>Okul Kontenjanları</span></div>
+                                {quotaPanels.map(({ catId, catName, rules, schoolMap }) => (
+                                    <div key={catId} className="quota-category">
+                                        {!filterCategory && <div className="quota-category__title">{catName || catId}</div>}
+                                        <div className="quota-schools">
+                                            {Object.entries(schoolMap).sort((a, b) => b[1].count - a[1].count).map(([schoolKey2, { count, il, okul, athletes: schoolAthletes }]) => {
                                                     const pct = Math.min((count / rules.max) * 100, 100);
                                                     const remaining = rules.max - count;
                                                     const isTeam = count >= rules.min;
@@ -1797,7 +1807,6 @@ export default function AthletesPage() {
                                                     const barColor = isFull ? '#EF4444' : isTeam ? '#16A34A' : '#F59E0B';
                                                     const schoolKey = `${catId}__${schoolKey2}`;
                                                     const isOpen = expandedSchool === schoolKey;
-                                                    const schoolAthletes = athletes.filter(a => a.categoryId === catId && (a.okul || a.kulup || '').toLocaleUpperCase('tr-TR') === okul && (a.il || '').toLocaleUpperCase('tr-TR') === il);
                                                     return (
                                                         <div key={schoolKey2} className={`quota-school-row${isOpen ? ' quota-school-row--active' : ''}`}>
                                                             <div className="quota-school-row__info" onClick={() => setExpandedSchool(isOpen ? '' : schoolKey)} style={{ cursor: 'pointer' }}>
@@ -1843,8 +1852,7 @@ export default function AthletesPage() {
                                         </div>
                                     ))}
                                 </div>
-                            );
-                        })()}
+                            ))}
                     </div>
                 )}
             </main>
