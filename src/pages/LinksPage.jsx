@@ -176,6 +176,11 @@ export default function LinksPage() {
         return `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}&panelId=${pid}&panelType=e${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
+    // Ritmik DA/DB Panel URL'i (Zorluk hakemi — alet + vücut zorluğu)
+    const getRitmikDPanelUrl = (catId, aletId, panelType) => {
+        return `${baseUrl}${routePrefix}/dpanel?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    };
+
     // Tüm linkleri kopyala
     const copyAllLinks = () => {
         let allLinks = `Skorboard: ${scoreboardUrl}\n\n`;
@@ -313,6 +318,20 @@ export default function LinksPage() {
                                 <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
                             </div>
                         </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#7c3aed', background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)' }} onClick={() => setSelectedPanel('dp')}>
+                            <div className="panel-type-card__icon" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                                <i className="material-icons-round">calculate</i>
+                            </div>
+                            <div className="panel-type-card__badge" style={{ background: '#7c3aed' }}>D</div>
+                            <h3 className="panel-type-card__title">DA/DB Panel</h3>
+                            <p className="panel-type-card__subtitle">Zorluk Hakemler</p>
+                            <p className="panel-type-card__desc">Alet (DA) ve Vüut (DB) zorluk puanı girişi. Top ve Kurdele için ayrı QR kodları.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">groups</i>2 hakem / alet</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
                     </>
                 ) : (
                     <>
@@ -410,6 +429,76 @@ export default function LinksPage() {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        )}
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
+    // Ritmik DA/DB Panel QR Kartları
+    const renderRitmikDPanelContent = () => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => (
+                    <div className="category-section" key={cat.id}>
+                        <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
+                            <div className="category-section__title-group">
+                                <i className="material-icons-round category-section__icon">self_improvement</i>
+                                <h3 className="category-section__title">{cat.name}</h3>
+                                <span className="category-section__badge">{cat.aletler.length} alet</span>
+                            </div>
+                            <button className="category-section__toggle">
+                                <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
+                            </button>
+                        </div>
+                        {expandedCats[cat.id] && (
+                            <div className="category-section__content">
+                                {cat.aletler.map(alet => (
+                                    <div className="apparatus-group" key={alet.id}>
+                                        <div className="apparatus-group__header">
+                                            <span className="apparatus-group__name">{alet.name}</span>
+                                            <div className="apparatus-group__line"></div>
+                                        </div>
+                                        <div className="panels-grid">
+                                            {[{ type: 'da', label: 'DA', desc: 'Alet Zorluk' }, { type: 'db', label: 'DB', desc: 'Vüut Zorluk' }].map(({ type, label, desc }) => {
+                                                const url = getRitmikDPanelUrl(cat.id, alet.id, type);
+                                                const cardId = `${cat.id}-${alet.id}-${type}`;
+                                                return (
+                                                    <div className="panel-card printable-card" key={type}>
+                                                        <div className="panel-card__badge-row">
+                                                            <span className="panel-card__badge" style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)' }}>{label}</span>
+                                                            <span className="panel-card__meta">{cat.name}</span>
+                                                        </div>
+                                                        <div className="panel-card__alet">{alet.name} · {desc}</div>
+                                                        <div className="panel-card__qr">
+                                                            <QRCode value={url} size={100} level="M" />
+                                                        </div>
+                                                        <div className="panel-card__actions no-print">
+                                                            <button
+                                                                className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                                onClick={() => copyToClipboard(url, cardId)}
+                                                                title="Linki kopyala"
+                                                            >
+                                                                <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                            </button>
+                                                            <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                <i className="material-icons-round">open_in_new</i>
+                                                            </a>
+                                                        </div>
+                                                        <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -758,17 +847,20 @@ export default function LinksPage() {
                                         {selectedPanel === 'd' ? 'gavel'
                                             : selectedPanel === 'scoring' ? 'gavel'
                                             : selectedPanel === 'a' ? 'palette'
+                                            : selectedPanel === 'dp' ? 'calculate'
                                             : 'sports_score'}
                                     </i>
                                     {selectedPanel === 'd' ? 'D-Panel'
-                                        : selectedPanel === 'scoring' ? 'DA+DB'
+                                        : selectedPanel === 'scoring' ? 'DA+DB (Başhakem)'
                                         : selectedPanel === 'a' ? 'A-Panel'
+                                        : selectedPanel === 'dp' ? 'DA/DB Panel'
                                         : 'E-Panel'}
                                 </div>
                                 <h2 className="links-toolbar__title">
                                     {selectedPanel === 'd' ? 'Başhakem Paneli Linkleri'
-                                        : selectedPanel === 'scoring' ? 'Puanlama Paneli Linkleri (DA + DB)'
+                                        : selectedPanel === 'scoring' ? 'Puanlama Paneli Linkleri (DA + DB) — Başhakem'
                                         : selectedPanel === 'a' ? 'Artistlik Hakem Kartları (A1–A4)'
+                                        : selectedPanel === 'dp' ? 'DA/DB Zorluk Hakem Kartları'
                                         : 'İcra Hakem Kartları (E1–E4)'}
                                 </h2>
                                 <span className="links-toolbar__count">{categoryList.length} kategori</span>
@@ -796,6 +888,7 @@ export default function LinksPage() {
                         {selectedPanel === 'd' ? renderDPanelContent()
                             : selectedPanel === 'scoring' ? renderRitmikScoringContent()
                             : selectedPanel === 'a' ? renderRitmikPanelContent('a')
+                            : selectedPanel === 'dp' ? renderRitmikDPanelContent()
                             : isRitmik ? renderRitmikPanelContent('e')
                             : renderEPanelContent()}
                     </>

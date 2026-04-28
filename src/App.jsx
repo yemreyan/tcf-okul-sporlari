@@ -43,6 +43,9 @@ const ParkurScoringPage = lazy(() => import('./pages/ParkurScoringPage'));
 // Ritmik — özel puanlama sayfası (D+E−Ceza formülü)
 const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
 
+// Ritmik — DA/DB hakem paneli (zorluk puan girişi)
+const RitmikDPanelPage = lazy(() => import('./pages/RitmikDPanelPage'));
+
 // Görevli Yaka Kartları — tüm branşlar için ortak
 const GorevliKartlariPage = lazy(() => import('./pages/GorevliKartlariPage'));
 
@@ -225,6 +228,7 @@ function AppRoutes() {
         <Route path="/ritmik/certificates" element={<PD discipline="ritmik" pageKey="certificates"><CertificatePage /></PD>} />
         <Route path="/ritmik/coaches" element={<PD discipline="ritmik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/ritmik/epanel" element={<D discipline="ritmik"><EPanelPage /></D>} />
+        <Route path="/ritmik/dpanel" element={<D discipline="ritmik"><RitmikDPanelPage /></D>} />
 
         {/* ═══ ORTAK ARAÇLAR ═══ */}
         <Route path="/gorevli-kartlari" element={<ProtectedRoute redirectTo="/"><GorevliKartlariPage /></ProtectedRoute>} />
