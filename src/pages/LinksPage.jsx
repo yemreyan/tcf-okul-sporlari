@@ -129,17 +129,23 @@ export default function LinksPage() {
     // Yarışma verisi hazırla
     const RITMIK_ALET_LABELS = { top: 'Top', kurdele: 'Kurdele' };
     const categories = competitionData?.kategoriler || {};
-    const categoryList = Object.entries(categories).map(([id, cat]) => ({
-        id,
-        name: cat.name || id,
-        aletler: (cat.aletler || []).map(a => {
-            if (typeof a === 'string') {
-                const name = isRitmik ? (RITMIK_ALET_LABELS[a] || a) : a;
-                return { id: a, name };
-            }
-            return a;
-        })
-    }));
+    const categoryList = Object.entries(categories).map(([id, cat]) => {
+        let rawAletler = cat.aletler || [];
+        if (isRitmik && rawAletler.length === 0) {
+            rawAletler = ['top', 'kurdele'];
+        }
+        return {
+            id,
+            name: cat.name || cat.ad || id,
+            aletler: rawAletler.map(a => {
+                if (typeof a === 'string') {
+                    const name = isRitmik ? (RITMIK_ALET_LABELS[a] || a) : a;
+                    return { id: a, name };
+                }
+                return a;
+            })
+        };
+    });
     // Panel IDs for Ritmik A-panel
     const aPanelIds = ['a1', 'a2', 'a3', 'a4'];
 
