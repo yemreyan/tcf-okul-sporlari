@@ -40,6 +40,7 @@ const TABS = [
     { id: 'apparatus', label: 'Alet Analizi', icon: 'fitness_center' },
     { id: 'referees', label: 'Hakem Analizi', icon: 'gavel' },
     { id: 'report-card', label: 'Hakem Karnesi', icon: 'assignment' },
+    { id: 'detailed', label: 'Sporcu & Okul Analizi', icon: 'analytics' },
 ];
 
 export default function AnalyticsPage() {
@@ -55,6 +56,17 @@ export default function AnalyticsPage() {
     const [selectedCompId, setSelectedCompId] = useState('all');
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedReportComp, setSelectedReportComp] = useState('');
+    const [isPrintingFullReport, setIsPrintingFullReport] = useState(false);
+
+    const handlePrintFullReport = () => {
+        setIsPrintingFullReport(true);
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => {
+                setIsPrintingFullReport(false);
+            }, 500);
+        }, 1600);
+    };
 
     useEffect(() => {
         const compsRef = ref(db, firebasePath);
@@ -102,22 +114,30 @@ export default function AnalyticsPage() {
         // Apparatus-based E analysis
         const apparatusERaw = {};
 
+        // Maps for new detailed tracking
+        const athMap = {}; // { compId: { athId: { ... } } }
+        const schoolStats = {};
+        const athleteStats = {};
+
         Object.entries(filteredComps).forEach(([compId, comp]) => {
             const hakemler = comp.hakemler || {};
 
             // Athletes
             if (comp.sporcular) {
+                if (!athMap[compId]) athMap[compId] = {};
                 Object.entries(comp.sporcular).forEach(([catId, athletes]) => {
                     const athCount = Object.keys(athletes).length;
                     totalAthletes += athCount;
                     if (!categoryStats[catId]) categoryStats[catId] = { athletes: 0, scores: 0, totalD: 0, totalE: 0, totalFinal: 0, scoreEntries: 0 };
                     categoryStats[catId].athletes += athCount;
-                    Object.values(athletes).forEach(ath => {
+                    Object.entries(athletes).forEach(([athId, ath]) => {
                         if (catId.includes('erkek')) maleCount++;
                         else if (catId.includes('kiz')) femaleCount++;
                         else if (ath.cinsiyet === 'Erkek') maleCount++;
                         else femaleCount++;
                         if (ath.turu === 'Takım') teamCount++; else indCount++;
+
+                        athMap[compId][athId] = { ...ath, catId };
                     });
                 });
             }
@@ -154,6 +174,34 @@ export default function AnalyticsPage() {
                             const e = parseFloat(scoreEntry.calc_E) || 0;
                             const total = parseFloat(scoreEntry.sonuc) || (d + e);
 
+                            // Athlete and School info
+                            const athInfo = athMap[compId]?.[athId] || { ad: 'Bilinmeyen', soyad: 'Sporcu', okul: 'Bilinmeyen Okul' };
+                            const fullName = `${athInfo.ad || ''} ${athInfo.soyad || ''}`.trim() || 'İsimsiz Sporcu';
+                            const schoolName = athInfo.okul || athInfo.kulup || 'Bilinmeyen Okul';
+                            
+                            if (!athleteStats[athId]) {
+                                athleteStats[athId] = {
+                                    id: athId, name: fullName, school: schoolName,
+                                    compName: comp.isim, catId,
+                                    totalD: 0, totalE: 0, totalFinal: 0, count: 0,
+                                    scores: []
+                                };
+                            }
+                            if (!schoolStats[schoolName]) {
+                                schoolStats[schoolName] = {
+                                    name: schoolName, athletes: new Set(),
+                                    totalD: 0, totalE: 0, totalFinal: 0, count: 0,
+                                    scores: []
+                                };
+                            }
+                            schoolStats[schoolName].athletes.add(athId);
+
+                            const scoreDetail = {
+                                appId, appName: APPARATUS_NAMES[appId] || appId,
+                                d, e, total,
+                                judges: {}
+                            };
+
                             if (total > 0) {
                                 allDScores.push(d); allEScores.push(e); allTotals.push(total);
                                 categoryStats[catId].totalD += d;
@@ -171,15 +219,52 @@ export default function AnalyticsPage() {
 
                             // Per-judge deductions with referee name resolution
                             const judgeKeys = Object.keys(scoreEntry).filter(k => /^e\d+$/.test(k));
+                            let minDed = Infinity;
+                            let maxDed = -Infinity;
                             judgeKeys.forEach(jKey => {
                                 const deduction = parseFloat(scoreEntry[jKey]);
                                 if (isNaN(deduction)) return;
 
-                                // Resolve referee name
-                                const hakemVal = catHakemler[jKey];
-                                const refName = hakemVal
-                                    ? (typeof hakemVal === 'object' ? hakemVal.name : String(hakemVal))
-                                    : null;
+                                // Resolve referee name from global refereesData if it's an ID
+                                // Robust hakemVal lookup
+                                const hakemVal = catHakemler[jKey] || catHakemler[jKey.toLowerCase()] || catHakemler[jKey.toUpperCase()];
+                                let refName = null;
+                                if (hakemVal) {
+                                    if (typeof hakemVal === 'object' && hakemVal.name) {
+                                        refName = hakemVal.name;
+                                    } else if (typeof hakemVal === 'string') {
+                                        const refObj = refereesData[hakemVal] || Object.values(refereesData).find(r => r.id === hakemVal);
+                                        if (refObj) {
+                                            const rName = refObj.adSoyad || refObj.isim || refObj.ad;
+                                            const rSurname = refObj.soyisim || refObj.soyad || "";
+                                            refName = rSurname ? `${rName} ${rSurname}`.trim() : (rName || hakemVal);
+                                        } else {
+                                            refName = hakemVal; // Fallback to raw string
+                                        }
+                                    }
+                                }
+                                
+                                // Fallback mapping in case catId or appId slightly mismatch in legacy data
+                                if (!refName) {
+                                    // Try to search entire hakemler object for this jKey
+                                    for (const cId of Object.keys(hakemler)) {
+                                        for (const aId of Object.keys(hakemler[cId])) {
+                                            const pVal = hakemler[cId][aId][jKey] || hakemler[cId][aId][jKey.toLowerCase()];
+                                            if (pVal) {
+                                                if (typeof pVal === 'object' && pVal.name) {
+                                                    refName = pVal.name; break;
+                                                } else if (typeof pVal === 'string') {
+                                                    const rObj = refereesData[pVal];
+                                                    if (rObj) refName = rObj.adSoyad || rObj.isim || rObj.ad;
+                                                    else refName = pVal;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (refName) break;
+                                    }
+                                }
+
                                 const displayName = refName || `${jKey.toUpperCase()} (İsimsiz)`;
 
                                 // Named referee stats
@@ -213,7 +298,41 @@ export default function AnalyticsPage() {
                                 }
                                 apparatusERaw[appId].judgeData[displayName].deductions.push(deduction);
                                 apparatusERaw[appId].judgeData[displayName].count++;
+
+                                scoreDetail.judges[jKey] = { name: displayName, deduction };
+                                if (deduction < minDed) minDed = deduction;
+                                if (deduction > maxDed) maxDed = deduction;
                             });
+
+                            const pDiff = maxDed !== -Infinity && minDed !== Infinity ? +(maxDed - minDed).toFixed(2) : 0;
+                            scoreDetail.panelDiff = pDiff;
+                            if (pDiff > 1.0) {
+                                scoreDetail.evalStatus = 'Başarısız Değerlendirme';
+                                scoreDetail.evalColor = '#DC2626';
+                                scoreDetail.evalIcon = 'error';
+                            } else if (pDiff > 0.5) {
+                                scoreDetail.evalStatus = 'Dikkat Edilmeli';
+                                scoreDetail.evalColor = '#D97706';
+                                scoreDetail.evalIcon = 'warning';
+                            } else {
+                                scoreDetail.evalStatus = 'Kabul Edilebilir';
+                                scoreDetail.evalColor = '#16A34A';
+                                scoreDetail.evalIcon = 'check_circle';
+                            }
+
+                            if (total > 0) {
+                                athleteStats[athId].totalD += d;
+                                athleteStats[athId].totalE += e;
+                                athleteStats[athId].totalFinal += total;
+                                athleteStats[athId].count++;
+                                athleteStats[athId].scores.push(scoreDetail);
+
+                                schoolStats[schoolName].totalD += d;
+                                schoolStats[schoolName].totalE += e;
+                                schoolStats[schoolName].totalFinal += total;
+                                schoolStats[schoolName].count++;
+                                schoolStats[schoolName].scores.push(scoreDetail);
+                            }
                         });
                     });
                 });
@@ -449,6 +568,46 @@ export default function AnalyticsPage() {
             };
         });
 
+        // Convert school and athlete stats to arrays
+        const schoolAnalysis = Object.values(schoolStats)
+            .filter(s => s.count > 0)
+            .map(s => ({
+                ...s,
+                avgD: +(s.totalD / s.count).toFixed(2),
+                avgE: +(s.totalE / s.count).toFixed(2),
+                avgTotal: +(s.totalFinal / s.count).toFixed(2),
+                athleteCount: s.athletes.size
+            }))
+            .sort((a, b) => b.count - a.count);
+
+        const athleteAnalysis = Object.values(athleteStats)
+            .filter(a => a.count > 0)
+            .map(a => ({
+                ...a,
+                avgD: +(a.totalD / a.count).toFixed(2),
+                avgE: +(a.totalE / a.count).toFixed(2),
+                avgTotal: +(a.totalFinal / a.count).toFixed(2),
+            }))
+            .sort((a, b) => b.avgTotal - a.avgTotal);
+
+        const failedEvals = athleteAnalysis.flatMap(a => a.scores).filter(s => s.panelDiff > 1.0).length;
+        const warningEvals = athleteAnalysis.flatMap(a => a.scores).filter(s => s.panelDiff > 0.5 && s.panelDiff <= 1.0).length;
+        const totalEvals = athleteAnalysis.flatMap(a => a.scores).filter(s => s.panelDiff !== undefined).length;
+        
+        // ─── Executive Summary Aggregates ───
+        const sortedApparatus = [...apparatusChartData].sort((a,b)=> a.avgD - b.avgD);
+        const lowestDApp = sortedApparatus[0]?.name || 'Bulunamadı';
+        const highestDApp = sortedApparatus[sortedApparatus.length - 1]?.name || 'Bulunamadı';
+        
+        const topSchoolObj = [...schoolAnalysis].sort((a,b)=> b.avgTotal - a.avgTotal)[0];
+        const topSchool = topSchoolObj?.name || 'Bulunamadı';
+
+        const reportSummary = {
+            totalAthletes, totalScores,
+            failedEvals, warningEvals, totalEvals,
+            lowestDApp, highestDApp, topSchool
+        };
+
         return {
             totalComps: Object.keys(filteredComps).length,
             totalAthletes, totalScores,
@@ -460,6 +619,7 @@ export default function AnalyticsPage() {
             histogramBins, categoryChartData, apparatusChartData,
             apparatusEAnalysis, apparatusEChartData, deCorrelation,
             scatterData, deviationReport, reportCardData,
+            schoolAnalysis, athleteAnalysis, reportSummary,
             activeRefereeCount: refereeAnalysis.filter(r => r.count > 0).length,
         };
     }, [filteredComps, refereesData]);
@@ -565,8 +725,36 @@ export default function AnalyticsPage() {
                     <div className="loading-state h-full w-full"><div className="spinner"></div><p>Veriler işleniyor...</p></div>
                 ) : (
                     <>
+                        {isPrintingFullReport && (
+                            <>
+                                <div className="pdf-header-wrapper">
+                                    <div className="pdf-logo-wrapper">
+                                        <img src="/logo.png" alt="Logo" className="pdf-logo" />
+                                    </div>
+                                    <div className="pdf-title-block">
+                                        <h1>YARIŞMA GENEL DEĞERLENDİRME RAPORU</h1>
+                                        <h2>Türkiye Cimnastik Federasyonu – Analiz ve Veri Birimi</h2>
+                                    </div>
+                                    <div className="pdf-meta-block">
+                                        <span><strong>Tarih:</strong> {new Date().toLocaleDateString('tr-TR')}</span>
+                                        <span><strong>Sistem:</strong> STYS Analitik</span>
+                                    </div>
+                                </div>
+
+                                <section className="pdf-summary-block glass-panel">
+                                    <h3><i className="material-icons-round">insights</i> Yönetici Özeti (Executive Summary)</h3>
+                                    <p>
+                                        Bu raporda seçili yarışmalar kapsamında toplam <strong>{analytics.reportSummary.totalAthletes}</strong> sporcunun, <strong>{analytics.reportSummary.totalScores}</strong> alet performansı analiz edilmiştir. Elde edilen D (Zorluk) puanı ortalamalarına göre sporcuların en çok zorlandığı (en düşük zorluk puanı alınan) alet <strong>{analytics.reportSummary.lowestDApp}</strong> olurken, en yüksek zorluk puanı <strong>{analytics.reportSummary.highestDApp}</strong> aletinde kaydedilmiştir.
+                                    </p>
+                                    <p>
+                                        Takım ve Okul bazlı ortalamalara bakıldığında en yüksek başarı ortalamasını <strong>{analytics.reportSummary.topSchool}</strong> elde etmiştir. Hakem heyetlerinin kendi içindeki tutarlılık (E kesintisi farkları) analizinde ise, değerlendirilen toplam {analytics.reportSummary.totalEvals} performansın <strong>{analytics.reportSummary.failedEvals}</strong> tanesinde (%{analytics.reportSummary.totalEvals ? ((analytics.reportSummary.failedEvals/analytics.reportSummary.totalEvals)*100).toFixed(1) : 0}) heyet içi yüksek puan farkı (&gt;1.0) tespit edilmiş olup "Başarısız Değerlendirme" kategorisinde incelenmelidir. <strong>{analytics.reportSummary.warningEvals}</strong> performansta ise (%{analytics.reportSummary.totalEvals ? ((analytics.reportSummary.warningEvals/analytics.reportSummary.totalEvals)*100).toFixed(1) : 0}) 0.5 ile 1.0 puan arasında "Dikkat Edilmesi Gereken" sapmalar kaydedilmiştir.
+                                    </p>
+                                </section>
+                            </>
+                        )}
+
                         {/* ════════════ OVERVIEW TAB ════════════ */}
-                        {activeTab === 'overview' && (
+                        {((activeTab === 'overview' && !isPrintingFullReport) || isPrintingFullReport) && (
                             <>
                                 {/* KPI Cards */}
                                 <section className="an-kpi-row">
@@ -611,9 +799,9 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.genderData.every(d => d.value === 0) ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={220}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 400 : "100%"} height={220}>
                                                     <PieChart>
-                                                        <Pie data={analytics.genderData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">
+                                                        <Pie isAnimationActive={false} data={analytics.genderData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">
                                                             {analytics.genderData.map((_, i) => <Cell key={i} fill={GENDER_COLORS[i]} />)}
                                                         </Pie>
                                                         <RechartsTooltip content={pieTooltip} />
@@ -630,9 +818,9 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.typeData.every(d => d.value === 0) ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={220}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 400 : "100%"} height={220}>
                                                     <PieChart>
-                                                        <Pie data={analytics.typeData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">
+                                                        <Pie isAnimationActive={false} data={analytics.typeData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">
                                                             {analytics.typeData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                                                         </Pie>
                                                         <RechartsTooltip content={pieTooltip} />
@@ -649,13 +837,13 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.histogramBins.every(b => b.count === 0) ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={220}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={220}>
                                                     <BarChart data={analytics.histogramBins}>
                                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                         <XAxis dataKey="range" tick={{ fontSize: 11, fill: '#64748B' }} />
                                                         <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
                                                         <RechartsTooltip content={barTooltip} />
-                                                        <Bar dataKey="count" name="Puan" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                                                        <Bar isAnimationActive={false} dataKey="count" name="Puan" fill="#6366F1" radius={[4, 4, 0, 0]} />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             )}
@@ -672,15 +860,15 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.categoryChartData.length === 0 ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={300}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={300}>
                                                     <BarChart data={analytics.categoryChartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                         <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#64748B' }} angle={-25} textAnchor="end" height={70} />
                                                         <YAxis tick={{ fill: '#64748B' }} />
                                                         <RechartsTooltip content={barTooltip} />
                                                         <Legend iconType="circle" />
-                                                        <Bar dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[3, 3, 0, 0]} />
-                                                        <Bar dataKey="avgE" name="Ort. E" fill="#10B981" radius={[3, 3, 0, 0]} />
+                                                        <Bar isAnimationActive={false} dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[3, 3, 0, 0]} />
+                                                        <Bar isAnimationActive={false} dataKey="avgE" name="Ort. E" fill="#10B981" radius={[3, 3, 0, 0]} />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             )}
@@ -695,15 +883,15 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.apparatusChartData.length === 0 ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={300}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={300}>
                                                     <BarChart data={analytics.apparatusChartData} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 5 }}>
                                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
                                                         <XAxis type="number" tick={{ fill: '#64748B' }} />
                                                         <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#64748B' }} width={80} />
                                                         <RechartsTooltip content={barTooltip} />
                                                         <Legend iconType="circle" />
-                                                        <Bar dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[0, 3, 3, 0]} />
-                                                        <Bar dataKey="avgE" name="Ort. E" fill="#10B981" radius={[0, 3, 3, 0]} />
+                                                        <Bar isAnimationActive={false} dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[0, 3, 3, 0]} />
+                                                        <Bar isAnimationActive={false} dataKey="avgE" name="Ort. E" fill="#10B981" radius={[0, 3, 3, 0]} />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             )}
@@ -715,7 +903,7 @@ export default function AnalyticsPage() {
                         )}
 
                         {/* ════════════ APPARATUS TAB ════════════ */}
-                        {hasApparatus && activeTab === 'apparatus' && (
+                        {hasApparatus && ((activeTab === 'apparatus' && !isPrintingFullReport) || isPrintingFullReport) && (
                             <>
                                 {/* Apparatus E Chart */}
                                 <section className="chart-panel glass-panel an-full-width">
@@ -725,16 +913,16 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div className="chart-container" style={{ minHeight: 350 }}>
                                         {analytics.apparatusEChartData.length === 0 ? <div className="empty-chart">Yeterli veri yok</div> : (
-                                            <ResponsiveContainer width="100%" height={350}>
+                                            <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={350}>
                                                 <BarChart data={analytics.apparatusEChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
                                                     <YAxis tick={{ fill: '#64748B' }} />
                                                     <RechartsTooltip content={barTooltip} />
                                                     <Legend iconType="circle" />
-                                                    <Bar dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-                                                    <Bar dataKey="avgE" name="Ort. E" fill="#10B981" radius={[4, 4, 0, 0]} />
-                                                    <Bar dataKey="avgTotal" name="Toplam" fill="#D97706" radius={[4, 4, 0, 0]} />
+                                                    <Bar isAnimationActive={false} dataKey="avgD" name="Ort. D" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                                                    <Bar isAnimationActive={false} dataKey="avgE" name="Ort. E" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                                    <Bar isAnimationActive={false} dataKey="avgTotal" name="Toplam" fill="#D97706" radius={[4, 4, 0, 0]} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         )}
@@ -838,7 +1026,7 @@ export default function AnalyticsPage() {
                                             <p className="chart-subtitle">Yüksek zorluk puanının uygulama puanına etkisi</p>
                                         </div>
                                         <div className="chart-container" style={{ minHeight: 300 }}>
-                                            <ResponsiveContainer width="100%" height={300}>
+                                            <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={300}>
                                                 <ScatterChart margin={{ top: 20, right: 20, bottom: 30, left: 10 }}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                                                     <XAxis type="number" dataKey="avgD" name="Ort. D" tick={{ fontSize: 11, fill: '#64748B' }} label={{ value: 'Ort. D Puanı', position: 'bottom', fontSize: 12, fill: '#94A3B8' }} />
@@ -855,7 +1043,7 @@ export default function AnalyticsPage() {
                                                             </div>
                                                         );
                                                     }} />
-                                                    <Scatter data={analytics.deCorrelation} fill="#6366F1" fillOpacity={0.8} />
+                                                    <Scatter isAnimationActive={false} data={analytics.deCorrelation} fill="#6366F1" fillOpacity={0.8} />
                                                 </ScatterChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -865,7 +1053,7 @@ export default function AnalyticsPage() {
                         )}
 
                         {/* ════════════ REFEREES TAB ════════════ */}
-                        {activeTab === 'referees' && (
+                        {((activeTab === 'referees' && !isPrintingFullReport) || isPrintingFullReport) && (
                             <>
                                 {/* Referee Consistency Chart */}
                                 <section className="chart-panel glass-panel an-full-width">
@@ -875,7 +1063,7 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div className="chart-container" style={{ minHeight: 350 }}>
                                         {analytics.refereeAnalysis.length === 0 ? <div className="empty-chart">Yeterli veri yok</div> : (
-                                            <ResponsiveContainer width="100%" height={350}>
+                                            <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={350}>
                                                 <BarChart data={analytics.refereeAnalysis.slice(0, 15)} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} angle={-20} textAnchor="end" height={60} />
@@ -897,8 +1085,8 @@ export default function AnalyticsPage() {
                                                         );
                                                     }} />
                                                     <Legend iconType="circle" />
-                                                    <Bar dataKey="avgDeduction" name="Ort. Düşüm" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                                                    <Bar dataKey="stdDev" name="Std. Sapma" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                                                    <Bar isAnimationActive={false} dataKey="avgDeduction" name="Ort. Düşüm" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                                                    <Bar isAnimationActive={false} dataKey="stdDev" name="Std. Sapma" fill="#F59E0B" radius={[4, 4, 0, 0]} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         )}
@@ -961,7 +1149,7 @@ export default function AnalyticsPage() {
                                         </div>
                                         <div className="chart-container">
                                             {analytics.scatterData.length === 0 ? <div className="empty-chart">Veri Yok</div> : (
-                                                <ResponsiveContainer width="100%" height={300}>
+                                                <ResponsiveContainer width={isPrintingFullReport ? 700 : "100%"} height={300}>
                                                     <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                                                         <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                                                         <XAxis type="number" dataKey="x" name="Düşüm" tick={{ fontSize: 11, fill: '#64748B' }} />
@@ -978,7 +1166,7 @@ export default function AnalyticsPage() {
                                                                 </div>
                                                             );
                                                         }} />
-                                                        <Scatter data={analytics.scatterData} fill="#6366F1" fillOpacity={0.7} />
+                                                        <Scatter isAnimationActive={false} data={analytics.scatterData} fill="#6366F1" fillOpacity={0.7} />
                                                     </ScatterChart>
                                                 </ResponsiveContainer>
                                             )}
@@ -1080,7 +1268,7 @@ export default function AnalyticsPage() {
                         )}
 
                         {/* ════════════ REPORT CARD TAB ════════════ */}
-                        {activeTab === 'report-card' && (
+                        {activeTab === 'report-card' && !isPrintingFullReport && (
                             <>
                                 <section className="an-report-controls glass-panel">
                                     <div className="an-report-controls__left">
@@ -1205,6 +1393,151 @@ export default function AnalyticsPage() {
                                         </>
                                     )}
                                 </div>
+                            </>
+                        )}
+
+                        {/* ════════════ DETAILED TAB ════════════ */}
+                        {((activeTab === 'detailed' && !isPrintingFullReport) || isPrintingFullReport) && (
+                            <>
+                                {!isPrintingFullReport && (
+                                    <section className="an-report-controls glass-panel">
+                                        <div className="an-report-controls__left">
+                                            <i className="material-icons-round">analytics</i>
+                                            <span>Yarışma Genel Analiz Raporu Özeti ve Yazdır</span>
+                                        </div>
+                                        <button className="an-print-btn" onClick={handlePrintFullReport}>
+                                            <i className="material-icons-round">print</i>
+                                            Tüm Raporu PDF Olarak İndir / Yazdır
+                                        </button>
+                                    </section>
+                                )}
+
+                                <section className="chart-panel glass-panel an-full-width">
+                                    <div className="chart-header">
+                                        <h3 className="chart-title"><i className="material-icons-round">fitness_center</i> Alet Zorluk (D) Analizi</h3>
+                                        <p className="chart-subtitle">Aletlere göre ortalama D (Zorluk) puanları. (Düşük D puanı, o alette hareketlerin daha az / zor yapılabildiğini gösterir)</p>
+                                    </div>
+                                    <div className="an-table-wrap">
+                                        {analytics.apparatusChartData.length === 0 ? <div className="empty-chart">Veri yok</div> : (
+                                            <table className="an-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Alet</th>
+                                                        <th>Ortalama D Puanı</th>
+                                                        <th>Ortalama E Puanı</th>
+                                                        <th>Durum Özeti</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[...analytics.apparatusChartData].sort((a, b) => a.avgD - b.avgD).map((app, i) => (
+                                                        <tr key={i}>
+                                                            <td><strong>{app.name}</strong></td>
+                                                            <td className="blue-text"><strong>{app.avgD}</strong></td>
+                                                            <td className="green-text"><strong>{app.avgE}</strong></td>
+                                                            <td>
+                                                                {i === 0 ? <span style={{ color: '#DC2626', fontSize: '12px', fontWeight: '600', padding: '4px 8px', background: '#FEE2E2', borderRadius: '4px' }}><i className="material-icons-round" style={{fontSize:'14px', verticalAlign:'middle'}}>trending_down</i> En düşük zorluk (Geliştirilmeli)</span> : 
+                                                                 i === analytics.apparatusChartData.length - 1 ? <span style={{ color: '#16A34A', fontSize: '12px', fontWeight: '600', padding: '4px 8px', background: '#DCFCE7', borderRadius: '4px' }}><i className="material-icons-round" style={{fontSize:'14px', verticalAlign:'middle'}}>trending_up</i> En yüksek zorluk</span> : ''}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className="chart-panel glass-panel an-full-width">
+                                    <div className="chart-header">
+                                        <h3 className="chart-title"><i className="material-icons-round">school</i> Okul Bazlı Puan Dağılımı</h3>
+                                        <p className="chart-subtitle">Okulların sporcu başına elde ettiği ortalama D, E ve Toplam puanlar</p>
+                                    </div>
+                                    <div className="an-table-wrap">
+                                        {analytics.schoolAnalysis.length === 0 ? <div className="empty-chart">Veri yok</div> : (
+                                            <table className="an-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Okul Adı</th>
+                                                        <th>Sporcu Sayısı</th>
+                                                        <th>Performans Sayısı</th>
+                                                        <th>Ort. D</th>
+                                                        <th>Ort. E</th>
+                                                        <th>Ort. Toplam</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {analytics.schoolAnalysis.map((s, i) => (
+                                                        <tr key={i}>
+                                                            <td><strong>{s.name}</strong></td>
+                                                            <td>{s.athleteCount}</td>
+                                                            <td>{s.count}</td>
+                                                            <td className="blue-text">{s.avgD}</td>
+                                                            <td className="green-text">{s.avgE}</td>
+                                                            <td><strong>{s.avgTotal}</strong></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className="chart-panel glass-panel an-full-width">
+                                    <div className="chart-header">
+                                        <h3 className="chart-title"><i className="material-icons-round">person</i> Sporcu Bazlı Performans & Hakem Puanları</h3>
+                                        <p className="chart-subtitle">Her bir sporcunun aletlerde aldığı puanlar ve her bir hakemin (E1, E2, E3...) kesintileri</p>
+                                    </div>
+                                    <div className="an-table-wrap">
+                                        {analytics.athleteAnalysis.length === 0 ? <div className="empty-chart">Veri yok</div> : (
+                                            <table className="an-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Sporcu</th>
+                                                        <th>Okul</th>
+                                                        <th>Ort. Final</th>
+                                                        <th>Alet ve Hakem Kesintileri (E)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {analytics.athleteAnalysis.map((a, i) => (
+                                                        <tr key={i} style={{ verticalAlign: 'top' }}>
+                                                            <td style={{ minWidth: '150px' }}>
+                                                                <strong>{a.name}</strong><br/>
+                                                                <span style={{ fontSize: '10px', color: '#9CA3AF' }}>{a.catId.replace(/_/g, ' ')}</span>
+                                                            </td>
+                                                            <td style={{ minWidth: '150px' }}><span style={{ fontSize: '11px', color: '#64748B' }}>{a.school}</span></td>
+                                                            <td><strong>{a.avgTotal}</strong></td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                    {a.scores.map((sc, si) => (
+                                                                        <div key={si} style={{ background: '#F8FAFC', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', border: '1px solid #E2E8F0' }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px' }}>
+                                                                                <strong>{sc.appName}</strong>
+                                                                                <span>D: <span className="blue-text">{sc.d}</span> | E: <span className="green-text">{sc.e}</span> | Total: <strong>{sc.total}</strong></span>
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                                                {Object.entries(sc.judges).length === 0 ? <span style={{ color: '#9CA3AF', fontSize: '11px' }}>Hakem detayı yok</span> : Object.entries(sc.judges).map(([jId, jData], ji) => (
+                                                                                    <span key={ji} title={jData.name} style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', border: '1px solid #CBD5E1' }}>
+                                                                                        <strong>{jId.toUpperCase()}</strong>: <span className="red-text">{jData.deduction}</span>
+                                                                                    </span>
+                                                                                ))}
+                                                                                {Object.keys(sc.judges).length > 1 && (
+                                                                                    <span style={{ marginLeft: '6px', fontSize: '11px', color: sc.evalColor, display: 'flex', alignItems: 'center', gap: '4px', background: `${sc.evalColor}15`, padding: '2px 8px', borderRadius: '12px', border: `1px solid ${sc.evalColor}40` }}>
+                                                                                        <i className="material-icons-round" style={{ fontSize: '14px' }}>{sc.evalIcon}</i>
+                                                                                        <strong>Fark: {sc.panelDiff}</strong> ({sc.evalStatus})
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </section>
                             </>
                         )}
                     </>

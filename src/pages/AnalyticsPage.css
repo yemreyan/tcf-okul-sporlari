@@ -907,3 +907,186 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ─── PDF REPORT HEADER ─── */
+.pdf-header-wrapper {
+    display: none; /* hidden on screen */
+}
+
+.pdf-summary-block {
+    margin-bottom: 1.5rem;
+}
+
+.pdf-summary-block h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1E293B;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+.pdf-summary-block h3 i {
+    color: #4F46E5;
+    font-size: 1.25rem;
+}
+
+.pdf-summary-block p {
+    font-size: 0.88rem;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+.pdf-summary-block p:last-child {
+    margin-bottom: 0;
+}
+
+@media print {
+    body { background: white !important; margin: 0; padding: 0; }
+    /* Hide navigation and controls */
+    .sidebar, .top-header, .page-header, .an-tabs, .an-report-controls, .back-btn--light, .page-header__actions { 
+        display: none !important; 
+    }
+    
+    /* Reset main layout for print */
+    .analytics-page { background: white !important; min-height: auto; padding: 0 !important; }
+    .analytics-page .premium-header { display: none !important; }
+    
+    .analytics-page .premium-main-content { 
+        padding: 0 !important; 
+        margin-top: 0 !important;
+    }
+
+    /* Print-friendly PDF Header */
+    .pdf-header-wrapper {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-top: 1rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #E2E8F0;
+    }
+    .pdf-logo-wrapper { margin-bottom: 1rem; }
+    .pdf-logo { width: 80px; height: auto; }
+    .pdf-title-block h1 {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #0F172A;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: -0.5px;
+    }
+    .pdf-title-block h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #64748B;
+        margin: 0.5rem 0 1rem;
+    }
+    .pdf-meta-block {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.85rem;
+        color: #475569;
+        background: #F8FAFC;
+        padding: 0.5rem 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #E2E8F0;
+    }
+
+    .pdf-summary-block {
+        border: 1px solid #CBD5E1 !important;
+        background: #F8FAFC !important;
+        padding: 1.5rem !important;
+        border-radius: 12px;
+        margin-bottom: 2rem !important;
+    }
+    .pdf-summary-block h3 {
+        font-size: 1.3rem;
+        border-bottom: 1px solid #E2E8F0;
+        padding-bottom: 0.5rem;
+    }
+    .pdf-summary-block p {
+        font-size: 1rem;
+        color: #1E293B;
+    }
+
+    /* Print-friendly panels */
+    .glass-panel, .chart-panel {
+        background: white !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: none !important;
+        padding: 1.5rem !important;
+        margin-bottom: 2rem !important;
+        page-break-inside: avoid;
+    }
+    
+    .chart-panel .chart-header {
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #F1F5F9;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* Force grids to block to prevent chart squishing/sliding */
+    .an-grid {
+        display: block !important;
+    }
+    .an-grid > * {
+        width: 100% !important;
+        margin-bottom: 2rem !important;
+    }
+    
+    /* Ensure charts have explicit height and width in print */
+    .chart-container {
+        width: 100% !important;
+        height: 250px !important;
+        page-break-inside: avoid;
+    }
+    
+    .recharts-wrapper {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    /* Ensure tables don't scroll and border correctly */
+    .an-table-wrap {
+        max-height: none !important;
+        overflow: visible !important;
+        border: none !important;
+    }
+    .an-table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        page-break-inside: auto;
+    }
+    .an-table th {
+        background: #F1F5F9 !important;
+        color: #0F172A !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .an-table th, .an-table td {
+        border: 1px solid #E2E8F0 !important;
+        white-space: normal !important;
+    }
+    .an-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    /* Keep backgrounds for badges and evaluation tags */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    @page {
+        size: A4 portrait;
+        margin: 15mm;
+    }
+}

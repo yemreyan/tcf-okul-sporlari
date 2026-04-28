@@ -206,6 +206,19 @@
     "system_settings": {
       ".write": true,
       "gorevli_kartlari_aktif": { ".validate": "newData.isBoolean()" }
+    },
+
+    "settings": {
+      ".write": true,
+      "github_token": { ".validate": "newData.isString() && newData.val().length <= 500" }
+    },
+
+    "okullar": {
+      ".write": true
+    },
+
+    "_meta": {
+      ".write": true
     }
   }
 }

@@ -212,7 +212,30 @@ function buildAthleteListHTML(athletes) {
   return html;
 }
 
+function enforceAerobicTurkeyRules() {
+  const branchSelect = document.getElementById('branchSelect');
+  const isAerobik = branchSelect && branchSelect.value === 'Aerobik';
+  
+  const teacherCard = document.querySelector('.card[data-section="3"]');
+  const teacherStep = document.querySelector('.step-dot[data-step="3"]');
+  const btnTakim = document.getElementById('btnTakim');
+  const btnFerdi = document.getElementById('btnFerdi');
+
+  if (isAerobik && isTurkiyeMode) {
+    if (teacherCard) teacherCard.style.display = 'none';
+    if (teacherStep) teacherStep.style.display = 'none';
+    if (btnTakim) btnTakim.style.display = 'none';
+    if (btnFerdi && !btnFerdi.classList.contains('active')) btnFerdi.click();
+    document.getElementById('teacherRows').innerHTML = '';
+  } else {
+    if (teacherCard) teacherCard.style.display = '';
+    if (teacherStep) teacherStep.style.display = '';
+    if (btnTakim) btnTakim.style.display = '';
+  }
+}
+
 function updateStepIndicators() {
+  enforceAerobicTurkeyRules();
   const steps = document.querySelectorAll('.step-dot');
   const sections = [1, 2, 3, 4, 5];
   sections.forEach((s, i) => {
@@ -563,11 +586,17 @@ function filterCompetitions() {
 }
 
 function updateActiveBranches() {
-  const city = document.getElementById('citySelect').value;
+  const city = isTurkiyeMode ? null : document.getElementById('citySelect').value;
   const branchSelect = document.getElementById('branchSelect');
   const currentBranch = branchSelect.value;
+  
+  // Türkiye modundaysa, filter'da sadece tur === 'turkiye' olanlar dikkate alınsın
+  const validComps = Object.values(competitionsCache).filter(c => 
+      isTurkiyeMode ? (c.tur === 'turkiye') : ((c.tur || 'il') !== 'turkiye')
+  );
+
   const availableBranches = getAvailablePublicBranchOptions(
-    Object.values(competitionsCache),
+    validComps,
     city,
     { isOpen: isCompetitionOpen },
   );
@@ -737,6 +766,9 @@ function createDynamicRow(containerId, fields, index) {
     if (f.maxlength) input.maxLength = f.maxlength;
     if (f.pattern) input.pattern = f.pattern;
     if (f.inputmode) input.inputMode = f.inputmode;
+    if (f.type === 'email') {
+      input.style.textTransform = 'lowercase';
+    }
     // Coach name validation
     if (containerId === 'coachRows' && f.name === 'name') {
       input.addEventListener('input', function() { validateCoachInput(this); });
