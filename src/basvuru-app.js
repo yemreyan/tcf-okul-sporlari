@@ -962,7 +962,7 @@ function populateCategories(competitionId) {
       const catName = typeof cat === 'string' ? cat : (cat.ad || cat.name || '');
       const catId = typeof cat === 'string' ? idx.toString() : (cat.id || idx.toString());
       opt.value = catId;
-      opt.textContent = catName.toLocaleUpperCase('tr-TR');
+      opt.textContent = catName.toLocaleUpperCase('tr-TR').replace(/\s*\(BİREYSEL\)/g, '').replace(/\s*\(TAKIM\)/g, '');
       opt.setAttribute('data-name', catName);
       categorySelect.appendChild(opt);
     });
@@ -971,7 +971,7 @@ function populateCategories(competitionId) {
       const opt = document.createElement('option');
       const catName = typeof cat === 'string' ? cat : (cat.ad || cat.name || key);
       opt.value = key;
-      opt.textContent = catName.toLocaleUpperCase('tr-TR');
+      opt.textContent = catName.toLocaleUpperCase('tr-TR').replace(/\s*\(BİREYSEL\)/g, '').replace(/\s*\(TAKIM\)/g, '');
       opt.setAttribute('data-name', catName);
       categorySelect.appendChild(opt);
     });
