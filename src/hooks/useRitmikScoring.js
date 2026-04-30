@@ -237,23 +237,24 @@ export function useRitmikScoring() {
     // ─── Hesaplamalar: Classic D Paneli ───
     // da / db  = DA1 hakeminin girdiği KESİN SKOR → hesaba katılan tek değer
     // da1/da2/sjda ve db1/db2/sjdb = BİLGİ AMAÇLI (hesaba dahil değil)
-    const da   = parseFloat(classicDA.da)   || 0;
-    const da1  = parseFloat(classicDA.da1)  || 0;
-    const da2  = parseFloat(classicDA.da2)  || 0;
-    const sjda = parseFloat(classicDA.sjda) || 0;
+    // Uyarı: "da", "db" adları import { db } ile çakışmasın diye "Num" soneki eklendi
+    const daNum   = parseFloat(classicDA.da)   || 0;
+    const da1Num  = parseFloat(classicDA.da1)  || 0;
+    const da2Num  = parseFloat(classicDA.da2)  || 0;
+    const sjdaNum = parseFloat(classicDA.sjda) || 0;
     // GAP: bilgi amaçlı gösterim için DA1-DA2 farkı
-    const daGap   = (classicDA.da1 !== '' && classicDA.da2 !== '') ? Math.abs(da1 - da2) : 0;
+    const daGap   = (classicDA.da1 !== '' && classicDA.da2 !== '') ? Math.abs(da1Num - da2Num) : 0;
     const daGapOk = daGap <= DA_GAP_THRESHOLD;
     // Kesin skor = classicDA.da alanından
-    const classicDaScore = classicDA.da !== '' ? parseFloat((da).toFixed(3)) : 0;
+    const classicDaScore = classicDA.da !== '' ? parseFloat((daNum).toFixed(3)) : 0;
 
-    const db   = parseFloat(classicDB.db)   || 0;
-    const db1  = parseFloat(classicDB.db1)  || 0;
-    const db2  = parseFloat(classicDB.db2)  || 0;
-    const sjdb = parseFloat(classicDB.sjdb) || 0;
-    const dbGap   = (classicDB.db1 !== '' && classicDB.db2 !== '') ? Math.abs(db1 - db2) : 0;
+    const dbNum   = parseFloat(classicDB.db)   || 0;
+    const db1Num  = parseFloat(classicDB.db1)  || 0;
+    const db2Num  = parseFloat(classicDB.db2)  || 0;
+    const sjdbNum = parseFloat(classicDB.sjdb) || 0;
+    const dbGap   = (classicDB.db1 !== '' && classicDB.db2 !== '') ? Math.abs(db1Num - db2Num) : 0;
     const dbGapOk = dbGap <= DB_GAP_THRESHOLD;
-    const classicDbScore = classicDB.db !== '' ? parseFloat((db).toFixed(3)) : 0;
+    const classicDbScore = classicDB.db !== '' ? parseFloat((dbNum).toFixed(3)) : 0;
 
     const classicDTotal = parseFloat((classicDaScore + classicDbScore).toFixed(3));
 
@@ -532,8 +533,8 @@ export function useRitmikScoring() {
             hakem:        currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
             _layout:      'classic',
             // Classic ek alanlar (da/db = kesin skor; da1/da2/sjda/db1/db2/sjdb = bilgi)
-            da, da1, da2, sjda,
-            db, db1, db2, sjdb,
+            da: daNum, da1: da1Num, da2: da2Num, sjda: sjdaNum,
+            db: dbNum, db1: db1Num, db2: db2Num, sjdb: sjdbNum,
             daGap:  parseFloat(daGap.toFixed(3)),
             dbGap:  parseFloat(dbGap.toFixed(3)),
             sja:    sjaInput !== '' ? parseFloat(sjaInput) : null,
@@ -549,7 +550,7 @@ export function useRitmikScoring() {
     }, [selectedAthlete, scoreLocked, classicDA, classicDB, aPanelLocal, ePanelLocal,
         selectedAlet, classicDbScore, classicDaScore, classicTotalPenalty,
         classicAResult, classicEResult, classicDTotal, classicFinalScore,
-        currentUser, da, da1, da2, sjda, db, db1, db2, sjdb,
+        currentUser, daNum, da1Num, da2Num, sjdaNum, dbNum, db1Num, db2Num, sjdbNum,
         daGap, dbGap, sjaInput, sjeInput, cKoord, cCizgi1, cCizgi2, cZaman, toast]);
 
     // ─── Kilit Aç ───
@@ -646,8 +647,8 @@ export function useRitmikScoring() {
         aScore, eScore, dbScore, daScoreNum, totalPenalties, modernFinalScore,
         // Classic computed D
         classicDaScore, classicDbScore, classicDTotal,
-        da, da1, da2, sjda, daGap, daGapOk,
-        db, db1, db2, sjdb, dbGap, dbGapOk,
+        da: daNum, da1: da1Num, da2: da2Num, sjda: sjdaNum, daGap, daGapOk,
+        db: dbNum, db1: db1Num, db2: db2Num, sjdb: sjdbNum, dbGap, dbGapOk,
         // Classic computed A/E
         classicAResult, classicEResult,
         // Classic computed penalty
