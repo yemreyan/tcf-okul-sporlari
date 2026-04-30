@@ -1,0 +1,579 @@
+/* ── Ritmik Classic Layout — Masa üstü tablo tasarımı ── */
+:root {
+    --cl-bg: #f0f0f0;
+    --cl-surface: #ffffff;
+    --cl-border: #888;
+    --cl-text: #111;
+    --cl-text-sec: #444;
+    --cl-d-border: #1a5fa8;
+    --cl-d-bg: #e8f0fb;
+    --cl-a-border: #6b7c1a;
+    --cl-a-bg: #f2f5e0;
+    --cl-e-border: #7a1a1a;
+    --cl-e-bg: #faeaea;
+    --cl-k-border: #5a1a3a;
+    --cl-k-bg: #faeaf4;
+    --cl-header-bg: #2c2c2c;
+    --cl-header-text: #fff;
+    --cl-sil-bg: #555;
+    --cl-sil-hover: #333;
+    --cl-total-bg: #1a1a1a;
+    --cl-total-text: #fff;
+    --cl-gap-ok: #1a7a1a;
+    --cl-gap-err: #c00;
+    --cl-input-w: 72px;
+    --cl-font: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.cl-page {
+    font-family: var(--cl-font);
+    background: var(--cl-bg);
+    min-height: 100vh;
+    padding: 0;
+    color: var(--cl-text);
+    font-size: 13px;
+}
+
+/* ── Üst Bar ── */
+.cl-topbar {
+    background: var(--cl-header-bg);
+    color: var(--cl-header-text);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-bottom: 2px solid #444;
+    flex-wrap: wrap;
+}
+.cl-topbar-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+.cl-topbar-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+.cl-topbar-filters select {
+    padding: 4px 8px;
+    border: 1px solid #666;
+    border-radius: 4px;
+    background: #3a3a3a;
+    color: #fff;
+    font-size: 12px;
+    font-family: var(--cl-font);
+    min-width: 140px;
+}
+.cl-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.cl-layout-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    background: #4a6fa5;
+    color: #fff;
+    border: none;
+    font-family: var(--cl-font);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.cl-layout-switch:hover { background: #3a5f95; }
+.cl-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    background: #555;
+    color: #fff;
+    border: none;
+    font-family: var(--cl-font);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.cl-back-btn:hover { background: #444; }
+
+/* ── Alet Sekmeleri ── */
+.cl-alet-bar {
+    display: flex;
+    gap: 0;
+    background: #e8e8e8;
+    border-bottom: 2px solid var(--cl-border);
+}
+.cl-alet-tab {
+    flex: 1;
+    max-width: 180px;
+    padding: 8px 16px;
+    border: none;
+    border-right: 1px solid var(--cl-border);
+    background: #ddd;
+    font-family: var(--cl-font);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+    color: var(--cl-text-sec);
+}
+.cl-alet-tab:hover { background: #ccc; }
+.cl-alet-tab.active {
+    background: var(--cl-surface);
+    color: var(--cl-d-border);
+    border-bottom: 2px solid var(--cl-surface);
+    margin-bottom: -2px;
+}
+.cl-alet-tab .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #aaa; flex-shrink: 0;
+}
+.cl-alet-tab .status-dot.done    { background: #1a7a1a; }
+.cl-alet-tab .status-dot.locked  { background: #555; }
+
+/* ── Sporcu Başlık ── */
+.cl-athlete-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 16px;
+    background: #f8f8f8;
+    border-bottom: 1px solid var(--cl-border);
+    min-height: 40px;
+}
+.cl-athlete-bar-name {
+    font-size: 14px;
+    font-weight: 800;
+}
+.cl-athlete-bar-meta {
+    font-size: 12px;
+    color: var(--cl-text-sec);
+}
+.cl-athlete-bar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+}
+.cl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: var(--cl-font);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    background: #eee;
+    color: #333;
+    transition: all 0.15s;
+}
+.cl-btn:hover { background: #ddd; }
+.cl-btn--call   { background: #1a5fa8; color: #fff; border-color: #1a5fa8; }
+.cl-btn--call:hover { background: #154d8a; }
+.cl-btn--lock   { background: #555; color: #fff; border-color: #555; }
+.cl-btn--unlock { background: #c00; color: #fff; border-color: #c00; }
+.cl-btn--save   { background: #1a7a1a; color: #fff; border-color: #1a7a1a; font-size: 13px; padding: 6px 16px; }
+.cl-btn--save:hover { background: #165f16; }
+.cl-btn--save:disabled { background: #888; border-color: #888; cursor: not-allowed; }
+.cl-called-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* ── SİL Butonları Satırı ── */
+.cl-sil-section {
+    background: #e4e4e4;
+    border-bottom: 2px solid var(--cl-border);
+    padding: 4px 8px;
+}
+.cl-sil-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-bottom: 3px;
+}
+.cl-sil-row:last-child { margin-bottom: 0; }
+.cl-sil-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.cl-sil-btn {
+    padding: 3px 8px;
+    background: var(--cl-sil-bg);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    font-family: var(--cl-font);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+    min-width: 50px;
+    text-align: center;
+}
+.cl-sil-btn:hover { background: var(--cl-sil-hover); }
+.cl-sil-val {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--cl-text-sec);
+    min-width: 50px;
+    text-align: center;
+}
+
+/* ── Ana Scoring Alanı ── */
+.cl-scoring-area {
+    display: flex;
+    gap: 0;
+    padding: 8px;
+    align-items: flex-start;
+}
+.cl-panels-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+.cl-panels-row {
+    display: flex;
+    gap: 8px;
+}
+.cl-panel {
+    border: 2px solid var(--cl-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--cl-surface);
+    flex: 1;
+    min-width: 0;
+}
+.cl-panel--d { border-color: var(--cl-d-border); }
+.cl-panel--a { border-color: var(--cl-a-border); }
+.cl-panel--e { border-color: var(--cl-e-border); }
+.cl-panel--k { border-color: var(--cl-k-border); }
+
+.cl-panel-title {
+    padding: 5px 10px;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--cl-border);
+}
+.cl-panel--d .cl-panel-title { background: var(--cl-d-bg); color: var(--cl-d-border); border-color: var(--cl-d-border); }
+.cl-panel--a .cl-panel-title { background: var(--cl-a-bg); color: var(--cl-a-border); border-color: var(--cl-a-border); }
+.cl-panel--e .cl-panel-title { background: var(--cl-e-bg); color: var(--cl-e-border); border-color: var(--cl-e-border); }
+.cl-panel--k .cl-panel-title { background: var(--cl-k-bg); color: var(--cl-k-border); border-color: var(--cl-k-border); }
+
+.cl-panel-body { padding: 8px 10px; }
+
+/* ── D Panel İç ── */
+.cl-d-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px 6px;
+    align-items: end;
+}
+/* DA ve DB bölümleri arasındaki yatay çizgi */
+.cl-d-separator {
+    border: none;
+    border-top: 1px dashed #ccc;
+    margin: 4px 0;
+}
+.cl-d-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cl-d-cell label { font-size: 10px; font-weight: 700; color: var(--cl-text-sec); white-space: nowrap; }
+.cl-d-cell input {
+    width: var(--cl-input-w);
+    padding: 4px 6px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    font-family: var(--cl-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.cl-d-cell input:focus { outline: none; border-color: var(--cl-d-border); box-shadow: 0 0 0 2px rgba(26,95,168,.15); }
+.cl-d-cell input:disabled { background: #f0f0f0; color: #888; }
+.cl-d-cell .cl-val { font-size: 12px; font-weight: 700; }
+
+.cl-gap-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11px;
+}
+.cl-gap-label { font-weight: 700; color: var(--cl-text-sec); }
+.cl-gap-val { font-weight: 800; }
+.cl-gap-val.ok  { color: var(--cl-gap-ok); }
+.cl-gap-val.err { color: var(--cl-gap-err); }
+.cl-gap-check { font-size: 14px; }
+.cl-gap-check.ok  { color: var(--cl-gap-ok); }
+.cl-gap-check.err { color: var(--cl-gap-err); }
+
+.cl-d-totals {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+}
+.cl-d-total-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cl-d-total-item label { font-weight: 700; color: var(--cl-text-sec); font-size: 10px; }
+.cl-d-total-item .cl-total-val { font-size: 14px; font-weight: 800; color: var(--cl-d-border); }
+
+/* ── A/E Panel İç ── */
+.cl-ae-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.cl-ae-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cl-ae-cell label { font-size: 10px; font-weight: 700; color: var(--cl-text-sec); }
+.cl-ae-cell input {
+    width: var(--cl-input-w);
+    padding: 4px 6px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    font-family: var(--cl-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.cl-ae-cell input:focus { outline: none; border-color: var(--cl-a-border); box-shadow: 0 0 0 2px rgba(107,124,26,.15); }
+.cl-ae-cell.sj input:focus { border-color: #7a1a1a; }
+.cl-ae-cell input:disabled { background: #f0f0f0; color: #888; }
+.cl-ae-cell .cl-ae-result { font-size: 10px; color: #555; }
+
+.cl-ae-cell.sj label { color: #7a1a1a; }
+.cl-ae-separator { width: 2px; background: #ddd; align-self: stretch; margin: 0 2px; }
+
+.cl-ae-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    padding-top: 6px;
+    border-top: 1px solid #ddd;
+    flex-wrap: wrap;
+}
+.cl-ae-stat { display: flex; align-items: center; gap: 4px; }
+.cl-ae-stat label { font-weight: 700; color: var(--cl-text-sec); }
+.cl-ae-stat .cl-stat-val { font-weight: 800; font-size: 13px; }
+.cl-ae-stat.result .cl-stat-val { font-size: 15px; }
+.cl-ae-stat.result.a .cl-stat-val { color: var(--cl-a-border); }
+.cl-ae-stat.result.e .cl-stat-val { color: var(--cl-e-border); }
+
+/* ── Kesintiler Panel İç ── */
+.cl-k-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.cl-k-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cl-k-cell label { font-size: 10px; font-weight: 700; color: var(--cl-k-border); }
+.cl-k-cell input {
+    width: 80px;
+    padding: 4px 6px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    font-family: var(--cl-font);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.cl-k-cell input:focus { outline: none; border-color: var(--cl-k-border); }
+.cl-k-cell input:disabled { background: #f0f0f0; color: #888; }
+.cl-k-total {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #ddd;
+    font-size: 12px;
+    font-weight: 700;
+}
+.cl-k-total .cl-total-val { font-size: 14px; color: var(--cl-k-border); }
+
+/* ── Aksiyon Satırı ── */
+.cl-action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 8px 2px;
+}
+.cl-action-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cl-text-sec);
+    letter-spacing: 0.04em;
+}
+
+/* ── Toplam Puan ── */
+.cl-total-bar {
+    background: var(--cl-total-bg);
+    color: var(--cl-total-text);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0 8px 8px;
+    border-radius: 6px;
+}
+.cl-total-label {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+.cl-total-score {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+}
+.cl-total-breakdown {
+    margin-left: auto;
+    font-size: 11px;
+    color: #aaa;
+    text-align: right;
+}
+.cl-total-breakdown span { margin-left: 8px; }
+.cl-total-breakdown strong { color: #ddd; }
+
+/* ── Sağ: Sporcu Listesi ── */
+.cl-athlete-panel {
+    width: 280px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+.cl-athlete-panel-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 5px 8px;
+    background: var(--cl-header-bg);
+    color: var(--cl-header-text);
+    border-radius: 4px 4px 0 0;
+}
+.cl-athlete-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: var(--cl-surface);
+    border: 1px solid var(--cl-border);
+}
+.cl-athlete-table th {
+    background: #ddd;
+    padding: 4px 6px;
+    font-weight: 700;
+    border: 1px solid #aaa;
+    white-space: nowrap;
+}
+.cl-athlete-table td {
+    padding: 4px 6px;
+    border: 1px solid #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+}
+.cl-athlete-table tr.active td { background: #e8f0fb; font-weight: 700; }
+.cl-athlete-table tr:hover td  { background: #f5f5f5; cursor: pointer; }
+.cl-athlete-table tr.done td   { color: #1a7a1a; }
+.cl-athlete-table tr.locked td { color: #888; }
+
+/* ── Boş ekran ── */
+.cl-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: var(--cl-text-sec);
+    text-align: center;
+}
+.cl-empty .material-icons-round { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.cl-empty p { font-size: 14px; }
+
+/* ── Kilitli Banner ── */
+.cl-locked-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 8px 4px;
+    border-radius: 4px;
+}
+
+/* ── Modal ── */
+.cl-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.cl-modal {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 20px 40px rgba(0,0,0,.3);
+    text-align: center;
+}
+.cl-modal-title   { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+.cl-modal-athlete { font-size: 13px; color: #555; margin-bottom: 12px; }
+.cl-modal-breakdown { text-align: left; font-size: 12px; margin-bottom: 12px; }
+.cl-modal-breakdown div { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #eee; }
+.cl-modal-final { font-size: 32px; font-weight: 900; color: var(--cl-d-border); margin: 8px 0 16px; }
+.cl-modal-actions { display: flex; gap: 8px; justify-content: center; }
+.cl-modal input[type=password] {
+    width: 100%; padding: 8px 12px;
+    border: 1.5px solid #ddd; border-radius: 6px;
+    font-size: 14px; margin-bottom: 8px;
+    font-family: var(--cl-font);
+}
+.cl-modal input[type=password]:focus { outline: none; border-color: var(--cl-d-border); }
+.cl-modal-error { color: #c00; font-size: 12px; margin-bottom: 8px; }
+.cl-modal-icon { font-size: 40px; color: #1a7a1a; margin-bottom: 8px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .cl-panels-row { flex-direction: column; }
+    .cl-athlete-panel { width: 100%; margin-left: 0; margin-top: 8px; }
+    .cl-scoring-area  { flex-direction: column; }
+}
+@media (max-width: 600px) {
+    .cl-d-grid { grid-template-columns: repeat(2, 1fr); }
+}

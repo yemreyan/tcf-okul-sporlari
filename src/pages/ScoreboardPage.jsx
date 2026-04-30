@@ -13,6 +13,12 @@ import './ScoreboardPage.css';
 
 const PAGE_SIZE = 8;
 
+// Ritmik apparatus list
+const RITMIK_ALET_LIST = [
+    { id: 'top', name: 'Top' },
+    { id: 'kurdele', name: 'Kurdele' },
+];
+
 // Apparatus abbreviations
 const APPARATUS_MAP = {
     yer: { abbr: 'FX' },
@@ -61,7 +67,8 @@ function ApparatusIcon({ id, className }) {
 export default function ScoreboardPage() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
+    const { firebasePath, routePrefix, hasApparatus, id: disciplineId } = useDiscipline();
+    const isRitmik = disciplineId === 'ritmik';
     const [competitions, setCompetitions] = useState({});
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -247,18 +254,23 @@ export default function ScoreboardPage() {
     // Apparatus list for current view's category
     const apparatusList = useMemo(() => {
         if (!isLive || !currentView) return [];
+        if (isRitmik) return RITMIK_ALET_LIST;
         return getApparatusListForCategory(currentView.catId);
-    }, [isLive, currentView, getApparatusListForCategory]);
+    }, [isLive, currentView, isRitmik, getApparatusListForCategory]);
 
-    // Branşın alet bazlı olup olmadığı (Artistik=true, diğerleri=false)
-    const isApparatusBased = hasApparatus && apparatusList.length > 0;
+    // Artistik: alet-önce veri yapısı (allScores[aletId][athId])
+    const isApparatusBased = hasApparatus && !isRitmik && apparatusList.length > 0;
+    // Ritmik: sporcu-önce veri yapısı (allScores[athId][aletKey])
+    const isRitmikBased = isRitmik && apparatusList.length > 0;
+    // Kolon gösterimi gereken durumlar
+    const isColumnBased = isApparatusBased || isRitmikBased;
 
     const gridTemplate = useMemo(() => {
-        const appCols = isApparatusBased ? apparatusList.length : 0;
+        const appCols = isColumnBased ? apparatusList.length : 0;
         return appCols > 0
             ? `64px 2.8fr repeat(${appCols}, 1fr) 1.4fr`
             : `64px 2.8fr 1.4fr`;
-    }, [isApparatusBased, apparatusList.length]);
+    }, [isColumnBased, apparatusList.length]);
 
     // Memoized individual ranking
     const individualRanking = useMemo(() => {
@@ -297,8 +309,24 @@ export default function ScoreboardPage() {
                         if (isGecersiz) athIsGecersiz = true;
                         if (isDNS) athIsDNS = true;
                     });
+                } else if (isRitmikBased) {
+                    // Ritmik: puanlar/{catId}/{athId}/{aletKey}
+                    apparatusList.forEach(alet => {
+                        const s = allScores[ath.id]?.[alet.id];
+                        const isGecersiz = s?.gecersiz === true;
+                        const isDNS = s?.yarismadi === true;
+                        const done = s && (s.durum === 'tamamlandi' || isGecersiz || isDNS);
+                        const val = done ? parseFloat(s.sonuc ?? 0) : 0;
+                        const dVal = done ? parseFloat(s.dScore ?? 0) : 0;
+                        const eVal = done ? (parseFloat(s.aScore ?? 0) + parseFloat(s.eScore ?? 0)) : 0;
+                        appScores[alet.id] = { total: val, d: dVal, e: eVal, isGecersiz, isDNS };
+                        total += val;
+                        if (val > 0) completedCount++;
+                        if (isGecersiz) athIsGecersiz = true;
+                        if (isDNS) athIsDNS = true;
+                    });
                 } else {
-                    // Aerobik/Trampolin/Parkur/Ritmik: puanlar/{catId}/{athId}
+                    // Aerobik/Trampolin/Parkur: puanlar/{catId}/{athId}
                     const s = allScores[ath.id];
                     const isGecersiz = s?.gecersiz === true;
                     const isDNS = s?.yarismadi === true;
@@ -329,7 +357,7 @@ export default function ScoreboardPage() {
                 acc.push({ ...ath, rank });
                 return acc;
             }, []);
-    }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
+    }, [athletes, allScores, apparatusList, isApparatusBased, isRitmikBased, currentView, categoryData]);
 
     // Memoized team ranking
     const teamRanking = useMemo(() => {
@@ -347,7 +375,7 @@ export default function ScoreboardPage() {
         });
 
         const sbCatKey = (currentView?.catId || '').toLowerCase();
-        const sbTopN = (sbCatKey.includes('yildiz') || sbCatKey.includes('genc')) ? 2 : 3;
+        const sbTopN = isRitmikBased ? 2 : (sbCatKey.includes('yildiz') || sbCatKey.includes('genc')) ? 2 : 3;
 
         const teams = [];
         Object.entries(teamAthletes).forEach(([teamName, members]) => {
@@ -356,11 +384,25 @@ export default function ScoreboardPage() {
             let hasScore = false;
 
             if (isApparatusBased) {
-                // Artistik: alet bazlı toplam
+                // Artistik: alet bazlı toplam (allScores[aletId][athId])
                 apparatusList.forEach(alet => {
                     const scoresArr = [];
                     members.forEach(mId => {
                         const s = allScores[alet.id]?.[mId];
+                        if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
+                    });
+                    scoresArr.sort((x, y) => y - x);
+                    const topSum = scoresArr.slice(0, sbTopN).reduce((x, y) => x + y, 0);
+                    appTotals[alet.id] = topSum;
+                    grandTotal += topSum;
+                    if (topSum > 0) hasScore = true;
+                });
+            } else if (isRitmikBased) {
+                // Ritmik: sporcu-önce alet bazlı toplam (allScores[athId][aletKey])
+                apparatusList.forEach(alet => {
+                    const scoresArr = [];
+                    members.forEach(mId => {
+                        const s = allScores[mId]?.[alet.id];
                         if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                     });
                     scoresArr.sort((x, y) => y - x);
@@ -389,7 +431,7 @@ export default function ScoreboardPage() {
         });
 
         return teams.sort((a, b) => b.total - a.total);
-    }, [athletes, allScores, apparatusList, isApparatusBased, currentView, categoryData]);
+    }, [athletes, allScores, apparatusList, isApparatusBased, isRitmikBased, currentView, categoryData]);
 
     // Full ranking for current view (used for pagination)
     const fullRanking = currentView?.type === 'team' ? teamRanking : individualRanking;
@@ -512,6 +554,11 @@ export default function ScoreboardPage() {
             if (isApparatusBased) {
                 hasAny = apparatusList.some(alet => {
                     const s = allScores[alet.id]?.[ath.id];
+                    return s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
+                });
+            } else if (isRitmikBased) {
+                hasAny = apparatusList.some(alet => {
+                    const s = allScores[ath.id]?.[alet.id];
                     return s && (s.durum === 'tamamlandi' || s.gecersiz === true || s.yarismadi === true);
                 });
             } else {
@@ -692,12 +739,12 @@ export default function ScoreboardPage() {
             <div className="sb-thead" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="sb-th sb-th-rank">SIRA</div>
                 <div className="sb-th sb-th-name">{currentView?.type === 'team' ? 'TAKIM' : 'SPORCU'}</div>
-                {isApparatusBased ? apparatusList.map(a => {
+                {isColumnBased ? apparatusList.map(a => {
                     const mapping = APPARATUS_MAP[a.id] || { abbr: a.name.substring(0, 3).toUpperCase() };
                     return (
                         <div key={a.id} className="sb-th sb-th-app">
                             <span className="sb-app-abbr">{mapping.abbr}</span>
-                            <ApparatusIcon id={a.id} className="sb-app-img" />
+                            {!isRitmikBased && <ApparatusIcon id={a.id} className="sb-app-img" />}
                         </div>
                     );
                 }) : null}
@@ -737,7 +784,7 @@ export default function ScoreboardPage() {
                                         </div>
                                         <div className="sb-athlete-club">{t.memberCount} sporcu</div>
                                     </div>
-                                    {isApparatusBased && apparatusList.map(alet => (
+                                    {isColumnBased && apparatusList.map(alet => (
                                         <div key={alet.id} className={`sb-cell sb-score-cell ${t.appTotals[alet.id] > 0 ? 'sb-scored' : 'sb-pending'}`}>
                                             {t.appTotals[alet.id] > 0 ? t.appTotals[alet.id].toFixed(3) : '\u2014'}
                                         </div>
@@ -773,7 +820,7 @@ export default function ScoreboardPage() {
                                         </div>
                                         <div className="sb-athlete-club">{ath.okul || ath.kulup}</div>
                                     </div>
-                                    {isApparatusBased ? apparatusList.map(alet => {
+                                    {isColumnBased ? apparatusList.map(alet => {
                                         const val = ath.appScores[alet.id];
                                         const hasScore = val && val.total > 0;
                                         const isValGecersiz = val?.isGecersiz || val?.isDNS;
@@ -793,11 +840,11 @@ export default function ScoreboardPage() {
                                             </div>
                                         );
                                     }) : null}
-                                    <div className={`sb-cell sb-total-cell${!isApparatusBased && ath.total > 0 ? ' sb-total-cell--breakdown' : ''}`}>
+                                    <div className={`sb-cell sb-total-cell${!isColumnBased && ath.total > 0 ? ' sb-total-cell--breakdown' : ''}`}>
                                         {ath.total > 0 ? (
                                             <>
                                                 <span className="sb-score-total sb-score-total--total">{ath.total.toFixed(3)}</span>
-                                                {!isApparatusBased && (() => {
+                                                {!isColumnBased && (() => {
                                                     const sc = ath.appScores['_total'];
                                                     return (
                                                         <div className="sb-score-de">

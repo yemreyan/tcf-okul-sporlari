@@ -263,17 +263,44 @@ function getCategoryLimits(categoryName, categoryId) {
     .replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o')
     .replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
 
+  const branchSelect = document.getElementById('branchSelect');
+  const currentBranch = branchSelect ? branchSelect.value : '';
+  const isRitmikBranch  = currentBranch === 'Ritmik';
+  const isAerobikBranch = currentBranch === 'Aerobik';
+
+  // ── Ritmik Cimnastik ──
+  if (isRitmikBranch) {
+    // Ferdi / bireysel kategoriler: 1 sporcu
+    if (lower.includes('ferdi') || lower.includes('bireysel')) return { min: 1, max: 1, exact: true };
+    // Gençler takım: 2 asil + 1 yedek
+    if (lower.includes('genc')) return { min: 2, max: 3 };
+    // Minikler A, Minikler B, Küçükler, Yıldızlar takım: 2 asil + 2 yedek
+    if (lower.includes('minik') || lower.includes('kucuk') || lower.includes('yildiz')) return { min: 2, max: 4 };
+    // Diğer Ritmik kategoriler varsayılan
+    return { min: 2, max: 4 };
+  }
+
   // ── Aerobik Cimnastik ──
+  if (isAerobikBranch) {
+    // Ferdi / bireysel: tek formda max 4 sporcu (her biri bağımsız kayıt)
+    if (lower.includes('ferdi') || lower.includes('bireysel')) return { min: 1, max: 4 };
+    // Step aerobik takım: 5-10 sporcu (8 asil + 2 yedek)
+    if (lower.includes('step')) return { min: 5, max: 10 };
+    // Tüm diğer kategoriler (karma, çift, takım vb.): 2 asil + 2 yedek
+    return { min: 2, max: 4 };
+  }
+
+  // Branş seçilmemiş ya da diğer branşlar — eski genel aerobik/karma kontrolleri kalsın
   // Çift karma kategorileri: tam 2 sporcu
   if (lower.includes('karma') || lower.includes('cift') || lower.includes('çift')) {
     return { min: 2, max: 2, exact: true };
   }
-  // Step aerobik takım: 5-8 sporcu
+  // Step aerobik takım: 5-10 sporcu (8 asil + 2 yedek)
   if (lower.includes('step')) {
-    return { min: 5, max: 8 };
+    return { min: 5, max: 10 };
   }
-  // Aerobik / Trampolin / Parkur / Ritmik bireysel: tam 1 sporcu
-  if (lower.includes('aerobik') || lower.includes('trampolin') || lower.includes('parkur') || lower.includes('ritmik') || lower.includes('ferdi')) {
+  // Aerobik / Trampolin / Parkur bireysel: tam 1 sporcu
+  if (lower.includes('aerobik') || lower.includes('trampolin') || lower.includes('parkur') || lower.includes('ferdi')) {
     return { min: 1, max: 1, exact: true };
   }
 
@@ -283,6 +310,22 @@ function getCategoryLimits(categoryName, categoryId) {
   if (lower.includes('yildiz') || lower.includes('yıldız') || lower.includes('genc') || lower.includes('genç')) return { min: 2, max: 3 };
 
   return { min: 1, max: 8 };
+}
+
+// Aerobik ferdi kategorisinde okul bazlı kota uygulanmaz —
+// aynı okuldan birden fazla sporcu bireysel kayıt yaptırabilir.
+function isAerobikFerdiCategory() {
+  const branch = document.getElementById('branchSelect')?.value || '';
+  if (branch !== 'Aerobik') return false;
+  const categorySelect = document.getElementById('categorySelect');
+  const selectedOpt = categorySelect?.options[categorySelect.selectedIndex];
+  const catName = (selectedOpt
+    ? (selectedOpt.getAttribute('data-name') || selectedOpt.textContent)
+    : ''
+  ).toLowerCase()
+    .replace(/ı/g, 'i').replace(/ü/g, 'u').replace(/ö/g, 'o')
+    .replace(/ç/g, 'c').replace(/ş/g, 's').replace(/ğ/g, 'g');
+  return catName.includes('ferdi') || catName.includes('bireysel');
 }
 
 function validateTCKN(tckn) {
@@ -951,16 +994,21 @@ function updateTeamWarning() {
 }
 
 // ─── Category Handling ───
+// Ritmik'te eski genc_a_kiz / genc_b_kiz alias'ları — genc_kiz zaten listede, bunlar atlanır
+const RITMIK_CATEGORY_ALIASES_SKIP = new Set(['genc_a_kiz', 'genc_b_kiz']);
+
 function populateCategories(competitionId) {
   const categorySelect = document.getElementById('categorySelect');
   categorySelect.innerHTML = '<option value="">KATEGORİ SEÇİNİZ</option>';
   const comp = competitionsCache[competitionId];
   if (!comp || !comp.kategoriler) return;
+  const isRitmik = (document.getElementById('branchSelect')?.value || '') === 'Ritmik';
   if (Array.isArray(comp.kategoriler)) {
     comp.kategoriler.forEach((cat, idx) => {
-      const opt = document.createElement('option');
       const catName = typeof cat === 'string' ? cat : (cat.ad || cat.name || '');
       const catId = typeof cat === 'string' ? idx.toString() : (cat.id || idx.toString());
+      if (isRitmik && RITMIK_CATEGORY_ALIASES_SKIP.has(catId)) return;
+      const opt = document.createElement('option');
       opt.value = catId;
       opt.textContent = catName.toLocaleUpperCase('tr-TR').replace(/\s*\(BİREYSEL\)/g, '').replace(/\s*\(TAKIM\)/g, '');
       opt.setAttribute('data-name', catName);
@@ -968,6 +1016,7 @@ function populateCategories(competitionId) {
     });
   } else if (typeof comp.kategoriler === 'object') {
     Object.entries(comp.kategoriler).forEach(([key, cat]) => {
+      if (isRitmik && RITMIK_CATEGORY_ALIASES_SKIP.has(key)) return;
       const opt = document.createElement('option');
       const catName = typeof cat === 'string' ? cat : (cat.ad || cat.name || key);
       opt.value = key;
@@ -979,8 +1028,15 @@ function populateCategories(competitionId) {
 }
 
 // ─── Duplicate & Quota Checks ───
-async function checkDuplicateTCKNs(competitionId, tcknList) {
+
+// Aerobik ↔ Step çapraz başvuruya izin vermek için yardımcı fonksiyon
+function isStepKategori(kategoriAdi) {
+  return (kategoriAdi || '').toLocaleUpperCase('tr-TR').includes('STEP');
+}
+
+async function checkDuplicateTCKNs(competitionId, tcknList, currentKategoriAdi) {
   const duplicates = [];
+  const currentIsStep = isStepKategori(currentKategoriAdi);
   try {
     const appsSnap = await get(query(ref(db, 'applications'), orderByChild('competitionId'), equalTo(competitionId)));
     if (appsSnap.exists()) {
@@ -989,6 +1045,10 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
         const durum = appData.durum || appData.status || '';
         // Reddedilmiş başvurulardaki sporcuları mükerrer sayma
         if (durum === 'reddedildi') return;
+        // Aerobik ↔ Step çapraz başvuruya izin ver:
+        // biri step kategorisi, diğeri değilse mükerrer sayılmaz
+        const appIsStep = isStepKategori(appData.kategoriAdi);
+        if (currentIsStep !== appIsStep) return;
         if (appData.sporcular && Array.isArray(appData.sporcular)) {
           appData.sporcular.forEach(sp => {
             if (tcknList.includes(sp.tckn)) {
@@ -1023,6 +1083,10 @@ async function checkDuplicateTCKNs(competitionId, tcknList) {
 }
 
 async function checkSchoolQuota(competitionId, categoryId, schoolName, il, ilce, newAthleteCount) {
+  // Aerobik ferdi kategorisinde okul başına kota yok — her bireysel kayıt bağımsızdır
+  if (isAerobikFerdiCategory()) {
+    return { exceeded: false, existing: 0, threshold: categoryLimits.max * 2 };
+  }
   let existingCount = 0;
   const targetSchool = (schoolName || '').toLocaleUpperCase('tr-TR');
   const targetIl = (il || '').toLocaleUpperCase('tr-TR');
@@ -1075,6 +1139,14 @@ async function fetchExistingAthleteCount() {
   const schoolName = getSelectedSchool();
 
   if (!competitionId || !categoryId || !schoolName) {
+    existingAthleteCount = 0;
+    remainingQuota = categoryLimits.max;
+    updateQuotaInfoBox();
+    return;
+  }
+
+  // Aerobik ferdi kategorisinde okul başına kota uygulanmaz
+  if (isAerobikFerdiCategory()) {
     existingAthleteCount = 0;
     remainingQuota = categoryLimits.max;
     updateQuotaInfoBox();
@@ -1579,9 +1651,16 @@ function validateForm(data) {
   });
 
   // Kontenjan kontrolü — mevcut kayıtlılar dahil
-  const totalAfterSubmit = existingAthleteCount + data.sporcular.length;
-  if (totalAfterSubmit > categoryLimits.max) {
-    errors.push(`✗ KONTENJAN AŞILIYOR! MEVCUT KAYITLI: ${existingAthleteCount} + YENİ: ${data.sporcular.length} = ${totalAfterSubmit} (MAX: ${categoryLimits.max}). EN FAZLA ${remainingQuota} SPORCU EKLENEBİLİR.`);
+  // Aerobik ferdi kategorisinde okul bazlı kota uygulanmaz; sadece form başına max kontrol yapılır
+  if (isAerobikFerdiCategory()) {
+    if (data.sporcular.length > categoryLimits.max) {
+      errors.push(`✗ AEROBİK FERDİ BAŞVURUSUNDA EN FAZLA ${categoryLimits.max} SPORCU EKLENEBİLİR.`);
+    }
+  } else {
+    const totalAfterSubmit = existingAthleteCount + data.sporcular.length;
+    if (totalAfterSubmit > categoryLimits.max) {
+      errors.push(`✗ KONTENJAN AŞILIYOR! MEVCUT KAYITLI: ${existingAthleteCount} + YENİ: ${data.sporcular.length} = ${totalAfterSubmit} (MAX: ${categoryLimits.max}). EN FAZLA ${remainingQuota} SPORCU EKLENEBİLİR.`);
+    }
   }
 
   if (data.katilimTuru === 'Takım') {
@@ -1660,7 +1739,7 @@ async function handleSubmit(e) {
   try {
     // Mükerrer kontrol
     const tcknList = data.sporcular.map(a => a.tckn);
-    const duplicates = await checkDuplicateTCKNs(data.competitionId, tcknList);
+    const duplicates = await checkDuplicateTCKNs(data.competitionId, tcknList, data.kategoriAdi);
     if (duplicates.length > 0) {
       const athleteRows = document.querySelectorAll('#athleteRows .dynamic-row');
       duplicates.forEach(d => {

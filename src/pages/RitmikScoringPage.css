@@ -59,6 +59,34 @@
 .rtm-sidebar-toggle:hover { background: var(--rtm-primary-dark); transform: scale(1.05); }
 .rtm-page--collapsed .rtm-sidebar-toggle { left: 16px; }
 
+/* ── Layout Switch Butonu (Modern → Classic) ── */
+.rtm-layout-switch {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 200;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--rtm-surface2);
+    border: 1.5px solid var(--rtm-border);
+    color: var(--rtm-text-sec);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+}
+.rtm-layout-switch:hover {
+    border-color: var(--rtm-primary);
+    color: var(--rtm-primary);
+    background: var(--rtm-primary-muted);
+}
+.rtm-layout-switch .material-icons-round { font-size: 15px; }
+
 /* ── Sidebar ── */
 .rtm-sidebar {
     width: var(--rtm-sidebar-w);

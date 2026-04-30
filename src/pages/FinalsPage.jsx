@@ -52,7 +52,8 @@ export default function FinalsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
-    const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
+    const { firebasePath, routePrefix, hasApparatus, id: disciplineId } = useDiscipline();
+    const isRitmikDiscipline = disciplineId === 'ritmik';
     const [competitions, setCompetitions] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState("");
@@ -304,6 +305,9 @@ export default function FinalsPage() {
         }
         apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
     }
+    // Ritmik için top/kurdele aletleri varsa veya branş ritmik ise alet finalleri sekmesini göster
+    const isCurrentRitmik = isRitmikDiscipline || isRitmikCategory(apparatusKeys);
+    const showApparatusTab = hasApparatus || isCurrentRitmik;
 
     // Teams Processing
     const computeTeamResults = () => {
@@ -1130,7 +1134,7 @@ export default function FinalsPage() {
                         <div className="classic-card finals-actions">
                             <div className="finals-tabs">
                                 <button className={`tab-btn ${activeTab === 'all-around' ? 'active' : ''}`} onClick={() => setActiveTab('all-around')}>Bireysel Genel Tasnif</button>
-                                {hasApparatus && <button className={`tab-btn ${activeTab === 'apparatus' ? 'active' : ''}`} onClick={() => setActiveTab('apparatus')}>Alet Finalleri</button>}
+                                {showApparatusTab && <button className={`tab-btn ${activeTab === 'apparatus' ? 'active' : ''}`} onClick={() => setActiveTab('apparatus')}>Alet Finalleri</button>}
                                 <button className={`tab-btn ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}>Takım Genel Tasnif</button>
                             </div>
                             <div className="finals-export-buttons">
@@ -1204,8 +1208,8 @@ export default function FinalsPage() {
                                                                             <span className="app-rank-badge" title={`${APPARATUS_INFO[key]?.tr || key} Sıralaması`}>{res.apparatusRanks[key] || '-'}</span>
                                                                         </div>
                                                                         <div className="score-details">
-                                                                            <span className="d-val">D:{formatScore(detail.D)}</span>
-                                                                            <span className="e-val">E:{formatScore(detail.E)}</span>
+                                                                            <span className="d-val">{isCurrentRitmik ? 'DA+DB' : 'D'}:{formatScore(detail.D)}</span>
+                                                                            <span className="e-val">{isCurrentRitmik ? 'A+E' : 'E'}:{formatScore(detail.E)}</span>
                                                                             {penalty > 0 && <span className="p-val">P:-{formatScore(penalty)}</span>}
                                                                         </div>
                                                                     </td>
@@ -1230,7 +1234,7 @@ export default function FinalsPage() {
                         )}
 
                         {/* TAB CONTENT: APPARATUS FINALS */}
-                        {hasApparatus && activeTab === 'apparatus' && (
+                        {showApparatusTab && activeTab === 'apparatus' && (
                             <div className="apparatus-grid print-section">
                                 {apparatusKeys.map(key => {
                                     const items = fullResults
@@ -1264,8 +1268,8 @@ export default function FinalsPage() {
                                                         <tr>
                                                             <th className="th-center">S.N.</th>
                                                             <th>Sporcu</th>
-                                                            <th className="th-center">D</th>
-                                                            <th className="th-center">E</th>
+                                                            <th className="th-center">{isCurrentRitmik ? 'DA+DB' : 'D'}</th>
+                                                            <th className="th-center">{isCurrentRitmik ? 'A+E' : 'E'}</th>
                                                             <th className="th-center">Ceza</th>
                                                             <th className="th-right th-highlight">Puan</th>
                                                         </tr>
