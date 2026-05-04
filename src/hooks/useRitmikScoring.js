@@ -495,11 +495,27 @@ export function useRitmikScoring() {
             timestamp:    Date.now(),
             hakem:        currentUser?.adSoyad || currentUser?.kullaniciAdi || '',
             _layout:      'modern',
+            // Classic ek alanlar — hem classic hem modern kayıt aynı yapıyı kullanır
+            da: daNum, da1: da1Num, da2: da2Num, sjda: sjdaNum,
+            db: dbNum, db1: db1Num, db2: db2Num, sjdb: sjdbNum,
+            daGap:  parseFloat(daGap.toFixed(3)),
+            dbGap:  parseFloat(dbGap.toFixed(3)),
+            sja:    sjaInput !== '' ? parseFloat(sjaInput) : null,
+            sje:    sjeInput !== '' ? parseFloat(sjeInput) : null,
+            aGap:   parseFloat(classicAResult.gap.toFixed(3)),
+            eGap:   parseFloat(classicEResult.gap.toFixed(3)),
+            penaltyKoordinatör: cKoord,
+            penaltyCizgi1:      cCizgi1,
+            penaltyCizgi2:      cCizgi2,
+            penaltyZaman:       cZaman,
         };
         setConfirmModal({ athlete: selectedAthlete, aletLabel, scoreData, finalScore: modernFinalScore });
     }, [selectedAthlete, scoreLocked, aPanelLocal, ePanelLocal, dbScoreInput,
         daScoreInput, selectedAlet, dbScore, daScoreNum, totalPenalties, aScore,
-        eScore, modernFinalScore, currentUser, toast]);
+        eScore, modernFinalScore, currentUser,
+        daNum, da1Num, da2Num, sjdaNum, dbNum, db1Num, db2Num, sjdbNum,
+        daGap, dbGap, sjaInput, sjeInput,
+        classicAResult, classicEResult, cKoord, cCizgi1, cCizgi2, cZaman, toast]);
 
     // ─── Submit: Classic ───
     const handleClassicSubmit = useCallback(() => {

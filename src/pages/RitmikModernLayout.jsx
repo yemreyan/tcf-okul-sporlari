@@ -23,6 +23,14 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
         daScoreInput, setDaScoreInput,
         penaltyInput, setPenaltyInput,
         aScore, eScore, dbScore, daScoreNum, totalPenalties, modernFinalScore,
+        // Classic alt alanlar
+        classicDA, setClassicDA,
+        classicDB, setClassicDB,
+        sjaInput, setSjaInput,
+        sjeInput, setSjeInput,
+        classicPenalty, setClassicPenalty,
+        daGap, daGapOk, dbGap, dbGapOk,
+        classicAResult, classicEResult,
         unlockModal, setUnlockModal,
         unlockPassword, setUnlockPassword,
         unlockError,
@@ -231,14 +239,45 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                             <div className="rtm-card-header">
                                 <span className="rtm-card-label rtm-card-label--d">DA</span>
                                 <span className="rtm-card-title">Alet Zorluğu</span>
-                                <span className="rtm-card-desc">2 hakem · mutabık kalınan puanı girin</span>
+                                <span className="rtm-card-desc">DA Kesin + alt notlar</span>
                                 <span className="rtm-score-chip rtm-score-chip--d">{daScoreNum.toFixed(3)}</span>
                             </div>
+                            {/* DA Kesin — hesaba katılan skor */}
                             <div className="rtm-da-input-row">
-                                <input type="number" className="rtm-da-input" min="0" step="0.1" placeholder="0.0"
+                                <label className="rtm-sub-label">DA ★ Kesin</label>
+                                <input type="number" className="rtm-da-input" min="0" step="0.1" placeholder="0.000"
                                     value={daScoreInput} disabled={scoreLocked}
-                                    onChange={e => { setDaScoreInput(e.target.value); setScoringFieldsTouched(true); }} />
-                                <span className="rtm-da-hint">DA hakemleri mutabık kaldıkları alet zorluk puanını giriniz</span>
+                                    onChange={e => {
+                                        setDaScoreInput(e.target.value);
+                                        setClassicDA(p => ({ ...p, da: e.target.value }));
+                                        setScoringFieldsTouched(true);
+                                    }} />
+                            </div>
+                            {/* DA Alt Notlar — bilgi amaçlı */}
+                            <div className="rtm-sub-row">
+                                <div className="rtm-sub-cell">
+                                    <label>DA1</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDA.da1} disabled={scoreLocked}
+                                        onChange={e => { setClassicDA(p => ({ ...p, da1: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                <div className="rtm-sub-cell">
+                                    <label>DA2</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDA.da2} disabled={scoreLocked}
+                                        onChange={e => { setClassicDA(p => ({ ...p, da2: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                <div className="rtm-sub-cell">
+                                    <label>SJDA</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDA.sjda} disabled={scoreLocked}
+                                        onChange={e => { setClassicDA(p => ({ ...p, sjda: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                {classicDA.da1 !== '' && classicDA.da2 !== '' && (
+                                    <div className={`rtm-gap-badge${daGapOk ? '' : ' rtm-gap-badge--warn'}`}>
+                                        Fark: {daGap.toFixed(3)} {daGapOk ? '✓' : '⚠'}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -247,14 +286,45 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                             <div className="rtm-card-header">
                                 <span className="rtm-card-label rtm-card-label--d">DB</span>
                                 <span className="rtm-card-title">Vücut Zorluğu</span>
-                                <span className="rtm-card-desc">2 hakem · mutabık kalınan vücut zorluk puanı</span>
+                                <span className="rtm-card-desc">DB Kesin + alt notlar</span>
                                 <span className="rtm-score-chip rtm-score-chip--d">{dbScore.toFixed(3)}</span>
                             </div>
+                            {/* DB Kesin */}
                             <div className="rtm-da-input-row">
-                                <input type="number" className="rtm-da-input" min="0" step="0.1" placeholder="0.0"
+                                <label className="rtm-sub-label">DB ★ Kesin</label>
+                                <input type="number" className="rtm-da-input" min="0" step="0.1" placeholder="0.000"
                                     value={dbScoreInput} disabled={scoreLocked}
-                                    onChange={e => { setDbScoreInput(e.target.value); setScoringFieldsTouched(true); }} />
-                                <span className="rtm-da-hint">DB hakemleri mutabık kaldıkları vücut zorluk puanını giriniz</span>
+                                    onChange={e => {
+                                        setDbScoreInput(e.target.value);
+                                        setClassicDB(p => ({ ...p, db: e.target.value }));
+                                        setScoringFieldsTouched(true);
+                                    }} />
+                            </div>
+                            {/* DB Alt Notlar */}
+                            <div className="rtm-sub-row">
+                                <div className="rtm-sub-cell">
+                                    <label>DB1</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDB.db1} disabled={scoreLocked}
+                                        onChange={e => { setClassicDB(p => ({ ...p, db1: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                <div className="rtm-sub-cell">
+                                    <label>DB2</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDB.db2} disabled={scoreLocked}
+                                        onChange={e => { setClassicDB(p => ({ ...p, db2: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                <div className="rtm-sub-cell">
+                                    <label>SJDB</label>
+                                    <input type="number" min="0" step="0.1" placeholder="0.000"
+                                        value={classicDB.sjdb} disabled={scoreLocked}
+                                        onChange={e => { setClassicDB(p => ({ ...p, sjdb: e.target.value })); setScoringFieldsTouched(true); }} />
+                                </div>
+                                {classicDB.db1 !== '' && classicDB.db2 !== '' && (
+                                    <div className={`rtm-gap-badge${dbGapOk ? '' : ' rtm-gap-badge--warn'}`}>
+                                        Fark: {dbGap.toFixed(3)} {dbGapOk ? '✓' : '⚠'}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -283,7 +353,20 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                                         </div>
                                     );
                                 })}
+                                {/* SJA — bilgi amaçlı */}
+                                <div className="rtm-judge-cell rtm-judge-cell--sj">
+                                    <label>SJA</label>
+                                    <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
+                                        value={sjaInput} disabled={scoreLocked}
+                                        onChange={e => { setSjaInput(e.target.value); setScoringFieldsTouched(true); }} />
+                                    <span className="rtm-sj-hint">bilgi</span>
+                                </div>
                             </div>
+                            {classicAResult.gap > 0 && (
+                                <div className={`rtm-gap-badge${classicAResult.gapOk ? '' : ' rtm-gap-badge--warn'}`} style={{ margin: '4px 0 0' }}>
+                                    A Fark: {classicAResult.gap.toFixed(3)} {classicAResult.gapOk ? '✓' : '⚠'}
+                                </div>
+                            )}
                         </div>
 
                         {/* E Paneli */}
@@ -311,7 +394,20 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                                         </div>
                                     );
                                 })}
+                                {/* SJE — bilgi amaçlı */}
+                                <div className="rtm-judge-cell rtm-judge-cell--sj">
+                                    <label>SJE</label>
+                                    <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
+                                        value={sjeInput} disabled={scoreLocked}
+                                        onChange={e => { setSjeInput(e.target.value); setScoringFieldsTouched(true); }} />
+                                    <span className="rtm-sj-hint">bilgi</span>
+                                </div>
                             </div>
+                            {classicEResult.gap > 0 && (
+                                <div className={`rtm-gap-badge${classicEResult.gapOk ? '' : ' rtm-gap-badge--warn'}`} style={{ margin: '4px 0 0' }}>
+                                    E Fark: {classicEResult.gap.toFixed(3)} {classicEResult.gapOk ? '✓' : '⚠'}
+                                </div>
+                            )}
                         </div>
 
                         {/* Ceza */}
@@ -319,14 +415,30 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                             <div className="rtm-card-header">
                                 <span className="rtm-card-label rtm-card-label--ded">−</span>
                                 <span className="rtm-card-title">Ceza Kesintisi</span>
-                                <span className="rtm-card-desc">Toplam ceza</span>
+                                <span className="rtm-card-desc">Koordinatör · Çizgi · Zaman</span>
                                 <span className="rtm-score-chip rtm-score-chip--ded">−{totalPenalties.toFixed(3)}</span>
                             </div>
-                            <div className="rtm-da-input-row">
-                                <input type="number" className="rtm-da-input" min="0" step="0.1" placeholder="0.0"
-                                    value={penaltyInput} disabled={scoreLocked}
-                                    onChange={e => { setPenaltyInput(e.target.value); setScoringFieldsTouched(true); }} />
-                                <span className="rtm-da-hint">Toplam ceza kesintisini giriniz</span>
+                            <div className="rtm-sub-row">
+                                {[
+                                    { key: 'koordinator', label: 'Koordinatör' },
+                                    { key: 'cizgi1',      label: 'Çizgi 1' },
+                                    { key: 'cizgi2',      label: 'Çizgi 2' },
+                                    { key: 'zaman',       label: 'Zaman' },
+                                ].map(({ key, label }) => (
+                                    <div key={key} className="rtm-sub-cell">
+                                        <label>{label}</label>
+                                        <input type="number" min="0" step="0.1" placeholder="0.0"
+                                            value={classicPenalty[key]} disabled={scoreLocked}
+                                            onChange={e => {
+                                                const newPen = { ...classicPenalty, [key]: e.target.value };
+                                                setClassicPenalty(newPen);
+                                                const sum = ['koordinator','cizgi1','cizgi2','zaman']
+                                                    .reduce((s, k) => s + (parseFloat(newPen[k]) || 0), 0);
+                                                setPenaltyInput(String(sum));
+                                                setScoringFieldsTouched(true);
+                                            }} />
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
