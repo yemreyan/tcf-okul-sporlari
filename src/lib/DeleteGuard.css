@@ -1,0 +1,209 @@
+/* ================================================================
+   DeleteGuardContext — Süper Admin Şifre Onay Modalı
+   ================================================================ */
+
+.dg-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    animation: dg-fade-in 0.15s ease;
+}
+
+@keyframes dg-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.dg-modal {
+    background: var(--bg-card, #1e293b);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1);
+    animation: dg-slide-up 0.22s cubic-bezier(0.22, 1.5, 0.36, 1);
+}
+
+@keyframes dg-slide-up {
+    from { transform: translateY(24px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+/* ── Header ── */
+.dg-modal-header {
+    padding: 1.75rem 1.75rem 1.25rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.dg-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+
+.dg-icon .material-icons-round {
+    color: #f87171;
+    font-size: 26px;
+}
+
+.dg-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0 0 0.5rem;
+    letter-spacing: 0.02em;
+}
+
+.dg-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+/* ── Body ── */
+.dg-modal-body {
+    padding: 1.25rem 1.75rem;
+}
+
+.dg-pwd-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748b);
+    margin: 0 0 0.85rem;
+    text-align: center;
+}
+
+.dg-pwd-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.dg-pwd-input {
+    flex: 1;
+    padding: 0.7rem 2.8rem 0.7rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary, #f1f5f9);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+}
+
+.dg-pwd-input:focus {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.dg-pwd-toggle {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: var(--text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.dg-pwd-toggle:hover {
+    color: var(--text-secondary, #94a3b8);
+}
+
+.dg-pwd-toggle .material-icons-round {
+    font-size: 18px;
+}
+
+.dg-error {
+    margin: 0.6rem 0 0;
+    font-size: 0.8rem;
+    color: #f87171;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* ── Footer ── */
+.dg-modal-footer {
+    padding: 1rem 1.75rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.dg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.18s, transform 0.1s, opacity 0.18s;
+}
+
+.dg-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.dg-btn .material-icons-round {
+    font-size: 16px;
+}
+
+.dg-btn--cancel {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary, #94a3b8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dg-btn--cancel:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.dg-btn--delete {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.dg-btn--delete:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.28);
+    transform: translateY(-1px);
+}
+
+.dg-btn--delete:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+@keyframes dg-spin {
+    to { transform: rotate(360deg); }
+}
+
+.dg-spin {
+    animation: dg-spin 0.9s linear infinite;
+    display: inline-block;
+}

@@ -4,6 +4,7 @@ import { ref, onValue, push, remove, update } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './AnnouncementsPage.css';
@@ -100,6 +101,7 @@ export default function AnnouncementsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { requestDelete } = useDeleteGuard();
     const { firebasePath, routePrefix } = useDiscipline();
 
     const [competitions, setCompetitions] = useState({});
@@ -259,15 +261,18 @@ export default function AnnouncementsPage() {
         }
     };
 
-    const handleDelete = async (annId) => {
-        const ok = await confirm('Bu duyuruyu silmek istediğinize emin misiniz?');
-        if (!ok) return;
-        try {
-            await remove(ref(db, `broadcasts/${annId}`));
-            toast('Duyuru silindi', 'success');
-        } catch (err) {
-            toast('Hata: ' + err.message, 'error');
-        }
+    const handleDelete = (annId) => {
+        requestDelete(
+            'Bu duyuru kalıcı olarak silinecek.',
+            async () => {
+                try {
+                    await remove(ref(db, `broadcasts/${annId}`));
+                    toast('Duyuru silindi', 'success');
+                } catch (err) {
+                    toast('Hata: ' + err.message, 'error');
+                }
+            }
+        );
     };
 
     // Bulk select helpers
@@ -293,21 +298,24 @@ export default function AnnouncementsPage() {
         }
     };
 
-    const handleBulkDelete = async (ids) => {
+    const handleBulkDelete = (ids) => {
         if (!ids || ids.length === 0) return;
-        const label = ids.length === 1 ? '1 duyuruyu' : `${ids.length} duyuruyu`;
-        const ok = await confirm(`${label} silmek istediğinize emin misiniz?`);
-        if (!ok) return;
-        try {
-            const updates = {};
-            ids.forEach(id => { updates[`broadcasts/${id}`] = null; });
-            await update(ref(db), updates);
-            toast(`${ids.length} duyuru silindi`, 'success');
-            setSelectedIds(new Set());
-            setSelectMode(false);
-        } catch (err) {
-            toast('Hata: ' + err.message, 'error');
-        }
+        const label = ids.length === 1 ? '1 duyuru' : `${ids.length} duyuru`;
+        requestDelete(
+            `${label} kalıcı olarak silinecek.`,
+            async () => {
+                try {
+                    const updates = {};
+                    ids.forEach(id => { updates[`broadcasts/${id}`] = null; });
+                    await update(ref(db), updates);
+                    toast(`${ids.length} duyuru silindi`, 'success');
+                    setSelectedIds(new Set());
+                    setSelectMode(false);
+                } catch (err) {
+                    toast('Hata: ' + err.message, 'error');
+                }
+            }
+        );
     };
 
     const handleDeleteSelected = () => handleBulkDelete([...selectedIds]);

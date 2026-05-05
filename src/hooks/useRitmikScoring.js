@@ -437,6 +437,26 @@ export function useRitmikScoring() {
             };
 
             await offlineWrite(updates);
+
+            // ─── Canlı Sonuçlar flash tetikleyici ───
+            try {
+                await update(ref(db), {
+                    [`${firebasePath}/${selectedCompId}/flashTrigger`]: {
+                        adSoyad:  `${selectedAthlete.ad || ''} ${selectedAthlete.soyad || ''}`.trim(),
+                        kulup:    selectedAthlete.okul || selectedAthlete.kulup || '',
+                        aletAd:   RITMIK_ALETLER[selectedAlet]?.label || selectedAlet,
+                        da:       scoreData.daScore       || 0,
+                        db:       scoreData.dbScore       || 0,
+                        a:        scoreData.aScore        || 0,
+                        e:        scoreData.eScore        || 0,
+                        pen:      scoreData.penaltyTotal  || 0,
+                        total:    scoreData.sonuc         || 0,
+                        isRitmik: true,
+                        timestamp: Date.now(),
+                    }
+                });
+            } catch (_fe) { /* flash trigger hatası kritik değil */ }
+
             await logAction('score_submitted', {
                 competitionId: selectedCompId,
                 category:      selectedCategory,

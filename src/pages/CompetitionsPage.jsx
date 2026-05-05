@@ -10,6 +10,7 @@ import { PARKUR_CATEGORIES } from '../data/parkurCriteriaDefaults.js';
 import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults.js';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
 import { logAction } from '../lib/auditLogger';
@@ -77,6 +78,7 @@ export default function CompetitionsPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { requestDelete } = useDeleteGuard();
     const { firebasePath, routePrefix, shortLabel: disciplineLabel, theme, id: disciplineId } = useDiscipline();
 
     // Disipline göre kategori listesi (her branşın kendi criteria'sından)
@@ -207,16 +209,19 @@ export default function CompetitionsPage() {
     const activeComps = filtered.filter(c => !c.orphan && (c.status === 'active' || c.status === 'upcoming'));
     const pastComps = filtered.filter(c => !c.orphan && c.status === 'completed');
 
-    const handleDelete = async (id, name) => {
-        const confirmed = await confirm(`"${name}" isimli yarışmayı silmek istediğinize emin misiniz? Tüm başvuru ve sporcu verileri kalıcı olarak silinecektir!`, { title: 'Silme Onayı', type: 'danger' });
-        if (confirmed) {
-            try {
-                await remove(ref(db, `${firebasePath}/${id}`));
-            } catch (err) {
-                if (import.meta.env.DEV) console.error("Delete failed", err);
-                toast("Silme işlemi başarısız oldu.", "error");
+    const handleDelete = (id, name) => {
+        requestDelete(
+            `"${name}" isimli yarışma silinecek. Tüm başvuru ve sporcu verileri kalıcı olarak silinecektir!`,
+            async () => {
+                try {
+                    await remove(ref(db, `${firebasePath}/${id}`));
+                    toast(`"${name}" silindi.`, 'success');
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error('Delete failed', err);
+                    toast('Silme işlemi başarısız oldu.', 'error');
+                }
             }
-        }
+        );
     };
 
     const handleToggleBasvuru = async (comp) => {
@@ -877,16 +882,22 @@ export default function CompetitionsPage() {
                                     <option value="il">İl Yarışması</option>
                                     <option value="bolgesel">Bölgesel Yarışma</option>
                                     <option value="turkiye">Türkiye Şampiyonası</option>
+                                    <option value="ozel">Özel Turnuva</option>
                                 </select>
                                 {formData.tur === 'turkiye' && (
                                     <p className="help-text" style={{color:'#d97706',fontWeight:600}}>
                                         Türkiye Şampiyonası için tüm illerden başvuru kabul edilir.
                                     </p>
                                 )}
+                                {formData.tur === 'ozel' && (
+                                    <p className="help-text" style={{color:'#7c3aed',fontWeight:600}}>
+                                        Özel Turnuva için tüm illerden başvuru kabul edilir. Başvuru linki: <code>basvuru.html?tur=ozel</code>
+                                    </p>
+                                )}
                             </div>
                             <div className="form-group form-group--full">
-                                <label>İl {formData.tur !== 'turkiye' ? '*' : '(Şehir)'}</label>
-                                <select required={formData.tur !== 'turkiye'} value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })}>
+                                <label>İl {(formData.tur === 'turkiye' || formData.tur === 'ozel') ? '(Şehir)' : '*'}</label>
+                                <select required={formData.tur !== 'turkiye' && formData.tur !== 'ozel'} value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })}>
                                     <option value="">-- İl Seçiniz --</option>
                                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
                                 </select>

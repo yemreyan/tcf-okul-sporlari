@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext';
 import { NotificationProvider } from './lib/NotificationContext';
 import { DisciplineProvider } from './lib/DisciplineContext';
 import { OfflineProvider } from './lib/OfflineContext';
+import { DeleteGuardProvider } from './lib/DeleteGuardContext';
 import AnnouncementPopup from './components/AnnouncementPopup';
 import OfflineBanner from './components/OfflineBanner';
 import './App.css';
@@ -246,11 +247,13 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <OfflineProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </OfflineProvider>
+        <DeleteGuardProvider>
+          <OfflineProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
+          </OfflineProvider>
+        </DeleteGuardProvider>
       </NotificationProvider>
     </AuthProvider>
   );

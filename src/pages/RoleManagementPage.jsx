@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ref, onValue, set, remove } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import turkeyData from '../data/turkey_data.json';
 import './RoleManagementPage.css';
 
@@ -243,6 +244,7 @@ const EMPTY_FORM = {
 export default function RoleManagementPage() {
     const navigate = useNavigate();
     const { hashPassword } = useAuth();
+    const { requestDelete } = useDeleteGuard();
     const [users, setUsers] = useState({});
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -569,13 +571,18 @@ export default function RoleManagementPage() {
     };
 
     // Sil
-    const handleDelete = async (userId) => {
-        try {
-            await remove(ref(db, `kullanicilar/${userId}`));
-            setDeleteConfirm(null);
-        } catch (err) {
-            if (import.meta.env.DEV) console.error('Silme hatası:', err);
-        }
+    const handleDelete = (userId) => {
+        requestDelete(
+            `"${userId}" kullanıcısı kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+            async () => {
+                try {
+                    await remove(ref(db, `kullanicilar/${userId}`));
+                    setDeleteConfirm(null);
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error('Silme hatası:', err);
+                }
+            }
+        );
     };
 
     return (
@@ -695,7 +702,7 @@ export default function RoleManagementPage() {
                                         <button className="rm-action-btn rm-action-btn--edit" onClick={() => openModal(user)} title="Düzenle">
                                             <i className="material-icons-round">edit</i>
                                         </button>
-                                        <button className="rm-action-btn rm-action-btn--delete" onClick={() => setDeleteConfirm(user.id)} title="Sil">
+                                        <button className="rm-action-btn rm-action-btn--delete" onClick={() => handleDelete(user.id)} title="Sil">
                                             <i className="material-icons-round">delete</i>
                                         </button>
                                     </div>

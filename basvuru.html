@@ -387,12 +387,13 @@ select optgroup{font-weight:700;font-size:.78rem;color:var(--text-muted);text-tr
           <select id="competitionSelect" required><option value="">YÜKLENİYOR...</option></select>
         </div>
         <div class="form-group">
-          <label>OKUL<span class="req">*</span></label>
+          <label id="okulLabel">OKUL<span class="req">*</span></label>
+          <input type="text" id="kulupInput" placeholder="KULÜP ADI GİRİNİZ" autocomplete="off" maxlength="200" style="display:none">
           <input type="text" id="schoolFilter" placeholder="OKUL FİLTRELE..." autocomplete="off" style="display:none;margin-bottom:.5rem">
           <select id="schoolSelect" required style="display:none">
             <option value="">ÖNCE İLÇE SEÇİNİZ</option>
           </select>
-          <div class="hint">İLÇE SEÇTİKTEN SONRA OKUL LİSTESİ GÖRÜNECEK</div>
+          <div class="hint" id="okulHint">İLÇE SEÇTİKTEN SONRA OKUL LİSTESİ GÖRÜNECEK</div>
         </div>
         <div class="form-group">
           <label>KATEGORİ<span class="req">*</span></label>

@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { logAction } from '../lib/auditLogger';
@@ -100,6 +101,7 @@ export default function AthletesPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { requestDelete } = useDeleteGuard();
     const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -276,19 +278,22 @@ export default function AthletesPage() {
         }
     };
 
-    const handleDelete = async (catId, athId, name) => {
-        const confirmed = await confirm(`${name} isimli sporcuyu silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
-        if (confirmed) {
-            try {
-                const athRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`);
-                await remove(athRef);
-                // Sporcu silindi — okulun kalan sporcuları için takım türünü güncelle
-                await autoSyncTeamStatus(selectedCompId, [catId]);
-            } catch (err) {
-                if (import.meta.env.DEV) console.error("Delete failed", err);
-                toast("Silme işlemi başarısız.", "error");
+    const handleDelete = (catId, athId, name) => {
+        requestDelete(
+            `"${name}" isimli sporcu silinecek. Bu işlem geri alınamaz.`,
+            async () => {
+                try {
+                    const athRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`);
+                    await remove(athRef);
+                    // Sporcu silindi — okulun kalan sporcuları için takım türünü güncelle
+                    await autoSyncTeamStatus(selectedCompId, [catId]);
+                    toast(`${name} silindi.`, 'success');
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error('Delete failed', err);
+                    toast('Silme işlemi başarısız.', 'error');
+                }
             }
-        }
+        );
     };
 
     const openModal = (athlete = null) => {

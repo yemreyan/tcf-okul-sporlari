@@ -4,6 +4,7 @@ import { ref, onValue, push, update, remove } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import './CoachesPage.css';
 
@@ -36,6 +37,7 @@ export default function CoachesPage() {
     const navigate = useNavigate();
     const { hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
+    const { requestDelete } = useDeleteGuard();
     const { routePrefix } = useDiscipline();
 
     const canEdit = hasPermission('coaches', 'duzenle');
@@ -179,39 +181,45 @@ export default function CoachesPage() {
     }
 
     // ── Delete ──
-    async function handleDelete(coach) {
-        const ok = await confirm(`"${coach.adSoyad}" adlı antrenörü silmek istediğinize emin misiniz?`);
-        if (!ok) return;
-        try {
-            await remove(ref(db, `antrenorler/${coach.id}`));
-            toast('Antrenör silindi.', 'success');
-            setSelectedIds((prev) => {
-                const next = new Set(prev);
-                next.delete(coach.id);
-                return next;
-            });
-        } catch (err) {
-            if (import.meta.env.DEV) console.error(err);
-            toast('Silme sırasında hata oluştu.', 'error');
-        }
+    function handleDelete(coach) {
+        requestDelete(
+            `"${coach.adSoyad}" adlı antrenör kalıcı olarak silinecek.`,
+            async () => {
+                try {
+                    await remove(ref(db, `antrenorler/${coach.id}`));
+                    toast('Antrenör silindi.', 'success');
+                    setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(coach.id);
+                        return next;
+                    });
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error(err);
+                    toast('Silme sırasında hata oluştu.', 'error');
+                }
+            }
+        );
     }
 
-    async function handleBulkDelete() {
+    function handleBulkDelete() {
         if (selectedIds.size === 0) return;
-        const ok = await confirm(`Seçili ${selectedIds.size} antrenörü silmek istediğinize emin misiniz?`);
-        if (!ok) return;
-        try {
-            const updates = {};
-            selectedIds.forEach((id) => {
-                updates[`antrenorler/${id}`] = null;
-            });
-            await update(ref(db), updates);
-            setSelectedIds(new Set());
-            toast(`${selectedIds.size} antrenör silindi.`, 'success');
-        } catch (err) {
-            if (import.meta.env.DEV) console.error(err);
-            toast('Toplu silme sırasında hata oluştu.', 'error');
-        }
+        requestDelete(
+            `Seçili ${selectedIds.size} antrenör kalıcı olarak silinecek.`,
+            async () => {
+                try {
+                    const updates = {};
+                    selectedIds.forEach((id) => {
+                        updates[`antrenorler/${id}`] = null;
+                    });
+                    await update(ref(db), updates);
+                    setSelectedIds(new Set());
+                    toast(`${selectedIds.size} antrenör silindi.`, 'success');
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error(err);
+                    toast('Toplu silme sırasında hata oluştu.', 'error');
+                }
+            }
+        );
     }
 
     // ── Bulk select helpers ──

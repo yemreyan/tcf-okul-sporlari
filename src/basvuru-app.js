@@ -35,8 +35,10 @@ const _fc = {
 const app = initializeApp(_fc);
 const db = getDatabase(app);
 
-// ─── Türkiye Şampiyonası Modu ───
-const isTurkiyeMode = new URLSearchParams(window.location.search).get('tur') === 'turkiye';
+// ─── Özel Mod (Türkiye Şampiyonası / Özel Turnuva) ───
+const _turParam = new URLSearchParams(window.location.search).get('tur');
+const isTurkiyeMode = _turParam === 'turkiye';
+const isOzelMode    = _turParam === 'ozel';
 
 // ─── State ───
 let turkeyData = {};
@@ -221,7 +223,7 @@ function enforceAerobicTurkeyRules() {
   const btnTakim = document.getElementById('btnTakim');
   const btnFerdi = document.getElementById('btnFerdi');
 
-  if (isAerobik && isTurkiyeMode) {
+  if (isAerobik && (isTurkiyeMode || isOzelMode)) {
     if (teacherCard) teacherCard.style.display = 'none';
     if (teacherStep) teacherStep.style.display = 'none';
     if (btnTakim) btnTakim.style.display = 'none';
@@ -548,8 +550,8 @@ function filterCompetitions() {
   const competitionSelect = document.getElementById('competitionSelect');
   competitionSelect.innerHTML = '<option value="">YARIŞMA SEÇİNİZ</option>';
 
-  // Türkiye Şampiyonası modunda şehir filtresi yok
-  if (!isTurkiyeMode && !city) {
+  // Türkiye Şampiyonası / Özel Turnuva modunda şehir filtresi yok
+  if (!isTurkiyeMode && !isOzelMode && !city) {
     competitionSelect.innerHTML = '<option value="">ÖNCE İL SEÇİNİZ</option>';
     return;
   }
@@ -566,8 +568,12 @@ function filterCompetitions() {
     // Türkiye modu: sadece tur==='turkiye' olan yarışmalar
     if (isTurkiyeMode) {
       if ((data.tur || 'il') !== 'turkiye') return;
+    } else if (isOzelMode) {
+      // Özel Turnuva modu: sadece tur==='ozel' olan yarışmalar
+      if ((data.tur || 'il') !== 'ozel') return;
     } else {
-      // Normal mod: şehire göre filtrele
+      // Normal mod: şehire göre filtrele, özel/türkiye yarışmaları hariç tut
+      if ((data.tur || 'il') === 'turkiye' || (data.tur || 'il') === 'ozel') return;
       const compCity = normalizePublicMatchValue(data.il || '');
       if (compCity !== cityUpper) return;
     }
@@ -617,11 +623,15 @@ function filterCompetitions() {
   if (count === 0 && closedCount > 0) {
     competitionSelect.innerHTML = isTurkiyeMode
       ? '<option value="">TÜRKİYE ŞAMPİYONASI BAŞVURULARI KAPANMIŞTIR</option>'
-      : '<option value="">BU İLDEKİ YARIŞMALARIN BAŞVURULARI KAPANMIŞTIR</option>';
+      : isOzelMode
+        ? '<option value="">ÖZEL TURNUVA BAŞVURULARI KAPANMIŞTIR</option>'
+        : '<option value="">BU İLDEKİ YARIŞMALARIN BAŞVURULARI KAPANMIŞTIR</option>';
   } else if (count === 0) {
     competitionSelect.innerHTML = isTurkiyeMode
       ? '<option value="">AKTİF TÜRKİYE ŞAMPİYONASI BULUNAMADI</option>'
-      : '<option value="">BU İLDE AKTİF YARIŞMA BULUNAMADI</option>';
+      : isOzelMode
+        ? '<option value="">AKTİF ÖZEL TURNUVA BULUNAMADI</option>'
+        : '<option value="">BU İLDE AKTİF YARIŞMA BULUNAMADI</option>';
   }
   document.getElementById('categorySelect').innerHTML = '<option value="">ÖNCE YARIŞMA SEÇİNİZ</option>';
   selectedCompetition = null;
@@ -629,14 +639,17 @@ function filterCompetitions() {
 }
 
 function updateActiveBranches() {
-  const city = isTurkiyeMode ? null : document.getElementById('citySelect').value;
+  const city = (isTurkiyeMode || isOzelMode) ? null : document.getElementById('citySelect').value;
   const branchSelect = document.getElementById('branchSelect');
   const currentBranch = branchSelect.value;
-  
-  // Türkiye modundaysa, filter'da sadece tur === 'turkiye' olanlar dikkate alınsın
-  const validComps = Object.values(competitionsCache).filter(c => 
-      isTurkiyeMode ? (c.tur === 'turkiye') : ((c.tur || 'il') !== 'turkiye')
-  );
+
+  // Moda göre uygun yarışmaları filtrele
+  const validComps = Object.values(competitionsCache).filter(c => {
+    const tur = c.tur || 'il';
+    if (isTurkiyeMode) return tur === 'turkiye';
+    if (isOzelMode)    return tur === 'ozel';
+    return tur !== 'turkiye' && tur !== 'ozel';
+  });
 
   const availableBranches = getAvailablePublicBranchOptions(
     validComps,
@@ -723,6 +736,9 @@ function renderSchoolSelect(filterText) {
 }
 
 async function loadSchoolsForDistrict() {
+  // Özel turnuva modunda okul listesi yüklenmez — kulüp adı manuel girilir
+  if (isOzelMode) return;
+
   const city = document.getElementById('citySelect').value;
   const district = document.getElementById('districtSelect').value;
   const schoolSelect = document.getElementById('schoolSelect');
@@ -1083,6 +1099,10 @@ async function checkDuplicateTCKNs(competitionId, tcknList, currentKategoriAdi) 
 }
 
 async function checkSchoolQuota(competitionId, categoryId, schoolName, il, ilce, newAthleteCount) {
+  // Özel turnuva modunda kulüp bazlı kota uygulanmaz
+  if (isOzelMode) {
+    return { exceeded: false, existing: 0, threshold: categoryLimits.max * 2 };
+  }
   // Aerobik ferdi kategorisinde okul başına kota yok — her bireysel kayıt bağımsızdır
   if (isAerobikFerdiCategory()) {
     return { exceeded: false, existing: 0, threshold: categoryLimits.max * 2 };
@@ -1139,6 +1159,14 @@ async function fetchExistingAthleteCount() {
   const schoolName = getSelectedSchool();
 
   if (!competitionId || !categoryId || !schoolName) {
+    existingAthleteCount = 0;
+    remainingQuota = categoryLimits.max;
+    updateQuotaInfoBox();
+    return;
+  }
+
+  // Özel turnuva modunda kulüp bazlı kota uygulanmaz
+  if (isOzelMode) {
     existingAthleteCount = 0;
     remainingQuota = categoryLimits.max;
     updateQuotaInfoBox();
@@ -1479,6 +1507,9 @@ function handleAthleteDOBBlur(inputEl) {
 }
 
 function getSelectedSchool() {
+  if (isOzelMode) {
+    return (document.getElementById('kulupInput')?.value || '').trim();
+  }
   const schoolSelect = document.getElementById('schoolSelect');
   return schoolSelect.value || '';
 }
@@ -1558,8 +1589,8 @@ function validateForm(data) {
   else if (data.il.length > 100) errors.push('✗ İL ADI ÇOK UZUN');
   if (!data.ilce) errors.push('✗ İLÇE SEÇİNİZ');
   else if (data.ilce.length > 100) errors.push('✗ İLÇE ADI ÇOK UZUN');
-  if (!data.okul) errors.push('✗ OKUL BİLGİSİ GİRİNİZ');
-  else if (data.okul.length > 200) errors.push('✗ OKUL ADI ÇOK UZUN (MAX 200 KARAKTER)');
+  if (!data.okul) errors.push(isOzelMode ? '✗ KULÜP ADI GİRİNİZ' : '✗ OKUL BİLGİSİ GİRİNİZ');
+  else if (data.okul.length > 200) errors.push(isOzelMode ? '✗ KULÜP ADI ÇOK UZUN (MAX 200 KARAKTER)' : '✗ OKUL ADI ÇOK UZUN (MAX 200 KARAKTER)');
   if (!data.kategoriId && data.kategoriId !== 0) errors.push('✗ KATEGORİ SEÇİNİZ');
 
   // En az bir antrenör VEYA bir öğretmen olmalı
@@ -2332,9 +2363,82 @@ function applyTurkiyeModeUI() {
   }
 }
 
+// ─── Özel Turnuva UI ───
+function applyOzelModeUI() {
+  if (!isOzelMode) return;
+
+  // Başlık güncelle
+  const h1 = document.querySelector('.header h1');
+  const subp = document.querySelector('.header p');
+  if (h1) h1.textContent = 'ÖZEL TURNUVA';
+  if (subp) subp.textContent = 'ÖZEL TURNUVA BAŞVURU FORMU';
+
+  // Logo arka plan rengi — mor
+  const logo = document.querySelector('.header-logo');
+  if (logo) {
+    logo.style.background = 'linear-gradient(135deg,#5b21b6,#7c3aed)';
+    logo.style.boxShadow = '0 4px 14px rgba(91,33,182,.4)';
+  }
+
+  // Mor banner ekle
+  const banner = document.createElement('div');
+  banner.id = 'ozelBanner';
+  banner.innerHTML = `
+    <span class="material-icons-round" style="font-size:1.2rem;flex-shrink:0">star</span>
+    <div>
+      <strong>ÖZEL TURNUVA BAŞVURU SAYFASI</strong><br>
+      <span style="font-size:.8rem;font-weight:500">Bu sayfaya tüm illerden başvuru yapılabilir. İl seçimi adres bilgisi içindir, yarışma filtrelemesi yapmaz.</span>
+    </div>`;
+  banner.style.cssText = 'display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.1rem;border-radius:12px;background:linear-gradient(135deg,#4c1d95,#5b21b6);color:#ede9fe;font-size:.85rem;font-weight:700;margin-bottom:1.5rem;text-transform:uppercase;border:1.5px solid #7c3aed;line-height:1.5;box-shadow:0 4px 12px rgba(76,29,149,.3)';
+
+  const stepsEl = document.querySelector('.steps');
+  if (stepsEl) stepsEl.after(banner);
+
+  // İl seçim etiketi: "İL (ADRES)" yap ve ipucu ekle
+  const cityFormGroup = document.getElementById('citySelect')?.closest('.form-group');
+  if (cityFormGroup) {
+    const lbl = cityFormGroup.querySelector('label');
+    if (lbl) lbl.innerHTML = 'İL (ADRES) <span class="req">*</span>';
+    let hint = cityFormGroup.querySelector('.hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'hint';
+      cityFormGroup.appendChild(hint);
+    }
+    hint.textContent = 'Tüm iller başvuru yapabilir. İl seçimi sadece adres amaçlıdır.';
+  }
+
+  // Yarışma select ilk placeholder'ı güncelle
+  const compSel = document.getElementById('competitionSelect');
+  if (compSel && compSel.options[0]) {
+    compSel.options[0].textContent = 'YÜKLENİYOR...';
+  }
+
+  // Okul alanını kulüp girişi olarak değiştir
+  const okulLabel = document.getElementById('okulLabel');
+  if (okulLabel) okulLabel.innerHTML = 'KULÜP<span class="req">*</span>';
+
+  const kulupInput = document.getElementById('kulupInput');
+  const schoolFilter = document.getElementById('schoolFilter');
+  const schoolSelect = document.getElementById('schoolSelect');
+  const okulHint = document.getElementById('okulHint');
+
+  if (kulupInput) {
+    kulupInput.style.display = 'block';
+    kulupInput.required = true;
+  }
+  if (schoolFilter) schoolFilter.style.display = 'none';
+  if (schoolSelect) {
+    schoolSelect.style.display = 'none';
+    schoolSelect.required = false;
+  }
+  if (okulHint) okulHint.textContent = 'KULÜBÜNÜZÜN ADINI YAZINIZ';
+}
+
 // ─── Init ───
 async function init() {
   applyTurkiyeModeUI();
+  applyOzelModeUI();
   initEventListeners();
 
   await Promise.all([

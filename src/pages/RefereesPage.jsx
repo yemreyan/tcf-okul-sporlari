@@ -4,6 +4,7 @@ import { ref, onValue, remove, push, set, update, get } from 'firebase/database'
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
+import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { logAction } from '../lib/auditLogger';
@@ -62,6 +63,7 @@ export default function RefereesPage() {
     const navigate = useNavigate();
     const { hasPermission, hashPassword, isSuperAdmin, currentUser } = useAuth();
     const { toast, confirm } = useNotification();
+    const { requestDelete } = useDeleteGuard();
     const { firebasePath, routePrefix } = useDiscipline();
 
     const [referees, setReferees] = useState([]);
@@ -179,21 +181,24 @@ export default function RefereesPage() {
 
 
     // 2. Handlers
-    const handleDelete = async (refId, name) => {
+    const handleDelete = (refId, name) => {
         if (!hasPermission('referees', 'sil')) { toast('Hakem silme yetkiniz yok.', 'error'); return; }
-        const ok = await confirm(`${name} isimli hakemi kalıcı olarak silmek istediğinize emin misiniz?`, { title: 'Silme Onayı', type: 'danger' });
-        if (ok) {
-            try {
-                await remove(ref(db, `referees/${refId}`));
-                logAction('referee_delete', `Hakem silindi: ${name}`, { user: currentUser?.displayName || currentUser?.email || '' });
-                if (selectedReferee && selectedReferee.id === refId) {
-                    setSelectedReferee(null);
+        requestDelete(
+            `"${name}" isimli hakem kalıcı olarak silinecek.`,
+            async () => {
+                try {
+                    await remove(ref(db, `referees/${refId}`));
+                    logAction('referee_delete', `Hakem silindi: ${name}`, { user: currentUser?.displayName || currentUser?.email || '' });
+                    if (selectedReferee && selectedReferee.id === refId) {
+                        setSelectedReferee(null);
+                    }
+                    toast(`${name} silindi.`, 'success');
+                } catch (err) {
+                    if (import.meta.env.DEV) console.error('Delete failed', err);
+                    toast('Silme işlemi başarısız.', 'error');
                 }
-            } catch (err) {
-                if (import.meta.env.DEV) console.error("Delete failed", err);
-                toast("Silme işlemi başarısız.", "error");
             }
-        }
+        );
     };
 
     const openAddEditModal = (referee = null) => {
