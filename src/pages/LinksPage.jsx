@@ -108,12 +108,7 @@ export default function LinksPage() {
         ? competitions.filter(c => (c.il || '').toLocaleUpperCase('tr-TR') === selectedCity)
         : competitions;
 
-    // Auto-select first competition from filtered list when selectedCompId is empty
-    useEffect(() => {
-        if (!selectedCompId && filteredCompetitions.length > 0) {
-            setSelectedCompId(filteredCompetitions[0].id);
-        }
-    }, [selectedCity, competitions]);
+    // Auto-select KALDIRILDI — kullanıcı açıkça yarışma seçmeli
 
     const copyToClipboard = useCallback((text, id) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -867,8 +862,9 @@ export default function LinksPage() {
                         <select
                             className="header-select"
                             value={selectedCompId}
-                            onChange={(e) => setSelectedCompId(e.target.value)}
+                            onChange={(e) => { setSelectedCompId(e.target.value); setSelectedPanel(null); }}
                         >
+                            <option value="">— Yarışma Seçin —</option>
                             {filteredCompetitions.map(c => (
                                 <option key={c.id} value={c.id}>{c.isim}</option>
                             ))}
@@ -891,8 +887,19 @@ export default function LinksPage() {
 
             {/* Main Content */}
             <div className="page-content">
-                {/* Scoreboard Card — her zaman görünür */}
-                <div className="scoreboard-card">
+                {/* Yarışma seçilmeden hiçbir şey gösterme */}
+                {!selectedCompId && (
+                    <div className="empty-state" style={{ marginTop: 60 }}>
+                        <div className="empty-state__icon">
+                            <i className="material-icons-round">emoji_events</i>
+                        </div>
+                        <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Yarışma Seçin</p>
+                        <p style={{ color: 'var(--text-secondary, #888)' }}>QR kodları ve hakem linkleri görmek için yukarıdan bir yarışma seçin.</p>
+                    </div>
+                )}
+
+                {/* Yarışma seçildiyse: Scoreboard + Paneller */}
+                {selectedCompId && (<><div className="scoreboard-card">
                     <div className="scoreboard-card__qr">
                         <QRCode value={scoreboardUrl} size={120} level="M" />
                     </div>
@@ -984,6 +991,7 @@ export default function LinksPage() {
                             : renderEPanelContent()}
                     </>
                 )}
+            </>)}
             </div>
         </div>
     );
