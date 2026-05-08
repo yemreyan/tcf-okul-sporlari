@@ -319,10 +319,15 @@ export default function FinalsPage() {
                 }
 
                 let finalScoreVal, dScoreVal, eScoreVal, penVal;
+                let daSplit = 0, dbSplit = 0, aSplit = 0, eSplit = 0;
                 if (isRitmik) {
                     finalScoreVal = scoreData?.sonuc || 0;
-                    dScoreVal     = scoreData?.dScore || 0;                    // DA+DB toplamı
-                    eScoreVal     = (parseFloat(scoreData?.aScore || 0)) + (parseFloat(scoreData?.eScore || 0)); // A+E toplamı
+                    daSplit       = parseFloat(scoreData?.daScore || 0);
+                    dbSplit       = parseFloat(scoreData?.dbScore || 0);
+                    aSplit        = parseFloat(scoreData?.aScore  || 0);
+                    eSplit        = parseFloat(scoreData?.eScore  || 0);
+                    dScoreVal     = scoreData?.dScore || (daSplit + dbSplit);  // DA+DB
+                    eScoreVal     = aSplit + eSplit;                            // A+E (eski uyumluluk)
                     penVal        = scoreData?.penaltyTotal || 0;
                 } else {
                     finalScoreVal = scoreData?.finalScore || scoreData?.sonuc || scoreData?.sonPuan || 0;
@@ -342,6 +347,9 @@ export default function FinalsPage() {
                     E: parseFloat(eScoreVal || 0),
                     P: parseFloat(penVal || 0),
                     ME: 0,
+                    // Ritmik için detay: DA, DB, A, E ayrı
+                    DA: daSplit, DB: dbSplit, A: aSplit, EOnly: eSplit,
+                    isRitmik,
                     isGecersiz,
                     isDNS,
                 };
@@ -1460,8 +1468,19 @@ export default function FinalsPage() {
                                                                         </div>
                                                                         <div className="score-details">
                                                                             {isAerobikDiscipline && <span className="a-val">A:{formatScore(detail.A || 0)}</span>}
-                                                                            <span className="d-val">{isCurrentRitmik ? 'DA+DB' : 'D'}:{formatScore(detail.D)}</span>
-                                                                            <span className="e-val">{isCurrentRitmik ? 'A+E' : 'E'}:{formatScore(detail.E)}</span>
+                                                                            {isCurrentRitmik ? (
+                                                                                <>
+                                                                                    <span className="d-val">DA:{formatScore(detail.DA || 0)}</span>
+                                                                                    <span className="d-val">DB:{formatScore(detail.DB || 0)}</span>
+                                                                                    <span className="a-val">A:{formatScore(detail.A || 0)}</span>
+                                                                                    <span className="e-val">E:{formatScore(detail.EOnly || 0)}</span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <span className="d-val">D:{formatScore(detail.D)}</span>
+                                                                                    <span className="e-val">E:{formatScore(detail.E)}</span>
+                                                                                </>
+                                                                            )}
                                                                             {penalty > 0 && <span className="p-val">P:-{formatScore(penalty)}</span>}
                                                                         </div>
                                                                     </td>

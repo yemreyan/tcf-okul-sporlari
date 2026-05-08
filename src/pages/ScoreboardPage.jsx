@@ -382,10 +382,21 @@ export default function ScoreboardPage() {
                         const isGecersiz = s?.gecersiz === true;
                         const isDNS = s?.yarismadi === true;
                         const done = s && (s.durum === 'tamamlandi' || isGecersiz || isDNS);
-                        const val = done ? parseFloat(s.sonuc ?? 0) : 0;
-                        const dVal = done ? parseFloat(s.dScore ?? 0) : 0;
-                        const eVal = done ? (parseFloat(s.aScore ?? 0) + parseFloat(s.eScore ?? 0)) : 0;
-                        appScores[alet.id] = { total: val, d: dVal, e: eVal, isGecersiz, isDNS };
+                        const val   = done ? parseFloat(s.sonuc ?? 0) : 0;
+                        const daVal = done ? parseFloat(s.daScore     ?? 0) : 0;
+                        const dbVal = done ? parseFloat(s.dbScore     ?? 0) : 0;
+                        const aVal  = done ? parseFloat(s.aScore      ?? 0) : 0;
+                        const eVal  = done ? parseFloat(s.eScore      ?? 0) : 0;
+                        const pVal  = done ? parseFloat(s.penaltyTotal ?? 0) : 0;
+                        // d/e backward compat (eski display kodu için)
+                        const dVal  = done ? parseFloat(s.dScore ?? (daVal + dbVal)) : 0;
+                        const eCombined = aVal + eVal;
+                        appScores[alet.id] = {
+                            total: val,
+                            d: dVal, e: eCombined,
+                            da: daVal, db: dbVal, a: aVal, eOnly: eVal, penalty: pVal,
+                            isGecersiz, isDNS,
+                        };
                         total += val;
                         if (val > 0) completedCount++;
                         if (isGecersiz) athIsGecersiz = true;
@@ -969,10 +980,22 @@ export default function ScoreboardPage() {
                                                 {hasScore ? (
                                                     <>
                                                         <div className="sb-score-total">{val.total.toFixed(3)}</div>
-                                                        <div className="sb-score-de">
-                                                            <span className="sb-score-d">D {val.d.toFixed(2)}</span>
-                                                            <span className="sb-score-e">E {val.e.toFixed(3)}</span>
-                                                        </div>
+                                                        {isRitmikBased ? (
+                                                            <div className="sb-score-de sb-score-de--ritmik">
+                                                                <span className="sb-score-d">DA {(val.da || 0).toFixed(2)}</span>
+                                                                <span className="sb-score-d">DB {(val.db || 0).toFixed(2)}</span>
+                                                                <span className="sb-score-a">A {(val.a || 0).toFixed(2)}</span>
+                                                                <span className="sb-score-e">E {(val.eOnly || 0).toFixed(2)}</span>
+                                                                {(val.penalty || 0) > 0 && (
+                                                                    <span className="sb-score-pen">\u2212{(val.penalty || 0).toFixed(2)}</span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="sb-score-de">
+                                                                <span className="sb-score-d">D {val.d.toFixed(2)}</span>
+                                                                <span className="sb-score-e">E {val.e.toFixed(3)}</span>
+                                                            </div>
+                                                        )}
                                                     </>
                                                 ) : isValGecersiz ? (
                                                     <div className="sb-score-total">0.000</div>
