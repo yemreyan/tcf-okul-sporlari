@@ -2,6 +2,7 @@
  * RitmikClassicLayout — Masaüstü tablo/panel tasarımı
  * Ekran görüntüsündeki D/A/E/Kesintiler yapısını birebir kurgular.
  */
+import { useState, useEffect } from 'react';
 import { useOffline } from '../lib/OfflineContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { DA_GAP_THRESHOLD, DB_GAP_THRESHOLD } from '../hooks/useRitmikScoring';
@@ -59,20 +60,36 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         RITMIK_CATEGORIES, RITMIK_ALETLER,
     } = s;
 
-    // ── SİL yardımcıları ──
-    const silDA   = () => { setClassicDA(p => ({ ...p, da: '' }));   setScoringFieldsTouched(true); };
-    const silDA1  = () => { setClassicDA(p => ({ ...p, da1: '' })); setScoringFieldsTouched(true); };
-    const silDA2  = () => { setClassicDA(p => ({ ...p, da2: '' })); setScoringFieldsTouched(true); };
-    const silSJDA = () => { setClassicDA(p => ({ ...p, sjda: '' })); setScoringFieldsTouched(true); };
-    const silDB   = () => { setClassicDB(p => ({ ...p, db: '' }));   setScoringFieldsTouched(true); };
-    const silDB1  = () => { setClassicDB(p => ({ ...p, db1: '' })); setScoringFieldsTouched(true); };
-    const silDB2  = () => { setClassicDB(p => ({ ...p, db2: '' })); setScoringFieldsTouched(true); };
-    const silSJDB = () => { setClassicDB(p => ({ ...p, sjdb: '' })); setScoringFieldsTouched(true); };
-    const silA = (k) => { setAPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); setScoringFieldsTouched(true); };
-    const silE = (k) => { setEPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); setScoringFieldsTouched(true); };
-    const silSJA = () => { setSjaInput(''); setScoringFieldsTouched(true); };
-    const silSJE = () => { setSjeInput(''); setScoringFieldsTouched(true); };
-    const silKes = (k) => { setClassicPenalty(p => ({ ...p, [k]: '' })); setScoringFieldsTouched(true); };
+    // ── Per-field unlock: skor kilitliyken bile "X SİL" ile sadece o alan açılır ──
+    const [unlockedFields, setUnlockedFields] = useState(new Set());
+    const unlock = (key) => setUnlockedFields(s => { const n = new Set(s); n.add(key); return n; });
+    const isLocked = (key) => scoreLocked && !unlockedFields.has(key);
+    const hasUnlocked = unlockedFields.size > 0;
+    // Sporcu/alet değişince veya skor durumunu yeniden yüklerken unlock'ları temizle
+    useEffect(() => {
+        setUnlockedFields(new Set());
+    }, [selectedAthlete?.id, selectedAlet]);
+
+    // ── SİL yardımcıları (her biri kendi field-key'ini unlock eder) ──
+    const silDA   = () => { setClassicDA(p => ({ ...p, da: '' }));   unlock('da');   setScoringFieldsTouched(true); };
+    const silDA1  = () => { setClassicDA(p => ({ ...p, da1: '' })); unlock('da1');  setScoringFieldsTouched(true); };
+    const silDA2  = () => { setClassicDA(p => ({ ...p, da2: '' })); unlock('da2');  setScoringFieldsTouched(true); };
+    const silSJDA = () => { setClassicDA(p => ({ ...p, sjda: '' })); unlock('sjda'); setScoringFieldsTouched(true); };
+    const silDB   = () => { setClassicDB(p => ({ ...p, db: '' }));   unlock('db');   setScoringFieldsTouched(true); };
+    const silDB1  = () => { setClassicDB(p => ({ ...p, db1: '' })); unlock('db1');  setScoringFieldsTouched(true); };
+    const silDB2  = () => { setClassicDB(p => ({ ...p, db2: '' })); unlock('db2');  setScoringFieldsTouched(true); };
+    const silSJDB = () => { setClassicDB(p => ({ ...p, sjdb: '' })); unlock('sjdb'); setScoringFieldsTouched(true); };
+    const silA = (k) => { setAPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`a_${k}`); setScoringFieldsTouched(true); };
+    const silE = (k) => { setEPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`e_${k}`); setScoringFieldsTouched(true); };
+    const silSJA = () => { setSjaInput(''); unlock('sja'); setScoringFieldsTouched(true); };
+    const silSJE = () => { setSjeInput(''); unlock('sje'); setScoringFieldsTouched(true); };
+    const silKes = (k) => { setClassicPenalty(p => ({ ...p, [k]: '' })); unlock(`pen_${k}`); setScoringFieldsTouched(true); };
+
+    // Submit sonrası unlock'ları temizle
+    const handleSubmitAndReset = async () => {
+        await handleClassicSubmit();
+        setUnlockedFields(new Set());
+    };
 
     const fmt = (v, def = '0.000') => v != null && v !== '' && !isNaN(parseFloat(v))
         ? parseFloat(v).toFixed(3) : def;
@@ -235,7 +252,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                     <div className="cl-sil-row">
                         {silRowD.map((item, i) => (
                             <div key={i} className="cl-sil-cell">
-                                <button className="cl-sil-btn" onClick={item.action} disabled={scoreLocked}>
+                                <button className="cl-sil-btn" onClick={item.action}
+                                    title={scoreLocked ? 'Tıkla → bu alanı düzenlemeye aç' : 'Alanı temizle'}>
                                     {item.label}
                                 </button>
                                 <span className="cl-sil-val">{item.val}</span>
@@ -245,7 +263,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                     <div className="cl-sil-row">
                         {silRowAE.map((item, i) => (
                             <div key={i} className="cl-sil-cell">
-                                <button className="cl-sil-btn" onClick={item.action} disabled={scoreLocked}>
+                                <button className="cl-sil-btn" onClick={item.action}
+                                    title={scoreLocked ? 'Tıkla → bu alanı düzenlemeye aç' : 'Alanı temizle'}>
                                     {item.label}
                                 </button>
                                 <span className="cl-sil-val">{item.val}</span>
@@ -282,7 +301,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--cl-d-border)' }}>DA ★ Kesin</label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ fontWeight: 800, fontSize: 15, borderColor: 'var(--cl-d-border)', borderWidth: 2 }}
-                                                    value={classicDA.da} disabled={scoreLocked}
+                                                    value={classicDA.da} disabled={isLocked('da')}
                                                     onChange={e => { setClassicDA(p => ({ ...p, da: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* DA1, DA2 — bilgi amaçlı */}
@@ -290,14 +309,14 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 10, color: '#888' }}>DA1 <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={classicDA.da1} disabled={scoreLocked}
+                                                    value={classicDA.da1} disabled={isLocked('da1')}
                                                     onChange={e => { setClassicDA(p => ({ ...p, da1: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             <div className="cl-d-cell">
                                                 <label style={{ fontSize: 10, color: '#888' }}>DA2 <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={classicDA.da2} disabled={scoreLocked}
+                                                    value={classicDA.da2} disabled={isLocked('da2')}
                                                     onChange={e => { setClassicDA(p => ({ ...p, da2: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* SJDA — bilgi amaçlı */}
@@ -305,7 +324,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 10, color: '#888' }}>SJDA <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75, width: 72 }}
-                                                    value={classicDA.sjda} disabled={scoreLocked}
+                                                    value={classicDA.sjda} disabled={isLocked('sjda')}
                                                     onChange={e => { setClassicDA(p => ({ ...p, sjda: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* GAP DA — DA kesin ↔ SJDA (3 seviyeli renk) */}
@@ -333,7 +352,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--cl-d-border)' }}>DB ★ Kesin</label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ fontWeight: 800, fontSize: 15, borderColor: 'var(--cl-d-border)', borderWidth: 2 }}
-                                                    value={classicDB.db} disabled={scoreLocked}
+                                                    value={classicDB.db} disabled={isLocked('db')}
                                                     onChange={e => { setClassicDB(p => ({ ...p, db: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* DB1, DB2 — bilgi amaçlı */}
@@ -341,14 +360,14 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 10, color: '#888' }}>DB1 <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={classicDB.db1} disabled={scoreLocked}
+                                                    value={classicDB.db1} disabled={isLocked('db1')}
                                                     onChange={e => { setClassicDB(p => ({ ...p, db1: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             <div className="cl-d-cell">
                                                 <label style={{ fontSize: 10, color: '#888' }}>DB2 <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={classicDB.db2} disabled={scoreLocked}
+                                                    value={classicDB.db2} disabled={isLocked('db2')}
                                                     onChange={e => { setClassicDB(p => ({ ...p, db2: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* SJDB — bilgi amaçlı */}
@@ -356,7 +375,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label style={{ fontSize: 10, color: '#888' }}>SJDB <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <input type="number" min="0" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75, width: 72 }}
-                                                    value={classicDB.sjdb} disabled={scoreLocked}
+                                                    value={classicDB.sjdb} disabled={isLocked('sjdb')}
                                                     onChange={e => { setClassicDB(p => ({ ...p, sjdb: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
                                             {/* GAP DB — bilgi */}
@@ -402,7 +421,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                     <div key={key} className="cl-ae-cell">
                                                         <label>A{i + 1}</label>
                                                         <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
-                                                            value={val} disabled={scoreLocked}
+                                                            value={val} disabled={isLocked(`a_${key}`)}
                                                             onChange={e => { setAPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
                                                         {!isNaN(num) && val !== '' && (
                                                             <span className="cl-ae-result">{(10 - num).toFixed(1)}</span>
@@ -415,7 +434,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label>SJA <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}>(bilgi)</span></label>
                                                 <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={sjaInput} disabled={scoreLocked}
+                                                    value={sjaInput} disabled={isLocked('sja')}
                                                     onChange={e => { setSjaInput(e.target.value); setScoringFieldsTouched(true); }} />
                                             </div>
                                         </div>
@@ -458,7 +477,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                     <div key={key} className="cl-ae-cell">
                                                         <label>E{i + 1}</label>
                                                         <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
-                                                            value={val} disabled={scoreLocked}
+                                                            value={val} disabled={isLocked(`e_${key}`)}
                                                             onChange={e => { setEPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
                                                         {!isNaN(num) && val !== '' && (
                                                             <span className="cl-ae-result">{(10 - num).toFixed(1)}</span>
@@ -471,7 +490,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <label>SJE <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}>(bilgi)</span></label>
                                                 <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                     style={{ opacity: 0.75 }}
-                                                    value={sjeInput} disabled={scoreLocked}
+                                                    value={sjeInput} disabled={isLocked('sje')}
                                                     onChange={e => { setSjeInput(e.target.value); setScoringFieldsTouched(true); }} />
                                             </div>
                                         </div>
@@ -511,7 +530,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                 <div key={item.key} className="cl-k-cell">
                                                     <label>{item.label}</label>
                                                     <input type="number" min="0" step="0.1" placeholder="0.0"
-                                                        value={item.val} disabled={scoreLocked}
+                                                        value={item.val} disabled={isLocked(`pen_${item.key}`)}
                                                         onChange={e => { setClassicPenalty(p => ({ ...p, [item.key]: e.target.value })); setScoringFieldsTouched(true); }} />
                                                 </div>
                                             ))}
@@ -528,11 +547,11 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                             <div className="cl-action-row">
                                 <button
                                     className="cl-btn cl-btn--save"
-                                    disabled={scoreLocked || isSubmitting}
-                                    onClick={handleClassicSubmit}
+                                    disabled={(scoreLocked && !hasUnlocked) || isSubmitting}
+                                    onClick={handleSubmitAndReset}
                                 >
                                     <i className="material-icons-round" style={{ fontSize: 14 }}>save</i>
-                                    {isSubmitting ? 'KAYDEDİLİYOR…' : 'GÜNCELLE'}
+                                    {isSubmitting ? 'KAYDEDİLİYOR…' : (scoreLocked && hasUnlocked ? `${unlockedFields.size} ALAN GÜNCELLE` : 'GÜNCELLE')}
                                 </button>
                                 <span className="cl-action-label">PUAN GİRİŞ EKRANI — {RITMIK_ALETLER[selectedAlet]?.label?.toLocaleUpperCase('tr-TR')}</span>
                             </div>

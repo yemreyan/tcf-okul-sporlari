@@ -1039,15 +1039,28 @@
 /* Ritmik flash — compact layout for 4+ items */
 .sf-scores--ritmik {
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
     justify-content: center;
 }
 .sf-scores--ritmik .sf-score-item {
-    min-width: 90px;
-    padding: 0.85rem 1rem;
+    min-width: 70px;
+    padding: 0.55rem 0.7rem;
 }
 .sf-scores--ritmik .sf-score-value {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
+}
+.sf-scores--ritmik .sf-score-label {
+    font-size: 0.6rem;
+}
+.sf-scores--ritmik ~ .sf-total .sf-total-value,
+.sb-flash-card:has(.sf-scores--ritmik) .sf-total-value {
+    font-size: 3rem;
+}
+.sb-flash-card:has(.sf-scores--ritmik) {
+    padding-bottom: 1.5rem;
+}
+.sb-flash-card:has(.sf-scores--ritmik) .sf-total {
+    margin-top: 0.75rem;
 }
 
 /* Divider */
