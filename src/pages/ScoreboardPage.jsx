@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
+import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
 import './ScoreboardPage.css';
 
 /* ================================================================
@@ -69,6 +70,7 @@ export default function ScoreboardPage() {
     const { currentUser } = useAuth();
     const { firebasePath, routePrefix, hasApparatus, id: disciplineId } = useDiscipline();
     const isRitmik = disciplineId === 'ritmik';
+    const isAerobikDiscipline = disciplineId === 'aerobik';
     const [competitions, setCompetitions] = useState({});
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -174,9 +176,24 @@ export default function ScoreboardPage() {
 
         const cats = Array.from(selectedCategories);
 
-        // Set up listeners for each category
-        cats.forEach(catId => {
-            // Athletes
+        // ── Aerobik: gruba göre kategorileri genişlet ──
+        // Kardeş kategoriler (aynı grup) de yüklenmeli ki çapraz takım puanı hesaplanabilsin
+        let allCatsToSubscribe = [...cats];
+        if (isAerobikDiscipline) {
+            const expandedSet = new Set(cats);
+            cats.forEach(catId => {
+                const group = AEROBIK_CATEGORIES[catId]?.group;
+                if (group) {
+                    Object.entries(AEROBIK_CATEGORIES).forEach(([k, v]) => {
+                        if (v.group === group) expandedSet.add(k);
+                    });
+                }
+            });
+            allCatsToSubscribe = [...expandedSet];
+        }
+
+        // Set up listeners for each category (incl. expanded siblings)
+        allCatsToSubscribe.forEach(catId => {
             const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`);
             const unsubAthletes = onValue(athletesRef, (snap) => {
                 const data = snap.val();
@@ -190,7 +207,6 @@ export default function ScoreboardPage() {
             });
             liveUnsubsRef.current.push(unsubAthletes);
 
-            // Scores
             const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${catId}`);
             const unsubScores = onValue(scoresRef, (snap) => {
                 setCategoryData(prev => ({
@@ -204,7 +220,7 @@ export default function ScoreboardPage() {
             liveUnsubsRef.current.push(unsubScores);
         });
 
-        // Flash trigger (shared across categories)
+        // Flash trigger
         const flashRef = ref(db, `${firebasePath}/${selectedCompId}/flashTrigger`);
         let isInitialLoad = true;
         const unsubFlash = onValue(flashRef, (snap) => {
@@ -216,28 +232,78 @@ export default function ScoreboardPage() {
         });
         liveUnsubsRef.current.push(unsubFlash);
 
-        // Build views for all selected categories
+        // Build views
         const newViews = [];
-        cats.forEach(catId => {
-            const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || '';
-            const lid = catId.toLowerCase();
-            const lname = catName.toLowerCase();
-            const isErkek = lid.includes('erkek') || lname.includes('erkek');
-            const isKadin = lid.includes('kadin') || lid.includes('kiz') || lname.includes('kadın') || lname.includes('kız');
 
-            if (isErkek) {
-                newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#0ea5e9', gender: 'erkek', catId });
-            } else if (isKadin) {
-                newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#e879a8', gender: 'kadin', catId });
-            } else {
-                newViews.push({ type: 'ind', gender: 'kadin', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — KIZLAR`, color: '#e879a8', catId });
-                newViews.push({ type: 'ind', gender: 'erkek', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — ERKEKLER`, color: '#0ea5e9', catId });
-            }
-            newViews.push({ type: 'team', title: 'TAKIM SIRALAMASI', subtitle: catName, color: '#22c55e', catId });
-        });
+        if (isAerobikDiscipline) {
+            // ── Aerobik: Grup bazlı görünümler ──
+            // Önce seçili kategorileri gruba göre topla
+            const groupsMap = {}; // groupName → Set<catId>
+            cats.forEach(catId => {
+                const cfg = AEROBIK_CATEGORIES[catId];
+                if (!cfg) return;
+                const group = cfg.group;
+                if (!groupsMap[group]) groupsMap[group] = new Set();
+                groupsMap[group].add(catId);
+                // Aynı gruptaki tüm kardeş kategorileri de ekle
+                Object.entries(AEROBIK_CATEGORIES).forEach(([k, v]) => {
+                    if (v.group === group) groupsMap[group].add(k);
+                });
+            });
+
+            Object.entries(groupsMap).forEach(([group, catIdsSet]) => {
+                const catIdsArr = [...catIdsSet];
+
+                if (group === 'Step Aerobik') {
+                    // Step: her kategori kendi içinde bireysel + takım
+                    catIdsArr.forEach(catId => {
+                        const catLabel = AEROBIK_CATEGORIES[catId]?.label || catId;
+                        newViews.push({ type: 'aerobik_ind', title: 'TAKIM SIRALAMASI', subtitle: catLabel, color: '#0ea5e9', catId });
+                    });
+                } else {
+                    // Ferdi aerobik: bireysel görünüm her kategori için ayrı
+                    catIdsArr.forEach(catId => {
+                        const cfg = AEROBIK_CATEGORIES[catId];
+                        const catLabel = cfg?.label || catId;
+                        const gender = cfg?.cinsiyet;
+                        const color = gender === 'Kız' ? '#e879a8' : gender === 'Erkek' ? '#0ea5e9' : '#a855f7';
+                        newViews.push({ type: 'aerobik_ind', title: 'BİREYSEL GENEL TASNİF', subtitle: catLabel, color, catId });
+                    });
+                    // Grup için BİR takım görünümü
+                    newViews.push({
+                        type: 'aerobik_team',
+                        title: 'TAKIM GENEL TASNİF',
+                        subtitle: `${group} Takım Sıralaması`,
+                        color: '#22c55e',
+                        catId: catIdsArr[0],
+                        groupCatIds: catIdsArr,
+                        group,
+                    });
+                }
+            });
+        } else {
+            // ── Standart (Artistik, Ritmik, vb.) ──
+            cats.forEach(catId => {
+                const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || '';
+                const lid = catId.toLowerCase();
+                const lname = catName.toLowerCase();
+                const isErkek = lid.includes('erkek') || lname.includes('erkek');
+                const isKadin = lid.includes('kadin') || lid.includes('kiz') || lname.includes('kadın') || lname.includes('kız');
+
+                if (isErkek) {
+                    newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#0ea5e9', gender: 'erkek', catId });
+                } else if (isKadin) {
+                    newViews.push({ type: 'all', title: 'BİREYSEL GENEL TASNİF', subtitle: catName, color: '#e879a8', gender: 'kadin', catId });
+                } else {
+                    newViews.push({ type: 'ind', gender: 'kadin', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — KIZLAR`, color: '#e879a8', catId });
+                    newViews.push({ type: 'ind', gender: 'erkek', title: 'BİREYSEL GENEL TASNİF', subtitle: `${catName} — ERKEKLER`, color: '#0ea5e9', catId });
+                }
+                newViews.push({ type: 'team', title: 'TAKIM SIRALAMASI', subtitle: catName, color: '#22c55e', catId });
+            });
+        }
 
         setViews(newViews);
-    }, [selectedCompId, selectedCategories, competitions, cleanupListeners]);
+    }, [selectedCompId, selectedCategories, competitions, cleanupListeners, isAerobikDiscipline, firebasePath]);
 
     // Current view
     const currentView = views[viewIndex];
@@ -274,9 +340,9 @@ export default function ScoreboardPage() {
 
     // Memoized individual ranking
     const individualRanking = useMemo(() => {
-        if (!currentView || (currentView.type !== 'all' && currentView.type !== 'ind')) return [];
+        if (!currentView || (currentView.type !== 'all' && currentView.type !== 'ind' && currentView.type !== 'aerobik_ind')) return [];
 
-        const list = currentView.type === 'all'
+        const list = (currentView.type === 'all' || currentView.type === 'aerobik_ind')
             ? athletes
             : athletes.filter(a => a.cinsiyet === currentView.gender);
 
@@ -361,8 +427,72 @@ export default function ScoreboardPage() {
 
     // Memoized team ranking
     const teamRanking = useMemo(() => {
-        if (!currentView || currentView.type !== 'team') return [];
+        if (!currentView) return [];
+        const vType = currentView.type;
+        const isTeamView = vType === 'team' || vType === 'aerobik_team' || vType === 'step_team';
+        if (!isTeamView) return [];
 
+        // ── Aerobik Ferdi: çapraz-kategori havuzu (kız+erkek+karma aynı grup) ──
+        if (vType === 'aerobik_team') {
+            const groupCatIds = currentView.groupCatIds || [currentView.catId];
+            const schoolMap = {};
+
+            groupCatIds.forEach(catId => {
+                const catD = categoryData[catId] || {};
+                const catAthletes = catD.athletes || [];
+                const catScores = catD.scores || {};
+
+                catAthletes.forEach(athlete => {
+                    const score = parseFloat(catScores[athlete.id]?.sonuc || 0);
+                    if (score <= 0) return;
+                    const okul = athlete.okul || '';
+                    if (!okul) return;
+                    if (!schoolMap[okul]) schoolMap[okul] = { name: okul, scores: [] };
+                    schoolMap[okul].scores.push(score);
+                });
+            });
+
+            return Object.values(schoolMap)
+                .map(school => {
+                    const sorted = [...school.scores].sort((a, b) => b - a);
+                    const top2 = sorted.slice(0, 2);
+                    if (top2.length < 2) return null;
+                    const total = top2.reduce((s, v) => s + v, 0);
+                    return {
+                        name: school.name,
+                        total,
+                        top2Scores: top2,
+                        appTotals: { _total: total },
+                        memberCount: school.scores.length,
+                    };
+                })
+                .filter(t => t !== null)
+                .sort((a, b) => b.total - a.total);
+        }
+
+        // ── Step Aerobik: Takım bazlı (schoolKey → score) ──
+        if (vType === 'step_team') {
+            const catD = categoryData[currentView.catId] || {};
+            const catScores = catD.scores || {};
+            const catAthletes = catD.athletes || [];
+
+            return Object.entries(catScores)
+                .map(([teamKey, scoreData]) => {
+                    const score = parseFloat(scoreData?.sonuc || 0);
+                    if (score <= 0) return null;
+                    // Okul adını athletes'ten bul (toStepKey ile eşleşme)
+                    const matchAth = catAthletes.find(a => {
+                        const k = (a.okul || '').trim().replace(/[.#$[\]/]/g, '-').slice(0, 60);
+                        return k === teamKey;
+                    });
+                    const teamName = matchAth?.okul || teamKey;
+                    return { name: teamName, total: score, appTotals: { _total: score }, memberCount: 1 };
+                })
+                .filter(t => t !== null)
+                .sort((a, b) => b.total - a.total);
+        }
+
+        // ── Standart takım sıralaması (Artistik / Ritmik / diğer) ──
         const teamAthletes = {};
         athletes.forEach(a => {
             const t = (a.yarismaTuru || a.katilimTuru || '').toLowerCase();
@@ -384,7 +514,6 @@ export default function ScoreboardPage() {
             let hasScore = false;
 
             if (isApparatusBased) {
-                // Artistik: alet bazlı toplam (allScores[aletId][athId])
                 apparatusList.forEach(alet => {
                     const scoresArr = [];
                     members.forEach(mId => {
@@ -398,7 +527,6 @@ export default function ScoreboardPage() {
                     if (topSum > 0) hasScore = true;
                 });
             } else if (isRitmikBased) {
-                // Ritmik: sporcu-önce alet bazlı toplam (allScores[athId][aletKey])
                 apparatusList.forEach(alet => {
                     const scoresArr = [];
                     members.forEach(mId => {
@@ -412,7 +540,6 @@ export default function ScoreboardPage() {
                     if (topSum > 0) hasScore = true;
                 });
             } else {
-                // Non-apparatus: doğrudan sporcu toplam puanları
                 const scoresArr = [];
                 members.forEach(mId => {
                     const s = allScores[mId];
@@ -434,7 +561,7 @@ export default function ScoreboardPage() {
     }, [athletes, allScores, apparatusList, isApparatusBased, isRitmikBased, currentView, categoryData]);
 
     // Full ranking for current view (used for pagination)
-    const fullRanking = currentView?.type === 'team' ? teamRanking : individualRanking;
+    const fullRanking = ['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? teamRanking : individualRanking;
     const totalPages = Math.max(1, Math.ceil(fullRanking.length / PAGE_SIZE));
     const pagedRanking = fullRanking.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
 
@@ -681,7 +808,9 @@ export default function ScoreboardPage() {
 
     // ─── LIVE VIEW ─────────────────────────────────────────────
     const compOptions = competitions[selectedCompId];
-    const currentCatName = currentView ? (competitions[selectedCompId]?.kategoriler?.[currentView.catId]?.name || '') : '';
+    const currentCatName = currentView
+        ? (currentView.subtitle || competitions[selectedCompId]?.kategoriler?.[currentView.catId]?.name || '')
+        : '';
 
     return (
         <div className="sb-live">
@@ -738,7 +867,7 @@ export default function ScoreboardPage() {
             {/* TABLE HEADER */}
             <div className="sb-thead" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="sb-th sb-th-rank">SIRA</div>
-                <div className="sb-th sb-th-name">{currentView?.type === 'team' ? 'TAKIM' : 'SPORCU'}</div>
+                <div className="sb-th sb-th-name">{['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? 'TAKIM' : 'SPORCU'}</div>
                 {isColumnBased ? apparatusList.map(a => {
                     const mapping = APPARATUS_MAP[a.id] || { abbr: a.name.substring(0, 3).toUpperCase() };
                     return (
@@ -756,12 +885,23 @@ export default function ScoreboardPage() {
                 {pagedRanking.length === 0 ? (
                     <div className="sb-empty-state">
                         <i className="material-icons-round">hourglass_empty</i>
-                        <span>{currentView?.type === 'team' ? 'Takim Puani Henuz Olusturulmadi' : 'Henuz Puan Girilmedi'}</span>
+                        <span>{['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? 'Takim Puani Henuz Olusturulmadi' : 'Henuz Puan Girilmedi'}</span>
                     </div>
                 ) : (
-                    currentView?.type === 'team' ? (
+                    ['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? (
                         pagedRanking.map((t, localIdx) => {
                             const globalIdx = pageIndex * PAGE_SIZE + localIdx;
+                            const isAerobikTeam = currentView?.type === 'aerobik_team';
+                            const isStepTeam = currentView?.type === 'step_team';
+                            // subtitle: aerobik_team shows top-2 score breakdown, step_team shows "Tak\u0131m", classic shows memberCount
+                            let subLabel = '';
+                            if (isAerobikTeam && t.top2Scores?.length) {
+                                subLabel = t.top2Scores.map(s => s.toFixed(3)).join(' + ');
+                            } else if (isStepTeam) {
+                                subLabel = 'Tak\u0131m';
+                            } else {
+                                subLabel = `${t.memberCount} sporcu`;
+                            }
                             return (
                                 <div
                                     key={t.name}
@@ -782,7 +922,7 @@ export default function ScoreboardPage() {
                                             {t.name}
                                             <span className="sb-rank-tag">({globalIdx + 1}.)</span>
                                         </div>
-                                        <div className="sb-athlete-club">{t.memberCount} sporcu</div>
+                                        <div className="sb-athlete-club">{subLabel}</div>
                                     </div>
                                     {isColumnBased && apparatusList.map(alet => (
                                         <div key={alet.id} className={`sb-cell sb-score-cell ${t.appTotals[alet.id] > 0 ? 'sb-scored' : 'sb-pending'}`}>

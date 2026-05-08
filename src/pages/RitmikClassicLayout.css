@@ -20,6 +20,7 @@
     --cl-total-bg: #1a1a1a;
     --cl-total-text: #fff;
     --cl-gap-ok: #1a7a1a;
+    --cl-gap-warn: #d97706;
     --cl-gap-err: #c00;
     --cl-input-w: 72px;
     --cl-font: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -327,11 +328,13 @@
 }
 .cl-gap-label { font-weight: 700; color: var(--cl-text-sec); }
 .cl-gap-val { font-weight: 800; }
-.cl-gap-val.ok  { color: var(--cl-gap-ok); }
-.cl-gap-val.err { color: var(--cl-gap-err); }
+.cl-gap-val.ok   { color: var(--cl-gap-ok); }
+.cl-gap-val.warn { color: var(--cl-gap-warn); }
+.cl-gap-val.err  { color: var(--cl-gap-err); }
 .cl-gap-check { font-size: 14px; }
-.cl-gap-check.ok  { color: var(--cl-gap-ok); }
-.cl-gap-check.err { color: var(--cl-gap-err); }
+.cl-gap-check.ok   { color: var(--cl-gap-ok); }
+.cl-gap-check.warn { color: var(--cl-gap-warn); }
+.cl-gap-check.err  { color: var(--cl-gap-err); }
 
 .cl-d-totals {
     display: flex;

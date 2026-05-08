@@ -498,7 +498,8 @@
 
 .edit-btn,
 .del-btn,
-.revert-school-btn {
+.revert-school-btn,
+.move-cat-btn {
     background: transparent;
     border: none;
     width: 32px;
@@ -522,6 +523,118 @@
 }
 
 .revert-school-btn .material-icons-round { font-size: 18px; }
+
+/* ─── Kategori Taşı Butonu ─── */
+.move-cat-btn {
+    background: rgba(8, 145, 178, 0.1);
+    color: #0891B2;
+}
+
+.move-cat-btn:hover {
+    background: #0891B2;
+    color: white;
+}
+
+.move-cat-btn .material-icons-round { font-size: 18px; }
+
+/* ─── Kategori Taşı Modal ─── */
+.move-cat-modal {
+    max-width: 440px;
+}
+
+.move-cat-athlete-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.move-cat-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #0891B2;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.move-cat-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0c4a6e;
+}
+
+.move-cat-school {
+    font-size: 0.8rem;
+    color: #0369a1;
+    margin-top: 2px;
+}
+
+.move-cat-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.move-cat-current-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.move-cat-current-value {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #1e293b;
+    background: #e2e8f0;
+    padding: 2px 10px;
+    border-radius: 20px;
+}
+
+.move-cat-arrow {
+    text-align: center;
+    color: #94a3b8;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.move-cat-arrow .material-icons-round { font-size: 1.4rem; }
+
+.move-cat-confirm-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #065f46;
+    line-height: 1.4;
+}
+
+.move-cat-confirm-info .material-icons-round {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #059669;
+}
 
 .revert-school-inline-btn {
     display: flex;
@@ -1031,6 +1144,240 @@
     background: #9CA3AF;
     border-radius: 2px;
     transform: translateX(-50%);
+}
+
+/* ─── Gender Fix Modal ─── */
+.gender-fix-modal .modal__body {
+    padding: 0;
+}
+
+.gender-fix-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #FFF7ED;
+    border-bottom: 1px solid #FED7AA;
+    font-size: 0.83rem;
+    color: #92400E;
+    line-height: 1.4;
+}
+
+.gender-fix-info .material-icons-round {
+    font-size: 18px;
+    color: #F59E0B;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.gender-fix-select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-bottom: 1px solid #F3F4F6;
+    font-size: 0.82rem;
+    color: #6B7280;
+    cursor: pointer;
+    user-select: none;
+}
+
+.gender-fix-select-all input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #4F46E5;
+}
+
+.gender-fix-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.gender-fix-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background 0.12s;
+    user-select: none;
+}
+
+.gender-fix-row:hover {
+    background: #F9FAFB;
+}
+
+.gender-fix-row input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #4F46E5;
+    flex-shrink: 0;
+}
+
+.gender-fix-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    color: #4F46E5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.gender-fix-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.2;
+}
+
+.gender-fix-school {
+    font-size: 0.75rem;
+    color: #9CA3AF;
+    margin-top: 1px;
+}
+
+.gender-fix-path {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.gender-fix-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+.gender-fix-badge--wrong {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.gender-fix-badge--correct {
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.gender-fix-badge--missing {
+    background: #F3F4F6;
+    color: #6B7280;
+    font-style: italic;
+}
+
+.gender-fix-gender {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.gender-fix-gender--male { color: #3B82F6; }
+.gender-fix-gender--female { color: #EC4899; }
+
+.gender-fix-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #EF4444;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+/* Move Cat Button */
+.move-cat-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0891B2;
+    background: rgba(8, 145, 178, 0.08);
+    border: 1px solid rgba(8, 145, 178, 0.25);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.move-cat-btn:hover {
+    background: rgba(8, 145, 178, 0.15);
+    border-color: rgba(8, 145, 178, 0.4);
+}
+
+.move-cat-btn .material-icons-round {
+    font-size: 14px;
+}
+
+/* Move Cat Modal */
+.move-cat-athlete-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #F9FAFB;
+    border-bottom: 1px solid #F3F4F6;
+    border-radius: 8px 8px 0 0;
+}
+
+.move-cat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    color: #4F46E5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.move-cat-current {
+    flex: 1;
+}
+
+.move-cat-current strong {
+    display: block;
+    font-size: 0.9rem;
+    color: #111827;
+}
+
+.move-cat-current span {
+    font-size: 0.78rem;
+    color: #9CA3AF;
+}
+
+.move-cat-arrow {
+    font-size: 22px;
+    color: #9CA3AF;
+}
+
+.move-cat-confirm-info {
+    padding: 8px 12px;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #166534;
+    margin-top: 4px;
 }
 
 @media (max-width: 768px) {

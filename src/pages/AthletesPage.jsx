@@ -10,6 +10,7 @@ import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { logAction } from '../lib/auditLogger';
 import { maskTckn } from '../lib/privacy';
+import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
 import './AthletesPage.css';
 
 const ITEMS_PER_PAGE = 25;
@@ -103,6 +104,7 @@ export default function AthletesPage() {
     const { toast, confirm } = useNotification();
     const { requestDelete } = useDeleteGuard();
     const { firebasePath, routePrefix, hasApparatus } = useDiscipline();
+    const isAerobik = firebasePath === 'aerobik_yarismalar';
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
 
@@ -163,6 +165,17 @@ export default function AthletesPage() {
     // Benzer Okul Birleştirme State
     const [similarGroups, setSimilarGroups] = useState([]); // bulunan gruplar
     const [isFindingSchools, setIsFindingSchools] = useState(false);
+
+    // Kategori Taşı Modal
+    const [moveCatModal, setMoveCatModal] = useState(null); // { athlete }
+    const [moveCatTarget, setMoveCatTarget] = useState('');
+    const [moveCatSaving, setMoveCatSaving] = useState(false);
+
+    // Cinsiyet Düzelt Modal (aerobik only)
+    const [genderFixOpen, setGenderFixOpen] = useState(false);
+    const [genderFixItems, setGenderFixItems] = useState([]); // { ath, inferredGender, catGender, suggestedCat }
+    const [genderFixSelected, setGenderFixSelected] = useState(new Set());
+    const [genderFixSaving, setGenderFixSaving] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -236,8 +249,72 @@ export default function AthletesPage() {
         return () => unsubscribe();
     }, [selectedCompId, firebasePath]);
 
+    // ─── Aerobik yardımcıları ───
+    // TCKN 10. hane (index 9): tek → Erkek, çift → Kız
+    const inferGenderFromTckn = (tckn) => {
+        if (!tckn || String(tckn).length < 10) return null;
+        const digit = parseInt(String(tckn)[9], 10);
+        if (isNaN(digit)) return null;
+        return digit % 2 === 1 ? 'Erkek' : 'Kız';
+    };
+
+    // Aerobik: aynı grup içindeki tüm kategorileri döndür
+    const getAerobikGroupCats = (catId) => {
+        const group = AEROBIK_CATEGORIES[catId]?.group;
+        if (!group) return [catId];
+        return Object.entries(AEROBIK_CATEGORIES)
+            .filter(([, v]) => v.group === group)
+            .map(([k]) => k);
+    };
+
     // Belirtilen kategorilerde okul bazlı takım türünü otomatik hesapla ve güncelle
     const autoSyncTeamStatus = async (compId, catIdList) => {
+        if (isAerobik) {
+            // Aerobik: min 2, max 4 — grup içindeki tüm cinsiyetler birlikte sayılır
+            // Etkilenen grupları bul
+            const processedGroups = new Set();
+            const uniqueCats = [...new Set(catIdList)].filter(Boolean);
+
+            for (const catId of uniqueCats) {
+                const group = AEROBIK_CATEGORIES[catId]?.group;
+                if (!group || processedGroups.has(group)) continue;
+                processedGroups.add(group);
+
+                const groupCats = getAerobikGroupCats(catId);
+
+                // Gruptaki tüm kategorilerdeki sporcuları yükle
+                const schoolGroups = {}; // okul → [{ id, catId, ...ath }]
+                for (const gCatId of groupCats) {
+                    const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${gCatId}`));
+                    if (!snap.exists()) continue;
+                    Object.entries(snap.val()).forEach(([id, ath]) => {
+                        const okul = (ath.okul || ath.kulup || '').trim();
+                        if (!okul) return;
+                        if (!schoolGroups[okul]) schoolGroups[okul] = [];
+                        schoolGroups[okul].push({ id, catId: gCatId, ...ath });
+                    });
+                }
+
+                // min=2 max=4: okuldaki toplam sporcu sayısına göre takim/ferdi
+                const updates = {};
+                Object.values(schoolGroups).forEach(grp => {
+                    const newTur = grp.length >= 2 ? 'takim' : 'ferdi';
+                    grp.forEach(ath => {
+                        if ((ath.yarismaTuru || 'ferdi') !== newTur) {
+                            updates[`${firebasePath}/${compId}/sporcular/${ath.catId}/${ath.id}/yarismaTuru`] = newTur;
+                        }
+                    });
+                });
+
+                if (Object.keys(updates).length > 0) {
+                    await update(ref(db), updates);
+                    logAction('athlete_update', `[Aerobik] Takım durumu grup (${group}) için senkronize edildi`, { user: currentUser?.kullaniciAdi || '', competitionId: compId });
+                }
+            }
+            return;
+        }
+
+        // Diğer branşlar — eski mantık
         const catNames = competitions[compId]?.kategoriler || {};
         const uniqueCats = [...new Set(catIdList)].filter(Boolean);
 
@@ -251,8 +328,6 @@ export default function AthletesPage() {
             if (!snap.exists()) continue;
 
             const allAthletes = snap.val();
-
-            // Okul bazlı gruplama
             const schoolGroups = {};
             Object.entries(allAthletes).forEach(([id, ath]) => {
                 const okul = (ath.okul || ath.kulup || '').trim();
@@ -275,6 +350,148 @@ export default function AthletesPage() {
                 await update(ref(db), updates);
                 logAction('athlete_update', `Takım durumu otomatik senkronize edildi (${Object.keys(updates).length} sporcu)`, { user: currentUser?.displayName || currentUser?.email || '', competitionId: compId });
             }
+        }
+    };
+
+    // ─── Kategori Taşı ───
+    const openMoveCat = (ath) => {
+        setMoveCatModal(ath);
+        setMoveCatTarget(ath.categoryId);
+        setMoveCatSaving(false);
+    };
+
+    const handleMoveCat = async () => {
+        if (!moveCatModal || !moveCatTarget) return;
+        if (moveCatTarget === moveCatModal.categoryId) {
+            return toast('Sporcu zaten bu kategoride.', 'warning');
+        }
+        setMoveCatSaving(true);
+        const ath     = moveCatModal;
+        const oldCat  = ath.categoryId;
+        const newCat  = moveCatTarget;
+        const athId   = ath.id;
+        try {
+            const updates = {};
+            // Sporcuyu taşı
+            updates[`${firebasePath}/${selectedCompId}/sporcular/${oldCat}/${athId}`] = null;
+            updates[`${firebasePath}/${selectedCompId}/sporcular/${newCat}/${athId}`] = {
+                ad:          ath.ad,
+                soyad:       ath.soyad,
+                tckn:        ath.tckn  || '',
+                lisans:      ath.lisans || '',
+                dob:         ath.dob   || '',
+                okul:        ath.okul  || '',
+                kulup:       ath.okul  || '',
+                il:          ath.il    || '',
+                categoryId:  newCat,
+                yarismaTuru: ath.yarismaTuru || 'ferdi',
+                adSoyad:     `${ath.ad} ${ath.soyad}`.trim(),
+                soyadAd:     `${ath.soyad} ${ath.ad}`.trim(),
+                sirasi:      ath.sirasi || 999,
+            };
+            // Puanlarını taşı (aerobik: puanlar/catId/athId)
+            const oldScoresSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${oldCat}/${athId}`));
+            if (oldScoresSnap.exists()) {
+                updates[`${firebasePath}/${selectedCompId}/puanlar/${oldCat}/${athId}`] = null;
+                updates[`${firebasePath}/${selectedCompId}/puanlar/${newCat}/${athId}`] = oldScoresSnap.val();
+            }
+            // Çıkış sıralamasından çıkar
+            const oldOrderSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${oldCat}`));
+            if (oldOrderSnap.exists()) {
+                const oldOrder = oldOrderSnap.val();
+                Object.keys(oldOrder).forEach(rotKey => {
+                    if (oldOrder[rotKey]?.[athId]) {
+                        updates[`${firebasePath}/${selectedCompId}/siralama/${oldCat}/${rotKey}/${athId}`] = null;
+                    }
+                });
+            }
+            await update(ref(db), updates);
+            await autoSyncTeamStatus(selectedCompId, [oldCat, newCat]);
+            logAction('athlete_move_category', `${ath.ad} ${ath.soyad}: ${oldCat} → ${newCat}`, { user: currentUser?.kullaniciAdi || '', competitionId: selectedCompId });
+            toast(`${ath.ad} ${ath.soyad} → "${newCat}" kategorisine taşındı.`, 'success');
+            setMoveCatModal(null);
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Kategori taşıma hatası:', err);
+            toast('Taşıma sırasında hata oluştu: ' + err.message, 'error');
+        } finally {
+            setMoveCatSaving(false);
+        }
+    };
+
+    // ─── Cinsiyet Düzelt (Aerobik) ───
+    const openGenderFix = () => {
+        if (!selectedCompId) return toast('Önce bir yarışma seçin.', 'warning');
+        const items = [];
+        athletes.forEach(ath => {
+            const catCfg   = AEROBIK_CATEGORIES[ath.categoryId];
+            if (!catCfg) return;                          // bilinmeyen kategori
+            const catGender = catCfg.cinsiyet;            // 'Kız' | 'Erkek' | undefined
+            if (!catGender) return;                       // karma/step → atla
+            const inferred = inferGenderFromTckn(ath.tckn);
+            if (!inferred) return;                        // TCKN yoksa atla
+            if (inferred === catGender) return;           // doğru kategoride → atla
+
+            // Doğru kategori: aynı grup, doğru cinsiyet
+            const correctCat = Object.entries(AEROBIK_CATEGORIES)
+                .find(([, v]) => v.group === catCfg.group && v.cinsiyet === inferred)?.[0];
+
+            items.push({ ath, inferredGender: inferred, catGender, suggestedCat: correctCat || null });
+        });
+
+        if (items.length === 0) {
+            return toast('Yanlış kategoride sporcu bulunamadı (TCKN\'den cinsiyet tespit edilebilenler arasında).', 'info');
+        }
+        setGenderFixItems(items);
+        setGenderFixSelected(new Set(items.map(it => it.ath.id)));
+        setGenderFixOpen(true);
+    };
+
+    const handleGenderFix = async () => {
+        const toFix = genderFixItems.filter(it => genderFixSelected.has(it.ath.id) && it.suggestedCat);
+        if (toFix.length === 0) return;
+        setGenderFixSaving(true);
+        try {
+            const affectedCats = new Set();
+            for (const { ath, suggestedCat } of toFix) {
+                const oldCat = ath.categoryId;
+                const newCat = suggestedCat;
+                const athId  = ath.id;
+                const updates = {};
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${oldCat}/${athId}`] = null;
+                updates[`${firebasePath}/${selectedCompId}/sporcular/${newCat}/${athId}`] = {
+                    ad: ath.ad, soyad: ath.soyad, tckn: ath.tckn || '', lisans: ath.lisans || '',
+                    dob: ath.dob || '', okul: ath.okul || '', kulup: ath.okul || '', il: ath.il || '',
+                    categoryId: newCat, yarismaTuru: ath.yarismaTuru || 'ferdi',
+                    adSoyad: `${ath.ad} ${ath.soyad}`.trim(), soyadAd: `${ath.soyad} ${ath.ad}`.trim(),
+                    sirasi: ath.sirasi || 999,
+                };
+                // Puanlarını taşı
+                const scSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${oldCat}/${athId}`));
+                if (scSnap.exists()) {
+                    updates[`${firebasePath}/${selectedCompId}/puanlar/${oldCat}/${athId}`] = null;
+                    updates[`${firebasePath}/${selectedCompId}/puanlar/${newCat}/${athId}`] = scSnap.val();
+                }
+                // Çıkış sıralamasından çıkar
+                const orderSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${oldCat}`));
+                if (orderSnap.exists()) {
+                    Object.keys(orderSnap.val()).forEach(rotKey => {
+                        if (orderSnap.val()[rotKey]?.[athId])
+                            updates[`${firebasePath}/${selectedCompId}/siralama/${oldCat}/${rotKey}/${athId}`] = null;
+                    });
+                }
+                await update(ref(db), updates);
+                affectedCats.add(oldCat);
+                affectedCats.add(newCat);
+            }
+            await autoSyncTeamStatus(selectedCompId, [...affectedCats]);
+            logAction('gender_fix_bulk', `${toFix.length} sporcu cinsiyet bazlı kategoriye taşındı`, { user: currentUser?.kullaniciAdi || '', competitionId: selectedCompId });
+            toast(`${toFix.length} sporcu doğru kategoriye taşındı.`, 'success');
+            setGenderFixOpen(false);
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Cinsiyet düzeltme hatası:', err);
+            toast('Hata: ' + err.message, 'error');
+        } finally {
+            setGenderFixSaving(false);
         }
     };
 
@@ -1418,6 +1635,18 @@ export default function AthletesPage() {
                             <span>Tür Hesapla</span>
                         </button>
                     )}
+                    {isAerobik && hasPermission('athletes', 'duzenle') && (
+                        <button
+                            className="action-btn-outline"
+                            style={{ borderColor: '#059669', color: '#059669' }}
+                            onClick={openGenderFix}
+                            disabled={!selectedCompId || athletes.length === 0}
+                            title="TCKN'den cinsiyet tespit edip yanlış kategorideki sporcuları düzelt"
+                        >
+                            <i className="material-icons-round">wc</i>
+                            <span>Cinsiyet Düzelt</span>
+                        </button>
+                    )}
                     {hasPermission('athletes', 'duzenle') && (
                         <button
                             className="action-btn-outline"
@@ -1679,6 +1908,11 @@ export default function AthletesPage() {
                                                                                                     </button>
                                                                                                 )}
                                                                                                 {hasPermission('athletes', 'duzenle') && (
+                                                                                                    <button className="move-cat-btn" onClick={() => openMoveCat(ath)} title="Kategori Taşı">
+                                                                                                        <i className="material-icons-round">drive_file_move</i>
+                                                                                                    </button>
+                                                                                                )}
+                                                                                                {hasPermission('athletes', 'duzenle') && (
                                                                                                     <button className="edit-btn" onClick={() => openModal(ath)} title="Düzenle">
                                                                                                         <i className="material-icons-round">edit</i>
                                                                                                     </button>
@@ -1720,6 +1954,11 @@ export default function AthletesPage() {
                                                 {hasPermission('athletes', 'duzenle') && ath.appId && ath.appId !== 'excel_import' && (
                                                     <button className="revert-school-btn" onClick={() => handleRevertSchool(ath)} title="Başvurudaki okula geri döndür">
                                                         <i className="material-icons-round">history</i>
+                                                    </button>
+                                                )}
+                                                {hasPermission('athletes', 'duzenle') && (
+                                                    <button className="move-cat-btn" onClick={() => openMoveCat(ath)} title="Kategori Taşı">
+                                                        <i className="material-icons-round">drive_file_move</i>
                                                     </button>
                                                 )}
                                                 {hasPermission('athletes', 'duzenle') && (
@@ -2692,6 +2931,190 @@ export default function AthletesPage() {
                                 {ttSaving
                                     ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
                                     : <><i className="material-icons-round" style={{ marginRight: '6px' }}>drive_file_move</i>{ttSourceAthletes.length > 0 ? `${ttSourceAthletes.length} Sporcuyu Taşı` : 'Taşı'}</>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ Kategori Taşı Modal ═══ */}
+            {moveCatModal && (() => {
+                const comp = competitions[selectedCompId];
+                const allCats = new Set();
+                if (comp?.kategoriler) Object.keys(comp.kategoriler).forEach(k => allCats.add(k));
+                if (comp?.sporcular)   Object.keys(comp.sporcular).forEach(k => allCats.add(k));
+                const catList = [...allCats].filter(c => c && c !== 'undefined').sort();
+                const catNames = comp?.kategoriler || {};
+                const getCatLabel = (c) => {
+                    const obj = catNames[c];
+                    return obj?.isim || obj?.name || obj?.ad || c;
+                };
+                return (
+                    <div className="modal-overlay" onClick={() => setMoveCatModal(null)}>
+                        <div className="modal move-cat-modal" onClick={e => e.stopPropagation()}>
+                            <div className="modal__header" style={{ borderColor: '#0891B2' }}>
+                                <div className="modal__title">
+                                    <i className="material-icons-round" style={{ color: '#0891B2' }}>drive_file_move</i>
+                                    Kategori Taşı
+                                </div>
+                                <button className="modal__close" onClick={() => setMoveCatModal(null)}>
+                                    <i className="material-icons-round">close</i>
+                                </button>
+                            </div>
+                            <div className="modal__body">
+                                {/* Sporcu bilgisi */}
+                                <div className="move-cat-athlete-info">
+                                    <div className="move-cat-avatar">
+                                        {(moveCatModal.ad || '?').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div className="move-cat-name">{moveCatModal.ad} {moveCatModal.soyad}</div>
+                                        <div className="move-cat-school">{moveCatModal.okul || moveCatModal.kulup || '—'}</div>
+                                    </div>
+                                </div>
+
+                                {/* Mevcut kategori */}
+                                <div className="move-cat-current">
+                                    <span className="move-cat-current-label">Mevcut Kategori</span>
+                                    <span className="move-cat-current-value">{getCatLabel(moveCatModal.categoryId)}</span>
+                                </div>
+
+                                {/* Ok */}
+                                <div className="move-cat-arrow">
+                                    <i className="material-icons-round">arrow_downward</i>
+                                </div>
+
+                                {/* Hedef kategori */}
+                                <div className="form-group">
+                                    <label className="form-label">Taşınacak Kategori</label>
+                                    <select
+                                        className="form-select"
+                                        value={moveCatTarget}
+                                        onChange={e => setMoveCatTarget(e.target.value)}
+                                    >
+                                        {catList.map(c => (
+                                            <option key={c} value={c}>
+                                                {getCatLabel(c)}{c === moveCatModal.categoryId ? ' (mevcut)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {moveCatTarget && moveCatTarget !== moveCatModal.categoryId && (
+                                    <div className="move-cat-confirm-info">
+                                        <i className="material-icons-round">info_outline</i>
+                                        Sporcu "{getCatLabel(moveCatModal.categoryId)}" kategorisinden "{getCatLabel(moveCatTarget)}" kategorisine taşınacak. Varsa puanları da yeni kategoriye aktarılır.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal__footer">
+                                <button className="btn btn--secondary" onClick={() => setMoveCatModal(null)} disabled={moveCatSaving}>
+                                    İptal
+                                </button>
+                                <button
+                                    className="btn btn--primary"
+                                    style={{ background: '#0891B2', borderColor: '#0891B2' }}
+                                    onClick={handleMoveCat}
+                                    disabled={moveCatSaving || !moveCatTarget || moveCatTarget === moveCatModal.categoryId}
+                                >
+                                    {moveCatSaving
+                                        ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
+                                        : <><i className="material-icons-round" style={{ marginRight: '6px' }}>drive_file_move</i>Taşı</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ═══ Cinsiyet Düzelt Modal (Aerobik) ═══ */}
+            {genderFixOpen && (
+                <div className="modal-overlay" onClick={() => setGenderFixOpen(false)}>
+                    <div className="modal gender-fix-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal__header" style={{ borderColor: '#059669' }}>
+                            <div className="modal__title">
+                                <i className="material-icons-round" style={{ color: '#059669' }}>wc</i>
+                                Cinsiyet Bazlı Kategori Düzelt
+                            </div>
+                            <button className="modal__close" onClick={() => setGenderFixOpen(false)}>
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+                        <div className="modal__body">
+                            <div className="gender-fix-info">
+                                <i className="material-icons-round">info_outline</i>
+                                <span>TCKN'nin 10. hanesi tek → Erkek, çift → Kız. Yanlış kategorideki <strong>{genderFixItems.length}</strong> sporcu tespit edildi.</span>
+                            </div>
+
+                            {/* Tümünü Seç */}
+                            <div className="gender-fix-select-all">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={genderFixSelected.size === genderFixItems.length}
+                                        onChange={e => setGenderFixSelected(e.target.checked ? new Set(genderFixItems.map(it => it.ath.id)) : new Set())}
+                                    />
+                                    Tümünü Seç / Kaldır
+                                </label>
+                                <span className="gender-fix-count">{genderFixSelected.size} / {genderFixItems.length} seçili</span>
+                            </div>
+
+                            {/* Sporcu listesi */}
+                            <div className="gender-fix-list">
+                                {genderFixItems.map(({ ath, inferredGender, catGender, suggestedCat }) => {
+                                    const catCfg = AEROBIK_CATEGORIES[ath.categoryId];
+                                    const sugCfg = suggestedCat ? AEROBIK_CATEGORIES[suggestedCat] : null;
+                                    const checked = genderFixSelected.has(ath.id);
+                                    return (
+                                        <label key={ath.id} className={`gender-fix-row${checked ? ' gender-fix-row--selected' : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={e => {
+                                                    const next = new Set(genderFixSelected);
+                                                    e.target.checked ? next.add(ath.id) : next.delete(ath.id);
+                                                    setGenderFixSelected(next);
+                                                }}
+                                            />
+                                            <div className="gender-fix-avatar">
+                                                {(ath.ad || '?').charAt(0)}
+                                            </div>
+                                            <div className="gender-fix-athlete">
+                                                <div className="gender-fix-name">{ath.ad} {ath.soyad}</div>
+                                                <div className="gender-fix-school">{ath.okul || '—'}</div>
+                                            </div>
+                                            <div className="gender-fix-path">
+                                                <span className="gender-fix-badge gender-fix-badge--wrong">{catCfg?.label || ath.categoryId}</span>
+                                                <i className="material-icons-round" style={{ fontSize: '1rem', color: '#94a3b8' }}>arrow_forward</i>
+                                                {suggestedCat ? (
+                                                    <span className="gender-fix-badge gender-fix-badge--correct">{sugCfg?.label || suggestedCat}</span>
+                                                ) : (
+                                                    <span className="gender-fix-badge gender-fix-badge--missing">Uygun kategori yok</span>
+                                                )}
+                                            </div>
+                                            <span className={`gender-fix-gender gender-fix-gender--${inferredGender === 'Erkek' ? 'male' : 'female'}`}>
+                                                {inferredGender === 'Erkek' ? '♂' : '♀'}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="modal__footer">
+                            <button className="btn btn--secondary" onClick={() => setGenderFixOpen(false)} disabled={genderFixSaving}>
+                                İptal
+                            </button>
+                            <button
+                                className="btn btn--primary"
+                                style={{ background: '#059669', borderColor: '#059669' }}
+                                onClick={handleGenderFix}
+                                disabled={genderFixSaving || genderFixSelected.size === 0 || !genderFixItems.some(it => genderFixSelected.has(it.ath.id) && it.suggestedCat)}
+                            >
+                                {genderFixSaving
+                                    ? <><span className="spinner-small" style={{ marginRight: '8px' }}></span>Taşınıyor...</>
+                                    : <><i className="material-icons-round" style={{ marginRight: '6px' }}>check_circle</i>{genderFixSelected.size} Sporcuyu Düzelt</>
                                 }
                             </button>
                         </div>

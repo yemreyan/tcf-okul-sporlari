@@ -1423,3 +1423,88 @@
         min-width: unset;
     }
 }
+/* ─── PDF Preview Modal ──────────────────────────────────────────── */
+.pdf-preview-modal {
+    background: #fff;
+    border-radius: 1rem;
+    width: min(94vw, 900px);
+    height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.pdf-preview-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    background: linear-gradient(135deg, #1E40AF, #2563EB);
+    color: #fff;
+    flex-shrink: 0;
+}
+.pdf-preview-modal__header > i { font-size: 1.5rem; }
+.pdf-preview-stats {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.85rem 1.25rem;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.pdf-preview-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.9rem;
+    min-width: 80px;
+}
+.pdf-preview-stat strong { font-size: 1.4rem; color: #1E3A8A; }
+.pdf-preview-stat span   { font-size: 0.7rem; color: #64748B; font-weight: 600; }
+.pdf-preview-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: scroll;
+    padding: 0.5rem 1.25rem 1rem;
+    background: #fff;
+    scrollbar-gutter: stable;
+}
+.pdf-preview-body::-webkit-scrollbar       { width: 12px; }
+.pdf-preview-body::-webkit-scrollbar-track { background: #E2E8F0; }
+.pdf-preview-body::-webkit-scrollbar-thumb { background: #64748B; border-radius: 6px; border: 3px solid #E2E8F0; }
+.pdf-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.pdf-preview-table thead th {
+    position: sticky; top: 0;
+    background: #F1F5F9;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #E2E8F0;
+}
+.pdf-preview-table tbody td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #F1F5F9;
+    color: #1E293B;
+}
+.pdf-preview-table tbody tr:hover td { background: #F8FAFC; }
+.pdf-preview-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    border-top: 1.5px solid #E2E8F0;
+    background: #F8FAFC;
+    flex-shrink: 0;
+}

@@ -1,0 +1,153 @@
+/* AerobikLPanelPage — L-Jury (Çizgi Hakemi) specific styles */
+
+/* Big counter number */
+.lpanel-counter-display {
+    font-size: 9rem;
+    font-weight: 900;
+    text-align: center;
+    font-family: 'Plus Jakarta Sans', monospace;
+    color: var(--primary);
+    letter-spacing: -4px;
+    line-height: 1;
+    padding: 0.5rem 0;
+    text-shadow: 0 4px 20px rgba(88, 166, 255, 0.3);
+    transition: color 0.2s ease;
+}
+
+/* +/− button row */
+.lpanel-counter-controls {
+    display: flex;
+    gap: 1rem;
+    margin: 0.25rem 0;
+}
+
+.lpanel-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lpanel-btn .material-icons-round {
+    font-size: 2.5rem;
+}
+
+.lpanel-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.lpanel-btn.lpanel-btn-plus {
+    background: linear-gradient(135deg, var(--success), #2ea043);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(63, 185, 80, 0.3);
+}
+
+.lpanel-btn.lpanel-btn-plus:not(:disabled):active {
+    transform: scale(0.94);
+    box-shadow: 0 3px 10px rgba(63, 185, 80, 0.4);
+}
+
+.lpanel-btn.lpanel-btn-minus {
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+.lpanel-btn.lpanel-btn-minus:not(:disabled):active {
+    background: var(--danger);
+    color: #fff;
+    transform: scale(0.94);
+}
+
+/* Reset button */
+.lpanel-reset-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.8rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lpanel-reset-btn:active {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(0.97);
+}
+
+/* Deduction preview row */
+.lpanel-deduction-preview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+}
+
+.lpanel-deduction-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.lpanel-deduction-value {
+    font-size: 2rem;
+    font-weight: 900;
+    font-family: 'Plus Jakarta Sans', monospace;
+    transition: color 0.3s ease;
+}
+
+/* Formula hint */
+.lpanel-formula-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: -0.25rem;
+}
+
+/* Sent details card */
+.lpanel-sent-details {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: left;
+    width: 100%;
+    max-width: 320px;
+}
+
+.lpanel-sent-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1rem;
+}
+
+.lpanel-sent-row span {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.lpanel-sent-row strong {
+    font-weight: 800;
+    color: var(--text-main);
+}

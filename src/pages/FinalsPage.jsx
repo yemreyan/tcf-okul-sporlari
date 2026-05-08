@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
+import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
 import "./FinalsPage.css";
 
 const OLIMPIK_SIRA_KIZ = ['atlama', 'asimetrik', 'denge', 'serbest'];
@@ -41,6 +42,8 @@ const APPARATUS_INFO = {
     // Ritmik Cimnastik aletleri
     top: { tr: 'Top', en: 'TOP', bg: '#fce7f3', color: '#db2777' },
     kurdele: { tr: 'Kurdele', en: 'KRD', bg: '#ede9fe', color: '#7c3aed' },
+    // Aerobik Cimnastik (sanal alet)
+    aerobik: { tr: 'Aerobik', en: 'ARB', bg: '#f0fdf4', color: '#16a34a' },
 };
 
 // Ritmik Cimnastik kategorisi tespiti (alet listesine bakarak)
@@ -54,6 +57,7 @@ export default function FinalsPage() {
     const { toast, confirm } = useNotification();
     const { firebasePath, routePrefix, hasApparatus, id: disciplineId } = useDiscipline();
     const isRitmikDiscipline = disciplineId === 'ritmik';
+    const isAerobikDiscipline = disciplineId === 'aerobik';
     const [competitions, setCompetitions] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState("");
@@ -67,6 +71,8 @@ export default function FinalsPage() {
     const [activeTab, setActiveTab] = useState("all-around");
 
     const [excludedTeams, setExcludedTeams] = useState(new Set());
+    // Aerobik: sibling categories data for cross-category team scoring
+    const [aerobikGroupData, setAerobikGroupData] = useState({});
 
     const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
     const [deductionForm, setDeductionForm] = useState({ team: "", amount: "", reason: "" });
@@ -154,12 +160,112 @@ export default function FinalsPage() {
         };
     }, [selectedCompId, selectedCategoryId]);
 
+    // 3b. Aerobik: Load sibling categories for cross-category team scoring
+    // Step kategorileri hariç (step kendi içinde takım puanı oluşturur)
+    const isStepCategorySelected = AEROBIK_CATEGORIES[selectedCategoryId]?.group === 'Step Aerobik';
+    useEffect(() => {
+        if (!isAerobikDiscipline || !selectedCompId || !selectedCategoryId || isStepCategorySelected) {
+            setAerobikGroupData({});
+            return;
+        }
+        const group = AEROBIK_CATEGORIES[selectedCategoryId]?.group;
+        if (!group) { setAerobikGroupData({}); return; }
+
+        const siblingCatIds = Object.entries(AEROBIK_CATEGORIES)
+            .filter(([, v]) => v.group === group)
+            .map(([k]) => k)
+            .filter(catId => catId !== selectedCategoryId);
+
+        if (siblingCatIds.length === 0) { setAerobikGroupData({}); return; }
+
+        const unsubscribers = siblingCatIds.flatMap(catId => [
+            onValue(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`), snap => {
+                setAerobikGroupData(prev => ({
+                    ...prev,
+                    [catId]: { ...(prev[catId] || {}), athletes: snap.val() || {} }
+                }));
+            }),
+            onValue(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${catId}`), snap => {
+                setAerobikGroupData(prev => ({
+                    ...prev,
+                    [catId]: { ...(prev[catId] || {}), scores: snap.val() || {} }
+                }));
+            })
+        ]);
+
+        return () => unsubscribers.forEach(u => u());
+    }, [isAerobikDiscipline, selectedCompId, selectedCategoryId, firebasePath]);
+
     // 4. Data Processing Logic (Derived State)
     const fullResults = useMemo(() => {
         if (!competitionData || !selectedCategoryId) return [];
 
         const catData = competitionData.kategoriler?.[selectedCategoryId];
-        if (!catData || !catData.aletler) return [];
+        if (!catData) return [];
+
+        // ── AEROBIK: tek puan, apparatus yok ──
+        if (isAerobikDiscipline) {
+            const athletes = Object.entries(categoryAthletes);
+            if (athletes.length === 0) return [];
+
+            const sortedResults = athletes.map(([id, athlete]) => {
+                if (!athlete) return null;
+                const scoreData = categoryScores[id];
+                const finalScore  = parseFloat(scoreData?.sonuc || 0);
+                const dScoreVal   = parseFloat(scoreData?.dScore || 0);
+                const eScoreVal   = parseFloat(scoreData?.eScore || 0);
+                const aScoreVal   = parseFloat(scoreData?.aScore || 0);
+                const penVal      = parseFloat(scoreData?.totalPenalties || 0);
+                const hasParticipated = finalScore > 0 || !!scoreData?.durum;
+
+                return {
+                    ...athlete,
+                    okul: athlete.okul || '',
+                    id,
+                    scores: { aerobik: finalScore },
+                    allScoreDetails: {
+                        aerobik: {
+                            final: finalScore,
+                            D: dScoreVal,
+                            E: eScoreVal,
+                            A: aScoreVal,
+                            P: penVal,
+                            ME: 0,
+                            isGecersiz: false,
+                            isDNS: false,
+                        }
+                    },
+                    totalScore: finalScore,
+                    hasParticipated,
+                    apparatusRanks: {}
+                };
+            }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
+
+            let lastS = -1; let lastR = 0;
+            const ranked = sortedResults.map((res, idx) => {
+                if (res.totalScore > 0) {
+                    const rounded = Math.round(res.totalScore * 1000) / 1000;
+                    if (rounded !== lastS) { lastR = idx + 1; }
+                    lastS = rounded;
+                }
+                return { ...res, totalRank: res.totalScore > 0 ? lastR : null };
+            });
+
+            // Apparatus ranks for 'aerobik' virtual key
+            let lsAer = -Infinity; let lrAer = 0;
+            ranked.filter(r => r.scores.aerobik > 0)
+                  .forEach((res, idx) => {
+                      const sv = res.scores.aerobik;
+                      if (sv !== lsAer) { lrAer = idx + 1; }
+                      res.apparatusRanks = { aerobik: lrAer };
+                      lsAer = sv;
+                  });
+
+            return ranked;
+        }
+
+        // ── STANDART: apparatus tabanlı ──
+        if (!catData.aletler) return [];
 
         let rawAletler = catData.aletler;
         let apparatusKeys = [];
@@ -279,7 +385,7 @@ export default function FinalsPage() {
         });
 
         return rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
-    }, [competitionData, selectedCategoryId, categoryAthletes, categoryScores, globalAthletes]);
+    }, [competitionData, selectedCategoryId, categoryAthletes, categoryScores, globalAthletes, isAerobikDiscipline]);
 
     const formatScore = (s) => {
         const score = Number(s);
@@ -297,7 +403,9 @@ export default function FinalsPage() {
 
     const categoryData = competitionData?.kategoriler?.[selectedCategoryId];
     let apparatusKeys = [];
-    if (categoryData?.aletler) {
+    if (isAerobikDiscipline) {
+        apparatusKeys = ['aerobik']; // sanal tek alet
+    } else if (categoryData?.aletler) {
         if (Array.isArray(categoryData.aletler)) {
             apparatusKeys = categoryData.aletler.map(a => typeof a === 'object' ? a.id || a.value : a);
         } else {
@@ -306,8 +414,9 @@ export default function FinalsPage() {
         apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
     }
     // Ritmik için top/kurdele aletleri varsa veya branş ritmik ise alet finalleri sekmesini göster
-    const isCurrentRitmik = isRitmikDiscipline || isRitmikCategory(apparatusKeys);
-    const showApparatusTab = hasApparatus || isCurrentRitmik;
+    // Aerobik'te alet finalleri sekmesi yok
+    const isCurrentRitmik = !isAerobikDiscipline && (isRitmikDiscipline || isRitmikCategory(apparatusKeys));
+    const showApparatusTab = !isAerobikDiscipline && (hasApparatus || isCurrentRitmik);
 
     // Teams Processing
     const computeTeamResults = () => {
@@ -329,7 +438,7 @@ export default function FinalsPage() {
 
         const catKey = (selectedCategoryId || '').toLowerCase();
         const isRitmikTeam = isRitmikCategory(apparatusKeys);
-        const topN = isRitmikTeam ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
+        const topN = (isAerobikDiscipline || isRitmikTeam) ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
 
         const teamList = Object.values(clubScores).map(team => {
             let totalScore = 0;
@@ -363,6 +472,105 @@ export default function FinalsPage() {
             if (team.finalScore !== lastTS) {
                 lastTR = index + 1;
             }
+            lastTS = team.finalScore;
+            return { ...team, rank: lastTR };
+        });
+    };
+
+    // Aerobik: çapraz-kategori takım sonuçları (aynı grup, tüm cinsiyetler)
+    const computeAerobikTeamResults = () => {
+        // ── Step: Her okul bir takımdır; bireysel puanlar yok ──
+        if (isStepCategorySelected) {
+            const stepEntries = Object.entries(categoryScores)
+                .map(([teamKey, scoreData]) => {
+                    const score = parseFloat(scoreData?.sonuc || 0);
+                    if (score <= 0) return null;
+                    // teamKey, okul adından türetilmiş (toStepKey fonksiyonu)
+                    // Okul adını athletes'ten bul
+                    const matchAth = Object.values(categoryAthletes).find(a => {
+                        const k = (a.okul || '').trim().replace(/[.#$[\]/]/g, '-').slice(0, 60);
+                        return k === teamKey;
+                    });
+                    const teamName = matchAth?.okul || teamKey;
+                    return { teamKey, teamName, score };
+                })
+                .filter(e => e !== null && !excludedTeams.has(e.teamName))
+                .sort((a, b) => b.score - a.score);
+
+            let lastTS = -1; let lastTR = 0;
+            return stepEntries.map((e, i) => {
+                const deductionTotal = Object.values(teamDeductions)
+                    .filter(d => d.teamName === e.teamName && (!d.categoryId || d.categoryId === selectedCategoryId))
+                    .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                const finalScore = e.score - deductionTotal;
+                if (finalScore !== lastTS) lastTR = i + 1;
+                lastTS = finalScore;
+                return {
+                    name: e.teamName,
+                    top2Scores: [e.score],
+                    totalScore: e.score,
+                    deduction: deductionTotal,
+                    finalScore,
+                    rank: lastTR
+                };
+            });
+        }
+
+        // ── Ferdi aerobik: çapraz-kategori, top-2 per school ──
+        const allEntries = [];
+
+        // Mevcut kategori
+        Object.entries(categoryAthletes).forEach(([id, athlete]) => {
+            if (!athlete) return;
+            const score = parseFloat(categoryScores[id]?.sonuc || 0);
+            if (score > 0) allEntries.push({ id, okul: athlete.okul || '', score });
+        });
+
+        // Kardeş kategoriler
+        Object.values(aerobikGroupData).forEach(catD => {
+            Object.entries(catD.athletes || {}).forEach(([id, athlete]) => {
+                if (!athlete) return;
+                const score = parseFloat(catD.scores?.[id]?.sonuc || 0);
+                if (score > 0) allEntries.push({ id, okul: athlete.okul || '', score });
+            });
+        });
+
+        if (allEntries.length === 0) return [];
+
+        // Okul bazında havuzla
+        const schoolMap = {};
+        allEntries.forEach(({ okul, score }) => {
+            if (!okul) return;
+            if (!schoolMap[okul]) schoolMap[okul] = { name: okul, scores: [] };
+            schoolMap[okul].scores.push(score);
+        });
+
+        // En yüksek 2 puan = takım puanı (min 2 sporcu)
+        const teamList = Object.values(schoolMap)
+            .map(team => {
+                const sorted = [...team.scores].sort((a, b) => b - a);
+                const top2 = sorted.slice(0, 2);
+                if (top2.length < 2) return null;
+                const totalScore = top2.reduce((sum, s) => sum + s, 0);
+                const deductionTotal = Object.values(teamDeductions)
+                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                    .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                return {
+                    name: team.name,
+                    top2Scores: top2,
+                    totalScore,
+                    deduction: deductionTotal,
+                    finalScore: totalScore - deductionTotal,
+                    allScores: sorted
+                };
+            })
+            .filter(t => t !== null)
+            .filter(t => !excludedTeams.has(t.name))
+            .sort((a, b) => b.finalScore - a.finalScore);
+
+        let lastTS = -1; let lastTR = 0;
+        return teamList.map((team, i) => {
+            if (team.finalScore !== lastTS) lastTR = i + 1;
             lastTS = team.finalScore;
             return { ...team, rank: lastTR };
         });
@@ -420,6 +628,48 @@ export default function FinalsPage() {
     };
 
     const computeCategoryResults = (catId, catData, compAthletes, compScores) => {
+        // Aerobik: sanal 'aerobik' aleti kullan
+        if (isAerobikDiscipline) {
+            const catAth = compAthletes[catId] || {};
+            const catSco = compScores[catId] || {};
+            const sortedC = Object.entries(catAth).map(([id, athlete]) => {
+                if (!athlete) return null;
+                const scoreData = catSco[id];
+                const finalScore = parseFloat(scoreData?.sonuc || 0);
+                return {
+                    ...athlete,
+                    okul: athlete.okul || '',
+                    id,
+                    scores: { aerobik: finalScore },
+                    allScoreDetails: {
+                        aerobik: {
+                            final: finalScore,
+                            D: parseFloat(scoreData?.dScore || 0),
+                            E: parseFloat(scoreData?.eScore || 0),
+                            A: parseFloat(scoreData?.aScore || 0),
+                            P: parseFloat(scoreData?.totalPenalties || 0),
+                            ME: 0, isGecersiz: false, isDNS: false,
+                        }
+                    },
+                    totalScore: finalScore,
+                    hasParticipated: finalScore > 0 || !!scoreData?.durum,
+                    apparatusRanks: {}
+                };
+            }).filter(r => r !== null).sort((a, b) => b.totalScore - a.totalScore);
+
+            let ls = -1; let lr = 0;
+            const rankedC = sortedC.map((res, idx) => {
+                if (res.totalScore > 0) {
+                    const rounded = Math.round(res.totalScore * 1000) / 1000;
+                    if (rounded !== ls) { lr = idx + 1; }
+                    ls = rounded;
+                }
+                return { ...res, totalRank: res.totalScore > 0 ? lr : null };
+            });
+            const teamResults = computeCatTeamResults(rankedC, ['aerobik'], catId);
+            return { results: rankedC, teamResults, apparatusKeysList: ['aerobik'], catName: catData?.name || catData?.ad || catId };
+        }
+
         let apparatusKeysList = [];
         if (Array.isArray(catData?.aletler)) {
             apparatusKeysList = catData.aletler.map(a => typeof a === 'object' ? a.id || a.value : a);
@@ -549,7 +799,7 @@ export default function FinalsPage() {
 
         const catKeyC = (catId || '').toLowerCase();
         const isRitmikC = isRitmikCategory(appKeys);
-        const topNC = isRitmikC ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);
+        const topNC = (isAerobikDiscipline || isRitmikC) ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);
 
         const teamsList = Object.values(clubScores).map(team => {
             let total = 0;
@@ -1199,7 +1449,8 @@ export default function FinalsPage() {
                                                         <td className="team-col">{res.okul || '-'}</td>
                                                         {apparatusKeys.map(key => {
                                                             const detail = res.allScoreDetails[key];
-                                                            const penalty = detail.P + detail.ME;
+                                                            const penalty = (detail?.P || 0) + (detail?.ME || 0);
+                                                            if (!detail) return <td key={key} className="td-center text-muted">-</td>;
                                                             if (detail.final > 0 || detail.isGecersiz || detail.isDNS) {
                                                                 return (
                                                                     <td key={key} className="td-center score-col">
@@ -1208,6 +1459,7 @@ export default function FinalsPage() {
                                                                             <span className="app-rank-badge" title={`${APPARATUS_INFO[key]?.tr || key} Sıralaması`}>{res.apparatusRanks[key] || '-'}</span>
                                                                         </div>
                                                                         <div className="score-details">
+                                                                            {isAerobikDiscipline && <span className="a-val">A:{formatScore(detail.A || 0)}</span>}
                                                                             <span className="d-val">{isCurrentRitmik ? 'DA+DB' : 'D'}:{formatScore(detail.D)}</span>
                                                                             <span className="e-val">{isCurrentRitmik ? 'A+E' : 'E'}:{formatScore(detail.E)}</span>
                                                                             {penalty > 0 && <span className="p-val">P:-{formatScore(penalty)}</span>}
@@ -1303,6 +1555,16 @@ export default function FinalsPage() {
                             <div className="finals-card classic-card print-section">
                                 <div className="card-header">
                                     <h2>Takım Genel Tasnif</h2>
+                                    {isAerobikDiscipline && !isStepCategorySelected && (
+                                        <span className="badge" style={{ background: '#dcfce7', color: '#166534', fontSize: '0.78rem' }}>
+                                            Aynı gruptan en yüksek 2 bireysel puan toplanır
+                                        </span>
+                                    )}
+                                    {isAerobikDiscipline && isStepCategorySelected && (
+                                        <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.78rem' }}>
+                                            Step: Her okul ayrı takım olarak puanlanır
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Team Exclusion Toggles */}
@@ -1331,49 +1593,103 @@ export default function FinalsPage() {
                                 </div>
 
                                 <div className="table-responsive mt-6">
-                                    <table className="classic-table">
-                                        <thead>
-                                            <tr>
-                                                <th className="th-center">S.N.</th>
-                                                <th>Takım</th>
-                                                {apparatusKeys.map(key => {
-                                                    const info = APPARATUS_INFO[key];
+                                    {isAerobikDiscipline ? (() => {
+                                        const aerobikTeams = computeAerobikTeamResults();
+                                        return (
+                                            <table className="classic-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="th-center">S.N.</th>
+                                                        <th>Takım / Okul</th>
+                                                        {isStepCategorySelected ? (
+                                                            <th className="th-center">Takım Puanı</th>
+                                                        ) : (
+                                                            <>
+                                                                <th className="th-center">1. Puan</th>
+                                                                <th className="th-center">2. Puan</th>
+                                                                <th className="th-right text-muted">Toplam</th>
+                                                            </>
+                                                        )}
+                                                        <th className="th-center penalty-text">Kesinti</th>
+                                                        <th className="th-right th-highlight">Net Skor</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {aerobikTeams.map((team) => (
+                                                        <tr key={team.name} className={getMedalClass(team.rank)}>
+                                                            <td className="td-center rank-col"><span className="rank-badge">{team.rank}</span></td>
+                                                            <td className="team-col-bold">{team.name}</td>
+                                                            {isStepCategorySelected ? (
+                                                                <td className="td-center score-col">{formatScore(team.totalScore)}</td>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="td-center score-col">{formatScore(team.top2Scores[0])}</td>
+                                                                    <td className="td-center score-col">{formatScore(team.top2Scores[1])}</td>
+                                                                    <td className="td-right text-muted">{formatScore(team.totalScore)}</td>
+                                                                </>
+                                                            )}
+                                                            <td className="td-center penalty-text">{team.deduction > 0 ? `-${formatScore(team.deduction)}` : '0.000'}</td>
+                                                            <td className="td-right total-col">{formatScore(team.finalScore)}</td>
+                                                        </tr>
+                                                    ))}
+                                                    {aerobikTeams.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan={isStepCategorySelected ? 5 : 7} className="td-center">
+                                                                {isStepCategorySelected
+                                                                    ? 'Step takım puanı bulunamadı.'
+                                                                    : 'Takım oluşturmak için aynı okuldan en az 2 sporcu puan almış olmalıdır.'
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        );
+                                    })() : (
+                                        <table className="classic-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="th-center">S.N.</th>
+                                                    <th>Takım</th>
+                                                    {apparatusKeys.map(key => {
+                                                        const info = APPARATUS_INFO[key];
+                                                        return (
+                                                            <th key={key} className="th-center">
+                                                                {info ? (
+                                                                    <div className="app-header-badge" style={{ backgroundColor: info.bg, color: info.color }}>
+                                                                        <span className="app-en">{info.en}</span>
+                                                                    </div>
+                                                                ) : key}
+                                                            </th>
+                                                        )
+                                                    })}
+                                                    <th className="th-right text-muted">Alet Toplamı</th>
+                                                    <th className="th-center penalty-text">Kesinti</th>
+                                                    <th className="th-right th-highlight">Net Skor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {computeTeamResults().map((team) => {
+                                                    const rank = team.rank;
                                                     return (
-                                                        <th key={key} className="th-center">
-                                                            {info ? (
-                                                                <div className="app-header-badge" style={{ backgroundColor: info.bg, color: info.color }}>
-                                                                    <span className="app-en">{info.en}</span>
-                                                                </div>
-                                                            ) : key}
-                                                        </th>
+                                                        <tr key={team.name} className={getMedalClass(rank)}>
+                                                            <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
+                                                            <td className="team-col-bold">{team.name}</td>
+                                                            {apparatusKeys.map(key => (
+                                                                <td key={key} className="td-center score-col">{formatScore(team.apparatusTotals[key])}</td>
+                                                            ))}
+                                                            <td className="td-right text-muted">{formatScore(team.totalScore)}</td>
+                                                            <td className="td-center penalty-text">{team.deduction > 0 ? `-${formatScore(team.deduction)}` : '0.000'}</td>
+                                                            <td className="td-right total-col">{formatScore(team.finalScore)}</td>
+                                                        </tr>
                                                     )
                                                 })}
-                                                <th className="th-right text-muted">Alet Toplamı</th>
-                                                <th className="th-center penalty-text">Kesinti</th>
-                                                <th className="th-right th-highlight">Net Skor</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {computeTeamResults().map((team) => {
-                                                const rank = team.rank;
-                                                return (
-                                                    <tr key={team.name} className={getMedalClass(rank)}>
-                                                        <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
-                                                        <td className="team-col-bold">{team.name}</td>
-                                                        {apparatusKeys.map(key => (
-                                                            <td key={key} className="td-center score-col">{formatScore(team.apparatusTotals[key])}</td>
-                                                        ))}
-                                                        <td className="td-right text-muted">{formatScore(team.totalScore)}</td>
-                                                        <td className="td-center penalty-text">{team.deduction > 0 ? `-${formatScore(team.deduction)}` : '0.000'}</td>
-                                                        <td className="td-right total-col">{formatScore(team.finalScore)}</td>
-                                                    </tr>
-                                                )
-                                            })}
-                                            {computeTeamResults().length === 0 && (
-                                                <tr><td colSpan={apparatusKeys.length + 5} className="td-center">Takım verisi bulunamadı.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                {computeTeamResults().length === 0 && (
+                                                    <tr><td colSpan={apparatusKeys.length + 5} className="td-center">Takım verisi bulunamadı.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    )}
                                 </div>
                             </div>
                         )}

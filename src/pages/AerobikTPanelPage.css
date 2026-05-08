@@ -1,0 +1,219 @@
+/* AerobikTPanelPage — T-Jury (Zaman Hakemi) specific styles */
+
+/* Section label above inputs */
+.tpanel-section-label {
+    color: var(--primary);
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0.25rem;
+    text-align: left;
+}
+
+/* Big timer display */
+.tpanel-timer-display {
+    font-size: 5.5rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    text-align: center;
+    font-family: 'Plus Jakarta Sans', monospace;
+    text-shadow: 0 4px 20px rgba(57, 211, 83, 0.3);
+    transition: color 0.3s ease;
+    line-height: 1;
+    padding: 0.5rem 0;
+}
+
+/* Duration hint under timer */
+.tpanel-duration-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: -0.25rem;
+}
+
+/* Timer control buttons row */
+.tpanel-timer-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.tpanel-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.85rem 0.5rem;
+    border-radius: 14px;
+    border: none;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+}
+
+.tpanel-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.tpanel-btn.tpanel-btn-start {
+    background: linear-gradient(135deg, var(--success), #2ea043);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(63, 185, 80, 0.25);
+}
+
+.tpanel-btn.tpanel-btn-start:not(:disabled):active {
+    transform: scale(0.95);
+}
+
+.tpanel-btn.tpanel-btn-stop {
+    background: rgba(248, 81, 73, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(248, 81, 73, 0.35);
+}
+
+.tpanel-btn.tpanel-btn-stop:not(:disabled):active {
+    background: var(--danger);
+    color: #fff;
+    transform: scale(0.95);
+}
+
+.tpanel-btn.tpanel-btn-reset {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tpanel-btn.tpanel-btn-reset:active {
+    background: rgba(255, 255, 255, 0.12);
+    transform: scale(0.95);
+}
+
+/* Thin divider between sections */
+.tpanel-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.25rem 0;
+}
+
+/* Deduction hint text */
+.tpanel-deduction-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: left;
+    margin-top: -0.25rem;
+}
+
+/* Preset buttons row */
+.tpanel-preset-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.tpanel-preset-btn {
+    flex: 1;
+    padding: 0.7rem;
+    border-radius: 12px;
+    background: rgba(88, 166, 255, 0.06);
+    color: var(--primary);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tpanel-preset-btn:hover,
+.tpanel-preset-btn:active,
+.tpanel-preset-btn.active {
+    background: var(--primary);
+    color: #0d1117;
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(88, 166, 255, 0.4);
+}
+
+/* Number input for custom seconds */
+.tpanel-number-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', monospace;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-top: 0.25rem;
+}
+
+.tpanel-number-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+/* Preview row */
+.tpanel-preview-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    margin-top: 0.25rem;
+}
+
+.tpanel-preview-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.tpanel-preview-value {
+    font-size: 1.6rem;
+    font-weight: 900;
+    font-family: 'Plus Jakarta Sans', monospace;
+    transition: color 0.3s ease;
+}
+
+/* Sent details card */
+.tpanel-sent-details {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: left;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.tpanel-sent-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1rem;
+}
+
+.tpanel-sent-row span {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.tpanel-sent-row strong {
+    font-weight: 800;
+    color: var(--text-main);
+}

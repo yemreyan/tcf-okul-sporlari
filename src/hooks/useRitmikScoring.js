@@ -15,10 +15,20 @@ import { useNotification } from '../lib/NotificationContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
 
-// Eşikler
+// Eşikler — backward compat (kullanılan eski değerler korunuyor)
 export const DA_GAP_THRESHOLD = 0.5;
 export const DB_GAP_THRESHOLD = 0.5;
 export const AE_GAP_THRESHOLD = 1.0;
+
+// 3-seviyeli renkli gap eşikleri (kesin/ortalama ↔ SJ karşılaştırması için)
+export const GAP_LEVEL_OK   = 0.30; // ≤ 0.30 → yeşil
+export const GAP_LEVEL_WARN = 0.50; // ≤ 0.50 → turuncu, > 0.50 → kırmızı
+
+export const getGapLevel = (gap) => {
+    if (!isFinite(gap) || gap <= GAP_LEVEL_OK)   return 'ok';
+    if (gap <= GAP_LEVEL_WARN)                    return 'warn';
+    return 'err';
+};
 
 export function useRitmikScoring() {
     const navigate = useNavigate();
@@ -242,9 +252,12 @@ export function useRitmikScoring() {
     const da1Num  = parseFloat(classicDA.da1)  || 0;
     const da2Num  = parseFloat(classicDA.da2)  || 0;
     const sjdaNum = parseFloat(classicDA.sjda) || 0;
-    // GAP: bilgi amaçlı gösterim için DA1-DA2 farkı
-    const daGap   = (classicDA.da1 !== '' && classicDA.da2 !== '') ? Math.abs(da1Num - da2Num) : 0;
-    const daGapOk = daGap <= DA_GAP_THRESHOLD;
+    // GAP DA: kesin DA skoru ile SJDA arasındaki fark
+    //   ≤ 0.30 yeşil, 0.30-0.50 turuncu, > 0.50 kırmızı
+    const daGap      = (classicDA.da !== '' && classicDA.sjda !== '')
+        ? Math.abs(daNum - sjdaNum) : 0;
+    const daGapLevel = getGapLevel(daGap);
+    const daGapOk    = daGapLevel === 'ok';
     // Kesin skor = classicDA.da alanından
     const classicDaScore = classicDA.da !== '' ? parseFloat((daNum).toFixed(3)) : 0;
 
@@ -252,8 +265,11 @@ export function useRitmikScoring() {
     const db1Num  = parseFloat(classicDB.db1)  || 0;
     const db2Num  = parseFloat(classicDB.db2)  || 0;
     const sjdbNum = parseFloat(classicDB.sjdb) || 0;
-    const dbGap   = (classicDB.db1 !== '' && classicDB.db2 !== '') ? Math.abs(db1Num - db2Num) : 0;
-    const dbGapOk = dbGap <= DB_GAP_THRESHOLD;
+    // GAP DB: kesin DB ile SJDB arası
+    const dbGap      = (classicDB.db !== '' && classicDB.sjdb !== '')
+        ? Math.abs(dbNum - sjdbNum) : 0;
+    const dbGapLevel = getGapLevel(dbGap);
+    const dbGapOk    = dbGapLevel === 'ok';
     const classicDbScore = classicDB.db !== '' ? parseFloat((dbNum).toFixed(3)) : 0;
 
     const classicDTotal = parseFloat((classicDaScore + classicDbScore).toFixed(3));
@@ -261,31 +277,40 @@ export function useRitmikScoring() {
     // ─── Hesaplamalar: Classic A/E Paneli ───
     // SJA / SJE = BİLGİ AMAÇLI — A/E ortalamasına dahil değil
     // A/E hakemler kesinti (0-10) girer → skor = 10 - trimmedAvg(kesintiler)
-    const calcClassicPanel = useCallback((panelLocal, jCount) => {
+    // GAP: A ortalaması ↔ SJA / E ortalaması ↔ SJE arasındaki fark
+    //   ≤ 0.30 yeşil, 0.30-0.50 turuncu, > 0.50 kırmızı
+    const calcClassicPanel = useCallback((panelLocal, jCount, sjValue) => {
         const vals = [];
         for (let i = 1; i <= jCount; i++) {
             const v = parseFloat(panelLocal[`j${i}`]);
             if (!isNaN(v)) vals.push(v);
         }
 
-        if (vals.length === 0) return { score: 0, avg: 0, gap: 0, gapOk: true, trimmedAvg: 0 };
+        if (vals.length === 0) {
+            return { score: 0, avg: 0, gap: 0, gapOk: true, gapLevel: 'ok', trimmedAvg: 0 };
+        }
 
         const sorted = [...vals].sort((a, b) => a - b);
-        const gap    = sorted[sorted.length - 1] - sorted[0];
-        const gapOk  = gap <= AE_GAP_THRESHOLD;
-
         // 4 veya daha fazla hakem varsa en yüksek ve en düşüğü at
-        const trimmed = vals.length >= 4 ? sorted.slice(1, -1) : sorted;
+        const trimmed    = vals.length >= 4 ? sorted.slice(1, -1) : sorted;
         const trimmedAvg = trimmed.reduce((s, v) => s + v, 0) / trimmed.length;
         const avgAll     = vals.reduce((s, v) => s + v, 0) / vals.length;
+        const score      = Math.max(0, 10 - trimmedAvg);
 
-        const score = Math.max(0, 10 - trimmedAvg);
-        return { score, avg: avgAll, trimmedAvg, gap, gapOk };
+        // SJ değeri ile karşılaştır → gap = |panel ortalaması (avgAll) - SJ|
+        // Not: ekranda "A Ortalama" / "E Ortalama" olarak gösterilen değer avgAll (basit ortalama)
+        const sjNum   = parseFloat(sjValue);
+        const sjValid = sjValue !== '' && sjValue !== null && sjValue !== undefined && !isNaN(sjNum);
+        const gap     = sjValid ? Math.abs(avgAll - sjNum) : 0;
+        const gapLevel = getGapLevel(gap);
+        const gapOk   = gapLevel === 'ok';
+
+        return { score, avg: avgAll, trimmedAvg, gap, gapOk, gapLevel };
     }, []);
 
-    // SJA/SJE artık hesaplamaya dahil değil — sadece bilgi
-    const classicAResult = calcClassicPanel(aPanelLocal, judgeCount);
-    const classicEResult = calcClassicPanel(ePanelLocal, judgeCount);
+    // A/E paneli SJ değeri ile karşılaştır
+    const classicAResult = calcClassicPanel(aPanelLocal, judgeCount, sjaInput);
+    const classicEResult = calcClassicPanel(ePanelLocal, judgeCount, sjeInput);
 
     // ─── Hesaplamalar: Classic Kesintiler ───
     const cKoord  = parseFloat(classicPenalty.koordinator) || 0;
@@ -683,8 +708,8 @@ export function useRitmikScoring() {
         aScore, eScore, dbScore, daScoreNum, totalPenalties, modernFinalScore,
         // Classic computed D
         classicDaScore, classicDbScore, classicDTotal,
-        da: daNum, da1: da1Num, da2: da2Num, sjda: sjdaNum, daGap, daGapOk,
-        db: dbNum, db1: db1Num, db2: db2Num, sjdb: sjdbNum, dbGap, dbGapOk,
+        da: daNum, da1: da1Num, da2: da2Num, sjda: sjdaNum, daGap, daGapOk, daGapLevel,
+        db: dbNum, db1: db1Num, db2: db2Num, sjdb: sjdbNum, dbGap, dbGapOk, dbGapLevel,
         // Classic computed A/E
         classicAResult, classicEResult,
         // Classic computed penalty

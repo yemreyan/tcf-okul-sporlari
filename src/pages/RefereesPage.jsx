@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useNotification } from '../lib/NotificationContext';
 import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { AEROBIK_REFEREES_2026 } from '../data/aerobikRefereesSeed';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { logAction } from '../lib/auditLogger';
 import './RefereesPage.css';
@@ -64,7 +65,18 @@ export default function RefereesPage() {
     const { hasPermission, hashPassword, isSuperAdmin, currentUser } = useAuth();
     const { toast, confirm } = useNotification();
     const { requestDelete } = useDeleteGuard();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, id: disciplineId, label: disciplineLabel, shortLabel: disciplineShortLabel } = useDiscipline();
+    const isAerobik = disciplineId === 'aerobik';
+    const isArtistik = disciplineId === 'artistik';
+
+    // Bir hakemin hangi disiplinde olduğunu belirler (eski kayıtlarda field yoksa artistik say)
+    const refDiscipline = (r) => r?.disiplin || 'artistik';
+
+    // Aerobik resmi liste import durumu
+    const [seedImporting, setSeedImporting] = useState(false);
+    const [pdfImporting, setPdfImporting]   = useState(false);
+    const [pdfPreview, setPdfPreview]       = useState(null); // { rows, fileName }
+    const pdfInputRef = useRef(null);
 
     const [referees, setReferees] = useState([]);
     const [competitionsList, setCompetitionsList] = useState([]);
@@ -234,14 +246,21 @@ export default function RefereesPage() {
 
         try {
             if (editingReferee) {
-                await update(ref(db, `referees/${editingReferee.id}`), formData);
+                await update(ref(db, `referees/${editingReferee.id}`), {
+                    ...formData,
+                    // Disiplin alanını koru/güncelle
+                    disiplin: editingReferee.disiplin || disciplineId,
+                });
                 setIsAddEditModalOpen(false);
             } else {
-                // Yeni hakem kaydet
+                // Yeni hakem kaydet — aktif disipline atanır
                 const newRefRef = push(ref(db, `referees`));
                 const newRefId = newRefRef.key;
                 await set(newRefRef, {
                     ...formData,
+                    disiplin: disciplineId,
+                    // Aerobik için brans önemsiz → otomatik
+                    brans: isAerobik ? 'Aerobik' : (formData.brans || 'MAG'),
                     gorevSayisi: 0,
                     gecmisYarismalar: {},
                     createdAt: new Date().toISOString()
@@ -250,7 +269,7 @@ export default function RefereesPage() {
 
                 // Otomatik hesap oluştur
                 try {
-                    const newReferee = { id: newRefId, ...formData };
+                    const newReferee = { id: newRefId, ...formData, disiplin: disciplineId };
                     const { username, password } = await createRefereeAccount(newReferee);
                     setCredentialsModal({ username, password, adSoyad: formData.adSoyad });
                     toast(`${formData.adSoyad} kaydedildi ve giriş hesabı oluşturuldu.`, 'success');
@@ -430,7 +449,8 @@ export default function RefereesPage() {
 
                     const newRef = {
                         adSoyad: adSoyad.toString().trim(),
-                        brans: brans,
+                        brans: isAerobik ? 'Aerobik' : brans,
+                        disiplin: disciplineId,
                         email: email.toString().trim(),
                         telefon: telefon.toString().trim(),
                         gorevSayisi: 0,
@@ -452,14 +472,202 @@ export default function RefereesPage() {
     };
 
 
-    // 4. Filtering
+    // 4. Filtering — aktif disiplindeki hakemleri göster
     const filteredReferees = referees.filter(r => {
+        // Disiplin filtresi: eski hakemler artistik say
+        if (refDiscipline(r) !== disciplineId) return false;
+
         const term = searchTerm.toLowerCase();
         const matchesSearch = (r.adSoyad || '').toLowerCase().includes(term) || (r.il || '').toLowerCase().includes(term);
         const matchesGender = filterGender === '' || r.brans === filterGender;
-        const matchesBrove = filterBrove === '' || r.brove === filterBrove;
-        return matchesSearch && matchesGender && matchesBrove;
+        const matchesBroveCI = filterBrove === '' || (r.brove || '').toLocaleUpperCase('tr-TR') === filterBrove.toLocaleUpperCase('tr-TR');
+        return matchesSearch && matchesGender && matchesBroveCI;
     });
+
+    // Aktif disiplinde kaç hakem var (header için)
+    const refereesInDiscipline = referees.filter(r => refDiscipline(r) === disciplineId);
+
+    // ── Hakem listesini Firebase'e yaz (ortak fonksiyon: seed + PDF) ──
+    const writeRefereesToFirebase = async (refereeRows, sourceLabel) => {
+        const existingKey = new Set(
+            referees
+                .filter(r => refDiscipline(r) === 'aerobik')
+                .map(r => `${(r.adSoyad || '').toLocaleUpperCase('tr-TR').trim()}|${(r.il || '').toLocaleUpperCase('tr-TR').trim()}`)
+        );
+
+        const updates = {};
+        let added = 0;
+        let skipped = 0;
+
+        for (const item of refereeRows) {
+            if (!item.adSoyad) continue;
+            const key = `${item.adSoyad.toLocaleUpperCase('tr-TR').trim()}|${(item.il || '').toLocaleUpperCase('tr-TR').trim()}`;
+            if (existingKey.has(key)) { skipped++; continue; }
+
+            const newRef = push(ref(db, 'referees'));
+            updates[`referees/${newRef.key}`] = {
+                adSoyad:          item.adSoyad,
+                il:               item.il || '',
+                brove:            item.brove || '',
+                disiplin:         'aerobik',
+                brans:            'Aerobik',
+                email:            '',
+                telefon:          '',
+                gorevSayisi:      0,
+                gecmisYarismalar: {},
+                createdAt:        new Date().toISOString(),
+                importSource:     sourceLabel,
+            };
+            added++;
+            existingKey.add(key);
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await update(ref(db), updates);
+        }
+
+        toast(
+            added > 0
+                ? `${added} hakem eklendi${skipped > 0 ? `, ${skipped} kayıt zaten mevcuttu` : ''}.`
+                : `Tüm hakemler zaten kayıtlı (${skipped} atlandı).`,
+            added > 0 ? 'success' : 'info',
+            6000
+        );
+        try { logAction?.('referees.bulk_import', { discipline: 'aerobik', source: sourceLabel, added, skipped }); } catch {/* noop */}
+        return { added, skipped };
+    };
+
+    // ── Hardcoded TCF 2026 listesini içe aktar (window.confirm — modal bug'lardan etkilenmez) ──
+    const handleImportAerobikSeed = async () => {
+        if (seedImporting) return;
+        if (!hasPermission('referees', 'ekle')) { toast('Bu işlem için yetkiniz yok.', 'error'); return; }
+
+        const ok = window.confirm(
+            `TCF 2026 Vizeli Aerobik Hakem Listesi\n\n${AEROBIK_REFEREES_2026.length} hakem sisteme eklenecek.\nAynı isim+il'e sahip olanlar atlanır.\n\nDevam edilsin mi?`
+        );
+        if (!ok) return;
+
+        setSeedImporting(true);
+        try {
+            await writeRefereesToFirebase(AEROBIK_REFEREES_2026, 'TCF 2026 vizeli liste (gömülü)');
+        } catch (err) {
+            console.error(err);
+            toast('İçe aktarma hatası: ' + (err.message || 'Bilinmeyen'), 'error');
+        } finally {
+            setSeedImporting(false);
+        }
+    };
+
+    // ── PDF dosyası yükle → metni çıkar → satırları ayrıştır → önizleme ──
+    const handlePdfFileSelected = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        if (!hasPermission('referees', 'ekle')) {
+            toast('Bu işlem için yetkiniz yok.', 'error');
+            return;
+        }
+
+        setPdfImporting(true);
+        try {
+            toast('PDF okunuyor...', 'info');
+            // pdfjs-dist CDN üzerinden yüklenir (build bağımlılığı yok, dosya küçük kalır)
+            const PDFJS_VERSION = '4.4.168';
+            const PDFJS_SRC     = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`;
+            const PDFJS_WORKER  = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+            // Tamamen runtime hesaplanan URL → bundler bunu çözmez
+            const pdfjsLib = await import(/* @vite-ignore */ PDFJS_SRC);
+            pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+
+            const buffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+            // Tüm sayfaların metnini birleştir
+            let allItems = [];
+            for (let p = 1; p <= pdf.numPages; p++) {
+                const page = await pdf.getPage(p);
+                const textContent = await page.getTextContent();
+                allItems = allItems.concat(textContent.items.map(i => i.str));
+            }
+
+            // ── Satır ayrıştırma ──
+            // PDF formatı: "1 AKIN POYRAZ KOCAELİ ULUSLARARASI"
+            // Her satırın yapısı: [SN] [AD SOYAD (1-4 kelime)] [İL (1-2 kelime)] [BRÖVE]
+            const BROVELER = ['ULUSLARARASI', 'MILLI', 'MİLLİ', 'BÖLGE', 'BOLGE', 'ADAY'];
+            const BROVE_NORMALIZE = {
+                'ULUSLARARASI': 'Uluslararası',
+                'MILLI': 'Milli', 'MİLLİ': 'Milli',
+                'BÖLGE': 'Bölge', 'BOLGE': 'Bölge',
+                'ADAY': 'Aday',
+            };
+
+            // Bütün metni tek string yap
+            const fullText = allItems.join(' ').replace(/\s+/g, ' ').trim();
+
+            // SN'leri ve brove'leri bul → aralıklarda hakem var
+            // Regex: sıra numarası + [Ad] + [İl] + [Brove]
+            const rows = [];
+
+            // Pattern: <num> <NAMES...> <CITY> <BROVE>
+            // Brove'lere göre split yap
+            const pattern = /(\d{1,3})\s+([A-ZÇĞİÖŞÜ\sa-z]+?)\s+(ULUSLARARASI|MİLLİ|MILLI|BÖLGE|BOLGE|ADAY)/g;
+            let match;
+            while ((match = pattern.exec(fullText)) !== null) {
+                const num = match[1];
+                const middle = match[2].trim();
+                const brove = match[3];
+
+                // middle = "AD SOYAD İL" — son 1-2 kelime İl olabilir
+                const words = middle.split(/\s+/).filter(Boolean);
+                if (words.length < 2) continue;
+
+                // İl genelde tek kelime (KOCAELİ, ANKARA, İZMİR), bazen iki (örn yok bu PDF'de)
+                // Heuristic: son kelime İl
+                const il = words[words.length - 1];
+                const adSoyad = words.slice(0, -1).join(' ');
+
+                if (!adSoyad || adSoyad.length < 3) continue;
+
+                rows.push({
+                    sn:      Number(num),
+                    adSoyad: adSoyad.toLocaleUpperCase('tr-TR'),
+                    il:      il.toLocaleUpperCase('tr-TR'),
+                    brove:   BROVE_NORMALIZE[brove] || brove,
+                });
+            }
+
+            if (rows.length === 0) {
+                toast('PDF\'ten hakem satırı çıkarılamadı. Format desteklenmiyor olabilir.', 'error');
+                setPdfImporting(false);
+                return;
+            }
+
+            // Önizleme göster
+            setPdfPreview({ rows, fileName: file.name });
+            toast(`${rows.length} hakem ayrıştırıldı. Önizlemeyi kontrol edip onaylayın.`, 'success');
+        } catch (err) {
+            console.error('PDF parse error:', err);
+            toast('PDF okunamadı: ' + (err.message || 'Bilinmeyen hata'), 'error');
+        } finally {
+            setPdfImporting(false);
+        }
+    };
+
+    // PDF önizleme onayı → Firebase'e yaz
+    const handlePdfPreviewConfirm = async () => {
+        if (!pdfPreview) return;
+        setPdfImporting(true);
+        try {
+            await writeRefereesToFirebase(pdfPreview.rows, `PDF: ${pdfPreview.fileName}`);
+            setPdfPreview(null);
+        } catch (err) {
+            console.error(err);
+            toast('İçe aktarma hatası: ' + (err.message || 'Bilinmeyen'), 'error');
+        } finally {
+            setPdfImporting(false);
+        }
+    };
 
     return (
         <div className="referees-page premium-layout">
@@ -470,13 +678,37 @@ export default function RefereesPage() {
                         <i className="material-icons-round">arrow_back</i>
                     </button>
                     <div className="header-title-wrapper">
-                        <h1 className="page-title text-white">Global Hakem Veritabanı</h1>
-                        <p className="page-subtitle text-white-50">Kapsamlı hakem havuzu, görev istatistikleri ve geçmiş yarışma kayıtları.</p>
+                        <h1 className="page-title text-white">{disciplineShortLabel} Hakem Veritabanı</h1>
+                        <p className="page-subtitle text-white-50">{disciplineLabel} disiplini için hakem havuzu ve görev kayıtları.</p>
                     </div>
                 </div>
 
                 <div className="page-header__actions">
                     <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} />
+                    <input type="file" accept="application/pdf,.pdf" style={{ display: 'none' }} ref={pdfInputRef} onChange={handlePdfFileSelected} />
+                    {isAerobik && hasPermission('referees', 'ekle') && (
+                        <>
+                            <button
+                                className="btn-premium-secondary"
+                                onClick={() => pdfInputRef.current?.click()}
+                                disabled={pdfImporting || seedImporting}
+                                title="TCF resmi hakem listesi PDF'sini yükle (otomatik ayrıştırma)"
+                                style={{ background: '#DBEAFE', color: '#1E3A8A', borderColor: '#60A5FA' }}
+                            >
+                                <i className="material-icons-round">{pdfImporting ? 'hourglass_top' : 'picture_as_pdf'}</i>
+                                {pdfImporting ? 'PDF okunuyor...' : 'PDF\'den Yükle'}
+                            </button>
+                            <button
+                                className="btn-premium-secondary"
+                                onClick={handleImportAerobikSeed}
+                                disabled={seedImporting || pdfImporting}
+                                title="TCF 2026 yılı vizeli aerobik hakem listesini sisteme ekle (gömülü)"
+                            >
+                                <i className="material-icons-round">{seedImporting ? 'hourglass_top' : 'cloud_download'}</i>
+                                {seedImporting ? 'Aktarılıyor...' : '2026 Listesi (Hızlı)'}
+                            </button>
+                        </>
+                    )}
                     {hasPermission('referees', 'ekle') && (
                         <button className="btn-premium-secondary" onClick={() => fileInputRef.current.click()}>
                             <i className="material-icons-round">file_upload</i> Toplu Excel Yükle
@@ -516,11 +748,13 @@ export default function RefereesPage() {
                                 className="search-input"
                             />
                         </div>
-                        <select className="filter-select premium" value={filterGender} onChange={(e) => setFilterGender(e.target.value)}>
-                            <option value="">Tüm Branşlar</option>
-                            <option value="MAG">MAG (Erkekler)</option>
-                            <option value="WAG">WAG (Kadınlar)</option>
-                        </select>
+                        {isArtistik && (
+                            <select className="filter-select premium" value={filterGender} onChange={(e) => setFilterGender(e.target.value)}>
+                                <option value="">Tüm Branşlar</option>
+                                <option value="MAG">MAG (Erkekler)</option>
+                                <option value="WAG">WAG (Kadınlar)</option>
+                            </select>
+                        )}
                         <select className="filter-select premium" value={filterBrove} onChange={(e) => setFilterBrove(e.target.value)}>
                             <option value="">Tüm Bröveler</option>
                             <option value="ULUSLARARASI">Uluslararası</option>
@@ -530,7 +764,7 @@ export default function RefereesPage() {
                         </select>
                         <div className="stats-badge">
                             <i className="material-icons-round">groups</i>
-                            <span>Havuz: <strong>{referees.length}</strong></span>
+                            <span>{disciplineShortLabel}: <strong>{refereesInDiscipline.length}</strong></span>
                         </div>
                     </div>
 
@@ -568,14 +802,20 @@ export default function RefereesPage() {
                                         >
                                             <td>
                                                 <div className="user-cell">
-                                                    <div className={`avatar__small ${ref.brans}`}>
-                                                        {ref.brans === 'MAG' ? '🤸‍♂️' : '🤸‍♀️'}
+                                                    <div className={`avatar__small ${isAerobik ? 'AEROBIK' : ref.brans}`} style={isAerobik ? { background: 'linear-gradient(135deg,#10B981,#059669)' } : undefined}>
+                                                        {isAerobik ? '🤸' : (ref.brans === 'MAG' ? '🤸‍♂️' : '🤸‍♀️')}
                                                     </div>
                                                     <div className="user-info">
                                                         <strong>{ref.adSoyad}</strong>
-                                                        <span className={`badge-branch ${ref.brans === 'MAG' ? 'mag' : 'wag'}`}>
-                                                            {ref.brans} HAKEMİ
-                                                        </span>
+                                                        {isArtistik ? (
+                                                            <span className={`badge-branch ${ref.brans === 'MAG' ? 'mag' : 'wag'}`}>
+                                                                {ref.brans} HAKEMİ
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge-branch" style={{ background: '#D1FAE5', color: '#065F46' }}>
+                                                                {disciplineShortLabel.toUpperCase()} HAKEMİ
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -584,7 +824,7 @@ export default function RefereesPage() {
                                             </td>
                                             <td>
                                                 {ref.brove && (
-                                                    <span className={`badge-brove ${ref.brove === 'ULUSLARARASI' ? 'intl' : ref.brove === 'MİLLİ' ? 'national' : ref.brove === 'BÖLGE' ? 'regional' : 'candidate'}`}>
+                                                    <span className={`badge-brove ${(ref.brove || '').toLocaleUpperCase('tr-TR') === 'ULUSLARARASI' ? 'intl' : (ref.brove || '').toLocaleUpperCase('tr-TR') === 'MİLLİ' ? 'national' : (ref.brove || '').toLocaleUpperCase('tr-TR') === 'BÖLGE' ? 'regional' : 'candidate'}`}>
                                                         {ref.brove}
                                                     </span>
                                                 )}
@@ -652,13 +892,15 @@ export default function RefereesPage() {
                             </div>
 
                             <div className="profile-hero">
-                                <div className={`hero-avatar ${selectedReferee.brans}`}>
-                                    {selectedReferee.brans === 'MAG' ? '🤸‍♂️' : '🤸‍♀️'}
+                                <div className={`hero-avatar ${isAerobik ? 'AEROBIK' : selectedReferee.brans}`} style={isAerobik ? { background: 'linear-gradient(135deg,#10B981,#059669)' } : undefined}>
+                                    {isAerobik ? '🤸' : (selectedReferee.brans === 'MAG' ? '🤸‍♂️' : '🤸‍♀️')}
                                 </div>
                                 <h2 className="hero-name">{selectedReferee.adSoyad}</h2>
                                 <div className="hero-badges">
-                                    <span className={`badge-branch large ${selectedReferee.brans === 'MAG' ? 'mag' : 'wag'}`}>
-                                        {selectedReferee.brans === 'MAG' ? 'Erkekler Artistik (MAG)' : 'Kadınlar Artistik (WAG)'}
+                                    <span className={`badge-branch large ${isArtistik ? (selectedReferee.brans === 'MAG' ? 'mag' : 'wag') : ''}`} style={isArtistik ? undefined : { background: '#D1FAE5', color: '#065F46' }}>
+                                        {isArtistik
+                                            ? (selectedReferee.brans === 'MAG' ? 'Erkekler Artistik (MAG)' : 'Kadınlar Artistik (WAG)')
+                                            : disciplineLabel}
                                     </span>
                                     {selectedReferee.brove && (
                                         <span className={`badge-brove ${selectedReferee.brove === 'ULUSLARARASI' ? 'intl' : selectedReferee.brove === 'MİLLİ' ? 'national' : selectedReferee.brove === 'BÖLGE' ? 'regional' : 'candidate'}`}>
@@ -796,29 +1038,39 @@ export default function RefereesPage() {
                                     </div>
                                 </div>
 
-                                <div className="pm-form-group">
-                                    <label>Cimnastik Branşı <span className="text-red-500">*</span></label>
-                                    <div className="pm-branch-selector">
-                                        <label className={`branch-card mag ${formData.brans === 'MAG' ? 'active' : ''}`}>
-                                            <input type="radio" name="brans" value="MAG" checked={formData.brans === 'MAG'} onChange={e => setFormData({ ...formData, brans: e.target.value })} />
-                                            <div className="bc-icon">🤸‍♂️</div>
-                                            <div className="bc-info">
-                                                <strong>MAG</strong>
-                                                <span>Erkekler Artistik</span>
-                                            </div>
-                                            <i className="material-icons-round check-icon">check_circle</i>
-                                        </label>
-                                        <label className={`branch-card wag ${formData.brans === 'WAG' ? 'active' : ''}`}>
-                                            <input type="radio" name="brans" value="WAG" checked={formData.brans === 'WAG'} onChange={e => setFormData({ ...formData, brans: e.target.value })} />
-                                            <div className="bc-icon">🤸‍♀️</div>
-                                            <div className="bc-info">
-                                                <strong>WAG</strong>
-                                                <span>Kadınlar Artistik</span>
-                                            </div>
-                                            <i className="material-icons-round check-icon">check_circle</i>
-                                        </label>
+                                {isArtistik ? (
+                                    <div className="pm-form-group">
+                                        <label>Cimnastik Branşı <span className="text-red-500">*</span></label>
+                                        <div className="pm-branch-selector">
+                                            <label className={`branch-card mag ${formData.brans === 'MAG' ? 'active' : ''}`}>
+                                                <input type="radio" name="brans" value="MAG" checked={formData.brans === 'MAG'} onChange={e => setFormData({ ...formData, brans: e.target.value })} />
+                                                <div className="bc-icon">🤸‍♂️</div>
+                                                <div className="bc-info">
+                                                    <strong>MAG</strong>
+                                                    <span>Erkekler Artistik</span>
+                                                </div>
+                                                <i className="material-icons-round check-icon">check_circle</i>
+                                            </label>
+                                            <label className={`branch-card wag ${formData.brans === 'WAG' ? 'active' : ''}`}>
+                                                <input type="radio" name="brans" value="WAG" checked={formData.brans === 'WAG'} onChange={e => setFormData({ ...formData, brans: e.target.value })} />
+                                                <div className="bc-icon">🤸‍♀️</div>
+                                                <div className="bc-info">
+                                                    <strong>WAG</strong>
+                                                    <span>Kadınlar Artistik</span>
+                                                </div>
+                                                <i className="material-icons-round check-icon">check_circle</i>
+                                            </label>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="pm-form-group">
+                                        <label>Disiplin</label>
+                                        <div className="pm-input-wrapper" style={{ background: '#F0FDF4', borderColor: '#34D399' }}>
+                                            <i className="material-icons-round" style={{ color: '#059669' }}>verified</i>
+                                            <input type="text" value={disciplineLabel} disabled style={{ color: '#065F46', fontWeight: 700 }} />
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="pm-form-row">
                                     <div className="pm-form-group">
@@ -950,6 +1202,106 @@ export default function RefereesPage() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PDF Önizleme Modal */}
+            {pdfPreview && (
+                <div className="premium-modal-overlay" onClick={() => !pdfImporting && setPdfPreview(null)}>
+                    <div className="pdf-preview-modal" onClick={e => e.stopPropagation()}>
+                        <div className="pdf-preview-modal__header">
+                            <i className="material-icons-round">picture_as_pdf</i>
+                            <div style={{ flex: 1 }}>
+                                <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>PDF Önizleme</h2>
+                                <p style={{ margin: 0, fontSize: '0.78rem', opacity: 0.85 }}>{pdfPreview.fileName}</p>
+                            </div>
+                            <button
+                                onClick={() => !pdfImporting && setPdfPreview(null)}
+                                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 6, width: 32, height: 32, cursor: 'pointer' }}
+                            >
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        </div>
+
+                        <div className="pdf-preview-stats">
+                            <div className="pdf-preview-stat">
+                                <strong>{pdfPreview.rows.length}</strong>
+                                <span>Hakem Bulundu</span>
+                            </div>
+                            <div className="pdf-preview-stat">
+                                <strong>{pdfPreview.rows.filter(r => r.brove === 'Uluslararası').length}</strong>
+                                <span>Uluslararası</span>
+                            </div>
+                            <div className="pdf-preview-stat">
+                                <strong>{pdfPreview.rows.filter(r => r.brove === 'Milli').length}</strong>
+                                <span>Milli</span>
+                            </div>
+                            <div className="pdf-preview-stat">
+                                <strong>{pdfPreview.rows.filter(r => r.brove === 'Bölge').length}</strong>
+                                <span>Bölge</span>
+                            </div>
+                            <div className="pdf-preview-stat">
+                                <strong>{pdfPreview.rows.filter(r => r.brove === 'Aday').length}</strong>
+                                <span>Aday</span>
+                            </div>
+                        </div>
+
+                        <div className="pdf-preview-body">
+                            <table className="pdf-preview-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: 50 }}>SN</th>
+                                        <th>Ad Soyad</th>
+                                        <th>İl</th>
+                                        <th>Brove</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pdfPreview.rows.map((r, i) => (
+                                        <tr key={i}>
+                                            <td>{r.sn}</td>
+                                            <td><strong>{r.adSoyad}</strong></td>
+                                            <td>{r.il}</td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '0.15rem 0.55rem',
+                                                    borderRadius: 9999,
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 700,
+                                                    background: r.brove === 'Uluslararası' ? '#DBEAFE'
+                                                              : r.brove === 'Milli' ? '#D1FAE5'
+                                                              : r.brove === 'Bölge' ? '#FEF3C7'
+                                                              : '#F1F5F9',
+                                                    color:      r.brove === 'Uluslararası' ? '#1E40AF'
+                                                              : r.brove === 'Milli' ? '#065F46'
+                                                              : r.brove === 'Bölge' ? '#92400E'
+                                                              : '#475569',
+                                                }}>{r.brove}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="pdf-preview-footer">
+                            <button
+                                onClick={() => !pdfImporting && setPdfPreview(null)}
+                                disabled={pdfImporting}
+                                className="btn-premium-secondary"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handlePdfPreviewConfirm}
+                                disabled={pdfImporting}
+                                className="btn-premium-primary"
+                            >
+                                <i className="material-icons-round">{pdfImporting ? 'hourglass_top' : 'cloud_upload'}</i>
+                                {pdfImporting ? 'Yükleniyor...' : `${pdfPreview.rows.length} Hakemi Sisteme Ekle`}
+                            </button>
                         </div>
                     </div>
                 </div>

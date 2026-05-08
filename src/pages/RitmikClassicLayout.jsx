@@ -26,8 +26,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         classicDA, setClassicDA,
         classicDB, setClassicDB,
         classicDaScore, classicDbScore, classicDTotal,
-        daGap, daGapOk,
-        dbGap, dbGapOk,
+        daGap, daGapOk, daGapLevel,
+        dbGap, dbGapOk, dbGapLevel,
         // Classic A/E
         sjaInput, setSjaInput,
         sjeInput, setSjeInput,
@@ -308,13 +308,13 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                     value={classicDA.sjda} disabled={scoreLocked}
                                                     onChange={e => { setClassicDA(p => ({ ...p, sjda: e.target.value })); setScoringFieldsTouched(true); }} />
                                             </div>
-                                            {/* GAP DA — bilgi */}
+                                            {/* GAP DA — DA kesin ↔ SJDA (3 seviyeli renk) */}
                                             <div className="cl-d-cell">
                                                 <label style={{ fontSize: 10, color: '#888' }}>GAP DA <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <div className="cl-gap-row" style={{ marginTop: 2 }}>
-                                                    <span className={`cl-gap-val ${daGapOk ? 'ok' : 'err'}`} style={{ fontSize: 12 }}>{daGap.toFixed(3)}</span>
-                                                    <i className={`material-icons-round cl-gap-check ${daGapOk ? 'ok' : 'err'}`} style={{ fontSize: 13 }}>
-                                                        {daGapOk ? 'check_circle' : 'warning'}
+                                                    <span className={`cl-gap-val ${daGapLevel}`} style={{ fontSize: 12 }}>{daGap.toFixed(3)}</span>
+                                                    <i className={`material-icons-round cl-gap-check ${daGapLevel}`} style={{ fontSize: 13 }}>
+                                                        {daGapLevel === 'ok' ? 'check_circle' : daGapLevel === 'warn' ? 'error_outline' : 'warning'}
                                                     </i>
                                                 </div>
                                             </div>
@@ -363,9 +363,9 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                             <div className="cl-d-cell">
                                                 <label style={{ fontSize: 10, color: '#888' }}>GAP DB <span style={{ fontSize: 8, color: '#aaa' }}>(bilgi)</span></label>
                                                 <div className="cl-gap-row" style={{ marginTop: 2 }}>
-                                                    <span className={`cl-gap-val ${dbGapOk ? 'ok' : 'err'}`} style={{ fontSize: 12 }}>{dbGap.toFixed(3)}</span>
-                                                    <i className={`material-icons-round cl-gap-check ${dbGapOk ? 'ok' : 'err'}`} style={{ fontSize: 13 }}>
-                                                        {dbGapOk ? 'check_circle' : 'warning'}
+                                                    <span className={`cl-gap-val ${dbGapLevel}`} style={{ fontSize: 12 }}>{dbGap.toFixed(3)}</span>
+                                                    <i className={`material-icons-round cl-gap-check ${dbGapLevel}`} style={{ fontSize: 13 }}>
+                                                        {dbGapLevel === 'ok' ? 'check_circle' : dbGapLevel === 'warn' ? 'error_outline' : 'warning'}
                                                     </i>
                                                 </div>
                                             </div>
@@ -426,11 +426,11 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                             </div>
                                             <div className="cl-ae-stat">
                                                 <label>GAP</label>
-                                                <span className={`cl-stat-val ${classicAResult.gapOk ? '' : 'err'}`}>
+                                                <span className={`cl-stat-val cl-gap-val ${classicAResult.gapLevel}`}>
                                                     {classicAResult.gap.toFixed(3)}
                                                 </span>
-                                                <i className="material-icons-round" style={{ fontSize: 13, color: classicAResult.gapOk ? 'var(--cl-gap-ok)' : 'var(--cl-gap-err)', marginLeft: 2 }}>
-                                                    {classicAResult.gapOk ? 'check_circle' : 'warning'}
+                                                <i className={`material-icons-round cl-gap-check ${classicAResult.gapLevel}`} style={{ fontSize: 13, marginLeft: 2 }}>
+                                                    {classicAResult.gapLevel === 'ok' ? 'check_circle' : classicAResult.gapLevel === 'warn' ? 'error_outline' : 'warning'}
                                                 </i>
                                             </div>
                                             <div className="cl-ae-stat result a">
@@ -482,11 +482,11 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                             </div>
                                             <div className="cl-ae-stat">
                                                 <label>GAP</label>
-                                                <span className={`cl-stat-val ${classicEResult.gapOk ? '' : 'err'}`}>
+                                                <span className={`cl-stat-val cl-gap-val ${classicEResult.gapLevel}`}>
                                                     {classicEResult.gap.toFixed(3)}
                                                 </span>
-                                                <i className="material-icons-round" style={{ fontSize: 13, color: classicEResult.gapOk ? 'var(--cl-gap-ok)' : 'var(--cl-gap-err)', marginLeft: 2 }}>
-                                                    {classicEResult.gapOk ? 'check_circle' : 'warning'}
+                                                <i className={`material-icons-round cl-gap-check ${classicEResult.gapLevel}`} style={{ fontSize: 13, marginLeft: 2 }}>
+                                                    {classicEResult.gapLevel === 'ok' ? 'check_circle' : classicEResult.gapLevel === 'warn' ? 'error_outline' : 'warning'}
                                                 </i>
                                             </div>
                                             <div className="cl-ae-stat result e">

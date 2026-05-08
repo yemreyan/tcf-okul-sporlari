@@ -15,6 +15,7 @@ import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { generateEPanelToken } from '../lib/epanelToken';
 import { logAction } from '../lib/auditLogger';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { AEROBIK_PANEL_POSITIONS } from '../data/aerobikRefereesSeed';
 import './CompetitionsPage.css';
 
 /* ─── HAKEM PANEL SAYISI SEÇENEKLERI ─── */
@@ -388,6 +389,26 @@ export default function CompetitionsPage() {
         });
     };
 
+    // Aerobik için pozisyon bazlı atama (alet seviyesi yok)
+    const handleAerobikHakemAssign = (catId, positionId, refereeId) => {
+        const referee = referees.find(r => r.id === refereeId);
+        setHakemAtama(prev => {
+            const next = { ...prev };
+            if (!next[catId]) next[catId] = {};
+            if (refereeId) {
+                next[catId][positionId] = { id: refereeId, name: referee?.adSoyad || 'Bilinmiyor' };
+            } else {
+                delete next[catId][positionId];
+                if (Object.keys(next[catId]).length === 0) delete next[catId];
+            }
+            return next;
+        });
+    };
+
+    // Aktif disiplindeki hakemleri filtrele (eski hakemler artistik say)
+    const refDiscipline = (r) => r?.disiplin || 'artistik';
+    const disciplineReferees = referees.filter(r => refDiscipline(r) === disciplineId);
+
     const copyHakemToAllApparatus = (catId, sourceAletId) => {
         const sourceAssignments = hakemAtama?.[catId]?.[sourceAletId];
         if (!sourceAssignments) return;
@@ -758,24 +779,50 @@ export default function CompetitionsPage() {
                         </div>
 
                         <div className="hakem-modal-body">
-                            {/* Hakem Sayısı Seçimi */}
-                            <div className="hakem-sayisi-section">
-                                <label className="hakem-section-label">
-                                    <i className="material-icons-round">groups</i>
-                                    E-Panel Hakem Sayısı
-                                </label>
-                                <div className="hakem-sayisi-pills">
-                                    {HAKEM_SAYISI_OPTIONS.map(n => (
-                                        <button
-                                            key={n}
-                                            className={`hsayisi-pill ${hakemSayisi === n ? 'active' : ''}`}
-                                            onClick={() => setHakemSayisi(n)}
-                                        >
-                                            {n} Hakem
-                                        </button>
-                                    ))}
+                            {/* Hakem Sayısı Seçimi — sadece artistik için */}
+                            {disciplineId === 'artistik' && (
+                                <div className="hakem-sayisi-section">
+                                    <label className="hakem-section-label">
+                                        <i className="material-icons-round">groups</i>
+                                        E-Panel Hakem Sayısı
+                                    </label>
+                                    <div className="hakem-sayisi-pills">
+                                        {HAKEM_SAYISI_OPTIONS.map(n => (
+                                            <button
+                                                key={n}
+                                                className={`hsayisi-pill ${hakemSayisi === n ? 'active' : ''}`}
+                                                onClick={() => setHakemSayisi(n)}
+                                            >
+                                                {n} Hakem
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Aerobik için sabit pozisyon bilgisi */}
+                            {disciplineId === 'aerobik' && (
+                                <div className="hakem-aerobik-info">
+                                    <i className="material-icons-round">info</i>
+                                    <span>
+                                        Aerobik panelinde her kategori için <strong>15 sabit pozisyon</strong> atanır:
+                                        <strong> A1-A4</strong> (Artistik), <strong>E1-E4</strong> (İcra),
+                                        <strong> D1-D2</strong> (Zorluk), <strong>CJP & Superior</strong> (Başhakem),
+                                        <strong> T</strong> (Zaman), <strong>L1-L2</strong> (Çizgi).
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Hakem havuzu uyarısı */}
+                            {disciplineReferees.length === 0 && (
+                                <div className="hakem-empty" style={{ background:'#FEF3C7', borderColor:'#FCD34D', color:'#92400E' }}>
+                                    <i className="material-icons-round">warning</i>
+                                    <p>
+                                        <strong>{disciplineLabel}</strong> disiplini için kayıtlı hakem yok.
+                                        Önce <a href={`${routePrefix}/hakemler`} style={{textDecoration:'underline',fontWeight:700}}>hakem listesinden</a> hakem ekleyin.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Kategori Tabs */}
                             {hakemModalComp.kategoriler && Object.keys(hakemModalComp.kategoriler).length > 0 ? (
@@ -792,8 +839,70 @@ export default function CompetitionsPage() {
                                         ))}
                                     </div>
 
-                                    {/* Alet Bazlı Hakem Atama */}
-                                    {hakemModalCat && (
+                                    {/* AEROBİK: pozisyon bazlı atama (alet yok) */}
+                                    {hakemModalCat && disciplineId === 'aerobik' && (() => {
+                                        // Pozisyonları gruba göre topla: A, E, D, C(başhakem), T, L
+                                        const groupOrder = ['A', 'E', 'D', 'C', 'T', 'L'];
+                                        const groupLabels = {
+                                            A: 'Grup A — Artistik',
+                                            E: 'Grup E — İcra (Execution)',
+                                            D: 'Grup D — Zorluk (Difficulty)',
+                                            C: 'Başhakem',
+                                            T: 'Grup T — Zaman',
+                                            L: 'Grup L — Çizgi',
+                                        };
+                                        const grouped = {};
+                                        AEROBIK_PANEL_POSITIONS.forEach(p => {
+                                            if (!grouped[p.group]) grouped[p.group] = [];
+                                            grouped[p.group].push(p);
+                                        });
+
+                                        return (
+                                            <div className="hakem-alet-list">
+                                                {groupOrder.filter(g => grouped[g]).map(g => (
+                                                    <div key={g} className={`hakem-alet-card aerobik-group aerobik-group--${g.toLowerCase()}`}>
+                                                        <div className="halet-header">
+                                                            <h4 className="halet-name">
+                                                                <i className="material-icons-round">groups</i>
+                                                                {groupLabels[g]}
+                                                            </h4>
+                                                            <span className="aerobik-group-count">{grouped[g].length} pozisyon</span>
+                                                        </div>
+                                                        <div className="halet-panels halet-panels--aerobik">
+                                                            {grouped[g].map(pos => {
+                                                                const assigned = hakemAtama?.[hakemModalCat]?.[pos.id];
+                                                                return (
+                                                                    <div key={pos.id} className="hpanel-slot">
+                                                                        <div className="hpanel-label hpanel-label--aerobik" title={pos.desc}>
+                                                                            {pos.label}
+                                                                        </div>
+                                                                        <select
+                                                                            className="hpanel-select"
+                                                                            value={assigned?.id || ''}
+                                                                            onChange={e => handleAerobikHakemAssign(hakemModalCat, pos.id, e.target.value)}
+                                                                        >
+                                                                            <option value="">— Hakem Seç —</option>
+                                                                            {disciplineReferees.map(r => (
+                                                                                <option key={r.id} value={r.id}>
+                                                                                    {r.adSoyad}{r.il ? ` (${r.il})` : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                        {assigned && (
+                                                                            <span className="hpanel-assigned-name">{assigned.name}</span>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* DİĞER DİSİPLİNLER: Alet bazlı atama */}
+                                    {hakemModalCat && disciplineId !== 'aerobik' && (
                                         <div className="hakem-alet-list">
                                             {getCompAletler(hakemModalComp, hakemModalCat).map(aletId => (
                                                 <div key={aletId} className="hakem-alet-card">
@@ -824,7 +933,7 @@ export default function CompetitionsPage() {
                                                                         onChange={e => handleHakemAssign(hakemModalCat, aletId, panelId, e.target.value)}
                                                                     >
                                                                         <option value="">— Hakem Seç —</option>
-                                                                        {referees.map(r => (
+                                                                        {disciplineReferees.map(r => (
                                                                             <option key={r.id} value={r.id}>{r.adSoyad}</option>
                                                                         ))}
                                                                     </select>

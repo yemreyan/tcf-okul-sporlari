@@ -1303,6 +1303,9 @@
     gap: 0.5rem;
     padding: 2rem;
     color: #94A3B8;
+    border: 1.5px dashed #CBD5E1;
+    border-radius: 0.75rem;
+    background: #F8FAFC;
 }
 
 .hakem-empty i {
@@ -1312,6 +1315,61 @@
 .hakem-empty p {
     font-size: 0.88rem;
     font-weight: 600;
+    text-align: center;
+    margin: 0;
+}
+
+/* ─── Aerobik Hakem Paneli ───────────────────────────────────────── */
+.hakem-aerobik-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    border: 1.5px solid #6EE7B7;
+    border-radius: 0.75rem;
+    color: #065F46;
+    font-size: 0.84rem;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+}
+.hakem-aerobik-info i { color: #059669; flex-shrink: 0; margin-top: 0.15rem; }
+.hakem-aerobik-info strong { color: #064E3B; }
+
+/* Aerobik grup kartları (A, E, D, C, T, L renkli sol kenarlık) */
+.aerobik-group { border-left: 4px solid #94A3B8; }
+.aerobik-group--a { border-left-color: #6366F1; }
+.aerobik-group--e { border-left-color: #EC4899; }
+.aerobik-group--d { border-left-color: #F59E0B; }
+.aerobik-group--c { border-left-color: #DC2626; }
+.aerobik-group--t { border-left-color: #0EA5E9; }
+.aerobik-group--l { border-left-color: #10B981; }
+
+.aerobik-group-count {
+    margin-left: auto;
+    font-size: 0.74rem;
+    color: #64748B;
+    font-weight: 600;
+}
+
+/* Aerobik panel slotları — 5 sütun ızgara, dar pozisyon etiketleri */
+.halet-panels--aerobik {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.6rem;
+}
+
+.hpanel-label--aerobik {
+    background: #1E293B;
+    color: #fff;
+    font-family: monospace;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    min-width: 50px;
+    text-align: center;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.4rem;
+    cursor: help;
 }
 
 /* Responsive hakem modal */

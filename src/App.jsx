@@ -35,6 +35,12 @@ const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 // Aerobik — özel puanlama sayfası (A+E+D+CJP formülü farklı)
 const AerobikScoringPage = lazy(() => import('./pages/AerobikScoringPage'));
 
+// Aerobik — hakem panelleri (A, D, T, L)
+const AerobikAPanelPage = lazy(() => import('./pages/AerobikAPanelPage'));
+const AerobikDPanelPage = lazy(() => import('./pages/AerobikDPanelPage'));
+const AerobikTPanelPage = lazy(() => import('./pages/AerobikTPanelPage'));
+const AerobikLPanelPage = lazy(() => import('./pages/AerobikLPanelPage'));
+
 // Trampolin — özel puanlama sayfası (D+E+T−HD formülü)
 const TrampolinScoringPage = lazy(() => import('./pages/TrampolinScoringPage'));
 
@@ -168,6 +174,10 @@ function AppRoutes() {
         <Route path="/aerobik/certificates" element={<PD discipline="aerobik" pageKey="certificates"><CertificatePage /></PD>} />
         <Route path="/aerobik/coaches" element={<PD discipline="aerobik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/aerobik/epanel" element={<D discipline="aerobik"><EPanelPage /></D>} />
+        <Route path="/aerobik/apanel" element={<D discipline="aerobik"><AerobikAPanelPage /></D>} />
+        <Route path="/aerobik/dpanel" element={<D discipline="aerobik"><AerobikDPanelPage /></D>} />
+        <Route path="/aerobik/tpanel" element={<D discipline="aerobik"><AerobikTPanelPage /></D>} />
+        <Route path="/aerobik/lpanel" element={<D discipline="aerobik"><AerobikLPanelPage /></D>} />
 
         {/* ═══ TRAMPOLİN CİMNASTİK ═══ */}
         <Route path="/trampolin" element={<D discipline="trampolin"><HomePage /></D>} />

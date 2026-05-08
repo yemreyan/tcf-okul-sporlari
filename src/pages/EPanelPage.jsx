@@ -11,6 +11,7 @@ export default function EPanelPage() {
     const { toast } = useNotification();
     const { firebasePath, id: disciplineId } = useDiscipline();
     const isRitmik = disciplineId === 'ritmik';
+    const isAerobik = disciplineId === 'aerobik';
     const [searchParams] = useSearchParams();
     const compId = searchParams.get('competitionId');
     const catId = searchParams.get('catId');
@@ -58,7 +59,7 @@ export default function EPanelPage() {
     }, [compId, urlToken]);
 
     useEffect(() => {
-        if (!compId || !catId || !aletId || !panelId || !tokenVerified) return;
+        if (!compId || !catId || (!aletId && !isRitmik && !isAerobik) || !panelId || !tokenVerified) return;
 
         // Fetch Comp Name
         const compRef = ref(db, `${firebasePath}/${compId}`);
@@ -66,7 +67,9 @@ export default function EPanelPage() {
             const data = snap.val();
             if (data) setCompName(data.isim || 'Yarışma');
             // Check if there is a specific name registered for this panel
-            const hakemVal = data?.hakemler?.[catId]?.[aletId]?.[panelId];
+            const hakemVal = isAerobik
+                ? data?.hakemler?.[catId]?.[panelId]
+                : data?.hakemler?.[catId]?.[aletId]?.[panelId];
             if (hakemVal) {
                 const displayName = typeof hakemVal === 'object' && hakemVal.name ? hakemVal.name : String(hakemVal);
                 setRefereeName(displayName);
@@ -99,6 +102,29 @@ export default function EPanelPage() {
             unsubAlet = onValue(aletRef, (snap) => {
                 setActiveAlet(snap.val());
             });
+        } else if (isAerobik) {
+            // Aerobik: aktifSporcu is category-level (no apparatus)
+            const activeRef = ref(db, `${firebasePath}/${compId}/aktifSporcu/${catId}`);
+            unsubActive = onValue(activeRef, (snap) => {
+                const val = snap.val();
+                if (val) {
+                    if (typeof val === 'object' && val.id) {
+                        // New format: object with id + name info
+                        setActiveAthleteId(val.id);
+                        setAthleteInfo({ ad: val.ad || '', soyad: val.soyad || '', okul: val.okul || '' });
+                    } else {
+                        // Legacy format: plain string id
+                        setActiveAthleteId(String(val));
+                        fetchAthleteData(String(val));
+                    }
+                } else {
+                    setActiveAthleteId(null);
+                    setAthleteInfo(null);
+                    setStatus('waiting');
+                    setScoreInput('');
+                    setServerScore(null);
+                }
+            });
         } else {
             // Artistik: aktifSporcu is per apparatus
             const activeRef = ref(db, `${firebasePath}/${compId}/aktifSporcu/${catId}/${aletId}`);
@@ -122,7 +148,7 @@ export default function EPanelPage() {
             if (unsubActive) unsubActive();
             if (unsubAlet) unsubAlet();
         };
-    }, [compId, catId, aletId, panelId, panelType, tokenVerified, isRitmik]);
+    }, [compId, catId, aletId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
 
     const fetchAthleteData = async (id) => {
         // Try local sporcular first, then globals fallback
@@ -136,6 +162,13 @@ export default function EPanelPage() {
             ath = gSnap.val();
         }
 
+        if (!ath && isAerobik) {
+            // Fallback: aktifSporcuBilgi (covers step aerobik team ids)
+            const bilgiSnap = await get(ref(db, `${firebasePath}/${compId}/aktifSporcuBilgi/${catId}`));
+            const bilgi = bilgiSnap.val();
+            if (bilgi && bilgi.id === id) ath = bilgi;
+        }
+
         if (ath) {
             setAthleteInfo(ath);
         } else {
@@ -145,12 +178,15 @@ export default function EPanelPage() {
 
     // Listen to specific score for this athlete
     useEffect(() => {
-        if (!compId || !catId || !aletId || !activeAthleteId || !panelId || !tokenVerified) return;
+        if (!compId || !catId || (!aletId && !isAerobik) || !activeAthleteId || !panelId || !tokenVerified) return;
 
         let scoreRef;
         if (isRitmik) {
             // Ritmik: athlete-first — puanlar/catId/athleteId/aletId
             scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}`);
+        } else if (isAerobik) {
+            // Aerobik: puanlar/catId/athleteId (ePanel is a sub-object)
+            scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}`);
         } else {
             // Artistik: apparatus-first — puanlar/catId/aletId/athleteId
             scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`);
@@ -165,6 +201,11 @@ export default function EPanelPage() {
                 const panelKey = panelType === 'a' ? 'aPanel' : 'ePanel';
                 const judgeKey = panelId.toLowerCase().replace(/^[ae]/, 'j'); // 'a1'→'j1', 'e1'→'j1'
                 myScore = scores[panelKey]?.[judgeKey];
+                isLocked = scores.kilitli === true;
+            } else if (isAerobik) {
+                // Aerobik: scores = { ePanel: {j1:..., j2:...}, aPanel: {j1:...}, kilitli:true, ... }
+                const judgeKey = panelId.toLowerCase().replace(/^e/, 'j'); // 'e1'→'j1'
+                myScore = scores.ePanel?.[judgeKey];
                 isLocked = scores.kilitli === true;
             } else {
                 // Artistik: scores = { e1: val, durum: 'tamamlandi', ... }
@@ -184,7 +225,7 @@ export default function EPanelPage() {
         });
 
         return () => unsubScore();
-    }, [compId, catId, aletId, activeAthleteId, panelId, panelType, tokenVerified, isRitmik]);
+    }, [compId, catId, aletId, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
 
     const handleSendScore = async () => {
         if (!activeAthleteId || scoreInput === '') return;
@@ -204,6 +245,11 @@ export default function EPanelPage() {
                 const judgeKey = panelId.toLowerCase().replace(/^[ae]/, 'j'); // 'a1'→'j1'
                 const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}/${panelKey}`;
                 await update(ref(db, path), { [judgeKey]: val });
+            } else if (isAerobik) {
+                // Aerobik: puanlar/catId/athleteId/ePanel → { j1: val }
+                const judgeKey = panelId.toLowerCase().replace(/^e/, 'j'); // 'e1'→'j1'
+                const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/ePanel`;
+                await update(ref(db, path), { [judgeKey]: val });
             } else {
                 // Artistik: puanlar/catId/aletId/athleteId → { e1: val }
                 const path = `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`;
@@ -221,7 +267,7 @@ export default function EPanelPage() {
         setScoreInput(serverScore !== null ? String(serverScore) : '');
     };
 
-    if (!compId || !catId || !aletId || !panelId) {
+    if (!compId || !catId || (!aletId && !isAerobik) || !panelId) {
         return (
             <div className="epanel-wrapper epanel-error">
                 <h2>Hatalı Link!</h2>

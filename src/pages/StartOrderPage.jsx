@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, onValue, update, get } from 'firebase/database';
+import { ref, onValue, update, get, push } from 'firebase/database';
 import { db } from '../lib/firebase';
 // jsPDF ve autoTable — sadece PDF export sırasında dynamic import ile yüklenir (code splitting)
 import { useAuth } from '../lib/AuthContext';
@@ -11,7 +11,8 @@ import './StartOrderPage.css';
 export default function StartOrderPage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission, isSuperAdmin } = useAuth();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, id: disciplineId } = useDiscipline();
+    const isAerobik = disciplineId === 'aerobik';
     const [competitions, setCompetitions] = useState({});
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -27,6 +28,9 @@ export default function StartOrderPage() {
     const [pdfGenerating, setPdfGenerating] = useState(false);
     const [excelGenerating, setExcelGenerating] = useState(false);
     const [bulkAssigning, setBulkAssigning] = useState(false);
+    const [excelImportModal, setExcelImportModal] = useState(null);
+    const [importSaving, setImportSaving]         = useState(false);
+    const excelImportRef = useRef(null);
 
     // Modals
     const [personGroupModal, setPersonGroupModal] = useState(null);
@@ -1086,6 +1090,334 @@ export default function StartOrderPage() {
         }
     };
 
+    // ===== AEROBİK: Excel ile Çıkış Listesi Yükleme =====
+    const handleExcelImportClick = () => {
+        if (!selectedCompId) { showToast('Önce yarışma seçiniz.', 'warning'); return; }
+        excelImportRef.current?.click();
+    };
+
+    const handleExcelImportFile = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        try {
+            showToast('Excel dosyası okunuyor…', 'info');
+            const XLSX = await import('xlsx');
+            const buffer = await file.arrayBuffer();
+            const wb = XLSX.read(buffer, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            // raw: her hücre string olarak alınsın (sayı da dahil)
+            const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+
+            // ── Türkçe normalize ─────────────────────────────────────────────
+            const trNorm = s => String(s ?? '').trim()
+                .replace(/İ/g, 'I').toLowerCase()
+                .replace(/ı/g, 'i').replace(/ü/g, 'u')
+                .replace(/ö/g, 'o').replace(/ş/g, 's')
+                .replace(/ç/g, 'c').replace(/ğ/g, 'g');
+
+            // ── Başlık satırını bul ve sütun haritasını çıkar ────────────────
+            // "Ad" / "Soyad" veya "Sıra" hücresi olan ilk satır = başlık satırı
+            const ALIASES = {
+                sira:     ['sira', 'sıra', 'no', 'cikis no', 'çıkış no'],
+                ad:       ['ad', 'adi', 'isim', 'sporcu adi', 'sporcu adı'],
+                soyad:    ['soyad', 'soyadi', 'sporcu soyadi'],
+                okul:     ['okul', 'kulup', 'kulüp', 'okul / kulup', 'okul/kulup', 'okul / kulüp'],
+                il:       ['il', 'il adi', 'şehir', 'sehir'],
+                ilce:     ['ilce', 'ilçe', 'ilce adi', 'ilçe adı'],
+                kategori: ['kategori', 'kat', 'kategori adi'],
+                tur:      ['tur', 'tür', 'yarısma turu', 'yarışma türü', 'yarismatur'],
+                panel:    ['panel', 'grup', 'hakem grubu'],
+            };
+
+            let headerRowIdx = -1;
+            const colMap = Object.fromEntries(Object.keys(ALIASES).map(k => [k, -1]));
+
+            for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+                const row = rawRows[i];
+                if (!row) continue;
+                let hits = 0;
+                row.forEach((cell, ci) => {
+                    const n = trNorm(cell);
+                    for (const [field, aliases] of Object.entries(ALIASES)) {
+                        if (colMap[field] === -1 && aliases.includes(n)) {
+                            colMap[field] = ci;
+                            hits++;
+                        }
+                    }
+                });
+                if (hits >= 2 && (colMap.ad >= 0 || colMap.sira >= 0)) {
+                    headerRowIdx = i;
+                    break;
+                }
+            }
+
+            // Fallback → varsayılan sütun düzeni
+            if (headerRowIdx === -1) {
+                Object.assign(colMap, { sira: 2, ad: 3, soyad: 4, okul: 5, il: 6, ilce: 7, kategori: 8, tur: 9, panel: 10 });
+                // veri başlangıcını bul: Sıra sütununda sayı olan ilk satır
+                for (let i = 1; i < rawRows.length; i++) {
+                    const row = rawRows[i];
+                    if (!row) continue;
+                    const v = row[2];
+                    if (v != null && !isNaN(Number(String(v).trim().replace(',', '.')))) {
+                        headerRowIdx = i - 1;
+                        break;
+                    }
+                }
+                if (headerRowIdx === -1) headerRowIdx = 1;
+            }
+
+            const dataStart = headerRowIdx + 1;
+
+            // ── Tüm kayıtlı sporcuları yükle (tüm kategoriler) ──────────────
+            const comp = competitions[selectedCompId];
+            const allCatIds = Object.keys(comp?.sporcular || {}).filter(k => k && k !== 'undefined');
+
+            const allRegistered = [];
+            await Promise.all(allCatIds.map(async catId => {
+                const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`));
+                const data = snap.val() || {};
+                Object.entries(data).forEach(([id, ath]) =>
+                    allRegistered.push({ id, catId, ...ath })
+                );
+            }));
+
+            // ── Veri satırlarını parse et ve eşleştir ────────────────────────
+            const gc = (row, col) => (col >= 0 && row ? row[col] : null);
+            const normName = s => (s || '').trim().toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ');
+
+            const excelRows = [];
+            for (let i = dataStart; i < rawRows.length; i++) {
+                const row = rawRows[i];
+                if (!row) continue;
+
+                const adRaw    = gc(row, colMap.ad);
+                const soyadRaw = gc(row, colMap.soyad);
+                const siraRaw  = gc(row, colMap.sira);
+                const okulRaw  = gc(row, colMap.okul);
+                const ilRaw    = gc(row, colMap.il);
+                const ilceRaw  = gc(row, colMap.ilce);
+                const katRaw   = gc(row, colMap.kategori);
+                const turRaw   = gc(row, colMap.tur);
+                const panelRaw = gc(row, colMap.panel);
+
+                const adStr    = String(adRaw ?? '').trim();
+                const soyadStr = String(soyadRaw ?? '').trim();
+                if (!adStr && !soyadStr) continue;   // tamamen boş satır
+
+                const siraNum = Number(String(siraRaw ?? '').trim().replace(',', '.'));
+
+                // ── İsme göre eşleştirme (TÜM kategorilerde ara) ─────────────
+                const nAd    = normName(adStr);
+                const nSoyad = normName(soyadStr);
+                const nOkul  = normName(String(okulRaw ?? ''));
+                const nKat   = trNorm(katRaw);
+
+                let matches = allRegistered.filter(a =>
+                    normName(a.ad) === nAd && normName(a.soyad) === nSoyad
+                );
+                if (matches.length > 1) {
+                    // Önce kategoriye göre daralt
+                    const byCat = matches.filter(a => a.catId === nKat || trNorm(a.catId) === nKat);
+                    if (byCat.length > 0) matches = byCat;
+                    // Sonra okula göre daralt
+                    else {
+                        const byOkul = matches.filter(a => normName(a.okul || a.kulup) === nOkul);
+                        if (byOkul.length > 0) matches = byOkul;
+                    }
+                }
+                // Fallback: ad + okul
+                if (matches.length === 0 && nOkul) {
+                    matches = allRegistered.filter(a =>
+                        normName(a.ad) === nAd && normName(a.okul || a.kulup) === nOkul
+                    );
+                }
+
+                const hit = matches[0] || null;
+                const excelKat = nKat;
+                const firebaseKat = hit?.catId ?? null;
+                const catMismatch = !!(excelKat && firebaseKat && excelKat !== firebaseKat);
+
+                // Miss durumunda eğer Excel kategorisi sistemde mevcutsa "eklenebilir"
+                const isMiss = !hit;
+                const addable = isMiss && !!excelKat && allCatIds.includes(excelKat);
+
+                excelRows.push({
+                    sira:         isNaN(siraNum) ? null : Math.round(siraNum),
+                    ad:           adStr,
+                    soyad:        soyadStr,
+                    okul:         String(okulRaw  ?? '').trim(),
+                    il:           String(ilRaw    ?? '').trim(),
+                    ilce:         String(ilceRaw  ?? '').trim(),
+                    kategori:     excelKat || firebaseKat || '',
+                    tur:          trNorm(turRaw || 'ferdi').replace(/\s+/g, '').replace('takım','takim'),
+                    panel:        String(panelRaw ?? 'A').trim().toUpperCase(),
+                    matchedId:    hit?.id    ?? null,
+                    matchedAd:    hit?.ad    ?? null,
+                    matchedSoyad: hit?.soyad ?? null,
+                    matchedOkul:  hit?.okul  ?? hit?.kulup ?? null,
+                    matchedCatId: firebaseKat,
+                    catMismatch,   // Excel kategorisi ≠ Firebase kategorisi
+                    matchStatus:  matches.length > 1 ? 'multi' : hit ? 'ok' : 'miss',
+                    addable,                      // sisteme yeni eklenebilir mi?
+                    addToSystem:  addable,        // varsayılan: eklenebilirse evet
+                });
+            }
+
+            if (excelRows.length === 0) {
+                showToast(
+                    `Excel'de veri satırı okunamadı (${rawRows.length} satır tarandı, başlık ` +
+                    `${headerRowIdx + 1}. satırda bulundu). Dosya yapısını kontrol edin.`,
+                    'error'
+                );
+                return;
+            }
+
+            const categories = [...new Set(excelRows.map(r => r.matchedCatId || r.kategori).filter(Boolean))];
+            const catAthletes = {};
+            allCatIds.forEach(catId => {
+                catAthletes[catId] = allRegistered.filter(a => a.catId === catId);
+            });
+
+            setExcelImportModal({
+                rows:          excelRows,
+                categories,
+                catAthletes,
+                totalRows:     excelRows.length,
+                matched:       excelRows.filter(r => r.matchStatus !== 'miss').length,
+                unmatched:     excelRows.filter(r => r.matchStatus === 'miss').length,
+                catMismatch:   excelRows.filter(r => r.catMismatch).length,
+                toAdd:         excelRows.filter(r => r.matchStatus === 'miss' && r.addToSystem).length,
+                addable:       excelRows.filter(r => r.addable).length,
+            });
+
+        } catch (err) {
+            console.error(err);
+            showToast('Excel okunamadı: ' + (err.message || 'Bilinmeyen hata'), 'error');
+        }
+    };
+
+    // Satır bazlı kategori seçimini günceller (mismatch durumunda kullanıcı seçer)
+    const updateRowCat = (rowIndex, newCatId) => {
+        setExcelImportModal(prev => ({
+            ...prev,
+            rows: prev.rows.map((r, i) => i === rowIndex ? { ...r, selectedCatId: newCatId } : r),
+        }));
+    };
+
+    // Bulunamayan satırı sisteme ekleme/atlama toggle
+    const toggleRowAdd = (rowIndex) => {
+        setExcelImportModal(prev => {
+            const newRows = prev.rows.map((r, i) =>
+                i === rowIndex && r.addable ? { ...r, addToSystem: !r.addToSystem } : r
+            );
+            return {
+                ...prev,
+                rows: newRows,
+                toAdd: newRows.filter(r => r.matchStatus === 'miss' && r.addToSystem).length,
+            };
+        });
+    };
+
+    const handleExcelImportSave = async () => {
+        if (!excelImportModal || importSaving) return;
+        setImportSaving(true);
+        try {
+            const { rows } = excelImportModal;
+
+            // ── Yeni eklenecek sporcular için push key oluştur (yazma yok, sadece key) ──
+            const newAthletes = []; // { catKey, athleteId, data }
+            rows.forEach(row => {
+                if (row.matchedId) return;                       // zaten eşleşmiş
+                if (!row.addToSystem || !row.addable) return;    // kullanıcı eklemek istemiyor / eklenemez
+                if (!row.kategori) return;
+                const newRef = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${row.kategori}`));
+                newAthletes.push({
+                    catKey:    row.kategori,
+                    athleteId: newRef.key,
+                    rowRef:    row,
+                    data: {
+                        ad:          row.ad,
+                        soyad:       row.soyad,
+                        okul:        row.okul,
+                        kulup:       row.okul,
+                        il:          row.il,
+                        ilce:        row.ilce,
+                        yarismaTuru: row.tur,
+                    },
+                });
+            });
+
+            // ── Tüm satırları (eşleşmiş + yeni) kategoriye göre grupla ──
+            // Öncelik: kullanıcının seçtiği (selectedCatId) > Firebase kategorisi > Excel kategorisi
+            const catRows = {};
+            rows.forEach((row, idx) => {
+                let catKey, athleteId;
+                if (row.matchedId) {
+                    catKey = row.selectedCatId || row.matchedCatId || row.kategori;
+                    athleteId = row.matchedId;
+                } else {
+                    // Yeni eklenenler arasından bul
+                    const newRec = newAthletes.find(n => n.rowRef === row);
+                    if (!newRec) return;  // ne eşleşti ne eklenecek → atla
+                    catKey = newRec.catKey;
+                    athleteId = newRec.athleteId;
+                }
+                if (!catKey || !athleteId) return;
+                if (!catRows[catKey]) catRows[catKey] = [];
+                catRows[catKey].push({ ...row, _athleteId: athleteId });
+            });
+            Object.values(catRows).forEach(arr => arr.sort((a, b) => (a.sira ?? 0) - (b.sira ?? 0)));
+
+            const updates = {};
+
+            // ── Yeni sporcuların temel verisini yaz ──
+            newAthletes.forEach(({ catKey, athleteId, data }) => {
+                const path = `${firebasePath}/${selectedCompId}/sporcular/${catKey}/${athleteId}`;
+                Object.entries(data).forEach(([k, v]) => {
+                    if (v !== undefined && v !== null && v !== '') updates[`${path}/${k}`] = v;
+                });
+            });
+
+            // ── Sıralama ve sporcu başına alanları yaz ──
+            Object.entries(catRows).forEach(([catId, catAthRows]) => {
+                const rotationObj = {};
+                catAthRows.forEach((row, idx) => {
+                    const sirasi = idx + 1;
+                    rotationObj[row._athleteId] = {
+                        sirasi,
+                        ad:          row.ad,
+                        soyad:       row.soyad,
+                        okul:        row.okul,
+                        yarismaTuru: row.tur,
+                    };
+                    const athPath = `${firebasePath}/${selectedCompId}/sporcular/${catId}/${row._athleteId}`;
+                    updates[`${athPath}/sirasi`]        = sirasi;
+                    updates[`${athPath}/cikisSirasi`]   = row.sira ?? sirasi;
+                    updates[`${athPath}/rotasyonGrubu`] = 0;
+                });
+                updates[`${firebasePath}/${selectedCompId}/siralama/${catId}`] = { rotation_0: rotationObj };
+            });
+
+            await update(ref(db), updates);
+            const catCount = Object.keys(catRows).length;
+            const athCount = Object.values(catRows).reduce((s, a) => s + a.length, 0);
+            const newCount = newAthletes.length;
+            const msg = newCount > 0
+                ? `${catCount} kategori, ${athCount} sporcu kaydedildi (${newCount} yeni sporcu sisteme eklendi).`
+                : `${catCount} kategori, ${athCount} sporcu çıkış sırası kaydedildi.`;
+            showToast(msg, 'success');
+            setExcelImportModal(null);
+        } catch (err) {
+            console.error(err);
+            showToast('Kaydetme hatası: ' + (err.message || ''), 'error');
+        } finally {
+            setImportSaving(false);
+        }
+    };
+
     const handleExportPDF = async () => {
         if (!selectedCompId) { showToast("Dışa aktarmak için yarışma seçiniz.", 'warning'); return; }
         if (pdfGenerating) return;
@@ -1280,6 +1612,137 @@ export default function StartOrderPage() {
             const XLSX = await import('xlsx');
             const comp = competitions[selectedCompId];
             const compName = comp?.isim || 'Yarışma';
+            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
+
+            // ── AEROBİK: tek sayfa, tüm kategoriler birleşik, örnek Excel formatı ──
+            if (isAerobik) {
+                const allCategoryIds = Object.keys(comp?.sporcular || {}).filter(k => k && k !== 'undefined');
+                if (allCategoryIds.length === 0) {
+                    showToast("Bu yarışma için kategori bulunamadı.", 'warning');
+                    return;
+                }
+
+                // planAyarlari → panel atamaları (hakemGrubu: 1=A, 2=B)
+                const planSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`));
+                const planAyarlari = planSnap.val() || {};
+                const katAyarlari = planAyarlari.aerobikKategoriAyarlari || {};
+
+                // Her kategoriden sporcu verilerini çek
+                const fetchPromises = allCategoryIds.map(catId =>
+                    Promise.all([
+                        get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${catId}`)),
+                        get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}`)),
+                    ]).then(([siraSnap, sporSnap]) => ({
+                        catId,
+                        siraData: siraSnap.val() || {},
+                        sporData: sporSnap.val() || {},
+                    }))
+                );
+                const categoryResults = await Promise.all(fetchPromises);
+
+                // Tüm sporcuları tek listeye topla
+                const allAthletes = [];
+                for (const { catId, siraData, sporData } of categoryResults) {
+                    // Kategori panel bilgisi
+                    let panelLabel = '';
+                    const katAyar = katAyarlari[catId];
+                    if (katAyar?.gunler && katAyar.gunler.length > 0) {
+                        const hg = katAyar.gunler[0]?.hakemGrubu;
+                        if (hg === 1 || hg === '1') panelLabel = 'A';
+                        else if (hg === 2 || hg === '2') panelLabel = 'B';
+                    }
+
+                    // Rotasyonları işle
+                    for (const [rotKey, rotAthletes] of Object.entries(siraData)) {
+                        const rotIndex = parseInt(rotKey.replace('rotation_', ''), 10);
+                        if (isNaN(rotIndex) || !rotAthletes || typeof rotAthletes !== 'object') continue;
+
+                        // Panel: planAyarlari yoksa rotation indeksinden tahmin et
+                        const rotPanel = panelLabel || (rotIndex === 0 ? 'A' : 'B');
+
+                        for (const [athId, athData] of Object.entries(rotAthletes)) {
+                            if (!athData || typeof athData !== 'object') continue;
+                            const spor = sporData[athId] || {};
+
+                            // cikisSirasi: sporcular'dan al, yoksa siralama sirasi kullan
+                            const cikisSirasi = spor.cikisSirasi != null
+                                ? Number(spor.cikisSirasi)
+                                : (athData.sirasi != null ? Number(athData.sirasi) : 99999);
+
+                            allAthletes.push({
+                                cikisSirasi,
+                                ad:    athData.ad    || spor.ad    || '',
+                                soyad: athData.soyad || spor.soyad || '',
+                                okul:  athData.okul  || spor.okul  || spor.kulup || '',
+                                il:    spor.il    || '',
+                                ilce:  spor.ilce  || '',
+                                catId,
+                                tur:   athData.yarismaTuru || spor.yarismaTuru || '',
+                                panel: rotPanel,
+                            });
+                        }
+                    }
+                }
+
+                if (allAthletes.length === 0) {
+                    showToast("Henüz hiçbir kategoride sıralama yapılmamış.", 'warning');
+                    return;
+                }
+
+                // Küresel çıkış sırasına göre sırala
+                allAthletes.sort((a, b) => a.cikisSirasi - b.cikisSirasi);
+
+                // Satırları oluştur
+                const rows = [];
+                // Satır 1: başlık (B sütununda)
+                rows.push([null, compName]);
+                // Satır 2: sütun başlıkları
+                rows.push([null, 'SAAT', 'Sıra', 'Ad', 'Soyad', 'Okul / Kulüp', 'İl', 'İlçe', 'Kategori', 'Tür', 'PANEL']);
+
+                // Başlangıç saati: 09:00, her sporcu +3 dakika
+                const BASE_MINUTES = 9 * 60;
+                allAthletes.forEach((ath, idx) => {
+                    const totalMin = BASE_MINUTES + idx * 3;
+                    const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
+                    const mm = String(totalMin % 60).padStart(2, '0');
+                    rows.push([
+                        null,
+                        `${hh}:${mm}`,
+                        ath.cikisSirasi,
+                        ath.ad,
+                        ath.soyad,
+                        ath.okul,
+                        ath.il,
+                        ath.ilce,
+                        ath.catId,
+                        ath.tur,
+                        ath.panel,
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 4 },   // A: boş
+                    { wch: 8 },   // B: SAAT
+                    { wch: 6 },   // C: Sıra
+                    { wch: 20 },  // D: Ad
+                    { wch: 20 },  // E: Soyad
+                    { wch: 40 },  // F: Okul / Kulüp
+                    { wch: 15 },  // G: İl
+                    { wch: 15 },  // H: İlçe
+                    { wch: 18 },  // I: Kategori
+                    { wch: 15 },  // J: Tür
+                    { wch: 8 },   // K: PANEL
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'ÇIKIŞ SIRASI');
+                XLSX.writeFile(wb, `${safeCompName}_Cikis_Sirasi.xlsx`);
+                showToast("Excel başarıyla oluşturuldu.", 'success');
+                return;
+            }
+
+            // ── DİĞER DİSİPLİNLER: kategori bazlı sayfalar ──────────────────────
             const compTarih = comp?.tarih || '';
 
             // Tarih formatla
@@ -1401,7 +1864,6 @@ export default function StartOrderPage() {
                 return;
             }
 
-            const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
             XLSX.writeFile(wb, `${safeCompName}_Cikis_Sirasi.xlsx`);
             showToast("Excel başarıyla oluşturuldu.", 'success');
         } catch (err) {
@@ -1446,6 +1908,26 @@ export default function StartOrderPage() {
                                 : <><i className="material-icons-round">bolt</i><span>Tümünü Ata</span></>
                             }
                         </button>
+                    )}
+                    {isAerobik && hasPermission('start_order', 'duzenle') && (
+                        <>
+                            <input
+                                ref={excelImportRef}
+                                type="file"
+                                accept=".xlsx,.xls"
+                                style={{ display: 'none' }}
+                                onChange={handleExcelImportFile}
+                            />
+                            <button
+                                className="btn-bento-secondary btn-bento-secondary--import"
+                                onClick={handleExcelImportClick}
+                                title="Excel dosyasından çıkış listesi yükle"
+                                disabled={!selectedCompId}
+                            >
+                                <i className="material-icons-round">upload_file</i>
+                                <span>Excel ile Liste Yükle</span>
+                            </button>
+                        </>
                     )}
                     {hasPermission('start_order', 'pdf') && (
                         <>
@@ -1670,6 +2152,202 @@ export default function StartOrderPage() {
                     ))}
                 </div>
             )}
+
+            {/* Excel Import Modal */}
+            {excelImportModal && (() => {
+                const { rows, totalRows, matched, unmatched, catMismatch, toAdd = 0, addable = 0 } = excelImportModal;
+                const totalToSave = matched + toAdd;
+
+                // Gruplamak için efektif kategori: kullanıcı seçimi > Firebase > Excel
+                const effCat = r => r.selectedCatId || r.matchedCatId || r.kategori || '?';
+
+                // Kategori sırasını Excel sırasına göre koru
+                const catOrder = [];
+                const catSeen = new Set();
+                rows.forEach(r => {
+                    const c = effCat(r);
+                    if (!catSeen.has(c)) { catSeen.add(c); catOrder.push(c); }
+                });
+
+                return (
+                    <div className="confirm-overlay" onClick={() => !importSaving && setExcelImportModal(null)}>
+                        <div className="eim" onClick={e => e.stopPropagation()}>
+
+                            {/* ── Header ── */}
+                            <header className="eim__hdr">
+                                <i className="material-icons-round eim__hdr-icon">upload_file</i>
+                                <span className="eim__hdr-title">Çıkış Listesi Önizleme</span>
+                                <div className="eim__chips">
+                                    <span className="eim__chip">{totalRows} sporcu</span>
+                                    <span className="eim__chip eim__chip--ok">
+                                        <i className="material-icons-round">check_circle</i>{matched} eşleşti
+                                    </span>
+                                    {unmatched > 0 && (
+                                        <span className="eim__chip eim__chip--err">
+                                            <i className="material-icons-round">cancel</i>{unmatched} bulunamadı
+                                        </span>
+                                    )}
+                                    {toAdd > 0 && (
+                                        <span className="eim__chip eim__chip--add">
+                                            <i className="material-icons-round">person_add</i>{toAdd} yeni eklenecek
+                                        </span>
+                                    )}
+                                    {catMismatch > 0 && (
+                                        <span className="eim__chip eim__chip--warn">
+                                            <i className="material-icons-round">swap_horiz</i>{catMismatch} kat. farklı
+                                        </span>
+                                    )}
+                                </div>
+                                <button className="eim__close" onClick={() => !importSaving && setExcelImportModal(null)}>
+                                    <i className="material-icons-round">close</i>
+                                </button>
+                            </header>
+
+                            {/* ── Bilgi bantları ── */}
+                            {unmatched > 0 && (
+                                <div className="eim__banner eim__banner--warn">
+                                    <i className="material-icons-round">person_off</i>
+                                    <span>
+                                        <strong>{unmatched} sporcu</strong> sistemde kayıtlı bulunamadı.
+                                        {addable > 0 && <> {addable} tanesi <strong>otomatik eklenecek</strong> (Excel'deki kategoride yeni sporcu kaydı oluşturulur). Aşağıdan tek tek atla/ekle seçimi yapabilirsiniz.</>}
+                                        {addable < unmatched && <> {unmatched - addable} sporcu <strong>eklenemiyor</strong> çünkü Excel'deki kategori sistemde yok.</>}
+                                    </span>
+                                </div>
+                            )}
+                            {catMismatch > 0 && (
+                                <div className="eim__banner eim__banner--info">
+                                    <i className="material-icons-round">tune</i>
+                                    <span>Kategori uyuşmazlığı olan satırlarda <strong>hangi kategorinin kullanılacağını</strong> seçin (turuncu = Excel, yeşil = sistem seçili).</span>
+                                </div>
+                            )}
+
+                            {/* ── Kaydırılabilir gövde ── */}
+                            <div className="eim__body">
+                                {catOrder.map(catId => {
+                                    const catRowsWithIdx = rows
+                                        .map((r, i) => ({ ...r, _i: i }))
+                                        .filter(r => effCat(r) === catId);
+                                    if (catRowsWithIdx.length === 0) return null;
+                                    const panels = [...new Set(catRowsWithIdx.map(r => r.panel).filter(Boolean))].join(', ');
+                                    const hasMismatch = catRowsWithIdx.some(r => r.catMismatch);
+
+                                    return (
+                                        <section key={catId} className="eim__section">
+                                            <div className="eim__sec-hdr">
+                                                <span className="eim__sec-name">{catId}</span>
+                                                {panels && <span className="eim__panel-tag">Panel {panels}</span>}
+                                                {hasMismatch && <span className="eim__mismatch-tag"><i className="material-icons-round">swap_horiz</i>Kategori seçimi gerekiyor</span>}
+                                                <span className="eim__sec-count">{catRowsWithIdx.length} sporcu</span>
+                                            </div>
+                                            <table className="eim__table">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="eim__th-sira">Sıra</th>
+                                                        <th>Ad Soyad / Okul</th>
+                                                        <th>Kategori</th>
+                                                        <th className="eim__th-status">Durum</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {catRowsWithIdx.map(row => {
+                                                        const activeCat = row.selectedCatId || row.matchedCatId;
+                                                        return (
+                                                            <tr key={row._i} className={
+                                                                `eim__tr` +
+                                                                (row.matchStatus === 'miss' ? ' eim__tr--miss' : '') +
+                                                                (row.matchStatus === 'multi' ? ' eim__tr--multi' : '') +
+                                                                (row.catMismatch && row.matchStatus !== 'miss' ? ' eim__tr--mismatch' : '')
+                                                            }>
+                                                                <td className="eim__td-sira">{row.sira}</td>
+                                                                <td className="eim__td-name">
+                                                                    <div className="eim__fullname">{row.ad} <strong>{row.soyad}</strong></div>
+                                                                    <div className="eim__school">{row.okul}</div>
+                                                                </td>
+                                                                <td className="eim__td-kat">
+                                                                    {row.catMismatch ? (
+                                                                        <div className="eim__cat-toggle">
+                                                                            <button
+                                                                                className={`eim__cat-btn eim__cat-btn--sys ${activeCat === row.matchedCatId ? 'eim__cat-btn--active' : ''}`}
+                                                                                onClick={() => updateRowCat(row._i, row.matchedCatId)}
+                                                                            >
+                                                                                <i className="material-icons-round">{activeCat === row.matchedCatId ? 'radio_button_checked' : 'radio_button_unchecked'}</i>
+                                                                                <span>{row.matchedCatId}</span>
+                                                                                <em>sistem</em>
+                                                                            </button>
+                                                                            <button
+                                                                                className={`eim__cat-btn eim__cat-btn--excel ${activeCat === row.kategori ? 'eim__cat-btn--active eim__cat-btn--excel-active' : ''}`}
+                                                                                onClick={() => updateRowCat(row._i, row.kategori)}
+                                                                            >
+                                                                                <i className="material-icons-round">{activeCat === row.kategori ? 'radio_button_checked' : 'radio_button_unchecked'}</i>
+                                                                                <span>{row.kategori}</span>
+                                                                                <em>excel</em>
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="eim__cat-stable">{row.matchedCatId || row.kategori}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="eim__td-status">
+                                                                    {row.matchStatus === 'ok' && !row.catMismatch && (
+                                                                        <span className="eim__badge eim__badge--ok"><i className="material-icons-round">check_circle</i>Eşleşti</span>
+                                                                    )}
+                                                                    {row.matchStatus === 'ok' && row.catMismatch && (
+                                                                        <span className="eim__badge eim__badge--sel"><i className="material-icons-round">tune</i>Kat. seçin</span>
+                                                                    )}
+                                                                    {row.matchStatus === 'miss' && row.addable && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`eim__add-toggle ${row.addToSystem ? 'eim__add-toggle--on' : 'eim__add-toggle--off'}`}
+                                                                            onClick={() => toggleRowAdd(row._i)}
+                                                                            title={row.addToSystem ? 'Sisteme yeni sporcu olarak eklenecek — atlamak için tıkla' : 'Atlanacak — eklemek için tıkla'}
+                                                                        >
+                                                                            <i className="material-icons-round">{row.addToSystem ? 'person_add' : 'person_off'}</i>
+                                                                            {row.addToSystem ? 'Yeni Eklenecek' : 'Atlanacak'}
+                                                                        </button>
+                                                                    )}
+                                                                    {row.matchStatus === 'miss' && !row.addable && (
+                                                                        <span className="eim__badge eim__badge--miss" title={row.kategori ? `Kategori "${row.kategori}" sistemde yok` : 'Kategori bilgisi eksik'}>
+                                                                            <i className="material-icons-round">block</i>Eklenemiyor
+                                                                        </span>
+                                                                    )}
+                                                                    {row.matchStatus === 'multi' && (
+                                                                        <span className="eim__badge eim__badge--warn"><i className="material-icons-round">warning</i>Çok eşleşme</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </section>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ── Footer ── */}
+                            <footer className="eim__footer">
+                                <button className="eim__btn eim__btn--cancel" onClick={() => !importSaving && setExcelImportModal(null)} disabled={importSaving}>
+                                    İptal
+                                </button>
+                                <button
+                                    className="eim__btn eim__btn--save"
+                                    onClick={handleExcelImportSave}
+                                    disabled={importSaving || totalToSave === 0}
+                                >
+                                    {importSaving
+                                        ? <><div className="spinner-small"></div>Kaydediliyor…</>
+                                        : <>
+                                            <i className="material-icons-round">save</i>
+                                            {totalToSave} Sporcu Kaydet
+                                            {toAdd > 0 && <span className="eim__btn-sub">({toAdd} yeni)</span>}
+                                        </>
+                                    }
+                                </button>
+                            </footer>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Confirm Modal */}
             {confirmModal && (

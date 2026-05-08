@@ -1,0 +1,529 @@
+/* ═══════════════════════════════════════════════
+   AerobikAPanelPage.css  —  A-Jürisi Paneli
+   ═══════════════════════════════════════════════ */
+
+:root {
+    --ap-accent:    #f59e0b;
+    --ap-accent-bg: rgba(245, 158, 11, 0.12);
+    --ap-accent-bdr:rgba(245, 158, 11, 0.35);
+    --ap-bg:        #0d1117;
+    --ap-card:      #161b22;
+    --ap-border:    #21262d;
+    --ap-text:      #e6edf3;
+    --ap-muted:     #8b949e;
+    --ap-danger:    #f85149;
+    --ap-success:   #3fb950;
+}
+
+/* ── Page shell ──────────────────────────────────────────────── */
+
+.ap-page {
+    min-height: 100dvh;
+    background: var(--ap-bg);
+    color: var(--ap-text);
+    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.ap-error {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    background: var(--ap-bg);
+    color: var(--ap-muted);
+}
+
+.ap-error .material-icons-round { font-size: 3rem; color: var(--ap-danger); }
+.ap-error p { font-size: 0.9rem; max-width: 280px; line-height: 1.5; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+.ap-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.9rem;
+    border-bottom: 1px solid var(--ap-border);
+    background: var(--ap-card);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.ap-header__comp {
+    font-size: 0.75rem;
+    color: var(--ap-muted);
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.ap-header__title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--ap-accent);
+}
+
+.ap-header__badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--ap-accent-bg);
+    border: 1px solid var(--ap-accent-bdr);
+    color: var(--ap-accent);
+    font-size: 1rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Center states ───────────────────────────────────────────── */
+
+.ap-center-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    gap: 0.6rem;
+}
+
+.ap-state-icon {
+    font-size: 3.5rem;
+    color: var(--ap-muted);
+    margin-bottom: 0.25rem;
+}
+
+.ap-state-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--ap-text);
+}
+
+.ap-state-sub {
+    font-size: 0.9rem;
+    color: var(--ap-muted);
+    max-width: 300px;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+}
+
+/* ── Scoring scroll area ─────────────────────────────────────── */
+
+.ap-scoring {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1rem 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ── Athlete strip ───────────────────────────────────────────── */
+
+.ap-athlete {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--ap-card);
+    border: 1px solid var(--ap-border);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.ap-athlete__icon {
+    font-size: 1.6rem;
+    color: var(--ap-accent);
+    flex-shrink: 0;
+}
+
+.ap-athlete__name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.ap-athlete__club {
+    font-size: 0.8rem;
+    color: var(--ap-muted);
+    margin-top: 2px;
+}
+
+/* ── Section title ───────────────────────────────────────────── */
+
+.ap-section-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--ap-muted);
+    margin: 0 0 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ap-fill-badge {
+    background: var(--ap-accent-bg);
+    color: var(--ap-accent);
+    border: 1px solid var(--ap-accent-bdr);
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+/* ── Criteria cards ──────────────────────────────────────────── */
+
+.ap-criteria-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.ap-criterion {
+    background: var(--ap-card);
+    border: 1.5px solid var(--ap-border);
+    border-radius: 14px;
+    padding: 0.85rem 0.9rem;
+    transition: border-color 0.15s;
+}
+
+.ap-criterion--filled {
+    border-color: var(--ap-accent-bdr);
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.ap-criterion__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.7rem;
+}
+
+.ap-criterion__num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ap-accent-bg);
+    border: 1px solid var(--ap-accent-bdr);
+    color: var(--ap-accent);
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ap-criterion__label {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ap-text);
+    flex: 1;
+}
+
+.ap-criterion__selected {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--ap-accent);
+    font-variant-numeric: tabular-nums;
+    background: var(--ap-accent-bg);
+    border: 1px solid var(--ap-accent-bdr);
+    border-radius: 8px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+}
+
+/* Scale buttons row — horizontally scrollable */
+.ap-scale-row {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.ap-scale-row::-webkit-scrollbar { display: none; }
+
+.ap-scale-btn {
+    flex-shrink: 0;
+    min-width: 48px;
+    padding: 0.6rem 0.3rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid var(--ap-border);
+    border-radius: 10px;
+    color: var(--ap-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.1s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-variant-numeric: tabular-nums;
+}
+
+.ap-scale-btn:active { transform: scale(0.92); }
+
+.ap-scale-btn--active {
+    background: var(--ap-accent-bg);
+    border-color: var(--ap-accent);
+    color: var(--ap-accent);
+    font-weight: 900;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+/* ── Deduction list ──────────────────────────────────────────── */
+
+.ap-deduction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ap-ded-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--ap-card);
+    border: 1.5px solid var(--ap-border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    transition: border-color 0.12s;
+}
+
+.ap-ded-item--active {
+    border-color: rgba(248, 81, 73, 0.4);
+    background: rgba(248, 81, 73, 0.05);
+}
+
+.ap-ded-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ap-ded-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ap-text);
+    line-height: 1.3;
+}
+
+.ap-ded-amount {
+    font-size: 0.72rem;
+    color: var(--ap-muted);
+    font-weight: 500;
+}
+
+.ap-ded-item--active .ap-ded-amount {
+    color: var(--ap-danger);
+    font-weight: 700;
+}
+
+/* Counter */
+.ap-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.ap-counter__btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ap-border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ap-text);
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.1s;
+}
+
+.ap-counter__btn--minus:active { background: rgba(248, 81, 73, 0.2); border-color: var(--ap-danger); color: var(--ap-danger); }
+.ap-counter__btn--plus:active  { background: rgba(63, 185, 80, 0.2);  border-color: var(--ap-success); color: var(--ap-success); }
+
+.ap-counter__val {
+    min-width: 28px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--ap-danger);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Toggle */
+.ap-toggle {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--ap-muted);
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.12s;
+    flex-shrink: 0;
+}
+
+.ap-toggle .material-icons-round { font-size: 2rem; }
+.ap-toggle--on { color: var(--ap-danger); }
+
+/* ── Summary ─────────────────────────────────────────────────── */
+
+.ap-summary {
+    background: var(--ap-card);
+    border: 1px solid var(--ap-accent-bdr);
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.25rem 0;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.06);
+}
+
+.ap-summary__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0;
+    font-size: 0.9rem;
+    color: var(--ap-muted);
+}
+
+.ap-summary__row strong {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--ap-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.ap-summary__row--ded strong { color: var(--ap-danger); }
+
+.ap-summary__divider {
+    height: 1px;
+    background: var(--ap-border);
+    margin: 0.5rem 0;
+}
+
+.ap-summary__row--final { padding-top: 0.25rem; }
+
+.ap-summary__final {
+    font-size: 2.2rem !important;
+    font-weight: 900 !important;
+    color: var(--ap-accent) !important;
+    text-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Submit ──────────────────────────────────────────────────── */
+
+.ap-submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.35);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ap-submit-btn:active { transform: scale(0.98); }
+.ap-submit-btn .material-icons-round { font-size: 1.2rem; }
+
+.ap-submit-btn--disabled {
+    background: var(--ap-card);
+    border: 1.5px solid var(--ap-border);
+    color: var(--ap-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* ── Sent state ──────────────────────────────────────────────── */
+
+.ap-sent-score {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--ap-success);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.ap-sent-breakdown {
+    width: 100%;
+    max-width: 320px;
+    background: var(--ap-card);
+    border: 1px solid var(--ap-border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem auto;
+}
+
+.ap-sent-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 0.3rem 0;
+    color: var(--ap-muted);
+    border-bottom: 1px solid rgba(33, 38, 45, 0.8);
+}
+
+.ap-sent-row:last-child { border-bottom: none; }
+.ap-sent-row span:last-child { font-weight: 700; color: var(--ap-accent); }
+
+/* ── Edit button ─────────────────────────────────────────────── */
+
+.ap-edit-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.7rem 1.5rem;
+    background: none;
+    border: 1px solid var(--ap-border);
+    border-radius: 10px;
+    color: var(--ap-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ap-edit-btn:active { background: rgba(255,255,255,0.05); }
+.ap-edit-btn .material-icons-round { font-size: 1.1rem; }

@@ -1161,3 +1161,306 @@
 .psv-ath-type.ferdi { background:#f0fdf4; color:#166534; }
 
 .psv-footer { display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; padding-top:12px; border-top:1px solid #e2e8f0; margin-top:16px; }
+
+/* ══════════════════════════════════════
+   AEROBIK SCHEDULE — Additional Styles
+   ══════════════════════════════════════ */
+
+/* Aerobik generate button */
+.btn-generate-aerobik {
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    color: #fff; border: none; border-radius: 12px;
+    padding: 14px 24px; font-size: 15px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 14px rgba(14,165,233,.3);
+    transition: opacity .2s, transform .1s;
+}
+.btn-generate-aerobik:hover { opacity: .92; transform: translateY(-1px); }
+.btn-generate-aerobik:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* Aerobik program button in program tab actions */
+.sched-aerobik-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+    color: #fff; border: none; border-radius: 12px;
+    padding: 14px 20px; cursor: pointer; font-weight: 600;
+    box-shadow: 0 3px 12px rgba(14,165,233,.35);
+    transition: opacity .2s, transform .1s;
+}
+.sched-aerobik-btn:hover { opacity: .92; transform: translateY(-1px); }
+.sched-aerobik-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.sched-aerobik-btn .material-icons-round { font-size: 26px; }
+.sched-aerobik-btn strong { display:block; font-size:14px; }
+.sched-aerobik-btn small { font-size:11px; opacity:.85; }
+
+/* Aerobik category table */
+.aerobik-cat-table-wrap { overflow-x: auto; }
+
+.aerobik-cat-table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+}
+.aerobik-cat-table th {
+    background: var(--bg-light, #f8fafc); padding: 10px 14px;
+    text-align: left; font-weight: 700; font-size: 12px;
+    color: var(--text-muted, #64748b); text-transform: uppercase;
+    letter-spacing: .5px; border-bottom: 2px solid var(--border, #e2e8f0);
+}
+.aerobik-cat-table td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border, #e2e8f0);
+    vertical-align: middle;
+}
+.aerobik-cat-table tr:hover td { background: var(--bg-light, #f8fafc); }
+
+.aerobik-panel-select {
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-white, #fff); font-size: 13px; cursor: pointer;
+}
+.aerobik-sporcu-input {
+    width: 70px; padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-white, #fff); font-size: 13px;
+    text-align: center;
+}
+
+.blok-sayisi-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #ede9fe; color: #4f46e5; font-weight: 700; font-size: 13px;
+    padding: 3px 10px; border-radius: 20px;
+}
+.sure-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #dcfce7; color: #166534; font-weight: 600; font-size: 13px;
+    padding: 3px 10px; border-radius: 20px;
+}
+
+/* Panel preview */
+.panel-preview {
+    display: flex; gap: 16px; flex-wrap: wrap;
+}
+.panel-preview__col {
+    flex: 1 1 200px; min-width: 180px;
+    border-radius: 12px; overflow: hidden;
+    border: 2px solid var(--border, #e2e8f0);
+}
+.panel-preview__header {
+    padding: 10px 14px; font-weight: 800; font-size: 14px;
+    color: #fff; text-align: center;
+}
+.panel-preview__item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid rgba(0,0,0,.06);
+    flex-wrap: wrap;
+}
+.panel-preview__cat { flex: 1; font-weight: 600; font-size: 13px; }
+.panel-preview__dur { font-size: 12px; font-weight: 700; color: #475569; }
+.panel-preview__detail { font-size: 11px; color: #94a3b8; }
+.panel-preview__total {
+    padding: 8px 14px; font-size: 13px; font-weight: 700;
+    background: rgba(0,0,0,.04); text-align: right;
+}
+.panel-preview__empty {
+    padding: 16px; text-align: center; color: var(--text-muted, #94a3b8);
+    font-size: 13px;
+}
+
+/* Panel badge colors */
+.panel-badge-1 { background: #3b82f6; color: #fff; border-color: #3b82f6 !important; }
+.panel-badge-1 .panel-preview__header { background: #3b82f6; }
+.panel-badge-2 { background: #22c55e; color: #fff; border-color: #22c55e !important; }
+.panel-badge-2 .panel-preview__header { background: #22c55e; }
+.panel-badge-3 { background: #f97316; color: #fff; border-color: #f97316 !important; }
+.panel-badge-3 .panel-preview__header { background: #f97316; }
+.panel-badge-4 { background: #a855f7; color: #fff; border-color: #a855f7 !important; }
+.panel-badge-4 .panel-preview__header { background: #a855f7; }
+
+/* Panel badges on session rows */
+.sess-panel-badge {
+    display: inline-flex; align-items: center;
+    font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; color: #fff;
+}
+.panel-badge-1.sess-panel-badge { background: #3b82f6; }
+.panel-badge-2.sess-panel-badge { background: #22c55e; }
+.panel-badge-3.sess-panel-badge { background: #f97316; }
+.panel-badge-4.sess-panel-badge { background: #a855f7; }
+
+.sess-sporcu-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; font-weight: 600; color: #475569;
+    background: #f1f5f9; padding: 2px 7px; border-radius: 10px;
+}
+.sess-sporcu-badge .material-icons-round { font-size: 13px; }
+
+/* Aerobik blok row left border colors */
+.aerobik-blok-row .aerobik-panel-1 { border-left: 4px solid #3b82f6; }
+.aerobik-blok-row .aerobik-panel-2 { border-left: 4px solid #22c55e; }
+.aerobik-blok-row .aerobik-panel-3 { border-left: 4px solid #f97316; }
+.aerobik-blok-row .aerobik-panel-4 { border-left: 4px solid #a855f7; }
+
+/* Aerobik panel filter */
+.aerobik-panel-filter {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--bg-white, #fff);
+    border-radius: 12px; border: 1px solid var(--border, #e2e8f0);
+    margin-bottom: 12px;
+}
+.aerobik-filter-label {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 13px; font-weight: 600; color: var(--text-muted, #64748b);
+}
+.aerobik-filter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 2px solid var(--border, #e2e8f0);
+    background: var(--bg-light, #f8fafc); color: #475569;
+    transition: all .15s; user-select: none;
+}
+.aerobik-filter-chip input { display: none; }
+.aerobik-filter-chip.active {
+    color: #fff; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.aerobik-filter-chip:not([class*="panel-badge-"]).active { background: #475569; }
+.aerobik-filter-chip.panel-badge-1.active { background: #3b82f6; }
+.aerobik-filter-chip.panel-badge-2.active { background: #22c55e; }
+.aerobik-filter-chip.panel-badge-3.active { background: #f97316; }
+.aerobik-filter-chip.panel-badge-4.active { background: #a855f7; }
+
+/* ── Aerobik çok-günlü kategori kartları ── */
+.aerobik-cat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.aerobik-cat-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+.aerobik-cat-card__name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e293b;
+    flex: 1;
+    min-width: 120px;
+}
+.aerobik-cat-card__total {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 600;
+    background: #f1f5f9;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+.aerobik-cat-card__sporcu-blok {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+}
+.aerobik-gun-entries {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.aerobik-gun-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+.aerobik-gun-entry__fields {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+.aerobik-gun-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.aerobik-gun-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.aerobik-gun-field .auto-label {
+    font-weight: 500;
+    color: #94a3b8;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.aerobik-gun-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    min-width: 60px;
+    text-align: right;
+}
+.aerobik-gun-remove {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+.aerobik-gun-remove:hover { opacity: 1; }
+.aerobik-gun-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1.5px dashed #94a3b8;
+    border-radius: 8px;
+    background: none;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: flex-start;
+}
+.aerobik-gun-add:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: #eff6ff;
+}
+.aerobik-gun-add i { font-size: 18px; }
+
+/* Önizleme gün bölümü */
+.preview-day-section {
+    margin-bottom: 16px;
+}
+.preview-day-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #e2e8f0;
+}

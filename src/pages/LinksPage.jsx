@@ -14,6 +14,7 @@ export default function LinksPage() {
     const { currentUser } = useAuth();
     const { firebasePath, routePrefix, hasApparatus, id: disciplineId } = useDiscipline();
     const isRitmik = disciplineId === 'ritmik';
+    const isAerobik = disciplineId === 'aerobik';
     const [competitions, setCompetitions] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedCompId, setSelectedCompId] = useState('');
@@ -176,6 +177,18 @@ export default function LinksPage() {
         return `${baseUrl}${routePrefix}/dpanel?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
+    // Aerobik panel URL'leri
+    const getAerobikEPanelUrl = (catId, pid) =>
+        `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${catId}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    const getAerobikAPanelUrl = (catId, pid) =>
+        `${baseUrl}${routePrefix}/apanel?competitionId=${selectedCompId}&catId=${catId}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    const getAerobikDPanelUrl = (catId) =>
+        `${baseUrl}${routePrefix}/dpanel?competitionId=${selectedCompId}&catId=${catId}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    const getAerobikTPanelUrl = (catId) =>
+        `${baseUrl}${routePrefix}/tpanel?competitionId=${selectedCompId}&catId=${catId}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    const getAerobikLPanelUrl = (catId) =>
+        `${baseUrl}${routePrefix}/lpanel?competitionId=${selectedCompId}&catId=${catId}${epanelToken ? `&token=${epanelToken}` : ''}`;
+
     // Tüm linkleri kopyala
     const copyAllLinks = () => {
         let allLinks = `Skorboard: ${scoreboardUrl}\n\n`;
@@ -324,6 +337,69 @@ export default function LinksPage() {
                             <p className="panel-type-card__desc">Alet (DA) ve Vücut (DB) zorluk girişi. Her alet için ayrı ayrı: SJDA · DA1 (Kesin+Not) · DA2 ve SJDB · DB1 (Kesin+Not) · DB2 QR kodları.</p>
                             <div className="panel-type-card__footer">
                                 <span><i className="material-icons-round">groups</i>6 panel / alet</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+                    </>
+                ) : isAerobik ? (
+                    <>
+                        {/* Aerobik: E, A, D, T, L panelleri */}
+                        <button className="panel-type-card panel-type-card--e" onClick={() => setSelectedPanel('e')}>
+                            <div className="panel-type-card__icon"><i className="material-icons-round">sports_score</i></div>
+                            <div className="panel-type-card__badge">E</div>
+                            <h3 className="panel-type-card__title">E-Panel</h3>
+                            <p className="panel-type-card__subtitle">İcra Hakemleri (E1–E4)</p>
+                            <p className="panel-type-card__desc">İcra kesintisi girişi. Her kategori için 4 hakem paneli QR kodu.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">groups</i>4 hakem / kategori</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#f59e0b', background: 'linear-gradient(135deg,#fffbeb,#fef3c7)' }} onClick={() => setSelectedPanel('aerobik-a')}>
+                            <div className="panel-type-card__icon" style={{ background: '#fef3c7', color: '#d97706' }}><i className="material-icons-round">palette</i></div>
+                            <div className="panel-type-card__badge" style={{ background: '#f59e0b' }}>A</div>
+                            <h3 className="panel-type-card__title">A-Panel</h3>
+                            <p className="panel-type-card__subtitle">Artistik Hakemleri (A1–A4)</p>
+                            <p className="panel-type-card__desc">5 kriter × ölçek grid (1.0–2.0) + kesinti girişi. Her kategori için 4 hakem QR kodu.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">groups</i>4 hakem / kategori</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card panel-type-card--d" onClick={() => setSelectedPanel('aerobik-d')}>
+                            <div className="panel-type-card__icon"><i className="material-icons-round">calculate</i></div>
+                            <div className="panel-type-card__badge">D</div>
+                            <h3 className="panel-type-card__title">D-Panel</h3>
+                            <p className="panel-type-card__subtitle">Zorluk Hakemi</p>
+                            <p className="panel-type-card__desc">Element slot girişi (E1–E8 + C). Her kategori için tek D-hakem QR kodu.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">category</i>{categoryList.length} kategori</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#06b6d4', background: 'linear-gradient(135deg,#ecfeff,#cffafe)' }} onClick={() => setSelectedPanel('aerobik-t')}>
+                            <div className="panel-type-card__icon" style={{ background: '#cffafe', color: '#0891b2' }}><i className="material-icons-round">timer</i></div>
+                            <div className="panel-type-card__badge" style={{ background: '#06b6d4' }}>T</div>
+                            <h3 className="panel-type-card__title">T-Panel</h3>
+                            <p className="panel-type-card__subtitle">Süre Hakemi</p>
+                            <p className="panel-type-card__desc">Canlı kronometre, kesinti süresi ve geç çıkış kesintisi girişi.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">category</i>{categoryList.length} kategori</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#10b981', background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)' }} onClick={() => setSelectedPanel('aerobik-l')}>
+                            <div className="panel-type-card__icon" style={{ background: '#d1fae5', color: '#059669' }}><i className="material-icons-round">border_outer</i></div>
+                            <div className="panel-type-card__badge" style={{ background: '#10b981' }}>L</div>
+                            <h3 className="panel-type-card__title">L-Panel</h3>
+                            <p className="panel-type-card__subtitle">Çizgi Hakemi</p>
+                            <p className="panel-type-card__desc">Alan ihlali sayacı (×0.1/ihlal). Her kategori için tek L-hakem QR kodu.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">category</i>{categoryList.length} kategori</span>
                                 <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
                             </div>
                         </button>
@@ -722,6 +798,123 @@ export default function LinksPage() {
         );
     };
 
+    // Aerobik — tek QR kart per kategori (D, T, L panelleri)
+    const renderAerobikSingleCardPanel = (panelKey, getUrl, badgeLabel, badgeColor, iconName, panelTitle) => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => {
+                    const url = getUrl(cat.id);
+                    const cardId = `${panelKey}-${cat.id}`;
+                    return (
+                        <div className="category-section" key={cat.id}>
+                            <div className="category-section__header" style={{ cursor: 'default' }}>
+                                <div className="category-section__title-group">
+                                    <i className="material-icons-round category-section__icon">sports_gymnastics</i>
+                                    <h3 className="category-section__title">{cat.name}</h3>
+                                    <span className="category-section__badge">{badgeLabel}</span>
+                                </div>
+                            </div>
+                            <div className="category-section__content">
+                                <div className="d-panel-row">
+                                    <div className="d-panel-row__info">
+                                        <span className="d-panel-row__badge" style={{ background: badgeColor }}>{badgeLabel}</span>
+                                        <div className="d-panel-row__text">
+                                            <span className="d-panel-row__alet">{panelTitle}</span>
+                                            <span className="d-panel-row__cat">{cat.name}</span>
+                                        </div>
+                                    </div>
+                                    <div className="d-panel-row__qr">
+                                        <QRCode value={url} size={80} level="M" />
+                                    </div>
+                                    <div className="d-panel-row__actions">
+                                        <button
+                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                            onClick={() => copyToClipboard(url, cardId)}
+                                            title="Linki kopyala"
+                                        >
+                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                        </button>
+                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                            <i className="material-icons-round">open_in_new</i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+
+    // Aerobik — A-Panel: a1-a4 per kategori
+    const aerobikAPanelIds = ['a1', 'a2', 'a3', 'a4'];
+    const renderAerobikAPanelContent = () => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => (
+                    <div className="category-section" key={cat.id}>
+                        <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
+                            <div className="category-section__title-group">
+                                <i className="material-icons-round category-section__icon">sports_gymnastics</i>
+                                <h3 className="category-section__title">{cat.name}</h3>
+                                <span className="category-section__badge">4 hakem</span>
+                            </div>
+                            <button className="category-section__toggle">
+                                <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
+                            </button>
+                        </div>
+                        {expandedCats[cat.id] && (
+                            <div className="category-section__content">
+                                <div className="panels-grid">
+                                    {aerobikAPanelIds.map(pid => {
+                                        const url = getAerobikAPanelUrl(cat.id, pid);
+                                        const cardId = `${cat.id}-${pid}`;
+                                        return (
+                                            <div className="panel-card printable-card" key={pid}>
+                                                <div className="panel-card__badge-row">
+                                                    <span className="panel-card__badge" style={{ background: '#f59e0b' }}>{pid.toUpperCase()}</span>
+                                                    <span className="panel-card__meta">{cat.name}</span>
+                                                </div>
+                                                <div className="panel-card__alet">Artistik · {cat.name}</div>
+                                                <div className="panel-card__qr">
+                                                    <QRCode value={url} size={100} level="M" />
+                                                </div>
+                                                <div className="panel-card__actions no-print">
+                                                    <button
+                                                        className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                        onClick={() => copyToClipboard(url, cardId)}
+                                                        title="Linki kopyala"
+                                                    >
+                                                        <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                    </button>
+                                                    <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                        <i className="material-icons-round">open_in_new</i>
+                                                    </a>
+                                                </div>
+                                                <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
     // E Panel QR Kartları
     const renderEPanelContent = () => (
         <div className="categories-container">
@@ -944,14 +1137,20 @@ export default function LinksPage() {
                                     <i className="material-icons-round">
                                         {selectedPanel === 'd' ? 'gavel'
                                             : selectedPanel === 'scoring' ? 'gavel'
-                                            : selectedPanel === 'a' ? 'palette'
-                                            : selectedPanel === 'dp' ? 'calculate'
+                                            : selectedPanel === 'a' || selectedPanel === 'aerobik-a' ? 'palette'
+                                            : selectedPanel === 'dp' || selectedPanel === 'aerobik-d' ? 'calculate'
+                                            : selectedPanel === 'aerobik-t' ? 'timer'
+                                            : selectedPanel === 'aerobik-l' ? 'border_outer'
                                             : 'sports_score'}
                                     </i>
                                     {selectedPanel === 'd' ? 'D-Panel'
                                         : selectedPanel === 'scoring' ? 'DA+DB (Başhakem)'
                                         : selectedPanel === 'a' ? 'A-Panel'
                                         : selectedPanel === 'dp' ? 'DA/DB Panel'
+                                        : selectedPanel === 'aerobik-a' ? 'A-Panel'
+                                        : selectedPanel === 'aerobik-d' ? 'D-Panel'
+                                        : selectedPanel === 'aerobik-t' ? 'T-Panel'
+                                        : selectedPanel === 'aerobik-l' ? 'L-Panel'
                                         : 'E-Panel'}
                                 </div>
                                 <h2 className="links-toolbar__title">
@@ -959,6 +1158,10 @@ export default function LinksPage() {
                                         : selectedPanel === 'scoring' ? 'Puanlama Paneli Linkleri (DA + DB) — Başhakem'
                                         : selectedPanel === 'a' ? 'Artistlik Hakem Kartları (A1–A4)'
                                         : selectedPanel === 'dp' ? 'DA/DB Zorluk Hakem Kartları'
+                                        : selectedPanel === 'aerobik-a' ? 'Artistik Hakem Kartları (A1–A4)'
+                                        : selectedPanel === 'aerobik-d' ? 'Zorluk Hakem Kartı (D)'
+                                        : selectedPanel === 'aerobik-t' ? 'Süre Hakem Kartı (T)'
+                                        : selectedPanel === 'aerobik-l' ? 'Çizgi Hakem Kartı (L)'
                                         : 'İcra Hakem Kartları (E1–E4)'}
                                 </h2>
                                 <span className="links-toolbar__count">{categoryList.length} kategori</span>
@@ -987,6 +1190,10 @@ export default function LinksPage() {
                             : selectedPanel === 'scoring' ? renderRitmikScoringContent()
                             : selectedPanel === 'a' ? renderRitmikPanelContent('a')
                             : selectedPanel === 'dp' ? renderRitmikDPanelContent()
+                            : selectedPanel === 'aerobik-a' ? renderAerobikAPanelContent()
+                            : selectedPanel === 'aerobik-d' ? renderAerobikSingleCardPanel('aerobik-d', getAerobikDPanelUrl, 'D', '#6366f1', 'calculate', 'D-Panel (Zorluk Hakemi)')
+                            : selectedPanel === 'aerobik-t' ? renderAerobikSingleCardPanel('aerobik-t', getAerobikTPanelUrl, 'T', '#06b6d4', 'timer', 'T-Panel (Süre Hakemi)')
+                            : selectedPanel === 'aerobik-l' ? renderAerobikSingleCardPanel('aerobik-l', getAerobikLPanelUrl, 'L', '#10b981', 'border_outer', 'L-Panel (Çizgi Hakemi)')
                             : isRitmik ? renderRitmikPanelContent('e')
                             : renderEPanelContent()}
                     </>

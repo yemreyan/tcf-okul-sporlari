@@ -70,11 +70,25 @@ const PLAN_DEFAULTS = {
     gunAyarlari: {}, kategoriGunAtamalari: {}, molalar: []
 };
 
+const AEROBIK_PLAN_DEFAULTS = {
+    hakemGrubuSayisi: 2,
+    sporcuBasinaSureSn: 120,
+    isinmaSuresiDk: 10,
+    molaSuresiDk: 5,
+    kategoriBeklemeDk: 15,
+    defaultBaslama: '09:00',
+    gunAyarlari: {},
+    kategoriGunAtamalari: {},
+    molalar: [],
+    aerobikKategoriAyarlari: {},
+};
+
 export default function CompetitionSchedulePage() {
     const navigate = useNavigate();
     const { currentUser, hasPermission } = useAuth();
     const { toast, confirm } = useNotification();
-    const { firebasePath, routePrefix } = useDiscipline();
+    const { firebasePath, routePrefix, id: disciplineId } = useDiscipline();
+    const isAerobikDiscipline = disciplineId === 'aerobik';
 
     const canCreate = hasPermission('schedule', 'olustur');
     const canEdit = hasPermission('schedule', 'duzenle');
@@ -103,8 +117,9 @@ export default function CompetitionSchedulePage() {
     });
 
     // New state
-    const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'program'
-    const [planAyarlari, setPlanAyarlari] = useState(PLAN_DEFAULTS);
+    const [activeTab, setActiveTab] = useState('ayarlar'); // 'ayarlar'|'rotasyon'|'hakem_gruplari'|'program'
+    const [planAyarlari, setPlanAyarlari] = useState(() => isAerobikDiscipline ? AEROBIK_PLAN_DEFAULTS : PLAN_DEFAULTS);
+    const [aerobikPanelFilter, setAerobikPanelFilter] = useState([]); // panel numaraları filtresi
     const [rotasyonPlani, setRotasyonPlani] = useState({}); // {catKey: {0:{baslangicAleti,bolunmus,bolumler}}}
     const [gruplar, setGruplar] = useState({});             // {catKey: [[ath,...],...]  loaded from siralama
     const [savingPlan, setSavingPlan] = useState(false);    // eslint-disable-line no-unused-vars
@@ -131,8 +146,9 @@ export default function CompetitionSchedulePage() {
 
     // planAyarlari from Firebase
     useEffect(() => {
-        if (!selectedCompId) { setPlanAyarlari(PLAN_DEFAULTS); return; }
-        setPlanAyarlari(PLAN_DEFAULTS); // yarışma değişince eski veriyi hemen temizle
+        const defaults = isAerobikDiscipline ? AEROBIK_PLAN_DEFAULTS : PLAN_DEFAULTS;
+        if (!selectedCompId) { setPlanAyarlari(defaults); return; }
+        setPlanAyarlari(defaults); // yarışma değişince eski veriyi hemen temizle
         const unsub = onValue(ref(db, `${firebasePath}/${selectedCompId}/planAyarlari`), s => {
             const data = s.val();
             if (!data) return;
@@ -140,10 +156,10 @@ export default function CompetitionSchedulePage() {
             if (data.molalar && !Array.isArray(data.molalar)) {
                 data.molalar = Object.values(data.molalar);
             }
-            setPlanAyarlari({ ...PLAN_DEFAULTS, ...data });
+            setPlanAyarlari({ ...defaults, ...data });
         });
         return () => unsub();
-    }, [selectedCompId, firebasePath]);
+    }, [selectedCompId, firebasePath, isAerobikDiscipline]);
 
     // rotasyonPlani from Firebase
     useEffect(() => {
@@ -603,6 +619,186 @@ export default function CompetitionSchedulePage() {
         setPlanAyarlari(updated);
         savePlanAyar(updated);
     }, [planAyarlari, savePlanAyar]);
+
+    // ── Aerobik yardımcıları ──
+    const aerobikAyar = useCallback((field, value) => {
+        const updated = { ...planAyarlari, [field]: value };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar]);
+
+    const getAerobikCatAyar = useCallback((catId) => {
+        const saved = planAyarlari.aerobikKategoriAyarlari?.[catId] || {};
+        // Eski format (günler dizisi yok) → tek günlü varsayılan oluştur
+        if (!saved.gunler || !Array.isArray(saved.gunler) || saved.gunler.length === 0) {
+            const oldHakemGrubu = saved.hakemGrubu || 1;
+            const oldGunIdx = planAyarlari.kategoriGunAtamalari?.[catId] ?? 0;
+            return {
+                sporcuPerSlot: saved.sporcuPerSlot || 8,
+                gunler: [{ gunIdx: oldGunIdx, hakemGrubu: oldHakemGrubu, sporcuSayisi: null }],
+            };
+        }
+        return { sporcuPerSlot: 8, ...saved };
+    }, [planAyarlari]);
+
+    const updateAerobikCatAyar = useCallback((catId, field, value) => {
+        const updated = {
+            ...planAyarlari,
+            aerobikKategoriAyarlari: {
+                ...(planAyarlari.aerobikKategoriAyarlari || {}),
+                [catId]: { ...getAerobikCatAyar(catId), [field]: value }
+            }
+        };
+        setPlanAyarlari(updated);
+        savePlanAyar(updated);
+    }, [planAyarlari, savePlanAyar, getAerobikCatAyar]);
+
+    // Gün girişi yönetimi (aerobik çok-günlü destek)
+    const addGunEntry = useCallback((catId) => {
+        const ayar = getAerobikCatAyar(catId);
+        const nextGunIdx = Math.min(dateRange.length - 1,
+            Math.max(...ayar.gunler.map(g => g.gunIdx), -1) + 1);
+        const newGunler = [...ayar.gunler, { gunIdx: nextGunIdx, hakemGrubu: ayar.gunler[0]?.hakemGrubu || 1, sporcuSayisi: null }];
+        updateAerobikCatAyar(catId, 'gunler', newGunler);
+    }, [getAerobikCatAyar, updateAerobikCatAyar, dateRange]);
+
+    const removeGunEntry = useCallback((catId, entryIdx) => {
+        const ayar = getAerobikCatAyar(catId);
+        if (ayar.gunler.length <= 1) return;
+        updateAerobikCatAyar(catId, 'gunler', ayar.gunler.filter((_, i) => i !== entryIdx));
+    }, [getAerobikCatAyar, updateAerobikCatAyar]);
+
+    const updateGunEntry = useCallback((catId, entryIdx, field, value) => {
+        const ayar = getAerobikCatAyar(catId);
+        const newGunler = ayar.gunler.map((g, i) => i === entryIdx ? { ...g, [field]: value } : g);
+        updateAerobikCatAyar(catId, 'gunler', newGunler);
+    }, [getAerobikCatAyar, updateAerobikCatAyar]);
+
+    // ── Aerobik Program Oluşturucu (çok-günlü destek) ──
+    const handleAerobikGenerateSchedule = useCallback(async () => {
+        if (!selectedCompId) return;
+        if (Object.keys(sessions).length > 0) {
+            const ok = await confirm('Mevcut program silinip aerobik planına göre yeniden oluşturulacak. Onaylıyor musunuz?');
+            if (!ok) return;
+        }
+        setGenerating(true);
+        try {
+            const newSessions = {};
+            const sporcuBasinaSureSn = planAyarlari.sporcuBasinaSureSn || 120;
+            const isinmaSuresiDk = planAyarlari.isinmaSuresiDk || 10;
+            const molaSuresiDk = planAyarlari.molaSuresiDk || 5;
+            const kategoriBeklemeDk = planAyarlari.kategoriBeklemeDk || 15;
+            const hakemGrubuSayisi = planAyarlari.hakemGrubuSayisi || 2;
+
+            // Sporcu sayılarını doğrudan Firebase'den oku
+            const athleteSnap = await get(ref(db, `${firebasePath}/${selectedCompId}/sporcular`));
+            const athleteData = athleteSnap.val() || {};
+            const freshAthleteCounts = {};
+            Object.entries(athleteData).forEach(([catKey, athletes]) => {
+                freshAthleteCounts[catKey] = athletes && typeof athletes === 'object' ? Object.keys(athletes).length : 0;
+            });
+
+            // Her kategori için günlük sporcu dağılımını hesapla
+            // gunler dizisindeki null sporcuSayisi → kalan sporcu eşit bölünür
+            const getCatDayAthletes = (catKey) => {
+                const ayar = getAerobikCatAyar(catKey);
+                const total = freshAthleteCounts[catKey] || 0;
+                const gunler = ayar.gunler || [];
+                const explicitSum = gunler.reduce((s, g) => s + (g.sporcuSayisi != null ? g.sporcuSayisi : 0), 0);
+                const nullCount = gunler.filter(g => g.sporcuSayisi == null).length;
+                const remaining = Math.max(0, total - explicitSum);
+                const perNull = nullCount > 0 ? Math.ceil(remaining / nullCount) : 0;
+                return gunler.map(g => ({
+                    ...g,
+                    resolvedSporcu: g.sporcuSayisi != null ? g.sporcuSayisi : perNull,
+                }));
+            };
+
+            // Gün → panel → [{catKey, resolvedSporcu}] haritası oluştur
+            // { dateStr: { panelNo: [{catKey, resolvedSporcu, sporcuPerSlot}] } }
+            const dayPanelMap = {};
+            dateRange.forEach(d => { dayPanelMap[d] = {}; for (let p = 1; p <= hakemGrubuSayisi; p++) dayPanelMap[d][p] = []; });
+
+            compCatKeys.forEach(catKey => {
+                const ayar = getAerobikCatAyar(catKey);
+                const catDayAthletes = getCatDayAthletes(catKey);
+                catDayAthletes.forEach(entry => {
+                    if (entry.resolvedSporcu <= 0) return;
+                    const tarih = dateRange[Math.min(Math.max(entry.gunIdx, 0), dateRange.length - 1)];
+                    if (!tarih) return;
+                    const panel = Math.min(Math.max(entry.hakemGrubu || 1, 1), hakemGrubuSayisi);
+                    if (!dayPanelMap[tarih]) dayPanelMap[tarih] = {};
+                    if (!dayPanelMap[tarih][panel]) dayPanelMap[tarih][panel] = [];
+                    dayPanelMap[tarih][panel].push({
+                        catKey,
+                        resolvedSporcu: entry.resolvedSporcu,
+                        sporcuPerSlot: ayar.sporcuPerSlot || 8,
+                    });
+                });
+            });
+
+            // Her gün programı oluştur
+            for (const tarih of dateRange) {
+                const gunAyar = planAyarlari.gunAyarlari?.[tarih] || {};
+                const curMin = parseTimeToMin(gunAyar.baslamaSaati || planAyarlari.defaultBaslama || '09:00');
+                const panelEndMins = {};
+
+                for (let p = 1; p <= hakemGrubuSayisi; p++) {
+                    let panelCurMin = curMin;
+                    const cats = dayPanelMap[tarih]?.[p] || [];
+
+                    for (let ci = 0; ci < cats.length; ci++) {
+                        const { catKey, resolvedSporcu, sporcuPerSlot } = cats[ci];
+                        const blokSayisi = Math.max(1, Math.ceil(resolvedSporcu / sporcuPerSlot));
+                        const catLabel = getCategoryLabel(catKey);
+                        const isMultiDay = (getAerobikCatAyar(catKey).gunler?.length || 1) > 1;
+                        const gunIdx = dateRange.indexOf(tarih);
+                        const dayLabel = isMultiDay ? ` (${gunIdx + 1}.Gün)` : '';
+
+                        // Isınma
+                        if (isinmaSuresiDk > 0) {
+                            const k = push(ref(db, 'x')).key;
+                            newSessions[k] = {
+                                tarih, tip: 'isinma', kategori: catKey, hakemGrubu: p, alet: '',
+                                saat: minToTimeStr(panelCurMin), bitisSaat: minToTimeStr(panelCurMin + isinmaSuresiDk),
+                                aciklama: `${catLabel}${dayLabel} — ${p}.Panel Isınma`,
+                                durum: 'bekliyor'
+                            };
+                            panelCurMin += isinmaSuresiDk;
+                        }
+
+                        // Bloklar
+                        let remainingAthletes = resolvedSporcu;
+                        for (let blok = 0; blok < blokSayisi; blok++) {
+                            const sporcuBuBlok = Math.min(sporcuPerSlot, remainingAthletes);
+                            const blokSure = Math.ceil(sporcuBuBlok * sporcuBasinaSureSn / 60);
+                            const k = push(ref(db, 'x')).key;
+                            newSessions[k] = {
+                                tarih, tip: 'aerobik_blok', kategori: catKey, hakemGrubu: p,
+                                blokNo: blok + 1, blokSayisi,
+                                sporcu_sayisi: sporcuBuBlok,
+                                saat: minToTimeStr(panelCurMin),
+                                bitisSaat: minToTimeStr(panelCurMin + blokSure),
+                                aciklama: `${catLabel}${dayLabel} — ${p}.Panel Blok ${blok + 1}/${blokSayisi} (${sporcuBuBlok} sporcu)`,
+                                durum: 'bekliyor'
+                            };
+                            panelCurMin += blokSure;
+                            remainingAthletes -= sporcuBuBlok;
+                            if (blok < blokSayisi - 1 && molaSuresiDk > 0) panelCurMin += molaSuresiDk;
+                        }
+
+                        if (ci < cats.length - 1) panelCurMin += kategoriBeklemeDk;
+                    }
+                    panelEndMins[p] = panelCurMin;
+                }
+            }
+
+            await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newSessions);
+            toast(`${Object.keys(newSessions).length} oturum aerobik programı oluşturuldu`, 'success');
+            setActiveTab('program');
+        } catch (err) { toast('Hata: ' + err.message, 'error'); }
+        finally { setGenerating(false); }
+    }, [selectedCompId, dateRange, planAyarlari, compCatKeys, sessions, firebasePath, getAerobikCatAyar, confirm, toast]);
 
     const saveRotasyonPlaniForCat = useCallback(async (catKey, catPlan) => {
         if (!selectedCompId) return;
@@ -1304,11 +1500,15 @@ export default function CompetitionSchedulePage() {
 
                         {/* NEW: Three tabs */}
                         <div className="sched-tabs">
-                            {[
+                            {(isAerobikDiscipline ? [
+                                { id: 'ayarlar', icon: 'tune', label: 'Ayarlar' },
+                                { id: 'hakem_gruplari', icon: 'groups', label: 'Hakem Grupları' },
+                                { id: 'program', icon: 'calendar_view_week', label: 'Program' },
+                            ] : [
                                 { id: 'ayarlar', icon: 'tune', label: 'Ayarlar' },
                                 { id: 'rotasyon', icon: 'rotate_right', label: 'Rotasyon Planı' },
                                 { id: 'program', icon: 'calendar_view_week', label: 'Program' },
-                            ].map(tab => (
+                            ]).map(tab => (
                                 <button key={tab.id} className={`sched-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
                                     <i className="material-icons-round">{tab.icon}</i>
                                     {tab.label}
@@ -1356,65 +1556,115 @@ export default function CompetitionSchedulePage() {
                                         </div>
                                         <div className="plan-divider" />
                                         <h3 style={{marginBottom:'12px'}}><i className="material-icons-round">timer</i> Süre Ayarları</h3>
-                                        {/* Başlama saati + ısınma + kategoriler arası geçiş */}
-                                        {[
-                                            { field: 'defaultBaslama', label: 'Varsayılan Başlama Saati', type: 'time' },
-                                            { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },
-                                            { field: 'molaSuresi', label: 'Rotasyonlar Arası Mola (dk)', type: 'number', min: 0, max: 60 },
-                                            { field: 'kategoriBeklemeSuresi', label: 'Kategoriler Arası Geçiş (dk)', type: 'number', min: 0, max: 120 },
-                                            { field: 'dalgaAraBekleme', label: 'Dalgalar Arası Geçiş (dk)', type: 'number', min: 0, max: 60 },
-                                        ].map(({ field, label, type, min, max }) => (
-                                            <div key={field} className="plan-field">
-                                                <label>{label}</label>
-                                                <input type={type} min={min} max={max}
-                                                    value={planAyarlari[field] ?? ''}
-                                                    onChange={e => updatePlanAyarlari(field, type === 'number' ? +e.target.value : e.target.value)} />
-                                            </div>
-                                        ))}
 
-                                        {/* Sporcu başına süre */}
-                                        <div className="plan-divider" />
-                                        <div className="plan-field plan-field--toggle">
-                                            <label>Rotasyon süresini otomatik hesapla</label>
-                                            <label className="toggle-switch">
-                                                <input type="checkbox" checked={!!planAyarlari.otomatikSureHesapla}
-                                                    onChange={e => updatePlanAyarlari('otomatikSureHesapla', e.target.checked)} />
-                                                <span className="toggle-track" />
-                                            </label>
-                                        </div>
-                                        {planAyarlari.otomatikSureHesapla ? (
-                                            <div className="plan-field">
-                                                <label>Sporcu başına süre (saniye)</label>
-                                                <input type="number" min={30} max={600} step={10}
-                                                    value={planAyarlari.sporculBasinaSure ?? 120}
-                                                    onChange={e => updatePlanAyarlari('sporculBasinaSure', +e.target.value)} />
-                                                <small className="plan-field-hint">Örn: 120 sn → 8 sporculuk grup = 16 dk rotasyon</small>
-                                            </div>
+                                        {isAerobikDiscipline ? (
+                                            <>
+                                                <div className="plan-field">
+                                                    <label>Varsayılan Başlama Saati</label>
+                                                    <input type="time" value={planAyarlari.defaultBaslama || '09:00'}
+                                                        onChange={e => aerobikAyar('defaultBaslama', e.target.value)} />
+                                                </div>
+                                                <div className="plan-field">
+                                                    <label>Hakem Grubu Sayısı (paralel panel)</label>
+                                                    <input type="number" min={1} max={4}
+                                                        value={planAyarlari.hakemGrubuSayisi ?? 2}
+                                                        onChange={e => aerobikAyar('hakemGrubuSayisi', +e.target.value)} />
+                                                </div>
+                                                <div className="plan-field">
+                                                    <label>Sporcu Başına Süre (saniye)</label>
+                                                    <input type="number" min={30} max={600} step={10}
+                                                        value={planAyarlari.sporcuBasinaSureSn ?? 120}
+                                                        onChange={e => aerobikAyar('sporcuBasinaSureSn', +e.target.value)} />
+                                                    <small className="plan-field-hint">Performans + puanlama süresi</small>
+                                                </div>
+                                                <div className="plan-field">
+                                                    <label>Isınma Süresi (dk)</label>
+                                                    <input type="number" min={0} max={60}
+                                                        value={planAyarlari.isinmaSuresiDk ?? 10}
+                                                        onChange={e => aerobikAyar('isinmaSuresiDk', +e.target.value)} />
+                                                </div>
+                                                <div className="plan-field">
+                                                    <label>Bloklar Arası Mola (dk)</label>
+                                                    <input type="number" min={0} max={30}
+                                                        value={planAyarlari.molaSuresiDk ?? 5}
+                                                        onChange={e => aerobikAyar('molaSuresiDk', +e.target.value)} />
+                                                </div>
+                                                <div className="plan-field">
+                                                    <label>Kategoriler Arası Geçiş (dk)</label>
+                                                    <input type="number" min={0} max={60}
+                                                        value={planAyarlari.kategoriBeklemeDk ?? 15}
+                                                        onChange={e => aerobikAyar('kategoriBeklemeDk', +e.target.value)} />
+                                                </div>
+                                                <div className="plan-summary">
+                                                    <strong>Sporcu sayısı → Süre tahmini</strong>
+                                                    {[8, 10, 15].map(n => (
+                                                        <span key={n}>{n} sporcu: {Math.ceil(n * (planAyarlari.sporcuBasinaSureSn || 120) / 60)} dk</span>
+                                                    ))}
+                                                </div>
+                                            </>
                                         ) : (
-                                            <div className="plan-field">
-                                                <label>Sabit Rotasyon Süresi (dk)</label>
-                                                <input type="number" min={5} max={120}
-                                                    value={planAyarlari.rotasyonSuresi ?? 30}
-                                                    onChange={e => updatePlanAyarlari('rotasyonSuresi', +e.target.value)} />
-                                            </div>
-                                        )}
+                                            <>
+                                                {/* Başlama saati + ısınma + kategoriler arası geçiş */}
+                                                {[
+                                                    { field: 'defaultBaslama', label: 'Varsayılan Başlama Saati', type: 'time' },
+                                                    { field: 'isinmaSuresi', label: 'Isınma Süresi (dk)', type: 'number', min: 0, max: 60 },
+                                                    { field: 'molaSuresi', label: 'Rotasyonlar Arası Mola (dk)', type: 'number', min: 0, max: 60 },
+                                                    { field: 'kategoriBeklemeSuresi', label: 'Kategoriler Arası Geçiş (dk)', type: 'number', min: 0, max: 120 },
+                                                    { field: 'dalgaAraBekleme', label: 'Dalgalar Arası Geçiş (dk)', type: 'number', min: 0, max: 60 },
+                                                ].map(({ field, label, type, min, max }) => (
+                                                    <div key={field} className="plan-field">
+                                                        <label>{label}</label>
+                                                        <input type={type} min={min} max={max}
+                                                            value={planAyarlari[field] ?? ''}
+                                                            onChange={e => updatePlanAyarlari(field, type === 'number' ? +e.target.value : e.target.value)} />
+                                                    </div>
+                                                ))}
 
-                                        {/* Süre Özeti */}
-                                        <div className="plan-summary">
-                                            <strong>Rotasyon süresi tahmini</strong>
-                                            {planAyarlari.otomatikSureHesapla ? (
-                                                <>
-                                                    <span>6 sporcu: {Math.ceil(6 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
-                                                    <span>8 sporcu: {Math.ceil(8 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
-                                                    <span>10 sporcu: {Math.ceil(10 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>4 alet: {(planAyarlari.isinmaSuresi || 0) + 4 * (planAyarlari.rotasyonSuresi || 30) + 3 * (planAyarlari.molaSuresi || 10)} dk</span>
-                                                    <span>6 alet: {(planAyarlari.isinmaSuresi || 0) + 6 * (planAyarlari.rotasyonSuresi || 30) + 5 * (planAyarlari.molaSuresi || 10)} dk</span>
-                                                </>
-                                            )}
-                                        </div>
+                                                {/* Sporcu başına süre */}
+                                                <div className="plan-divider" />
+                                                <div className="plan-field plan-field--toggle">
+                                                    <label>Rotasyon süresini otomatik hesapla</label>
+                                                    <label className="toggle-switch">
+                                                        <input type="checkbox" checked={!!planAyarlari.otomatikSureHesapla}
+                                                            onChange={e => updatePlanAyarlari('otomatikSureHesapla', e.target.checked)} />
+                                                        <span className="toggle-track" />
+                                                    </label>
+                                                </div>
+                                                {planAyarlari.otomatikSureHesapla ? (
+                                                    <div className="plan-field">
+                                                        <label>Sporcu başına süre (saniye)</label>
+                                                        <input type="number" min={30} max={600} step={10}
+                                                            value={planAyarlari.sporculBasinaSure ?? 120}
+                                                            onChange={e => updatePlanAyarlari('sporculBasinaSure', +e.target.value)} />
+                                                        <small className="plan-field-hint">Örn: 120 sn → 8 sporculuk grup = 16 dk rotasyon</small>
+                                                    </div>
+                                                ) : (
+                                                    <div className="plan-field">
+                                                        <label>Sabit Rotasyon Süresi (dk)</label>
+                                                        <input type="number" min={5} max={120}
+                                                            value={planAyarlari.rotasyonSuresi ?? 30}
+                                                            onChange={e => updatePlanAyarlari('rotasyonSuresi', +e.target.value)} />
+                                                    </div>
+                                                )}
+
+                                                {/* Süre Özeti */}
+                                                <div className="plan-summary">
+                                                    <strong>Rotasyon süresi tahmini</strong>
+                                                    {planAyarlari.otomatikSureHesapla ? (
+                                                        <>
+                                                            <span>6 sporcu: {Math.ceil(6 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                            <span>8 sporcu: {Math.ceil(8 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                            <span>10 sporcu: {Math.ceil(10 * (planAyarlari.sporculBasinaSure || 120) / 60)} dk</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>4 alet: {(planAyarlari.isinmaSuresi || 0) + 4 * (planAyarlari.rotasyonSuresi || 30) + 3 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                                            <span>6 alet: {(planAyarlari.isinmaSuresi || 0) + 6 * (planAyarlari.rotasyonSuresi || 30) + 5 * (planAyarlari.molaSuresi || 10)} dk</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
                                     {/* Sabit Molalar Kartı */}
@@ -1564,8 +1814,220 @@ export default function CompetitionSchedulePage() {
                             </div>
                         )}
 
+                        {/* TAB: HAKEM GRUPLARI (aerobik) */}
+                        {activeTab === 'hakem_gruplari' && isAerobikDiscipline && (
+                            <div className="sched-tab-content">
+                                {compCatKeys.length === 0 && <div className="sched-empty"><i className="material-icons-round">category</i><p>Yarışmada kategori bulunamadı</p></div>}
+                                {compCatKeys.length > 0 && (
+                                    <>
+                                        <div className="plan-card plan-card--full">
+                                            <h3><i className="material-icons-round">groups</i> Kategori — Gün &amp; Hakem Grubu Ataması</h3>
+                                            <p className="plan-card-hint">
+                                                Her kategori bir veya birden fazla güne bölünebilir. Her gün girişinde panel ve sporcu sayısını belirleyin.
+                                                Sporcu sayısını boş bırakırsanız kalan sporcular günlere eşit bölünür.
+                                            </p>
+
+                                            {compCatKeys.map(catKey => {
+                                                const ayar = getAerobikCatAyar(catKey);
+                                                const total = athleteCounts[catKey] || 0;
+                                                const sporcuSn = planAyarlari.sporcuBasinaSureSn || 120;
+                                                const isinmaDk = planAyarlari.isinmaSuresiDk || 10;
+                                                const molaDk = planAyarlari.molaSuresiDk || 5;
+                                                const hakemGrubuSayisi = planAyarlari.hakemGrubuSayisi || 2;
+                                                const sporcuPerSlot = ayar.sporcuPerSlot || 8;
+                                                const explicitSum = ayar.gunler.reduce((s, g) => s + (g.sporcuSayisi != null ? g.sporcuSayisi : 0), 0);
+                                                const nullCount = ayar.gunler.filter(g => g.sporcuSayisi == null).length;
+                                                const remaining = Math.max(0, total - explicitSum);
+                                                const perNull = nullCount > 0 ? Math.ceil(remaining / nullCount) : 0;
+
+                                                return (
+                                                    <div key={catKey} className="aerobik-cat-card">
+                                                        <div className="aerobik-cat-card__header">
+                                                            <span className="aerobik-cat-card__name">{getCategoryLabel(catKey)}</span>
+                                                            <span className="aerobik-cat-card__total">{total} sporcu</span>
+                                                            <div className="aerobik-cat-card__sporcu-blok">
+                                                                <label>Sporcu/Blok</label>
+                                                                <input
+                                                                    type="number" min={1} max={50}
+                                                                    value={sporcuPerSlot}
+                                                                    onChange={e => updateAerobikCatAyar(catKey, 'sporcuPerSlot', Math.max(1, +e.target.value))}
+                                                                    disabled={!canEdit}
+                                                                    className="aerobik-sporcu-input"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="aerobik-gun-entries">
+                                                            {ayar.gunler.map((entry, ei) => {
+                                                                const resolvedSporcu = entry.sporcuSayisi != null ? entry.sporcuSayisi : perNull;
+                                                                const blokSayisi = Math.max(1, Math.ceil(resolvedSporcu / sporcuPerSlot));
+                                                                const blokSure = Array.from({ length: blokSayisi }, (_, bi) => {
+                                                                    const n = Math.min(sporcuPerSlot, resolvedSporcu - bi * sporcuPerSlot);
+                                                                    return n > 0 ? Math.ceil(n * sporcuSn / 60) : 0;
+                                                                }).reduce((a, b) => a + b, 0);
+                                                                const tahmini = isinmaDk + blokSure + (blokSayisi - 1) * molaDk;
+                                                                return (
+                                                                    <div key={ei} className="aerobik-gun-entry">
+                                                                        <div className="aerobik-gun-entry__fields">
+                                                                            <div className="aerobik-gun-field">
+                                                                                <label>Gün</label>
+                                                                                <select
+                                                                                    value={entry.gunIdx ?? 0}
+                                                                                    onChange={e => updateGunEntry(catKey, ei, 'gunIdx', +e.target.value)}
+                                                                                    disabled={!canEdit}
+                                                                                    className="aerobik-panel-select"
+                                                                                >
+                                                                                    {dateRange.map((d, di) => (
+                                                                                        <option key={d} value={di}>
+                                                                                            {di + 1}. Gün — {new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                            <div className="aerobik-gun-field">
+                                                                                <label>Panel</label>
+                                                                                <select
+                                                                                    value={entry.hakemGrubu || 1}
+                                                                                    onChange={e => updateGunEntry(catKey, ei, 'hakemGrubu', +e.target.value)}
+                                                                                    disabled={!canEdit}
+                                                                                    className="aerobik-panel-select"
+                                                                                >
+                                                                                    {Array.from({ length: hakemGrubuSayisi }, (_, pi) => pi + 1).map(p => (
+                                                                                        <option key={p} value={p}>{p}. Panel</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                            <div className="aerobik-gun-field">
+                                                                                <label>
+                                                                                    Sporcu
+                                                                                    {entry.sporcuSayisi == null && <span className="auto-label"> (oto: {perNull})</span>}
+                                                                                </label>
+                                                                                <input
+                                                                                    type="number" min={0} max={500}
+                                                                                    placeholder={`Oto (${perNull})`}
+                                                                                    value={entry.sporcuSayisi ?? ''}
+                                                                                    onChange={e => {
+                                                                                        const v = e.target.value === '' ? null : Math.max(0, +e.target.value);
+                                                                                        updateGunEntry(catKey, ei, 'sporcuSayisi', v);
+                                                                                    }}
+                                                                                    disabled={!canEdit}
+                                                                                    className="aerobik-sporcu-input"
+                                                                                />
+                                                                            </div>
+                                                                            <div className="aerobik-gun-summary">
+                                                                                <span>{blokSayisi} blok</span>
+                                                                                <span>~{tahmini} dk</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {canEdit && ayar.gunler.length > 1 && (
+                                                                            <button className="aerobik-gun-remove" onClick={() => removeGunEntry(catKey, ei)} title="Bu gün girişini kaldır">
+                                                                                <i className="material-icons-round">close</i>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {canEdit && dateRange.length > 1 && (
+                                                                <button className="aerobik-gun-add" onClick={() => addGunEntry(catKey)}>
+                                                                    <i className="material-icons-round">add</i>
+                                                                    Farklı Güne Böl
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Takvim Önizlemesi — gün × panel matris */}
+                                        <div className="plan-card plan-card--full">
+                                            <h3><i className="material-icons-round">view_column</i> Takvim Önizlemesi</h3>
+                                            <p className="plan-card-hint">Her günün panellerine göre kategori ve süre dağılımı</p>
+                                            {dateRange.map((tarih, di) => {
+                                                const isinmaDk = planAyarlari.isinmaSuresiDk || 10;
+                                                const sporcuSn = planAyarlari.sporcuBasinaSureSn || 120;
+                                                const molaDk = planAyarlari.molaSuresiDk || 5;
+                                                const katBeklemeDk = planAyarlari.kategoriBeklemeDk || 15;
+                                                const hakemGrubuSayisi = planAyarlari.hakemGrubuSayisi || 2;
+                                                const dayPanels = {};
+                                                for (let p = 1; p <= hakemGrubuSayisi; p++) dayPanels[p] = [];
+                                                compCatKeys.forEach(catKey => {
+                                                    const ayar = getAerobikCatAyar(catKey);
+                                                    const total = athleteCounts[catKey] || 0;
+                                                    const expSum = ayar.gunler.reduce((s, g) => s + (g.sporcuSayisi != null ? g.sporcuSayisi : 0), 0);
+                                                    const nCount = ayar.gunler.filter(g => g.sporcuSayisi == null).length;
+                                                    const rem = Math.max(0, total - expSum);
+                                                    const pNull = nCount > 0 ? Math.ceil(rem / nCount) : 0;
+                                                    ayar.gunler.forEach(entry => {
+                                                        if ((entry.gunIdx ?? 0) !== di) return;
+                                                        const sporcu = entry.sporcuSayisi != null ? entry.sporcuSayisi : pNull;
+                                                        if (sporcu <= 0) return;
+                                                        const p = Math.min(Math.max(entry.hakemGrubu || 1, 1), hakemGrubuSayisi);
+                                                        const spPerSlot = ayar.sporcuPerSlot || 8;
+                                                        const blokSayisi = Math.max(1, Math.ceil(sporcu / spPerSlot));
+                                                        const blokSure = Array.from({ length: blokSayisi }, (_, bi) => {
+                                                            const n = Math.min(spPerSlot, sporcu - bi * spPerSlot);
+                                                            return n > 0 ? Math.ceil(n * sporcuSn / 60) : 0;
+                                                        }).reduce((a, b) => a + b, 0);
+                                                        dayPanels[p].push({ catKey, sporcu, blokSayisi, sure: isinmaDk + blokSure + (blokSayisi - 1) * molaDk });
+                                                    });
+                                                });
+                                                const hasAny = Object.values(dayPanels).some(arr => arr.length > 0);
+                                                return (
+                                                    <div key={tarih} className="preview-day-section">
+                                                        <div className="preview-day-header">
+                                                            <span className="gun-badge">{di + 1}. Gün</span>
+                                                            <span className="gun-tarih">{formatDateTR(tarih)}</span>
+                                                        </div>
+                                                        {!hasAny ? (
+                                                            <div className="panel-preview__empty" style={{padding:'12px 0'}}>Bu günde planlı kategori yok</div>
+                                                        ) : (
+                                                            <div className="panel-preview">
+                                                                {Array.from({ length: hakemGrubuSayisi }, (_, pi) => {
+                                                                    const panelNo = pi + 1;
+                                                                    const cats = dayPanels[panelNo] || [];
+                                                                    const panelToplam = cats.reduce((s, c, ci) => s + c.sure + (ci < cats.length - 1 ? katBeklemeDk : 0), 0);
+                                                                    return (
+                                                                        <div key={panelNo} className={`panel-preview__col panel-badge-${panelNo}`}>
+                                                                            <div className="panel-preview__header">{panelNo}. Panel</div>
+                                                                            {cats.length === 0 ? (
+                                                                                <div className="panel-preview__empty">Boş</div>
+                                                                            ) : cats.map((item, ci) => (
+                                                                                <div key={ci} className="panel-preview__item">
+                                                                                    <span className="panel-preview__cat">{getCategoryLabel(item.catKey)}</span>
+                                                                                    <span className="panel-preview__dur">~{item.sure} dk</span>
+                                                                                    <span className="panel-preview__detail">{item.sporcu} sp / {item.blokSayisi} blok</span>
+                                                                                </div>
+                                                                            ))}
+                                                                            {cats.length > 0 && <div className="panel-preview__total">Toplam: ~{panelToplam} dk</div>}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {canCreate && (
+                                            <div className="generate-wrapper">
+                                                <button className="btn-generate-aerobik" onClick={handleAerobikGenerateSchedule} disabled={generating}>
+                                                    {generating
+                                                        ? <><div className="spinner-small" /><span>Oluşturuluyor...</span></>
+                                                        : <><i className="material-icons-round">play_circle</i><span>Aerobik Programını Oluştur ve Kaydet</span></>
+                                                    }
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+
                         {/* TAB: ROTASYON PLANI */}
-                        {activeTab === 'rotasyon' && (
+                        {activeTab === 'rotasyon' && !isAerobikDiscipline && (
                             <div className="sched-tab-content">
                                 {compCatKeys.length === 0 && <div className="sched-empty"><i className="material-icons-round">category</i><p>Yarışmada kategori bulunamadı</p></div>}
                                 {compCatKeys.map(catKey => {
@@ -1727,7 +2189,7 @@ export default function CompetitionSchedulePage() {
                                         </div>
                                     );
                                 })}
-                                {canCreate && compCatKeys.length > 0 && (
+                                {canCreate && compCatKeys.length > 0 && !isAerobikDiscipline && (
                                     <div className="generate-wrapper">
                                         <button className="btn-generate-rot" onClick={handleGenerateRotationSchedule} disabled={generating}>
                                             {generating ? <><div className="spinner-small" /><span>Oluşturuluyor...</span></> : <><i className="material-icons-round">play_circle</i><span>Rotasyon Programını Oluştur ve Kaydet</span></>}
@@ -1740,16 +2202,46 @@ export default function CompetitionSchedulePage() {
                         {/* TAB: PROGRAM */}
                         {activeTab === 'program' && (
                             <div className="sched-tab-content">
+                                {/* Aerobik panel filtresi */}
+                                {isAerobikDiscipline && totalSessions > 0 && (
+                                    <div className="aerobik-panel-filter">
+                                        <span className="aerobik-filter-label"><i className="material-icons-round">filter_list</i> Panel Filtresi:</span>
+                                        <label className={`aerobik-filter-chip ${aerobikPanelFilter.length === 0 ? 'active' : ''}`}>
+                                            <input type="radio" name="panel-filter" checked={aerobikPanelFilter.length === 0}
+                                                onChange={() => setAerobikPanelFilter([])} />
+                                            Tümü
+                                        </label>
+                                        {Array.from({ length: planAyarlari.hakemGrubuSayisi || 2 }, (_, i) => i + 1).map(p => (
+                                            <label key={p} className={`aerobik-filter-chip panel-badge-${p} ${aerobikPanelFilter.includes(p) ? 'active' : ''}`}>
+                                                <input type="checkbox" checked={aerobikPanelFilter.includes(p)}
+                                                    onChange={e => {
+                                                        if (e.target.checked) setAerobikPanelFilter(prev => [...prev, p]);
+                                                        else setAerobikPanelFilter(prev => prev.filter(x => x !== p));
+                                                    }} />
+                                                {p}. Panel
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                                 {canCreate && (
                                     <div className="sched-program-actions">
-                                        <button className="sched-auto-btn" onClick={handleAutoGenerate} disabled={generating}>
-                                            <i className="material-icons-round">auto_fix_high</i>
-                                            <div><strong>Temel Otomatik Program</strong><small>Sporcu sayısına göre basit plan</small></div>
-                                        </button>
-                                        <button className="sched-rot-btn" onClick={() => setActiveTab('rotasyon')} disabled={generating}>
-                                            <i className="material-icons-round">rotate_right</i>
-                                            <div><strong>Rotasyon Planla</strong><small>Olimpik sıra ve grup ataması</small></div>
-                                        </button>
+                                        {isAerobikDiscipline ? (
+                                            <button className="sched-aerobik-btn" onClick={handleAerobikGenerateSchedule} disabled={generating}>
+                                                <i className="material-icons-round">groups</i>
+                                                <div><strong>Aerobik Programı Oluştur</strong><small>Paralel hakem gruplarına göre plan</small></div>
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button className="sched-auto-btn" onClick={handleAutoGenerate} disabled={generating}>
+                                                    <i className="material-icons-round">auto_fix_high</i>
+                                                    <div><strong>Temel Otomatik Program</strong><small>Sporcu sayısına göre basit plan</small></div>
+                                                </button>
+                                                <button className="sched-rot-btn" onClick={() => setActiveTab('rotasyon')} disabled={generating}>
+                                                    <i className="material-icons-round">rotate_right</i>
+                                                    <div><strong>Rotasyon Planla</strong><small>Olimpik sıra ve grup ataması</small></div>
+                                                </button>
+                                            </>
+                                        )}
                                         {totalSessions > 0 && (
                                             <>
                                                 <button className="sched-excel-btn" onClick={handleDownloadExcel} disabled={excelGenerating}>
@@ -1793,12 +2285,19 @@ export default function CompetitionSchedulePage() {
                                             <div className="sched-day__empty"><i className="material-icons-round">event_busy</i>Bu gün için oturum yok</div>
                                         ) : (
                                             <div className="sched-day__timeline">
-                                                {(sessionsByDate[dateStr] || []).map((sess, sessIdx, sessArr) => {
+                                                {(sessionsByDate[dateStr] || [])
+                                                    .filter(sess => {
+                                                        if (!isAerobikDiscipline || aerobikPanelFilter.length === 0) return true;
+                                                        return sess.hakemGrubu == null || aerobikPanelFilter.includes(sess.hakemGrubu);
+                                                    })
+                                                    .map((sess, sessIdx, sessArr) => {
                                                     const rotAthletes = getRotationAthletes(sess);
                                                     const isExpanded = expandedSessions.has(sess.id);
+                                                    const isAerobikBlok = sess.tip === 'aerobik_blok';
+                                                    const panelNo = sess.hakemGrubu;
                                                     return (
-                                                        <div key={sess.id} className="sched-session-wrapper">
-                                                        <div className={`sched-session sched-session--${sess.durum || 'bekliyor'} sched-session--tip-${sess.tip || 'manuel'}${isExpanded ? ' expanded' : ''}`}>
+                                                        <div key={sess.id} className={`sched-session-wrapper${isAerobikBlok ? ' aerobik-blok-row' : ''}`}>
+                                                        <div className={`sched-session sched-session--${sess.durum || 'bekliyor'} sched-session--tip-${sess.tip || 'manuel'}${isExpanded ? ' expanded' : ''}${isAerobikBlok && panelNo ? ` aerobik-panel-${panelNo}` : ''}`}>
                                                             <div className="sched-session__time">
                                                                 <span className="sched-session__start">{sess.saat}</span>
                                                                 <span className="sched-session__sep">—</span>
@@ -1812,8 +2311,19 @@ export default function CompetitionSchedulePage() {
                                                                             {sess.tip === 'isinma' ? 'Isınma'
                                                                             : sess.tip === 'mola' ? (sess.molaAdi || 'Mola')
                                                                             : sess.tip === 'rotasyon' ? `Rot.${sess.rotasyonNo || ''}`
-                                                                            : sess.tip === 'odulToreni' ? '🏆 Ödül Töreni'
+                                                                            : sess.tip === 'odulToreni' ? 'Ödül Töreni'
+                                                                            : sess.tip === 'aerobik_blok' ? `Blok ${sess.blokNo || ''}/${sess.blokSayisi || ''}`
                                                                             : sess.tip}
+                                                                        </span>
+                                                                    )}
+                                                                    {isAerobikBlok && panelNo && (
+                                                                        <span className={`sess-panel-badge panel-badge-${panelNo}`}>
+                                                                            {panelNo}. Panel
+                                                                        </span>
+                                                                    )}
+                                                                    {isAerobikBlok && sess.sporcu_sayisi && (
+                                                                        <span className="sess-sporcu-badge">
+                                                                            <i className="material-icons-round">people</i>{sess.sporcu_sayisi} sporcu
                                                                         </span>
                                                                     )}
                                                                     {sess.dalgaNo > 0 && <span className="sess-dalga-badge">{sess.dalgaNo}.Dalga</span>}
