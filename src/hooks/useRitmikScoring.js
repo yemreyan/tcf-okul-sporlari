@@ -180,11 +180,16 @@ export function useRitmikScoring() {
             });
             setSjaInput(sc.sja != null ? String(sc.sja) : '');
             setSjeInput(sc.sje != null ? String(sc.sje) : '');
+            // L (Çizgi 1/2) ve T (Zaman) hakem panellerinden gelen otomatik veri fallback'i:
+            // Başhakem manuel girmediyse panel hakemlerinin verisi gösterilir.
             setClassicPenalty({
                 koordinator: sc.penaltyKoordinatör != null ? String(sc.penaltyKoordinatör) : '',
-                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)      : '',
-                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)      : '',
-                zaman:       sc.penaltyZaman        != null ? String(sc.penaltyZaman)        : '',
+                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)
+                            : sc.lPanel?.cizgi1   != null ? String(sc.lPanel.cizgi1) : '',
+                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)
+                            : sc.lPanel?.cizgi2   != null ? String(sc.lPanel.cizgi2) : '',
+                zaman:       sc.penaltyZaman       != null ? String(sc.penaltyZaman)
+                            : sc.tPanel?.zaman    != null ? String(sc.tPanel.zaman) : '',
             });
         } else {
             resetPanel();
@@ -365,11 +370,16 @@ export function useRitmikScoring() {
             });
             setSjaInput(sc.sja != null ? String(sc.sja) : '');
             setSjeInput(sc.sje != null ? String(sc.sje) : '');
+            // L (Çizgi 1/2) ve T (Zaman) hakem panellerinden gelen otomatik veri fallback'i:
+            // Başhakem manuel girmediyse panel hakemlerinin verisi gösterilir.
             setClassicPenalty({
                 koordinator: sc.penaltyKoordinatör != null ? String(sc.penaltyKoordinatör) : '',
-                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)      : '',
-                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)      : '',
-                zaman:       sc.penaltyZaman        != null ? String(sc.penaltyZaman)        : '',
+                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)
+                            : sc.lPanel?.cizgi1   != null ? String(sc.lPanel.cizgi1) : '',
+                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)
+                            : sc.lPanel?.cizgi2   != null ? String(sc.lPanel.cizgi2) : '',
+                zaman:       sc.penaltyZaman       != null ? String(sc.penaltyZaman)
+                            : sc.tPanel?.zaman    != null ? String(sc.tPanel.zaman) : '',
             });
         } else {
             resetPanel();
@@ -407,11 +417,16 @@ export function useRitmikScoring() {
             });
             setSjaInput(sc.sja != null ? String(sc.sja) : '');
             setSjeInput(sc.sje != null ? String(sc.sje) : '');
+            // L (Çizgi 1/2) ve T (Zaman) hakem panellerinden gelen otomatik veri fallback'i:
+            // Başhakem manuel girmediyse panel hakemlerinin verisi gösterilir.
             setClassicPenalty({
                 koordinator: sc.penaltyKoordinatör != null ? String(sc.penaltyKoordinatör) : '',
-                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)      : '',
-                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)      : '',
-                zaman:       sc.penaltyZaman        != null ? String(sc.penaltyZaman)        : '',
+                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)
+                            : sc.lPanel?.cizgi1   != null ? String(sc.lPanel.cizgi1) : '',
+                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)
+                            : sc.lPanel?.cizgi2   != null ? String(sc.lPanel.cizgi2) : '',
+                zaman:       sc.penaltyZaman       != null ? String(sc.penaltyZaman)
+                            : sc.tPanel?.zaman    != null ? String(sc.tPanel.zaman) : '',
             });
         } else {
             resetPanel();
@@ -423,9 +438,17 @@ export function useRitmikScoring() {
     const handleCallAthlete = useCallback(async () => {
         setIsAthleteCalled(true);
         try {
+            // Sporcu bilgilerini object olarak yaz → panel sayfaları (L, T) tek event'te ad/soyad/okul'u alır
+            const payload = {
+                id:    selectedAthlete.id,
+                ad:    selectedAthlete.ad    || '',
+                soyad: selectedAthlete.soyad || '',
+                okul:  selectedAthlete.okul  || selectedAthlete.kulup || '',
+            };
             await update(ref(db), {
-                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]: selectedAthlete.id,
-                [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]:   selectedAlet,
+                [`${firebasePath}/${selectedCompId}/aktifSporcu/${selectedCategory}`]:     payload,
+                [`${firebasePath}/${selectedCompId}/aktifSporcuBilgi/${selectedCategory}`]: payload,
+                [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]:        selectedAlet,
             });
         } catch (e) { if (import.meta.env.DEV) console.error('aktifSporcu error', e); }
     }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete, selectedAlet]);

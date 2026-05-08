@@ -177,6 +177,16 @@ export default function LinksPage() {
         return `${baseUrl}${routePrefix}/dpanel?competitionId=${selectedCompId}&catId=${catId}&aletId=${aletId}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
+    // Ritmik Çizgi Hakemi URL'i (L1 / L2 — alet bağımsız, aktif aleti dinler)
+    const getRitmikLPanelUrl = (catId, panelType /* 'cizgi1' | 'cizgi2' */) => {
+        return `${baseUrl}${routePrefix}/lpanel?competitionId=${selectedCompId}&catId=${catId}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    };
+
+    // Ritmik Zaman Hakemi URL'i (alet bağımsız, aktif aleti dinler)
+    const getRitmikTPanelUrl = (catId) => {
+        return `${baseUrl}${routePrefix}/tpanel?competitionId=${selectedCompId}&catId=${catId}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    };
+
     // Aerobik panel URL'leri
     const getAerobikEPanelUrl = (catId, pid) =>
         `${baseUrl}${routePrefix}/epanel?competitionId=${selectedCompId}&catId=${catId}&panelId=${pid}${epanelToken ? `&token=${epanelToken}` : ''}`;
@@ -644,42 +654,78 @@ export default function LinksPage() {
                 </div>
             ) : (
                 filteredCategories.map(cat => {
-                    const url = getRitmikScoringUrl(cat.id);
-                    const cardId = `scoring-${cat.id}`;
+                    // 4 panel: Başhakem (DA+DB), L1 (Çizgi 1), L2 (Çizgi 2), T (Zaman)
+                    const panelRows = [
+                        {
+                            id: `scoring-${cat.id}`,
+                            badge: 'D',
+                            title: 'DA + DB Puanlama (Başhakem)',
+                            sub: 'Top & Kurdele · Tek panel',
+                            url: getRitmikScoringUrl(cat.id),
+                            badgeColor: '#7c3aed',
+                        },
+                        {
+                            id: `lpanel-cizgi1-${cat.id}`,
+                            badge: 'L1',
+                            title: 'Çizgi Hakemi 1',
+                            sub: 'Aktif aleti otomatik takip eder',
+                            url: getRitmikLPanelUrl(cat.id, 'cizgi1'),
+                            badgeColor: '#10b981',
+                        },
+                        {
+                            id: `lpanel-cizgi2-${cat.id}`,
+                            badge: 'L2',
+                            title: 'Çizgi Hakemi 2',
+                            sub: 'Aktif aleti otomatik takip eder',
+                            url: getRitmikLPanelUrl(cat.id, 'cizgi2'),
+                            badgeColor: '#10b981',
+                        },
+                        {
+                            id: `tpanel-${cat.id}`,
+                            badge: 'T',
+                            title: 'Zaman Hakemi',
+                            sub: 'Süre ihlali kesintisi',
+                            url: getRitmikTPanelUrl(cat.id),
+                            badgeColor: '#0ea5e9',
+                        },
+                    ];
+
                     return (
                         <div className="category-section" key={cat.id}>
                             <div className="category-section__header" style={{ cursor: 'default' }}>
                                 <div className="category-section__title-group">
                                     <i className="material-icons-round category-section__icon">self_improvement</i>
                                     <h3 className="category-section__title">{cat.name}</h3>
-                                    <span className="category-section__badge">DA · DB</span>
+                                    <span className="category-section__badge">D · L · T</span>
                                 </div>
                             </div>
                             <div className="category-section__content">
-                                <div className="d-panel-row">
-                                    <div className="d-panel-row__info">
-                                        <span className="d-panel-row__badge">D</span>
-                                        <div className="d-panel-row__text">
-                                            <span className="d-panel-row__alet">DA + DB Puanlama</span>
-                                            <span className="d-panel-row__cat">{cat.name} · Top &amp; Kurdele</span>
+                                {panelRows.map(row => (
+                                    <div className="d-panel-row" key={row.id}>
+                                        <div className="d-panel-row__info">
+                                            <span className="d-panel-row__badge" style={{ background: row.badgeColor }}>{row.badge}</span>
+                                            <div className="d-panel-row__text">
+                                                <span className="d-panel-row__alet">{row.title}</span>
+                                                <span className="d-panel-row__cat">{cat.name} · {row.sub}</span>
+                                            </div>
+                                        </div>
+                                        <div className="d-panel-row__qr">
+                                            <QRCode value={row.url} size={80} level="M" />
+                                        </div>
+                                        <div className="d-panel-row__actions">
+                                            <button
+                                                className={`panel-action ${copiedId === row.id ? 'panel-action--copied' : ''}`}
+                                                onClick={() => copyToClipboard(row.url, row.id)}
+                                                title="Linki kopyala"
+                                            >
+                                                <i className="material-icons-round">{copiedId === row.id ? 'check' : 'content_copy'}</i>
+                                            </button>
+                                            <a href={row.url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                <i className="material-icons-round">open_in_new</i>
+                                            </a>
                                         </div>
                                     </div>
-                                    <div className="d-panel-row__qr">
-                                        <QRCode value={url} size={80} level="M" />
-                                    </div>
-                                    <div className="d-panel-row__actions">
-                                        <button
-                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
-                                            onClick={() => copyToClipboard(url, cardId)}
-                                            title="Linki kopyala"
-                                        >
-                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
-                                        </button>
-                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
-                                            <i className="material-icons-round">open_in_new</i>
-                                        </a>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     );

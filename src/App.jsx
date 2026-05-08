@@ -52,6 +52,8 @@ const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
 
 // Ritmik — DA/DB hakem paneli (zorluk puan girişi)
 const RitmikDPanelPage = lazy(() => import('./pages/RitmikDPanelPage'));
+const RitmikLPanelPage = lazy(() => import('./pages/RitmikLPanelPage'));
+const RitmikTPanelPage = lazy(() => import('./pages/RitmikTPanelPage'));
 
 // Görevli Yaka Kartları — tüm branşlar için ortak
 const GorevliKartlariPage = lazy(() => import('./pages/GorevliKartlariPage'));
@@ -240,6 +242,8 @@ function AppRoutes() {
         <Route path="/ritmik/coaches" element={<PD discipline="ritmik" pageKey="coaches"><CoachesPage /></PD>} />
         <Route path="/ritmik/epanel" element={<D discipline="ritmik"><EPanelPage /></D>} />
         <Route path="/ritmik/dpanel" element={<D discipline="ritmik"><RitmikDPanelPage /></D>} />
+        <Route path="/ritmik/lpanel" element={<D discipline="ritmik"><RitmikLPanelPage /></D>} />
+        <Route path="/ritmik/tpanel" element={<D discipline="ritmik"><RitmikTPanelPage /></D>} />
 
         {/* ═══ ORTAK ARAÇLAR ═══ */}
         <Route path="/gorevli-kartlari" element={<ProtectedRoute redirectTo="/"><GorevliKartlariPage /></ProtectedRoute>} />
