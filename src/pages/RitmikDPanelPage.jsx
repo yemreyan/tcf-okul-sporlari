@@ -79,15 +79,18 @@ export default function RitmikDPanelPage() {
 
     const compId    = searchParams.get('competitionId');
     const catId     = searchParams.get('catId');
-    const aletId    = searchParams.get('aletId');
+    const aletId    = searchParams.get('aletId'); // Opsiyonel: yoksa activeAlet kullanılır
     const panelType = searchParams.get('panelType') || 'da1';
     const urlToken  = searchParams.get('token');
 
-    const config   = PANEL_CONFIG[panelType] || PANEL_CONFIG['da'];
-    const aletLabel = RITMIK_ALET_LABELS[aletId] || aletId || '';
+    const config    = PANEL_CONFIG[panelType] || PANEL_CONFIG['da'];
+    const aletDynamic = !aletId;
 
     const [activeAthleteId, setActiveAthleteId] = useState(null);
     const [activeAlet, setActiveAlet]           = useState(null);
+    // currentAlet: dinamik moddaysa activeAlet, sabit moddaysa URL aletId
+    const currentAlet = aletDynamic ? activeAlet : aletId;
+    const aletLabel   = RITMIK_ALET_LABELS[currentAlet] || currentAlet || '';
     const [athleteInfo, setAthleteInfo]         = useState(null);
     const [status, setStatus]                   = useState('waiting'); // 'waiting' | 'scoring' | 'sent' | 'locked'
     const [tokenVerified, setTokenVerified]     = useState(false);
@@ -142,8 +145,8 @@ export default function RitmikDPanelPage() {
 
     // ── Puan dinleme ──
     useEffect(() => {
-        if (!compId || !catId || !aletId || !activeAthleteId || !tokenVerified) return;
-        const scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}`);
+        if (!compId || !catId || !currentAlet || !activeAthleteId || !tokenVerified) return;
+        const scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}`);
         const unsub = onValue(scoreRef, (snap) => {
             const data     = snap.val() || {};
             const myScore  = data[config.mainField];
@@ -157,7 +160,7 @@ export default function RitmikDPanelPage() {
         });
         return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [compId, catId, aletId, activeAthleteId, panelType, tokenVerified, firebasePath]);
+    }, [compId, catId, currentAlet, activeAthleteId, panelType, tokenVerified, firebasePath]);
 
     // ── Puan gönder ──
     const handleSendScore = async () => {
@@ -174,7 +177,8 @@ export default function RitmikDPanelPage() {
             return;
         }
 
-        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}`;
+        if (!currentAlet) { toast('Henüz alet seçilmedi.', 'warning'); return; }
+        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}`;
 
         try {
             if (config.dual) {
@@ -209,8 +213,8 @@ export default function RitmikDPanelPage() {
         if (config.dual) setKesinInput(serverKesin !== null ? String(serverKesin) : '');
     };
 
-    // ── Guard: eksik URL parametresi ──
-    if (!compId || !catId || !aletId) {
+    // ── Guard: eksik URL parametresi (aletId opsiyonel — yoksa activeAlet kullanılır) ──
+    if (!compId || !catId) {
         return (
             <div className="epanel-wrapper epanel-error">
                 <h2>Hatalı Link!</h2>
@@ -239,7 +243,10 @@ export default function RitmikDPanelPage() {
         );
     }
 
-    const waitingForAlet = activeAlet !== null && activeAlet !== aletId;
+    // Dinamik mod: alet henüz seçilmemiş; Sabit mod: yanlış alet aktif
+    const waitingForAlet = aletDynamic
+        ? !activeAlet
+        : (activeAlet !== null && activeAlet !== aletId);
 
     return (
         <div className="epanel-wrapper">

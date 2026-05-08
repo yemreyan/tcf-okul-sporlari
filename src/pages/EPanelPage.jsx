@@ -15,7 +15,9 @@ export default function EPanelPage() {
     const [searchParams] = useSearchParams();
     const compId = searchParams.get('competitionId');
     const catId = searchParams.get('catId');
-    const aletId = searchParams.get('aletId');
+    const aletId = searchParams.get('aletId'); // Ritmik için opsiyonel: yoksa activeAlet kullanılır
+    // Ritmik için yeni "alet bağımsız" QR'lar URL'de aletId taşımaz; eski QR'lar geriye uyumlu
+    const ritmikAletDynamic = isRitmik && !aletId;
     const panelId = searchParams.get('panelId'); // E1..E4 | A1..A4
     const panelType = searchParams.get('panelType') || 'e'; // 'a' | 'e' — Ritmik only
     const urlToken = searchParams.get('token'); // Güvenlik token'ı
@@ -23,6 +25,10 @@ export default function EPanelPage() {
     const [activeAthleteId, setActiveAthleteId] = useState(null);
     const [activeAlet, setActiveAlet] = useState(null); // Ritmik: tracks aktifAlet
     const [athleteInfo, setAthleteInfo] = useState(null);
+
+    // Ritmik dinamik moddaysa (URL'de aletId yok) → activeAlet'i kullan
+    // Aksi halde URL'deki aletId'i kullan (eski uyumluluk + artistik)
+    const currentAlet = ritmikAletDynamic ? activeAlet : aletId;
 
     // Status: 'waiting', 'scoring', 'sent', 'locked', 'unauthorized'
     const [status, setStatus] = useState('waiting');
@@ -178,12 +184,12 @@ export default function EPanelPage() {
 
     // Listen to specific score for this athlete
     useEffect(() => {
-        if (!compId || !catId || (!aletId && !isAerobik) || !activeAthleteId || !panelId || !tokenVerified) return;
+        if (!compId || !catId || (!currentAlet && !isAerobik) || !activeAthleteId || !panelId || !tokenVerified) return;
 
         let scoreRef;
         if (isRitmik) {
             // Ritmik: athlete-first — puanlar/catId/athleteId/aletId
-            scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}`);
+            scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}`);
         } else if (isAerobik) {
             // Aerobik: puanlar/catId/athleteId (ePanel is a sub-object)
             scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}`);
@@ -225,7 +231,7 @@ export default function EPanelPage() {
         });
 
         return () => unsubScore();
-    }, [compId, catId, aletId, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
+    }, [compId, catId, currentAlet, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
 
     const handleSendScore = async () => {
         if (!activeAthleteId || scoreInput === '') return;
@@ -243,7 +249,7 @@ export default function EPanelPage() {
                 // Ritmik: puanlar/catId/athleteId/aletId/aPanel|ePanel → j1, j2...
                 const panelKey = panelType === 'a' ? 'aPanel' : 'ePanel';
                 const judgeKey = panelId.toLowerCase().replace(/^[ae]/, 'j'); // 'a1'→'j1'
-                const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${aletId}/${panelKey}`;
+                const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}/${panelKey}`;
                 await update(ref(db, path), { [judgeKey]: val });
             } else if (isAerobik) {
                 // Aerobik: puanlar/catId/athleteId/ePanel → { j1: val }
@@ -267,7 +273,9 @@ export default function EPanelPage() {
         setScoreInput(serverScore !== null ? String(serverScore) : '');
     };
 
-    if (!compId || !catId || (!aletId && !isAerobik) || !panelId) {
+    // Validation: aerobik için aletId gerekmez; ritmik dinamik modda aletId yokken activeAlet gelene kadar
+    // "alet bekleniyor" göstereceğiz, hata değil. Sadece artistik için aletId şart.
+    if (!compId || !catId || !panelId || (!aletId && !isAerobik && !isRitmik)) {
         return (
             <div className="epanel-wrapper epanel-error">
                 <h2>Hatalı Link!</h2>
@@ -302,7 +310,13 @@ export default function EPanelPage() {
 
     // Ritmik: waiting for the correct apparatus to be active
     const ritmikAletLabels = { top: 'Top', kurdele: 'Kurdele' };
-    const waitingForAlet = isRitmik && activeAlet !== null && activeAlet !== aletId;
+    // Eski (alet-bazlı) QR'larda: activeAlet, URL'deki aletId ile uyuşmuyorsa bekle
+    // Yeni (alet-bağımsız) QR'larda: activeAlet null ise bekle (henüz alet seçilmemiş)
+    const waitingForAlet = isRitmik && (
+        ritmikAletDynamic
+            ? !activeAlet                                // dinamik mod: alet seçimi bekleniyor
+            : (activeAlet !== null && activeAlet !== aletId)   // sabit alet modu: yanlış alet
+    );
 
     return (
         <div className="epanel-wrapper">
@@ -311,7 +325,9 @@ export default function EPanelPage() {
                     <div className="header-sub">{compName}</div>
                     <div className="header-title">{refereeName}</div>
                     {isRitmik && (
-                        <div className="header-alet">{ritmikAletLabels[aletId] || aletId} · {panelType === 'a' ? 'Artistlik' : 'İcra'}</div>
+                        <div className="header-alet">
+                            {currentAlet ? (ritmikAletLabels[currentAlet] || currentAlet) : '— Alet Bekleniyor —'} · {panelType === 'a' ? 'Artistlik' : 'İcra'}
+                        </div>
                     )}
                 </div>
                 <div className="panel-badge">{panelId.toUpperCase()}</div>
@@ -320,9 +336,17 @@ export default function EPanelPage() {
             <div className="epanel-main">
                 {waitingForAlet && (
                     <div className="view-section active waiting-view">
-                        <span className="material-icons-round waiting-icon">swap_horiz</span>
-                        <div className="waiting-text">{ritmikAletLabels[activeAlet] || activeAlet} Değerlendiriliyor</div>
-                        <p className="waiting-subtext">{ritmikAletLabels[aletId] || aletId} değerlendirmesi başladığında ekranınız açılacaktır.</p>
+                        <span className="material-icons-round waiting-icon">{ritmikAletDynamic ? 'hourglass_empty' : 'swap_horiz'}</span>
+                        <div className="waiting-text">
+                            {ritmikAletDynamic
+                                ? 'Alet Bekleniyor...'
+                                : `${ritmikAletLabels[activeAlet] || activeAlet} Değerlendiriliyor`}
+                        </div>
+                        <p className="waiting-subtext">
+                            {ritmikAletDynamic
+                                ? 'Başhakem alet seçtiğinde ekranınız otomatik açılacaktır.'
+                                : `${ritmikAletLabels[aletId] || aletId} değerlendirmesi başladığında ekranınız açılacaktır.`}
+                        </p>
                     </div>
                 )}
 
