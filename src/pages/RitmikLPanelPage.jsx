@@ -26,12 +26,14 @@ export default function RitmikLPanelPage() {
     const [searchParams] = useSearchParams();
     const compId    = searchParams.get('competitionId');
     const catId     = searchParams.get('catId');
+    const aletId    = searchParams.get('aletId'); // Opsiyonel: yoksa activeAlet kullanılır
     const panelType = (searchParams.get('panelType') || 'cizgi1').toLowerCase(); // cizgi1 | cizgi2
     const urlToken  = searchParams.get('token');
 
     const isCizgi1 = panelType === 'cizgi1';
     const panelLabel = isCizgi1 ? 'ÇİZGİ 1' : 'ÇİZGİ 2';
     const panelBadge = isCizgi1 ? 'L1' : 'L2';
+    const aletDynamic = !aletId; // URL'de aletId yoksa dinamik mod
 
     // Auth
     const [tokenVerified, setTokenVerified] = useState(false);
@@ -41,6 +43,9 @@ export default function RitmikLPanelPage() {
     const [activeAletKey,   setActiveAletKey]   = useState(null);
     const [activeAthleteId, setActiveAthleteId] = useState(null);
     const [athleteInfo,     setAthleteInfo]     = useState(null);
+
+    // currentAletKey: URL'de aletId varsa onu kullan, yoksa activeAlet (dinamik)
+    const currentAletKey = aletDynamic ? activeAletKey : aletId;
 
     // Panel status: 'waiting' | 'scoring' | 'sent' | 'locked'
     const [status, setStatus] = useState('waiting');
@@ -116,14 +121,14 @@ export default function RitmikLPanelPage() {
 
     // ── Skor (kilit + bu hakemin verisi) listener ───────────────────────────
     useEffect(() => {
-        if (!compId || !catId || !activeAthleteId || !activeAletKey || !tokenVerified) return;
+        if (!compId || !catId || !activeAthleteId || !currentAletKey || !tokenVerified) return;
 
         // Sporcu/alet değişince sayaç sıfır
         setCalls(0);
 
         const scoreRef = ref(
             db,
-            `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${activeAletKey}`
+            `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAletKey}`
         );
         const unsub = onValue(scoreRef, (snap) => {
             const scores = snap.val() || {};
@@ -142,14 +147,14 @@ export default function RitmikLPanelPage() {
         });
 
         return () => unsub();
-    }, [activeAthleteId, activeAletKey, compId, catId, tokenVerified, panelType]);
+    }, [activeAthleteId, currentAletKey, compId, catId, tokenVerified, panelType]);
 
     // ── Submit ──────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
-        if (status !== 'scoring' || !activeAthleteId || !activeAletKey) return;
+        if (status !== 'scoring' || !activeAthleteId || !currentAletKey) return;
 
         const totalDeduction = Math.round(calls * 0.1 * 10) / 10;
-        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${activeAletKey}/lPanel`;
+        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAletKey}/lPanel`;
 
         try {
             // Sayısal değer ana field'a (başhakem ekranı bunu okur), detay meta'ya
@@ -199,7 +204,10 @@ export default function RitmikLPanelPage() {
     }
 
     const totalDeduction = Math.round(calls * 0.1 * 10) / 10;
-    const aletAd = activeAletKey === 'top' ? 'TOP' : activeAletKey === 'kurdele' ? 'KURDELE' : '';
+    const aletAd = currentAletKey === 'top' ? 'TOP' : currentAletKey === 'kurdele' ? 'KURDELE' : '';
+
+    // Sabit alet modunda yanlış alet aktifse bekleme ekranı
+    const waitingForWrongAlet = !aletDynamic && activeAletKey !== null && activeAletKey !== aletId;
 
     // ── Render ──────────────────────────────────────────────────────────────
     return (
@@ -216,11 +224,11 @@ export default function RitmikLPanelPage() {
             <div className="epanel-main">
 
                 {/* WAITING — sporcu yok veya alet seçilmedi */}
-                {(status === 'waiting' || !activeAletKey) && (
+                {!waitingForWrongAlet && (status === 'waiting' || !currentAletKey) && (
                     <div className="view-section active waiting-view">
                         <span className="material-icons-round waiting-icon">hourglass_empty</span>
                         <div className="waiting-text">
-                            {!activeAletKey ? 'Alet Bekleniyor...' : 'Sporcu Bekleniyor...'}
+                            {!currentAletKey ? 'Alet Bekleniyor...' : 'Sporcu Bekleniyor...'}
                         </div>
                         <p className="waiting-subtext">
                             Başhakem alet ve sporcu seçtiğinde ekranınız otomatik açılacaktır.
@@ -228,8 +236,19 @@ export default function RitmikLPanelPage() {
                     </div>
                 )}
 
+                {/* WAITING — yanlış alet aktif (sabit alet modu) */}
+                {waitingForWrongAlet && (
+                    <div className="view-section active waiting-view">
+                        <span className="material-icons-round waiting-icon">swap_horiz</span>
+                        <div className="waiting-text">{activeAletKey === 'top' ? 'TOP' : 'KURDELE'} Değerlendiriliyor</div>
+                        <p className="waiting-subtext">
+                            {aletAd} değerlendirmesi başladığında ekranınız açılacaktır.
+                        </p>
+                    </div>
+                )}
+
                 {/* SCORING */}
-                {status === 'scoring' && athleteInfo && activeAletKey && (
+                {!waitingForWrongAlet && status === 'scoring' && athleteInfo && currentAletKey && (
                     <div className="view-section active scoring-view">
                         <div className="athlete-card">
                             <div className="athlete-name">
@@ -290,7 +309,7 @@ export default function RitmikLPanelPage() {
                 )}
 
                 {/* SENT / LOCKED */}
-                {(status === 'sent' || status === 'locked') && (
+                {!waitingForWrongAlet && (status === 'sent' || status === 'locked') && (
                     <div className="view-section active sent-view">
                         <span
                             className="material-icons-round sent-icon"

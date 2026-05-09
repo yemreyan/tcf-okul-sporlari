@@ -27,7 +27,9 @@ export default function RitmikTPanelPage() {
     const [searchParams] = useSearchParams();
     const compId   = searchParams.get('competitionId');
     const catId    = searchParams.get('catId');
+    const aletId   = searchParams.get('aletId'); // Opsiyonel: yoksa activeAlet kullanılır
     const urlToken = searchParams.get('token');
+    const aletDynamic = !aletId;
 
     // Auth
     const [tokenVerified, setTokenVerified] = useState(false);
@@ -36,6 +38,9 @@ export default function RitmikTPanelPage() {
     const [activeAletKey,   setActiveAletKey]   = useState(null);
     const [activeAthleteId, setActiveAthleteId] = useState(null);
     const [athleteInfo,     setAthleteInfo]     = useState(null);
+
+    // currentAletKey: URL'de aletId varsa onu, yoksa Firebase'den activeAlet
+    const currentAletKey = aletDynamic ? activeAletKey : aletId;
 
     const [status, setStatus] = useState('waiting');
     const [serverData, setServerData] = useState(null);
@@ -124,14 +129,14 @@ export default function RitmikTPanelPage() {
 
     // ── Skor listener ───────────────────────────────────────────────────────
     useEffect(() => {
-        if (!compId || !catId || !activeAthleteId || !activeAletKey || !tokenVerified) return;
+        if (!compId || !catId || !activeAthleteId || !currentAletKey || !tokenVerified) return;
 
         setSelectedDeduction(null);
         setManualInput('');
 
         const scoreRef = ref(
             db,
-            `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${activeAletKey}`
+            `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAletKey}`
         );
         const unsub = onValue(scoreRef, (snap) => {
             const scores = snap.val() || {};
@@ -147,15 +152,15 @@ export default function RitmikTPanelPage() {
         });
 
         return () => unsub();
-    }, [activeAthleteId, activeAletKey, compId, catId, tokenVerified]);
+    }, [activeAthleteId, currentAletKey, compId, catId, tokenVerified]);
 
     const handleSubmit = async () => {
-        if (status !== 'scoring' || !activeAthleteId || !activeAletKey) return;
+        if (status !== 'scoring' || !activeAthleteId || !currentAletKey) return;
         if (selectedDeduction == null) {
             toast('Lütfen bir kesinti seçeneği seçin.', 'warning');
             return;
         }
-        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${activeAletKey}/tPanel`;
+        const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAletKey}/tPanel`;
         try {
             await update(ref(db, path), {
                 zaman: selectedDeduction,
@@ -198,7 +203,8 @@ export default function RitmikTPanelPage() {
         );
     }
 
-    const aletAd = activeAletKey === 'top' ? 'TOP' : activeAletKey === 'kurdele' ? 'KURDELE' : '';
+    const aletAd = currentAletKey === 'top' ? 'TOP' : currentAletKey === 'kurdele' ? 'KURDELE' : '';
+    const waitingForWrongAlet = !aletDynamic && activeAletKey !== null && activeAletKey !== aletId;
 
     return (
         <div className="epanel-wrapper">
@@ -213,11 +219,11 @@ export default function RitmikTPanelPage() {
 
             <div className="epanel-main">
 
-                {(status === 'waiting' || !activeAletKey) && (
+                {!waitingForWrongAlet && (status === 'waiting' || !currentAletKey) && (
                     <div className="view-section active waiting-view">
                         <span className="material-icons-round waiting-icon">hourglass_empty</span>
                         <div className="waiting-text">
-                            {!activeAletKey ? 'Alet Bekleniyor...' : 'Sporcu Bekleniyor...'}
+                            {!currentAletKey ? 'Alet Bekleniyor...' : 'Sporcu Bekleniyor...'}
                         </div>
                         <p className="waiting-subtext">
                             Başhakem alet ve sporcu seçtiğinde ekranınız otomatik açılacaktır.
@@ -225,7 +231,18 @@ export default function RitmikTPanelPage() {
                     </div>
                 )}
 
-                {status === 'scoring' && athleteInfo && activeAletKey && (
+                {/* WAITING — yanlış alet aktif (sabit alet modu) */}
+                {waitingForWrongAlet && (
+                    <div className="view-section active waiting-view">
+                        <span className="material-icons-round waiting-icon">swap_horiz</span>
+                        <div className="waiting-text">{activeAletKey === 'top' ? 'TOP' : 'KURDELE'} Değerlendiriliyor</div>
+                        <p className="waiting-subtext">
+                            {aletAd} değerlendirmesi başladığında ekranınız açılacaktır.
+                        </p>
+                    </div>
+                )}
+
+                {!waitingForWrongAlet && status === 'scoring' && athleteInfo && currentAletKey && (
                     <div className="view-section active scoring-view">
                         <div className="athlete-card">
                             <div className="athlete-name">{athleteInfo.ad} {athleteInfo.soyad}</div>
@@ -384,7 +401,7 @@ export default function RitmikTPanelPage() {
                     </div>
                 )}
 
-                {(status === 'sent' || status === 'locked') && (
+                {!waitingForWrongAlet && (status === 'sent' || status === 'locked') && (
                     <div className="view-section active sent-view">
                         <span
                             className="material-icons-round sent-icon"

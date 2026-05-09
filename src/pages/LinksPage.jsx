@@ -126,7 +126,14 @@ export default function LinksPage() {
     const RITMIK_ALET_LABELS = { top: 'Top', kurdele: 'Kurdele' };
     const categories = competitionData?.kategoriler || {};
     const categoryList = Object.entries(categories).map(([id, cat]) => {
-        let rawAletler = cat.aletler || [];
+        // Firebase'de aletler array, object veya undefined olabilir → normalize
+        let rawAletler = cat.aletler;
+        if (!rawAletler) {
+            rawAletler = [];
+        } else if (!Array.isArray(rawAletler) && typeof rawAletler === 'object') {
+            // Object format → keys'i dön
+            rawAletler = Object.keys(rawAletler);
+        }
         if (isRitmik && rawAletler.length === 0) {
             rawAletler = ['top', 'kurdele'];
         }
@@ -138,7 +145,10 @@ export default function LinksPage() {
                     const name = isRitmik ? (RITMIK_ALET_LABELS[a] || a) : a;
                     return { id: a, name };
                 }
-                return a;
+                if (typeof a === 'object' && a !== null) {
+                    return a.id ? a : { id: a.value || a.key, name: a.name || a.label };
+                }
+                return { id: String(a), name: String(a) };
             })
         };
     });
@@ -180,14 +190,17 @@ export default function LinksPage() {
         return `${baseUrl}${routePrefix}/dpanel?competitionId=${selectedCompId}&catId=${catId}${aletParam}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
-    // Ritmik Çizgi Hakemi URL'i (L1 / L2 — alet bağımsız, aktif aleti dinler)
-    const getRitmikLPanelUrl = (catId, panelType /* 'cizgi1' | 'cizgi2' */) => {
-        return `${baseUrl}${routePrefix}/lpanel?competitionId=${selectedCompId}&catId=${catId}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    // Ritmik Çizgi Hakemi URL'i (L1 / L2) — alet zorunlu (top/kurdele ayrı QR)
+    // aletId verilmezse alet bağımsız (eski davranış)
+    const getRitmikLPanelUrl = (catId, aletId, panelType /* 'cizgi1' | 'cizgi2' */) => {
+        const aletParam = aletId ? `&aletId=${aletId}` : '';
+        return `${baseUrl}${routePrefix}/lpanel?competitionId=${selectedCompId}&catId=${catId}${aletParam}&panelType=${panelType}${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
-    // Ritmik Zaman Hakemi URL'i (alet bağımsız, aktif aleti dinler)
-    const getRitmikTPanelUrl = (catId) => {
-        return `${baseUrl}${routePrefix}/tpanel?competitionId=${selectedCompId}&catId=${catId}${epanelToken ? `&token=${epanelToken}` : ''}`;
+    // Ritmik Zaman Hakemi URL'i — alet zorunlu (top/kurdele ayrı QR)
+    const getRitmikTPanelUrl = (catId, aletId) => {
+        const aletParam = aletId ? `&aletId=${aletId}` : '';
+        return `${baseUrl}${routePrefix}/tpanel?competitionId=${selectedCompId}&catId=${catId}${aletParam}${epanelToken ? `&token=${epanelToken}` : ''}`;
     };
 
     // Aerobik panel URL'leri
@@ -219,6 +232,25 @@ export default function LinksPage() {
             allLinks += `=== PUANLAMA PANELİ LİNKLERİ (DA + DB) ===\n\n`;
             filteredCategories.forEach(cat => {
                 allLinks += `${cat.name}: ${getRitmikScoringUrl(cat.id)}\n`;
+            });
+        } else if (selectedPanel === 'ritmik-l') {
+            allLinks += `=== L-PANEL LİNKLERİ (ÇİZGİ HAKEMLERİ) ===\n\n`;
+            filteredCategories.forEach(cat => {
+                allLinks += `--- ${cat.name} ---\n`;
+                (cat.aletler || []).forEach(alet => {
+                    allLinks += `${alet.name} | L1: ${getRitmikLPanelUrl(cat.id, alet.id, 'cizgi1')}\n`;
+                    allLinks += `${alet.name} | L2: ${getRitmikLPanelUrl(cat.id, alet.id, 'cizgi2')}\n`;
+                });
+                allLinks += '\n';
+            });
+        } else if (selectedPanel === 'ritmik-t') {
+            allLinks += `=== T-PANEL LİNKLERİ (ZAMAN HAKEMİ) ===\n\n`;
+            filteredCategories.forEach(cat => {
+                allLinks += `--- ${cat.name} ---\n`;
+                (cat.aletler || []).forEach(alet => {
+                    allLinks += `${alet.name} | T: ${getRitmikTPanelUrl(cat.id, alet.id)}\n`;
+                });
+                allLinks += '\n';
             });
         } else if (selectedPanel === 'a') {
             allLinks += `=== A-PANEL LİNKLERİ (ARTİSTLİK) ===\n\n`;
@@ -350,6 +382,34 @@ export default function LinksPage() {
                             <p className="panel-type-card__desc">Alet (DA) ve Vücut (DB) zorluk girişi. Her alet için ayrı ayrı: SJDA · DA1 (Kesin+Not) · DA2 ve SJDB · DB1 (Kesin+Not) · DB2 QR kodları.</p>
                             <div className="panel-type-card__footer">
                                 <span><i className="material-icons-round">groups</i>6 panel / alet</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#10b981', background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)' }} onClick={() => setSelectedPanel('ritmik-l')}>
+                            <div className="panel-type-card__icon" style={{ background: '#d1fae5', color: '#059669' }}>
+                                <i className="material-icons-round">border_outer</i>
+                            </div>
+                            <div className="panel-type-card__badge" style={{ background: '#10b981' }}>L</div>
+                            <h3 className="panel-type-card__title">L-Panel</h3>
+                            <p className="panel-type-card__subtitle">Çizgi Hakemleri (L1, L2)</p>
+                            <p className="panel-type-card__desc">Çizgi ihlali kesintisi girişi. Her alet için L1 ve L2 hakemlerine ayrı QR kodları (Top × 2 + Kurdele × 2).</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">groups</i>2 hakem / alet</span>
+                                <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
+                            </div>
+                        </button>
+
+                        <button className="panel-type-card" style={{ borderColor: '#0ea5e9', background: 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' }} onClick={() => setSelectedPanel('ritmik-t')}>
+                            <div className="panel-type-card__icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>
+                                <i className="material-icons-round">timer</i>
+                            </div>
+                            <div className="panel-type-card__badge" style={{ background: '#0ea5e9' }}>T</div>
+                            <h3 className="panel-type-card__title">T-Panel</h3>
+                            <p className="panel-type-card__subtitle">Zaman Hakemi</p>
+                            <p className="panel-type-card__desc">Süre ihlali kesintisi girişi. Her alet için ayrı QR (Top + Kurdele). Hızlı seçim veya manuel kesinti girişi.</p>
+                            <div className="panel-type-card__footer">
+                                <span><i className="material-icons-round">groups</i>1 hakem / alet</span>
                                 <span><i className="material-icons-round">arrow_forward</i>QR Kodları Gör</span>
                             </div>
                         </button>
@@ -555,89 +615,91 @@ export default function LinksPage() {
                         </div>
                         {expandedCats[cat.id] && (
                             <div className="category-section__content">
-                                {/* Alet bağımsız: aletId=null → her hakem için tek QR (top + kurdele aynı QR) */}
-                                <div className="apparatus-group">
-                                    <div className="apparatus-group__header">
-                                        <span className="apparatus-group__name">Top + Kurdele (Tek QR)</span>
-                                        <div className="apparatus-group__line"></div>
-                                    </div>
+                                {/* Top ve Kurdele için ayrı QR setleri */}
+                                {cat.aletler.map(alet => (
+                                    <div className="apparatus-group" key={alet.id}>
+                                        <div className="apparatus-group__header">
+                                            <span className="apparatus-group__name">{alet.name}</span>
+                                            <div className="apparatus-group__line"></div>
+                                        </div>
 
-                                    {/* DA Grubu */}
-                                    <div className="dp-group-label">
-                                        <span className="dp-group-label__text" style={{ color: '#7c3aed' }}>
-                                            <i className="material-icons-round" style={{ fontSize: 14 }}>calculate</i> Alet Zorluğu (DA)
-                                        </span>
-                                    </div>
-                                    <div className="panels-grid">
-                                        {DA_PANELS.map(({ type, label, desc, color }) => {
-                                            const url    = getRitmikDPanelUrl(cat.id, null, type);
-                                            const cardId = `${cat.id}-all-${type}`;
-                                            return (
-                                                <div className="panel-card printable-card" key={type}>
-                                                    <div className="panel-card__badge-row">
-                                                        <span className="panel-card__badge" style={{ background: color }}>{label}</span>
-                                                        <span className="panel-card__meta">{cat.name}</span>
+                                        {/* DA Grubu */}
+                                        <div className="dp-group-label">
+                                            <span className="dp-group-label__text" style={{ color: '#7c3aed' }}>
+                                                <i className="material-icons-round" style={{ fontSize: 14 }}>calculate</i> Alet Zorluğu (DA)
+                                            </span>
+                                        </div>
+                                        <div className="panels-grid">
+                                            {DA_PANELS.map(({ type, label, desc, color }) => {
+                                                const url    = getRitmikDPanelUrl(cat.id, alet.id, type);
+                                                const cardId = `${cat.id}-${alet.id}-${type}`;
+                                                return (
+                                                    <div className="panel-card printable-card" key={type}>
+                                                        <div className="panel-card__badge-row">
+                                                            <span className="panel-card__badge" style={{ background: color }}>{label}</span>
+                                                            <span className="panel-card__meta">{cat.name}</span>
+                                                        </div>
+                                                        <div className="panel-card__alet">{alet.name} · {desc}</div>
+                                                        <div className="panel-card__qr">
+                                                            <QRCode value={url} size={100} level="M" />
+                                                        </div>
+                                                        <div className="panel-card__actions no-print">
+                                                            <button
+                                                                className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                                onClick={() => copyToClipboard(url, cardId)}
+                                                                title="Linki kopyala"
+                                                            >
+                                                                <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                            </button>
+                                                            <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                <i className="material-icons-round">open_in_new</i>
+                                                            </a>
+                                                        </div>
+                                                        <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
                                                     </div>
-                                                    <div className="panel-card__alet">Aktif aleti otomatik takip eder · {desc}</div>
-                                                    <div className="panel-card__qr">
-                                                        <QRCode value={url} size={100} level="M" />
-                                                    </div>
-                                                    <div className="panel-card__actions no-print">
-                                                        <button
-                                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
-                                                            onClick={() => copyToClipboard(url, cardId)}
-                                                            title="Linki kopyala"
-                                                        >
-                                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
-                                                        </button>
-                                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
-                                                            <i className="material-icons-round">open_in_new</i>
-                                                        </a>
-                                                    </div>
-                                                    <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
 
-                                    {/* DB Grubu */}
-                                    <div className="dp-group-label">
-                                        <span className="dp-group-label__text" style={{ color: '#4f46e5' }}>
-                                            <i className="material-icons-round" style={{ fontSize: 14 }}>fitness_center</i> Vücut Zorluğu (DB)
-                                        </span>
-                                    </div>
-                                    <div className="panels-grid">
-                                        {DB_PANELS.map(({ type, label, desc, color }) => {
-                                            const url    = getRitmikDPanelUrl(cat.id, null, type);
-                                            const cardId = `${cat.id}-all-${type}`;
-                                            return (
-                                                <div className="panel-card printable-card" key={type}>
-                                                    <div className="panel-card__badge-row">
-                                                        <span className="panel-card__badge" style={{ background: color }}>{label}</span>
-                                                        <span className="panel-card__meta">{cat.name}</span>
-                                                    </div>
-                                                    <div className="panel-card__alet">Aktif aleti otomatik takip eder · {desc}</div>
-                                                    <div className="panel-card__qr">
-                                                        <QRCode value={url} size={100} level="M" />
-                                                    </div>
-                                                    <div className="panel-card__actions no-print">
-                                                        <button
-                                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
-                                                            onClick={() => copyToClipboard(url, cardId)}
-                                                            title="Linki kopyala"
-                                                        >
-                                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
-                                                        </button>
-                                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
-                                                            <i className="material-icons-round">open_in_new</i>
-                                                        </a>
-                                                    </div>
+                                        {/* DB Grubu */}
+                                        <div className="dp-group-label">
+                                            <span className="dp-group-label__text" style={{ color: '#4f46e5' }}>
+                                                <i className="material-icons-round" style={{ fontSize: 14 }}>fitness_center</i> Vücut Zorluğu (DB)
+                                            </span>
+                                        </div>
+                                        <div className="panels-grid">
+                                            {DB_PANELS.map(({ type, label, desc, color }) => {
+                                                const url    = getRitmikDPanelUrl(cat.id, alet.id, type);
+                                                const cardId = `${cat.id}-${alet.id}-${type}`;
+                                                return (
+                                                    <div className="panel-card printable-card" key={type}>
+                                                        <div className="panel-card__badge-row">
+                                                            <span className="panel-card__badge" style={{ background: color }}>{label}</span>
+                                                            <span className="panel-card__meta">{cat.name}</span>
+                                                        </div>
+                                                        <div className="panel-card__alet">{alet.name} · {desc}</div>
+                                                        <div className="panel-card__qr">
+                                                            <QRCode value={url} size={100} level="M" />
+                                                        </div>
+                                                        <div className="panel-card__actions no-print">
+                                                            <button
+                                                                className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                                onClick={() => copyToClipboard(url, cardId)}
+                                                                title="Linki kopyala"
+                                                            >
+                                                                <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                            </button>
+                                                            <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                <i className="material-icons-round">open_in_new</i>
+                                                            </a>
+                                                        </div>
                                                         <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -656,7 +718,7 @@ export default function LinksPage() {
                 </div>
             ) : (
                 filteredCategories.map(cat => {
-                    // 4 panel: Başhakem (DA+DB), L1 (Çizgi 1), L2 (Çizgi 2), T (Zaman)
+                    // Sadece Başhakem (DA+DB) — L1, L2, T ayrı panel kartlarında
                     const panelRows = [
                         {
                             id: `scoring-${cat.id}`,
@@ -665,30 +727,6 @@ export default function LinksPage() {
                             sub: 'Top & Kurdele · Tek panel',
                             url: getRitmikScoringUrl(cat.id),
                             badgeColor: '#7c3aed',
-                        },
-                        {
-                            id: `lpanel-cizgi1-${cat.id}`,
-                            badge: 'L1',
-                            title: 'Çizgi Hakemi 1',
-                            sub: 'Aktif aleti otomatik takip eder',
-                            url: getRitmikLPanelUrl(cat.id, 'cizgi1'),
-                            badgeColor: '#10b981',
-                        },
-                        {
-                            id: `lpanel-cizgi2-${cat.id}`,
-                            badge: 'L2',
-                            title: 'Çizgi Hakemi 2',
-                            sub: 'Aktif aleti otomatik takip eder',
-                            url: getRitmikLPanelUrl(cat.id, 'cizgi2'),
-                            badgeColor: '#10b981',
-                        },
-                        {
-                            id: `tpanel-${cat.id}`,
-                            badge: 'T',
-                            title: 'Zaman Hakemi',
-                            sub: 'Süre ihlali kesintisi',
-                            url: getRitmikTPanelUrl(cat.id),
-                            badgeColor: '#0ea5e9',
                         },
                     ];
 
@@ -736,6 +774,147 @@ export default function LinksPage() {
         </div>
     );
 
+    // Ritmik L (Çizgi) Panel — Top ve Kurdele × L1+L2 = 4 QR kartı / kategori
+    const renderRitmikLPanelContent = () => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => {
+                    const aletList = cat.aletler || [{ id: 'top', name: 'Top' }, { id: 'kurdele', name: 'Kurdele' }];
+                    return (
+                        <div className="category-section" key={cat.id}>
+                            <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
+                                <div className="category-section__title-group">
+                                    <i className="material-icons-round category-section__icon">self_improvement</i>
+                                    <h3 className="category-section__title">{cat.name}</h3>
+                                    <span className="category-section__badge">{aletList.length} alet</span>
+                                </div>
+                                <button className="category-section__toggle">
+                                    <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
+                                </button>
+                            </div>
+                            {expandedCats[cat.id] && (
+                                <div className="category-section__content">
+                                    {aletList.map(alet => (
+                                        <div className="apparatus-group" key={alet.id}>
+                                            <div className="apparatus-group__header">
+                                                <span className="apparatus-group__name">{alet.name}</span>
+                                                <div className="apparatus-group__line"></div>
+                                            </div>
+                                            <div className="panels-grid">
+                                                {[
+                                                    { type: 'cizgi1', label: 'L1', desc: 'Çizgi Hakemi 1' },
+                                                    { type: 'cizgi2', label: 'L2', desc: 'Çizgi Hakemi 2' },
+                                                ].map(({ type, label, desc }) => {
+                                                    const url    = getRitmikLPanelUrl(cat.id, alet.id, type);
+                                                    const cardId = `lpanel-${cat.id}-${alet.id}-${type}`;
+                                                    return (
+                                                        <div className="panel-card printable-card" key={type}>
+                                                            <div className="panel-card__badge-row">
+                                                                <span className="panel-card__badge" style={{ background: '#10b981' }}>{label}</span>
+                                                                <span className="panel-card__meta">{cat.name}</span>
+                                                            </div>
+                                                            <div className="panel-card__alet">{alet.name} · {desc}</div>
+                                                            <div className="panel-card__qr">
+                                                                <QRCode value={url} size={100} level="M" />
+                                                            </div>
+                                                            <div className="panel-card__actions no-print">
+                                                                <button
+                                                                    className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                                    onClick={() => copyToClipboard(url, cardId)}
+                                                                    title="Linki kopyala"
+                                                                >
+                                                                    <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                                </button>
+                                                                <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                    <i className="material-icons-round">open_in_new</i>
+                                                                </a>
+                                                            </div>
+                                                            <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+
+    // Ritmik T (Zaman) Panel — Top ve Kurdele için ayrı 1'er QR / kategori
+    const renderRitmikTPanelContent = () => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => {
+                    const aletList = cat.aletler || [{ id: 'top', name: 'Top' }, { id: 'kurdele', name: 'Kurdele' }];
+                    return (
+                        <div className="category-section" key={cat.id}>
+                            <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
+                                <div className="category-section__title-group">
+                                    <i className="material-icons-round category-section__icon">self_improvement</i>
+                                    <h3 className="category-section__title">{cat.name}</h3>
+                                    <span className="category-section__badge">{aletList.length} alet</span>
+                                </div>
+                                <button className="category-section__toggle">
+                                    <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
+                                </button>
+                            </div>
+                            {expandedCats[cat.id] && (
+                                <div className="category-section__content">
+                                    <div className="panels-grid">
+                                        {aletList.map(alet => {
+                                            const url    = getRitmikTPanelUrl(cat.id, alet.id);
+                                            const cardId = `tpanel-${cat.id}-${alet.id}`;
+                                            return (
+                                                <div className="panel-card printable-card" key={alet.id}>
+                                                    <div className="panel-card__badge-row">
+                                                        <span className="panel-card__badge" style={{ background: '#0ea5e9' }}>T</span>
+                                                        <span className="panel-card__meta">{cat.name}</span>
+                                                    </div>
+                                                    <div className="panel-card__alet">{alet.name} · Zaman Hakemi</div>
+                                                    <div className="panel-card__qr">
+                                                        <QRCode value={url} size={100} level="M" />
+                                                    </div>
+                                                    <div className="panel-card__actions no-print">
+                                                        <button
+                                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                                            onClick={() => copyToClipboard(url, cardId)}
+                                                            title="Linki kopyala"
+                                                        >
+                                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                                        </button>
+                                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                            <i className="material-icons-round">open_in_new</i>
+                                                        </a>
+                                                    </div>
+                                                    <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+
     // Ritmik A veya E Panel QR Kartları (per apparatus) — A1-A4 + SJA veya E1-E4 + SJE
     const renderRitmikPanelContent = (pType) => {
         const ids        = pType === 'a' ? aPanelIds : panelIds;
@@ -768,28 +947,28 @@ export default function LinksPage() {
                             </div>
                             {expandedCats[cat.id] && (
                                 <div className="category-section__content">
-                                    {/* Alet bağımsız: aletId=null → her hakem için tek QR */}
-                                    {(() => {
-                                        const sjUrl    = getRitmikDPanelUrl(cat.id, null, sjType);
-                                        const sjCardId = `${cat.id}-all-${sjType}`;
+                                    {/* Top ve Kurdele için ayrı QR setleri */}
+                                    {cat.aletler.map(alet => {
+                                        const sjUrl    = getRitmikDPanelUrl(cat.id, alet.id, sjType);
+                                        const sjCardId = `${cat.id}-${alet.id}-${sjType}`;
                                         return (
-                                            <div className="apparatus-group">
+                                            <div className="apparatus-group" key={alet.id}>
                                                 <div className="apparatus-group__header">
-                                                    <span className="apparatus-group__name">Top + Kurdele (Tek QR)</span>
+                                                    <span className="apparatus-group__name">{alet.name}</span>
                                                     <div className="apparatus-group__line"></div>
                                                 </div>
                                                 <div className="panels-grid">
                                                     {/* A1-A4 / E1-E4 */}
                                                     {ids.map(pid => {
-                                                        const url    = getUrl(cat.id, null, pid);
-                                                        const cardId = `${cat.id}-all-${pid}`;
+                                                        const url    = getUrl(cat.id, alet.id, pid);
+                                                        const cardId = `${cat.id}-${alet.id}-${pid}`;
                                                         return (
                                                             <div className="panel-card printable-card" key={pid}>
                                                                 <div className="panel-card__badge-row">
                                                                     <span className="panel-card__badge">{pid.toUpperCase()}</span>
                                                                     <span className="panel-card__meta">{cat.name}</span>
                                                                 </div>
-                                                                <div className="panel-card__alet">Aktif aleti otomatik takip eder · {panelLabel === 'A' ? 'Artistlik' : 'İcra'}</div>
+                                                                <div className="panel-card__alet">{alet.name} · {panelLabel === 'A' ? 'Artistlik' : 'İcra'}</div>
                                                                 <div className="panel-card__qr">
                                                                     <QRCode value={url} size={100} level="M" />
                                                                 </div>
@@ -816,7 +995,7 @@ export default function LinksPage() {
                                                             <span className="panel-card__badge" style={{ background: sjColor }}>{sjLabel}</span>
                                                             <span className="panel-card__meta">{cat.name}</span>
                                                         </div>
-                                                        <div className="panel-card__alet">Aktif aleti otomatik takip eder · {sjDesc}</div>
+                                                        <div className="panel-card__alet">{alet.name} · {sjDesc}</div>
                                                         <div className="panel-card__qr">
                                                             <QRCode value={sjUrl} size={100} level="M" />
                                                         </div>
@@ -837,7 +1016,7 @@ export default function LinksPage() {
                                                 </div>
                                             </div>
                                         );
-                                    })()}
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -1188,14 +1367,16 @@ export default function LinksPage() {
                                             : selectedPanel === 'scoring' ? 'gavel'
                                             : selectedPanel === 'a' || selectedPanel === 'aerobik-a' ? 'palette'
                                             : selectedPanel === 'dp' || selectedPanel === 'aerobik-d' ? 'calculate'
-                                            : selectedPanel === 'aerobik-t' ? 'timer'
-                                            : selectedPanel === 'aerobik-l' ? 'border_outer'
+                                            : selectedPanel === 'ritmik-t' || selectedPanel === 'aerobik-t' ? 'timer'
+                                            : selectedPanel === 'ritmik-l' || selectedPanel === 'aerobik-l' ? 'border_outer'
                                             : 'sports_score'}
                                     </i>
                                     {selectedPanel === 'd' ? 'D-Panel'
                                         : selectedPanel === 'scoring' ? 'DA+DB (Başhakem)'
                                         : selectedPanel === 'a' ? 'A-Panel'
                                         : selectedPanel === 'dp' ? 'DA/DB Panel'
+                                        : selectedPanel === 'ritmik-l' ? 'L-Panel'
+                                        : selectedPanel === 'ritmik-t' ? 'T-Panel'
                                         : selectedPanel === 'aerobik-a' ? 'A-Panel'
                                         : selectedPanel === 'aerobik-d' ? 'D-Panel'
                                         : selectedPanel === 'aerobik-t' ? 'T-Panel'
@@ -1207,6 +1388,8 @@ export default function LinksPage() {
                                         : selectedPanel === 'scoring' ? 'Puanlama Paneli Linkleri (DA + DB) — Başhakem'
                                         : selectedPanel === 'a' ? 'Artistlik Hakem Kartları (A1–A4)'
                                         : selectedPanel === 'dp' ? 'DA/DB Zorluk Hakem Kartları'
+                                        : selectedPanel === 'ritmik-l' ? 'Çizgi Hakem Kartları (L1, L2)'
+                                        : selectedPanel === 'ritmik-t' ? 'Zaman Hakem Kartları (T)'
                                         : selectedPanel === 'aerobik-a' ? 'Artistik Hakem Kartları (A1–A4)'
                                         : selectedPanel === 'aerobik-d' ? 'Zorluk Hakem Kartı (D)'
                                         : selectedPanel === 'aerobik-t' ? 'Süre Hakem Kartı (T)'
@@ -1239,6 +1422,8 @@ export default function LinksPage() {
                             : selectedPanel === 'scoring' ? renderRitmikScoringContent()
                             : selectedPanel === 'a' ? renderRitmikPanelContent('a')
                             : selectedPanel === 'dp' ? renderRitmikDPanelContent()
+                            : selectedPanel === 'ritmik-l' ? renderRitmikLPanelContent()
+                            : selectedPanel === 'ritmik-t' ? renderRitmikTPanelContent()
                             : selectedPanel === 'aerobik-a' ? renderAerobikAPanelContent()
                             : selectedPanel === 'aerobik-d' ? renderAerobikSingleCardPanel('aerobik-d', getAerobikDPanelUrl, 'D', '#6366f1', 'calculate', 'D-Panel (Zorluk Hakemi)')
                             : selectedPanel === 'aerobik-t' ? renderAerobikSingleCardPanel('aerobik-t', getAerobikTPanelUrl, 'T', '#06b6d4', 'timer', 'T-Panel (Süre Hakemi)')
