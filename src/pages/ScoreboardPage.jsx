@@ -644,7 +644,7 @@ export default function ScoreboardPage() {
         if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
     }, [cleanupListeners]);
 
-    // Flash — show a single score for 15s
+    // Flash — show a single score for 20s
     const showFlash = useCallback((data) => {
         if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
         if (flashPhaseRef.current) clearTimeout(flashPhaseRef.current);
@@ -671,7 +671,7 @@ export default function ScoreboardPage() {
                     setTimeout(() => showFlash(next), 400);
                 }
             }, 500);
-        }, 15000);
+        }, 20000);
     }, []);
 
     // Flash trigger — queues if already flashing

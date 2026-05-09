@@ -1132,7 +1132,7 @@
     height: 100%;
     background: linear-gradient(90deg, #6366F1, #8B5CF6, #A78BFA, #C4B5FD);
     border-radius: 2px;
-    animation: timerCountdown 15s linear forwards;
+    animation: timerCountdown 20s linear forwards;
     box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
 }
 
