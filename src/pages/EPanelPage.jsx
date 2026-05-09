@@ -89,12 +89,20 @@ export default function EPanelPage() {
 
         if (isRitmik) {
             // Ritmik: aktifSporcu is category-level (no aletId sub-key)
+            // Yeni format: object {id, ad, soyad, okul}; eski format: plain string id
             const activeRef = ref(db, `${firebasePath}/${compId}/aktifSporcu/${catId}`);
             unsubActive = onValue(activeRef, (snap) => {
-                const newId = snap.val();
-                if (newId) {
-                    setActiveAthleteId(String(newId));
-                    fetchAthleteData(String(newId));
+                const val = snap.val();
+                if (val) {
+                    if (typeof val === 'object' && val.id) {
+                        // New format: object with id + name info
+                        setActiveAthleteId(val.id);
+                        setAthleteInfo({ ad: val.ad || '', soyad: val.soyad || '', okul: val.okul || '' });
+                    } else {
+                        // Legacy format: plain string id
+                        setActiveAthleteId(String(val));
+                        fetchAthleteData(String(val));
+                    }
                 } else {
                     setActiveAthleteId(null);
                     setAthleteInfo(null);

@@ -119,10 +119,20 @@ export default function RitmikDPanelPage() {
         });
 
         const unsubActive = onValue(ref(db, `${firebasePath}/${compId}/aktifSporcu/${catId}`), (snap) => {
-            const newId = snap.val() ? String(snap.val()) : null;
-            setActiveAthleteId(newId);
-            if (newId) fetchAthlete(newId);
-            else {
+            const val = snap.val();
+            if (val) {
+                if (typeof val === 'object' && val.id) {
+                    // New format: object with id + name info
+                    setActiveAthleteId(val.id);
+                    setAthleteInfo({ ad: val.ad || '', soyad: val.soyad || '', okul: val.okul || '' });
+                } else {
+                    // Legacy format: plain string id
+                    const idStr = String(val);
+                    setActiveAthleteId(idStr);
+                    fetchAthlete(idStr);
+                }
+            } else {
+                setActiveAthleteId(null);
                 setAthleteInfo(null); setStatus('waiting');
                 setScoreInput(''); setKesinInput('');
                 setServerScore(null); setServerKesin(null);
