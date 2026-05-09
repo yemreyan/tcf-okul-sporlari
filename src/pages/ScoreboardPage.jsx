@@ -543,31 +543,33 @@ export default function ScoreboardPage() {
                     if (topSum > 0) hasScore = true;
                 });
             } else if (isRitmikBased) {
-                // Ritmik takım kuralı (sporcu bazlı):
-                //   1) Her sporcunun toplam puanı (top + kurdele) hesaplanır
-                //   2) En yüksek 2 sporcu seçilir
-                //   3) Bu 2 sporcunun her alet puanı = takımın o alet puanı
-                //   4) Takım toplamı = 2 sporcunun kişisel toplamlarının toplamı
+                // Ritmik takım kuralı:
+                //   1) Sporcular toplam puanlarına göre sıralanır, ilk maxSize alınır
+                //   2) Her alet için: bu sporcuların puanlarından en yüksek 2'si toplanır
                 const memberTotals = members.map(mId => {
-                    const aletScores = {};
                     let mTotal = 0;
                     apparatusList.forEach(alet => {
                         const s = allScores[mId]?.[alet.id];
-                        const sc = s && s.sonuc ? parseFloat(s.sonuc) : 0;
-                        aletScores[alet.id] = sc;
-                        mTotal += sc;
+                        if (s && s.sonuc) mTotal += parseFloat(s.sonuc);
                     });
-                    return { id: mId, total: mTotal, aletScores };
+                    return { id: mId, total: mTotal };
                 });
-                const top2 = memberTotals
+                const eligibleMembers = memberTotals
                     .sort((a, b) => b.total - a.total)
-                    .slice(0, 2);
+                    .slice(0, ritmikMaxTeamSize)
+                    .map(m => m.id);
 
                 apparatusList.forEach(alet => {
-                    const sum = top2.reduce((s, m) => s + (m.aletScores[alet.id] || 0), 0);
-                    appTotals[alet.id] = sum;
-                    grandTotal += sum;
-                    if (sum > 0) hasScore = true;
+                    const scoresArr = [];
+                    eligibleMembers.forEach(mId => {
+                        const s = allScores[mId]?.[alet.id];
+                        if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
+                    });
+                    scoresArr.sort((x, y) => y - x);
+                    const topSum = scoresArr.slice(0, 2).reduce((x, y) => x + y, 0);
+                    appTotals[alet.id] = topSum;
+                    grandTotal += topSum;
+                    if (topSum > 0) hasScore = true;
                 });
             } else {
                 const scoresArr = [];

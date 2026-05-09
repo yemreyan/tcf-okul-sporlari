@@ -436,26 +436,23 @@ export default function FinalsPage() {
     const isCurrentRitmik = !isAerobikDiscipline && (isRitmikDiscipline || isRitmikCategory(apparatusKeys));
     const showApparatusTab = !isAerobikDiscipline && (hasApparatus || isCurrentRitmik);
 
-    // ── Ritmik takım kuralı (sporcu bazlı, alet bazlı DEĞİL) ──
-    // Takım puanı = en yüksek 2 sporcunun KİŞİSEL TOPLAM puanları
-    //   (her sporcunun top + kurdele toplamı sıralanır, ilk 2 alınır)
-    // Eligibility:
-    //   - Min 2 sporcu skor girmiş olmalı
-    //   - Max sporcu sayısı: küçük/yıldız/minik 4, genç 3 (kayıt sınırı)
+    // ── Ritmik takım kuralı ──
+    // Takımda min 2, max 4 sporcu olabilir; gençlerde max 3 sporcu
+    // Her alet için en yüksek 2 puan toplanır (alet × yaş farkı yok)
     const getRitmikMaxTeamSize = (catKey) => {
         return (catKey || '').toLowerCase().includes('genc') ? 3 : 4;
     };
-    // Hesap: en yüksek 2 sporcunun her alet puanı toplanır (gösterim için alet kolonları)
-    // Genel toplam = bu 2 sporcunun toplam puanlarının toplamı
-    const calcRitmikTeamApparatusTotals = (members /* {athId: {top, kurdele, total}} */, appKeys /* maxSize artık kullanılmıyor */) => {
-        // En yüksek 2 sporcuyu (toplam puanına göre) seç
-        const top2 = Object.values(members)
+    // Bir takımdaki sporcuları toplam puanlarına göre sıralayıp maxSize'a kısıtlar
+    // Sonuç: { aletId: [N puanın en iyi 2'si toplamı] }
+    const calcRitmikTeamApparatusTotals = (members /* {athId: {top: x, kurdele: y, total: z}} */, appKeys, maxSize) => {
+        // Sporcular toplam puanlarına göre azalan sıralanır, ilk maxSize alınır
+        const sorted = Object.values(members)
             .sort((a, b) => (b.total || 0) - (a.total || 0))
-            .slice(0, 2);
+            .slice(0, maxSize);
         const totals = {};
         appKeys.forEach(k => {
-            // Bu 2 sporcunun bu aletteki puanları toplamı
-            totals[k] = top2.reduce((s, m) => s + (m[k] || 0), 0);
+            const arr = sorted.map(m => m[k] || 0).sort((a, b) => b - a);
+            totals[k] = arr.slice(0, 2).reduce((s, v) => s + v, 0);
         });
         return totals;
     };
