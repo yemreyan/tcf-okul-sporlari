@@ -585,8 +585,15 @@ export default function ScoreboardPage() {
             }
 
             if (hasScore) {
-                // Ritmik: takım için min 2 sporcu (tek sporculu okul = bireysel)
-                if (isRitmikBased && members.length < 2) return;
+                // Ritmik: takım için en az 2 sporcu SKOR girilmiş olmalı
+                if (isRitmikBased) {
+                    const scoredCount = members.filter(mId => {
+                        const aletScores = allScores[mId] || {};
+                        // En az bir alette skoru var mı?
+                        return Object.values(aletScores).some(s => s && parseFloat(s.sonuc || 0) > 0);
+                    }).length;
+                    if (scoredCount < 2) return;
+                }
                 teams.push({ name: teamName, total: grandTotal, appTotals, memberCount: members.length });
             }
         });

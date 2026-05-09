@@ -486,7 +486,11 @@ export default function FinalsPage() {
             });
 
             const teamList = Object.entries(clubMembers)
-                .filter(([, members]) => Object.keys(members).length >= 2) // min 2 sporcu
+                // Min 2 sporcu skor girmiş olmalı (sadece kayıt değil, gerçek puan)
+                .filter(([, members]) => {
+                    const scoredCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
+                    return scoredCount >= 2;
+                })
                 .map(([name, members]) => {
                     const apparatusTotals = calcRitmikTeamApparatusTotals(members, apparatusKeys, maxSize);
                     const totalScore = Object.values(apparatusTotals).reduce((s, v) => s + v, 0);
@@ -494,7 +498,8 @@ export default function FinalsPage() {
                         .filter(d => d.teamName === name && (!d.categoryId || d.categoryId === selectedCategoryId))
                         .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                     const finalScore = totalScore - deductionTotal;
-                    return { name, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: Object.keys(members).length, maxSize };
+                    const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
+                    return { name, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -880,14 +885,19 @@ export default function FinalsPage() {
             });
 
             const teamsList = Object.entries(clubMembers)
-                .filter(([, members]) => Object.keys(members).length >= 2)
+                // Min 2 sporcu SKORU girilmiş olmalı
+                .filter(([, members]) => {
+                    const scoredCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
+                    return scoredCount >= 2;
+                })
                 .map(([name, members]) => {
                     const appTotals = calcRitmikTeamApparatusTotals(members, appKeys, maxSize);
                     const total = Object.values(appTotals).reduce((s, v) => s + v, 0);
                     const dTotal = Object.values(teamDeductions || {})
                         .filter(d => d.teamName === name && (!d.categoryId || d.categoryId === catId))
                         .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-                    return { name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: Object.keys(members).length, maxSize };
+                    const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
+                    return { name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
