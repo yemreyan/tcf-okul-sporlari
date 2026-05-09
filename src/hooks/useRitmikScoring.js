@@ -155,15 +155,32 @@ export function useRitmikScoring() {
     }, [selectedCompId, selectedCategory, firebasePath]);
 
     // ── Manuel refresh: hakem notları gecikirse buton ile zorla çek ──
+    // Önemli: scoringFieldsTouched=true ise sync useEffect Firebase verilerini panellere yansıtmaz.
+    //         Bu yüzden refresh sırasında touched flag'ini de sıfırlıyoruz.
     const refreshScores = useCallback(async () => {
         if (!selectedCompId || !selectedCategory) return;
         try {
             const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}`));
+            setScoringFieldsTouched(false);   // touched filtresini bypass et
             setExistingScores(snap.val() || {});
         } catch (e) {
             if (import.meta.env.DEV) console.error('refreshScores error', e);
         }
     }, [selectedCompId, selectedCategory, firebasePath]);
+
+    // ─── A/E panel hakem notları için ÖZEL sync (touched bağımsız) ───
+    // Başhakem A1-A4 / E1-E4 alanlarına genelde manuel müdahale etmez;
+    // sadece SİL yapınca o alan unlock olur. Bu yüzden hakem notları
+    // her existingScores değişiminde panellere yansımalı, touched filtresi UYGULANMAMALI.
+    useEffect(() => {
+        if (!selectedAthlete) return;
+        const sc = existingScores[selectedAthlete.id]?.[selectedAlet];
+        if (sc) {
+            if (sc.aPanel) setAPanelLocal(sc.aPanel);
+            if (sc.ePanel) setEPanelLocal(sc.ePanel);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id, selectedAlet]);
 
     // ─── Panel senkronizasyonu (sporcu/alet değişince) ───
     useEffect(() => {
