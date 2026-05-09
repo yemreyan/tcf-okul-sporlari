@@ -234,45 +234,34 @@ export default function LinksPage() {
                 allLinks += `${cat.name}: ${getRitmikScoringUrl(cat.id)}\n`;
             });
         } else if (selectedPanel === 'ritmik-l') {
-            allLinks += `=== L-PANEL LİNKLERİ (ÇİZGİ HAKEMLERİ) ===\n\n`;
+            allLinks += `=== L-PANEL LİNKLERİ (ÇİZGİ HAKEMLERİ — Top + Kurdele Tek QR) ===\n\n`;
             filteredCategories.forEach(cat => {
-                allLinks += `--- ${cat.name} ---\n`;
-                (cat.aletler || []).forEach(alet => {
-                    allLinks += `${alet.name} | L1: ${getRitmikLPanelUrl(cat.id, alet.id, 'cizgi1')}\n`;
-                    allLinks += `${alet.name} | L2: ${getRitmikLPanelUrl(cat.id, alet.id, 'cizgi2')}\n`;
-                });
-                allLinks += '\n';
+                allLinks += `${cat.name} | L1: ${getRitmikLPanelUrl(cat.id, null, 'cizgi1')}\n`;
+                allLinks += `${cat.name} | L2: ${getRitmikLPanelUrl(cat.id, null, 'cizgi2')}\n`;
             });
         } else if (selectedPanel === 'ritmik-t') {
-            allLinks += `=== T-PANEL LİNKLERİ (ZAMAN HAKEMİ) ===\n\n`;
+            allLinks += `=== T-PANEL LİNKLERİ (ZAMAN HAKEMİ — Top + Kurdele Tek QR) ===\n\n`;
             filteredCategories.forEach(cat => {
-                allLinks += `--- ${cat.name} ---\n`;
-                (cat.aletler || []).forEach(alet => {
-                    allLinks += `${alet.name} | T: ${getRitmikTPanelUrl(cat.id, alet.id)}\n`;
-                });
-                allLinks += '\n';
+                allLinks += `${cat.name} | T: ${getRitmikTPanelUrl(cat.id, null)}\n`;
             });
         } else if (selectedPanel === 'a') {
-            allLinks += `=== A-PANEL LİNKLERİ (ARTİSTLİK) ===\n\n`;
+            allLinks += `=== A-PANEL LİNKLERİ (ARTİSTLİK — Top + Kurdele Tek QR) ===\n\n`;
             filteredCategories.forEach(cat => {
                 allLinks += `--- ${cat.name} ---\n`;
-                cat.aletler.forEach(alet => {
-                    aPanelIds.forEach(pid => {
-                        allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${getRitmikAPanelUrl(cat.id, alet.id, pid)}\n`;
-                    });
+                aPanelIds.forEach(pid => {
+                    allLinks += `${cat.name} | ${pid.toUpperCase()}: ${getRitmikAPanelUrl(cat.id, null, pid)}\n`;
                 });
-                allLinks += '\n';
+                allLinks += `${cat.name} | SJA: ${getRitmikDPanelUrl(cat.id, null, 'sja')}\n\n`;
             });
         } else if (selectedPanel === 'e') {
             allLinks += `=== E-PANEL LİNKLERİ ===\n\n`;
             filteredCategories.forEach(cat => {
                 allLinks += `--- ${cat.name} ---\n`;
                 if (isRitmik) {
-                    cat.aletler.forEach(alet => {
-                        panelIds.forEach(pid => {
-                            allLinks += `${cat.name} | ${alet.name} | ${pid.toUpperCase()}: ${getRitmikEPanelUrl(cat.id, alet.id, pid)}\n`;
-                        });
+                    panelIds.forEach(pid => {
+                        allLinks += `${cat.name} | ${pid.toUpperCase()}: ${getRitmikEPanelUrl(cat.id, null, pid)}\n`;
                     });
+                    allLinks += `${cat.name} | SJE: ${getRitmikDPanelUrl(cat.id, null, 'sje')}\n`;
                 } else if (hasApparatus) {
                     cat.aletler.forEach(alet => {
                         panelIds.forEach(pid => {
@@ -774,7 +763,7 @@ export default function LinksPage() {
         </div>
     );
 
-    // Ritmik L (Çizgi) Panel — Top ve Kurdele × L1+L2 = 4 QR kartı / kategori
+    // Ritmik L (Çizgi) Panel — Alet bağımsız tek QR / hakem (L1, L2)
     const renderRitmikLPanelContent = () => (
         <div className="categories-container">
             {filteredCategories.length === 0 ? (
@@ -783,109 +772,40 @@ export default function LinksPage() {
                     <p>Henüz kategori tanımlanmamış</p>
                 </div>
             ) : (
-                filteredCategories.map(cat => {
-                    const aletList = cat.aletler || [{ id: 'top', name: 'Top' }, { id: 'kurdele', name: 'Kurdele' }];
-                    return (
-                        <div className="category-section" key={cat.id}>
-                            <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
-                                <div className="category-section__title-group">
-                                    <i className="material-icons-round category-section__icon">self_improvement</i>
-                                    <h3 className="category-section__title">{cat.name}</h3>
-                                    <span className="category-section__badge">{aletList.length} alet</span>
-                                </div>
-                                <button className="category-section__toggle">
-                                    <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
-                                </button>
+                filteredCategories.map(cat => (
+                    <div className="category-section" key={cat.id}>
+                        <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
+                            <div className="category-section__title-group">
+                                <i className="material-icons-round category-section__icon">self_improvement</i>
+                                <h3 className="category-section__title">{cat.name}</h3>
+                                <span className="category-section__badge">2 hakem</span>
                             </div>
-                            {expandedCats[cat.id] && (
-                                <div className="category-section__content">
-                                    {aletList.map(alet => (
-                                        <div className="apparatus-group" key={alet.id}>
-                                            <div className="apparatus-group__header">
-                                                <span className="apparatus-group__name">{alet.name}</span>
-                                                <div className="apparatus-group__line"></div>
-                                            </div>
-                                            <div className="panels-grid">
-                                                {[
-                                                    { type: 'cizgi1', label: 'L1', desc: 'Çizgi Hakemi 1' },
-                                                    { type: 'cizgi2', label: 'L2', desc: 'Çizgi Hakemi 2' },
-                                                ].map(({ type, label, desc }) => {
-                                                    const url    = getRitmikLPanelUrl(cat.id, alet.id, type);
-                                                    const cardId = `lpanel-${cat.id}-${alet.id}-${type}`;
-                                                    return (
-                                                        <div className="panel-card printable-card" key={type}>
-                                                            <div className="panel-card__badge-row">
-                                                                <span className="panel-card__badge" style={{ background: '#10b981' }}>{label}</span>
-                                                                <span className="panel-card__meta">{cat.name}</span>
-                                                            </div>
-                                                            <div className="panel-card__alet">{alet.name} · {desc}</div>
-                                                            <div className="panel-card__qr">
-                                                                <QRCode value={url} size={100} level="M" />
-                                                            </div>
-                                                            <div className="panel-card__actions no-print">
-                                                                <button
-                                                                    className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
-                                                                    onClick={() => copyToClipboard(url, cardId)}
-                                                                    title="Linki kopyala"
-                                                                >
-                                                                    <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
-                                                                </button>
-                                                                <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
-                                                                    <i className="material-icons-round">open_in_new</i>
-                                                                </a>
-                                                            </div>
-                                                            <div className="panel-card__print-label print-only">Okut &amp; Puanla</div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <button className="category-section__toggle">
+                                <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
+                            </button>
                         </div>
-                    );
-                })
-            )}
-        </div>
-    );
-
-    // Ritmik T (Zaman) Panel — Top ve Kurdele için ayrı 1'er QR / kategori
-    const renderRitmikTPanelContent = () => (
-        <div className="categories-container">
-            {filteredCategories.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
-                    <p>Henüz kategori tanımlanmamış</p>
-                </div>
-            ) : (
-                filteredCategories.map(cat => {
-                    const aletList = cat.aletler || [{ id: 'top', name: 'Top' }, { id: 'kurdele', name: 'Kurdele' }];
-                    return (
-                        <div className="category-section" key={cat.id}>
-                            <div className="category-section__header" onClick={() => toggleCategory(cat.id)}>
-                                <div className="category-section__title-group">
-                                    <i className="material-icons-round category-section__icon">self_improvement</i>
-                                    <h3 className="category-section__title">{cat.name}</h3>
-                                    <span className="category-section__badge">{aletList.length} alet</span>
-                                </div>
-                                <button className="category-section__toggle">
-                                    <i className="material-icons-round">{expandedCats[cat.id] ? 'expand_less' : 'expand_more'}</i>
-                                </button>
-                            </div>
-                            {expandedCats[cat.id] && (
-                                <div className="category-section__content">
+                        {expandedCats[cat.id] && (
+                            <div className="category-section__content">
+                                {/* Alet bağımsız: tek QR — aktif aleti dinler */}
+                                <div className="apparatus-group">
+                                    <div className="apparatus-group__header">
+                                        <span className="apparatus-group__name">Top + Kurdele (Tek QR)</span>
+                                        <div className="apparatus-group__line"></div>
+                                    </div>
                                     <div className="panels-grid">
-                                        {aletList.map(alet => {
-                                            const url    = getRitmikTPanelUrl(cat.id, alet.id);
-                                            const cardId = `tpanel-${cat.id}-${alet.id}`;
+                                        {[
+                                            { type: 'cizgi1', label: 'L1', desc: 'Çizgi Hakemi 1' },
+                                            { type: 'cizgi2', label: 'L2', desc: 'Çizgi Hakemi 2' },
+                                        ].map(({ type, label, desc }) => {
+                                            const url    = getRitmikLPanelUrl(cat.id, null, type);
+                                            const cardId = `lpanel-${cat.id}-all-${type}`;
                                             return (
-                                                <div className="panel-card printable-card" key={alet.id}>
+                                                <div className="panel-card printable-card" key={type}>
                                                     <div className="panel-card__badge-row">
-                                                        <span className="panel-card__badge" style={{ background: '#0ea5e9' }}>T</span>
+                                                        <span className="panel-card__badge" style={{ background: '#10b981' }}>{label}</span>
                                                         <span className="panel-card__meta">{cat.name}</span>
                                                     </div>
-                                                    <div className="panel-card__alet">{alet.name} · Zaman Hakemi</div>
+                                                    <div className="panel-card__alet">Aktif aleti otomatik takip eder · {desc}</div>
                                                     <div className="panel-card__qr">
                                                         <QRCode value={url} size={100} level="M" />
                                                     </div>
@@ -907,7 +827,61 @@ export default function LinksPage() {
                                         })}
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
+    // Ritmik T (Zaman) Panel — Alet bağımsız tek QR / kategori
+    const renderRitmikTPanelContent = () => (
+        <div className="categories-container">
+            {filteredCategories.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-state__icon"><i className="material-icons-round">qr_code</i></div>
+                    <p>Henüz kategori tanımlanmamış</p>
+                </div>
+            ) : (
+                filteredCategories.map(cat => {
+                    const url    = getRitmikTPanelUrl(cat.id, null);
+                    const cardId = `tpanel-${cat.id}-all`;
+                    return (
+                        <div className="category-section" key={cat.id}>
+                            <div className="category-section__header" style={{ cursor: 'default' }}>
+                                <div className="category-section__title-group">
+                                    <i className="material-icons-round category-section__icon">self_improvement</i>
+                                    <h3 className="category-section__title">{cat.name}</h3>
+                                    <span className="category-section__badge">1 hakem</span>
+                                </div>
+                            </div>
+                            <div className="category-section__content">
+                                <div className="d-panel-row">
+                                    <div className="d-panel-row__info">
+                                        <span className="d-panel-row__badge" style={{ background: '#0ea5e9' }}>T</span>
+                                        <div className="d-panel-row__text">
+                                            <span className="d-panel-row__alet">Zaman Hakemi</span>
+                                            <span className="d-panel-row__cat">{cat.name} · Aktif aleti otomatik takip eder</span>
+                                        </div>
+                                    </div>
+                                    <div className="d-panel-row__qr">
+                                        <QRCode value={url} size={80} level="M" />
+                                    </div>
+                                    <div className="d-panel-row__actions">
+                                        <button
+                                            className={`panel-action ${copiedId === cardId ? 'panel-action--copied' : ''}`}
+                                            onClick={() => copyToClipboard(url, cardId)}
+                                            title="Linki kopyala"
+                                        >
+                                            <i className="material-icons-round">{copiedId === cardId ? 'check' : 'content_copy'}</i>
+                                        </button>
+                                        <a href={url} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                            <i className="material-icons-round">open_in_new</i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     );
                 })
@@ -947,28 +921,28 @@ export default function LinksPage() {
                             </div>
                             {expandedCats[cat.id] && (
                                 <div className="category-section__content">
-                                    {/* Top ve Kurdele için ayrı QR setleri */}
-                                    {cat.aletler.map(alet => {
-                                        const sjUrl    = getRitmikDPanelUrl(cat.id, alet.id, sjType);
-                                        const sjCardId = `${cat.id}-${alet.id}-${sjType}`;
+                                    {/* Alet bağımsız: aletId=null → her hakem için tek QR (top + kurdele aktif aleti dinler) */}
+                                    {(() => {
+                                        const sjUrl    = getRitmikDPanelUrl(cat.id, null, sjType);
+                                        const sjCardId = `${cat.id}-all-${sjType}`;
                                         return (
-                                            <div className="apparatus-group" key={alet.id}>
+                                            <div className="apparatus-group">
                                                 <div className="apparatus-group__header">
-                                                    <span className="apparatus-group__name">{alet.name}</span>
+                                                    <span className="apparatus-group__name">Top + Kurdele (Tek QR)</span>
                                                     <div className="apparatus-group__line"></div>
                                                 </div>
                                                 <div className="panels-grid">
                                                     {/* A1-A4 / E1-E4 */}
                                                     {ids.map(pid => {
-                                                        const url    = getUrl(cat.id, alet.id, pid);
-                                                        const cardId = `${cat.id}-${alet.id}-${pid}`;
+                                                        const url    = getUrl(cat.id, null, pid);
+                                                        const cardId = `${cat.id}-all-${pid}`;
                                                         return (
                                                             <div className="panel-card printable-card" key={pid}>
                                                                 <div className="panel-card__badge-row">
                                                                     <span className="panel-card__badge">{pid.toUpperCase()}</span>
                                                                     <span className="panel-card__meta">{cat.name}</span>
                                                                 </div>
-                                                                <div className="panel-card__alet">{alet.name} · {panelLabel === 'A' ? 'Artistlik' : 'İcra'}</div>
+                                                                <div className="panel-card__alet">Aktif aleti otomatik takip eder · {panelLabel === 'A' ? 'Artistlik' : 'İcra'}</div>
                                                                 <div className="panel-card__qr">
                                                                     <QRCode value={url} size={100} level="M" />
                                                                 </div>
@@ -995,7 +969,7 @@ export default function LinksPage() {
                                                             <span className="panel-card__badge" style={{ background: sjColor }}>{sjLabel}</span>
                                                             <span className="panel-card__meta">{cat.name}</span>
                                                         </div>
-                                                        <div className="panel-card__alet">{alet.name} · {sjDesc}</div>
+                                                        <div className="panel-card__alet">Aktif aleti otomatik takip eder · {sjDesc}</div>
                                                         <div className="panel-card__qr">
                                                             <QRCode value={sjUrl} size={100} level="M" />
                                                         </div>
@@ -1016,7 +990,7 @@ export default function LinksPage() {
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                    })()}
                                 </div>
                             )}
                         </div>
