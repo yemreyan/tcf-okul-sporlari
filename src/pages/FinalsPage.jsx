@@ -265,14 +265,21 @@ export default function FinalsPage() {
         }
 
         // ── STANDART: apparatus tabanlı ──
-        if (!catData.aletler) return [];
+        // Ritmik için aletler field'ı yoksa varsayılan olarak top+kurdele kullan
+        const isRitmikDisc = disciplineId === 'ritmik';
+        if (!catData.aletler && !isRitmikDisc) return [];
 
         let rawAletler = catData.aletler;
         let apparatusKeys = [];
-        if (Array.isArray(rawAletler)) {
-            apparatusKeys = rawAletler.map(a => typeof a === 'object' ? a.id || a.value : a);
-        } else {
-            apparatusKeys = Object.keys(rawAletler);
+        if (rawAletler) {
+            if (Array.isArray(rawAletler)) {
+                apparatusKeys = rawAletler.map(a => typeof a === 'object' ? a.id || a.value : a);
+            } else {
+                apparatusKeys = Object.keys(rawAletler);
+            }
+        } else if (isRitmikDisc) {
+            // Ritmik fallback: aletler tanımı yoksa standart top + kurdele
+            apparatusKeys = ['top', 'kurdele'];
         }
         apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
 
@@ -420,6 +427,9 @@ export default function FinalsPage() {
             apparatusKeys = Object.keys(categoryData.aletler);
         }
         apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
+    } else if (isRitmikDiscipline && categoryData) {
+        // Ritmik fallback: aletler tanımı yoksa standart top + kurdele
+        apparatusKeys = ['top', 'kurdele'];
     }
     // Ritmik için top/kurdele aletleri varsa veya branş ritmik ise alet finalleri sekmesini göster
     // Aerobik'te alet finalleri sekmesi yok
@@ -681,8 +691,11 @@ export default function FinalsPage() {
         let apparatusKeysList = [];
         if (Array.isArray(catData?.aletler)) {
             apparatusKeysList = catData.aletler.map(a => typeof a === 'object' ? a.id || a.value : a);
-        } else {
-            apparatusKeysList = Object.keys(catData?.aletler || {});
+        } else if (catData?.aletler) {
+            apparatusKeysList = Object.keys(catData.aletler);
+        } else if (disciplineId === 'ritmik') {
+            // Ritmik fallback: top + kurdele
+            apparatusKeysList = ['top', 'kurdele'];
         }
         apparatusKeysList = getOlimpikSira(catId, apparatusKeysList);
 
