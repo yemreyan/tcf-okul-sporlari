@@ -642,9 +642,14 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                             title={ath.okul || ''}
                                         >
                                             <td style={{ textAlign: 'center', fontWeight: 700 }}>{idx + 1}</td>
-                                            <td title={athleteName(ath)}>{
-                                                ath.soyad ? `${ath.soyad} ${(ath.ad || '').charAt(0)}.` : (ath.name || ath.ad || '?')
-                                            }</td>
+                                            <td title={ath.okul || ''}>
+                                                <div className="cl-athlete-name-cell">
+                                                    {ath.soyad ? `${ath.soyad} ${ath.ad || ''}` : (ath.name || ath.ad || '?')}
+                                                </div>
+                                                {ath.okul && (
+                                                    <div className="cl-athlete-school-cell">{ath.okul}</div>
+                                                )}
+                                            </td>
                                             <td style={{ textAlign: 'center' }}>
                                                 {topSt === 'tamamlandi' && '✓'}
                                                 {topSt === 'kilitli'    && '🔒'}

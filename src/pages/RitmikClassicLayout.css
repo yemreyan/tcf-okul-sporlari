@@ -258,7 +258,15 @@
     flex-direction: column;
     gap: 8px;
     min-width: 0;
+    /* Puan giriş ekranı sabit kalır, sayfa kaydırıldığında sporcu listesi kayar */
+    position: sticky;
+    top: 8px;
+    align-self: flex-start;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
 }
+.cl-panels-col::-webkit-scrollbar { width: 6px; }
+.cl-panels-col::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .cl-panels-row {
     display: flex;
     gap: 8px;
@@ -466,9 +474,9 @@
 .cl-total-breakdown span { margin-left: 8px; }
 .cl-total-breakdown strong { color: #ddd; }
 
-/* ── Sağ: Sporcu Listesi ── */
+/* ── Sağ: Sporcu Listesi (sayfa scroll'una göre kayar) ── */
 .cl-athlete-panel {
-    width: 280px;
+    width: 360px;
     flex-shrink: 0;
     margin-left: 8px;
 }
@@ -498,10 +506,23 @@
 .cl-athlete-table td {
     padding: 4px 6px;
     border: 1px solid #ddd;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90px;
+}
+/* Sporcu adı hücresi — tam ad + okul, iki satır */
+.cl-athlete-name-cell {
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: break-word;
+    color: #1e293b;
+}
+.cl-athlete-school-cell {
+    font-size: 9px;
+    color: #64748b;
+    line-height: 1.2;
+    margin-top: 1px;
+    white-space: normal;
+    word-break: break-word;
+    font-weight: 500;
 }
 .cl-athlete-table tr.active td { background: #e8f0fb; font-weight: 700; }
 .cl-athlete-table tr:hover td  { background: #f5f5f5; cursor: pointer; }
