@@ -56,6 +56,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         handleCallAthlete,
         handleClassicSubmit,
         handleConfirmSubmit, handleUnlock,
+        refreshScores,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
     } = s;
@@ -239,10 +240,49 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                 )
             )}
 
-            {scoreLocked && (
-                <div className="cl-locked-banner">
-                    <i className="material-icons-round">lock</i>
-                    {RITMIK_ALETLER[selectedAlet]?.label} puanı kilitlenmiştir. Düzenlemek için kilidi açın.
+            {scoreLocked && selectedAthlete && (
+                <div className="cl-summary-card">
+                    <div className="cl-summary-header">
+                        <i className="material-icons-round cl-summary-icon">verified</i>
+                        <div className="cl-summary-titles">
+                            <div className="cl-summary-athlete">{athleteName(selectedAthlete)}</div>
+                            <div className="cl-summary-meta">
+                                {RITMIK_ALETLER[selectedAlet]?.label?.toLocaleUpperCase('tr-TR')} · {RITMIK_CATEGORIES[selectedCategory]?.label || selectedCategory}
+                            </div>
+                        </div>
+                        <div className="cl-summary-total">
+                            <label>TOPLAM</label>
+                            <span>{classicFinalScore}</span>
+                        </div>
+                    </div>
+                    <div className="cl-summary-grid">
+                        <div className="cl-summary-cell cl-summary-cell--da">
+                            <label>DA KESİN</label>
+                            <span>{fmt(classicDaScore)}</span>
+                        </div>
+                        <div className="cl-summary-cell cl-summary-cell--db">
+                            <label>DB KESİN</label>
+                            <span>{fmt(classicDbScore)}</span>
+                        </div>
+                        <div className="cl-summary-cell cl-summary-cell--a">
+                            <label>A KESİNTİ ORT.</label>
+                            <span>{classicAResult.trimmedAvg.toFixed(3)}</span>
+                        </div>
+                        <div className="cl-summary-cell cl-summary-cell--e">
+                            <label>E KESİNTİ ORT.</label>
+                            <span>{classicEResult.trimmedAvg.toFixed(3)}</span>
+                        </div>
+                        {classicTotalPenalty > 0 && (
+                            <div className="cl-summary-cell cl-summary-cell--pen">
+                                <label>CEZA</label>
+                                <span>−{classicTotalPenalty.toFixed(3)}</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="cl-summary-footer">
+                        <i className="material-icons-round" style={{ fontSize: 14 }}>info</i>
+                        <span>Puan ilan edildi · Sonraki sporcu çağrılana kadar gösterilir · Kilidi açmak için yukarıdaki "DÜZENLE" butonunu kullanın</span>
+                    </div>
                 </div>
             )}
 
@@ -543,7 +583,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                 </div>
                             </div>
 
-                            {/* Aksiyon + Güncelle */}
+                            {/* Aksiyon + Güncelle + Refresh */}
                             <div className="cl-action-row">
                                 <button
                                     className="cl-btn cl-btn--save"
@@ -554,6 +594,17 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                     {isSubmitting ? 'KAYDEDİLİYOR…' : (scoreLocked && hasUnlocked ? `${unlockedFields.size} ALAN GÜNCELLE` : 'GÜNCELLE')}
                                 </button>
                                 <span className="cl-action-label">PUAN GİRİŞ EKRANI — {RITMIK_ALETLER[selectedAlet]?.label?.toLocaleUpperCase('tr-TR')}</span>
+                                {refreshScores && (
+                                    <button
+                                        type="button"
+                                        className="cl-btn cl-btn--refresh"
+                                        onClick={refreshScores}
+                                        title="Hakem panellerinden gelen son notları zorla çek"
+                                    >
+                                        <i className="material-icons-round" style={{ fontSize: 14 }}>sync</i>
+                                        GÜNCEL VERİLERİ AL
+                                    </button>
+                                )}
                             </div>
                     </> ) : (
                         /* Sporcu seçilmemişse sol tarafta boş mesaj */

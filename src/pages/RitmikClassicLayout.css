@@ -521,7 +521,7 @@
 .cl-empty .material-icons-round { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
 .cl-empty p { font-size: 14px; }
 
-/* ── Kilitli Banner ── */
+/* ── Kilitli Banner (eski - geriye dönük) ── */
 .cl-locked-banner {
     display: flex;
     align-items: center;
@@ -535,6 +535,126 @@
     margin: 0 8px 4px;
     border-radius: 4px;
 }
+
+/* ── Sporcu Özet Kartı (puan ilan edildi) ── */
+.cl-summary-card {
+    margin: 0 8px 8px;
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(6, 78, 59, 0.3);
+    overflow: hidden;
+}
+.cl-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.cl-summary-icon {
+    font-size: 28px !important;
+    color: #6ee7b7;
+}
+.cl-summary-titles {
+    flex: 1;
+    min-width: 0;
+}
+.cl-summary-athlete {
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cl-summary-meta {
+    font-size: 11px;
+    opacity: 0.85;
+    font-weight: 600;
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+}
+.cl-summary-total {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+.cl-summary-total label {
+    font-size: 9px;
+    opacity: 0.7;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.cl-summary-total span {
+    font-size: 28px;
+    font-weight: 900;
+    color: #fde68a;
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+.cl-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px;
+}
+.cl-summary-cell {
+    background: rgba(0, 0, 0, 0.15);
+    padding: 9px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.cl-summary-cell label {
+    font-size: 9px;
+    font-weight: 700;
+    opacity: 0.75;
+    letter-spacing: 0.08em;
+}
+.cl-summary-cell span {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.cl-summary-cell--da span { color: #c4b5fd; }
+.cl-summary-cell--db span { color: #a5b4fc; }
+.cl-summary-cell--a  span { color: #fbcfe8; }
+.cl-summary-cell--e  span { color: #6ee7b7; }
+.cl-summary-cell--pen span { color: #fca5a5; }
+
+.cl-summary-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 10px;
+    opacity: 0.85;
+    line-height: 1.4;
+}
+
+/* ── Refresh butonu (Güncel Verileri Al) ── */
+.cl-btn--refresh {
+    background: #0ea5e9;
+    color: #fff;
+    border-color: #0ea5e9;
+    font-size: 12px;
+    padding: 6px 14px;
+    margin-left: auto;       /* sağa it (Güncelle'den uzakta) */
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.cl-btn--refresh:hover { background: #0284c7; border-color: #0284c7; }
+.cl-btn--refresh:active { transform: scale(0.97); }
 
 /* ── Modal ── */
 .cl-modal-overlay {

@@ -154,6 +154,17 @@ export function useRitmikScoring() {
         return () => { unsubOrder(); unsubScores(); };
     }, [selectedCompId, selectedCategory, firebasePath]);
 
+    // ── Manuel refresh: hakem notları gecikirse buton ile zorla çek ──
+    const refreshScores = useCallback(async () => {
+        if (!selectedCompId || !selectedCategory) return;
+        try {
+            const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}`));
+            setExistingScores(snap.val() || {});
+        } catch (e) {
+            if (import.meta.env.DEV) console.error('refreshScores error', e);
+        }
+    }, [selectedCompId, selectedCategory, firebasePath]);
+
     // ─── Panel senkronizasyonu (sporcu/alet değişince) ───
     useEffect(() => {
         if (!selectedAthlete || scoringFieldsTouched) return;
@@ -759,6 +770,7 @@ export function useRitmikScoring() {
         handleCallAthlete, getNextAthlete,
         handleModernSubmit, handleClassicSubmit,
         handleConfirmSubmit, handleUnlock,
+        refreshScores,
         getAthleteStatus, getAletStatus,
         // Constants
         RITMIK_CATEGORIES, RITMIK_ALETLER,
