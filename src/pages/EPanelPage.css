@@ -259,29 +259,36 @@
 
 /* Sent / Locked View */
 .sent-view .sent-icon {
-    font-size: 6.5rem;
-    margin-bottom: 1.5rem;
+    font-size: 4.2rem;
+    margin-bottom: 0.75rem;
     text-shadow: 0 0 30px currentColor;
 }
 
 .sent-view .sent-title {
-    font-size: 2.2rem;
-    font-weight: 900;
-    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 1.25rem;
 }
 
+/* Tek satırlı label: değer formatı (örn "SJE Referans Notu: 0.500") */
 .sent-view .sent-score-display {
-    font-size: 7.5rem;
-    font-weight: 900;
-    margin: 1.5rem 0;
-    letter-spacing: -3px;
-    text-shadow: 0 4px 20px rgba(57, 211, 83, 0.4);
-    font-family: 'Plus Jakarta Sans', monospace;
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0.75rem 0;
+    line-height: 1.35;
+    text-align: center;
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 0.6rem;
+    word-break: break-word;
+    text-shadow: none;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0;
 }
 
 .sent-view .sent-desc {
-    margin-bottom: 2.5rem;
-    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
     color: var(--text-muted);
 }
 
