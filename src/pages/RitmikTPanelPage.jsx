@@ -42,13 +42,24 @@ export default function RitmikTPanelPage() {
 
     const [compName, setCompName] = useState('...');
 
-    // Seçilen kesinti değeri
+    // Seçilen kesinti değeri (hızlı butonlar veya manuel input)
     const [selectedDeduction, setSelectedDeduction] = useState(null);
+    const [manualInput,       setManualInput]       = useState('');
     const DEDUCTION_OPTIONS = [
-        { value: 0,    label: '0.00', desc: 'İhlal yok' },
+        { value: 0,    label: '0.00',  desc: 'İhlal yok' },
         { value: 0.05, label: '−0.05', desc: 'Küçük süre ihlali' },
         { value: 0.10, label: '−0.10', desc: 'Büyük süre ihlali' },
     ];
+
+    // Hızlı buton seçilince manuel input temizlenir; manuel input yazılınca buton seçimi kalkar
+    const pickQuick = (val) => { setSelectedDeduction(val); setManualInput(''); };
+    const onManualChange = (e) => {
+        const raw = e.target.value;
+        setManualInput(raw);
+        const num = parseFloat(String(raw).replace(',', '.'));
+        if (!isNaN(num) && num >= 0) setSelectedDeduction(num);
+        else setSelectedDeduction(null);
+    };
 
     // ── Token validation ────────────────────────────────────────────────────
     useEffect(() => {
@@ -92,6 +103,7 @@ export default function RitmikTPanelPage() {
                 setAthleteInfo(null);
                 setStatus('waiting');
                 setSelectedDeduction(null);
+                setManualInput('');
                 setServerData(null);
             }
         });
@@ -115,6 +127,7 @@ export default function RitmikTPanelPage() {
         if (!compId || !catId || !activeAthleteId || !activeAletKey || !tokenVerified) return;
 
         setSelectedDeduction(null);
+        setManualInput('');
 
         const scoreRef = ref(
             db,
@@ -225,54 +238,144 @@ export default function RitmikTPanelPage() {
                         <div className="scoring-card">
                             <div className="input-label">SÜRE İHLALİ KESİNTİSİ</div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1rem' }}>
-                                {DEDUCTION_OPTIONS.map(opt => (
+                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.85rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                                Hızlı Seçim
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {DEDUCTION_OPTIONS.map(opt => {
+                                    const isActive = !manualInput && selectedDeduction === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => pickQuick(opt.value)}
+                                            style={{
+                                                padding: '0.75rem 1rem',
+                                                borderRadius: '0.6rem',
+                                                border: isActive
+                                                    ? '2px solid var(--primary)'
+                                                    : '2px solid #e2e8f0',
+                                                background: isActive
+                                                    ? 'rgba(99, 102, 241, 0.08)'
+                                                    : '#fff',
+                                                color: '#1e293b',
+                                                cursor: 'pointer',
+                                                fontSize: '0.95rem',
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.75rem',
+                                                transition: 'all 0.15s',
+                                                textAlign: 'left',
+                                            }}
+                                        >
+                                            <span style={{
+                                                fontSize: '1.35rem',
+                                                fontWeight: 800,
+                                                color: opt.value === 0 ? 'var(--neon-green)' : 'var(--danger)',
+                                                minWidth: 70,
+                                            }}>
+                                                {opt.label}
+                                            </span>
+                                            <span style={{ flex: 1, color: '#64748b', fontSize: '0.85rem' }}>
+                                                {opt.desc}
+                                            </span>
+                                            {isActive && (
+                                                <span className="material-icons-round" style={{ color: 'var(--primary)' }}>check_circle</span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Ayraç */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '1rem 0 0.5rem' }}>
+                                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                    VEYA MANUEL GİR
+                                </span>
+                                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                            </div>
+
+                            {/* Manuel kesinti input */}
+                            <div style={{
+                                border: manualInput ? '2px solid var(--primary)' : '2px solid #e2e8f0',
+                                borderRadius: '0.6rem',
+                                background: manualInput ? 'rgba(99, 102, 241, 0.05)' : '#fff',
+                                padding: '0.65rem 0.85rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                transition: 'all 0.15s',
+                            }}>
+                                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--danger)' }}>−</span>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={manualInput}
+                                    onChange={onManualChange}
+                                    style={{
+                                        flex: 1,
+                                        border: 'none',
+                                        outline: 'none',
+                                        fontSize: '1.4rem',
+                                        fontWeight: 800,
+                                        color: '#1e293b',
+                                        background: 'transparent',
+                                        fontFamily: 'inherit',
+                                        width: '100%',
+                                    }}
+                                />
+                                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>puan</span>
+                                {manualInput && (
                                     <button
-                                        key={opt.value}
-                                        onClick={() => setSelectedDeduction(opt.value)}
-                                        style={{
-                                            padding: '0.85rem 1rem',
-                                            borderRadius: '0.6rem',
-                                            border: selectedDeduction === opt.value
-                                                ? '2px solid var(--primary)'
-                                                : '2px solid #e2e8f0',
-                                            background: selectedDeduction === opt.value
-                                                ? 'rgba(99, 102, 241, 0.08)'
-                                                : '#fff',
-                                            color: '#1e293b',
-                                            cursor: 'pointer',
-                                            fontSize: '0.95rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.75rem',
-                                            transition: 'all 0.15s',
-                                            textAlign: 'left',
-                                        }}
+                                        onClick={() => { setManualInput(''); setSelectedDeduction(null); }}
+                                        title="Temizle"
+                                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
                                     >
-                                        <span style={{
-                                            fontSize: '1.4rem',
-                                            fontWeight: 800,
-                                            color: opt.value === 0 ? 'var(--neon-green)' : 'var(--danger)',
-                                            minWidth: 70,
-                                        }}>
-                                            {opt.label}
-                                        </span>
-                                        <span style={{ flex: 1, color: '#64748b', fontSize: '0.85rem' }}>
-                                            {opt.desc}
-                                        </span>
-                                        {selectedDeduction === opt.value && (
-                                            <span className="material-icons-round" style={{ color: 'var(--primary)' }}>check_circle</span>
-                                        )}
+                                        <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>close</span>
                                     </button>
-                                ))}
+                                )}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.35rem', textAlign: 'center' }}>
+                                Örn: 0.05, 0.15, 0.30 …
+                            </div>
+
+                            {/* Aktif seçim özeti */}
+                            <div style={{
+                                marginTop: '1rem',
+                                padding: '0.6rem 0.85rem',
+                                borderRadius: '0.5rem',
+                                background: '#F1F5F9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                            }}>
+                                <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                                    Gönderilecek Kesinti:
+                                </span>
+                                <span style={{
+                                    fontSize: '1.2rem',
+                                    fontWeight: 900,
+                                    color: selectedDeduction == null
+                                        ? '#94a3b8'
+                                        : selectedDeduction === 0 ? 'var(--neon-green)' : 'var(--danger)',
+                                }}>
+                                    {selectedDeduction == null
+                                        ? '—'
+                                        : selectedDeduction === 0
+                                            ? '0.00'
+                                            : `−${selectedDeduction.toFixed(2)}`}
+                                </span>
                             </div>
 
                             <button
                                 className="send-btn"
                                 onClick={handleSubmit}
                                 disabled={selectedDeduction == null}
-                                style={{ marginTop: '1.25rem', opacity: selectedDeduction == null ? 0.5 : 1 }}
+                                style={{ marginTop: '0.85rem', opacity: selectedDeduction == null ? 0.5 : 1 }}
                             >
                                 <span className="material-icons-round">send</span>
                                 GÖNDER
