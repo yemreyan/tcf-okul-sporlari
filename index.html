@@ -16,13 +16,19 @@
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
   <script>
-    // Service Worker kaydı (PWA desteği)
+    // Service Worker'ı kaldır — agresif cache real-time için sorun çıkarıyordu
+    // Mevcut kullanıcıların kayıtlı SW'leri ilk ziyarette otomatik unregister olur
+    // ve cache'leri temizlenir (sw.js içinde self-destruct logic var).
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(() => console.log('[PWA] Service Worker registered'))
-          .catch(err => console.warn('[PWA] SW registration failed:', err));
-      });
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => { reg.unregister().catch(() => { /* noop */ }); });
+      }).catch(() => { /* noop */ });
+      // Tüm cache'leri sil (browser cache API)
+      if (window.caches && caches.keys) {
+        caches.keys().then((keys) => {
+          keys.forEach((k) => caches.delete(k).catch(() => { /* noop */ }));
+        }).catch(() => { /* noop */ });
+      }
     }
   </script>
 </body>
