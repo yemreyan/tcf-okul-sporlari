@@ -504,10 +504,13 @@ export default function ScoreboardPage() {
         }
 
         // ── Standart takım sıralaması (Artistik / Ritmik / diğer) ──
+        // Ritmik için yarismaTuru filtresi YOK — tüm sporcular okula göre takıma dahil
         const teamAthletes = {};
         athletes.forEach(a => {
-            const t = (a.yarismaTuru || a.katilimTuru || '').toLowerCase();
-            if (t !== 'takim' && t !== 'takım') return;
+            if (!isRitmikBased) {
+                const t = (a.yarismaTuru || a.katilimTuru || '').toLowerCase();
+                if (t !== 'takim' && t !== 'takım') return;
+            }
             const club = a.okul || a.kulup;
             if (club) {
                 if (!teamAthletes[club]) teamAthletes[club] = [];
@@ -517,6 +520,12 @@ export default function ScoreboardPage() {
 
         const sbCatKey = (currentView?.catId || '').toLowerCase();
         const sbTopN = isRitmikBased ? 2 : (sbCatKey.includes('yildiz') || sbCatKey.includes('genc')) ? 2 : 3;
+        // Ritmik için alet × yaş bazlı topN: genç → top=2 kurdele=1, diğer → top=2 kurdele=2
+        const ritmikTopN = (aletId) => {
+            const isGenc = sbCatKey.includes('genc');
+            if (aletId === 'kurdele') return isGenc ? 1 : 2;
+            return 2;
+        };
 
         const teams = [];
         Object.entries(teamAthletes).forEach(([teamName, members]) => {
@@ -545,7 +554,9 @@ export default function ScoreboardPage() {
                         if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                     });
                     scoresArr.sort((x, y) => y - x);
-                    const topSum = scoresArr.slice(0, sbTopN).reduce((x, y) => x + y, 0);
+                    // Ritmik: alet × yaş bazlı topN (genç kurdele = 1, diğer = 2)
+                    const n = ritmikTopN(alet.id);
+                    const topSum = scoresArr.slice(0, n).reduce((x, y) => x + y, 0);
                     appTotals[alet.id] = topSum;
                     grandTotal += topSum;
                     if (topSum > 0) hasScore = true;
@@ -564,6 +575,8 @@ export default function ScoreboardPage() {
             }
 
             if (hasScore) {
+                // Ritmik: takım için min 2 sporcu (tek sporculu okul = bireysel)
+                if (isRitmikBased && members.length < 2) return;
                 teams.push({ name: teamName, total: grandTotal, appTotals, memberCount: members.length });
             }
         });

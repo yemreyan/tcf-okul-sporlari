@@ -436,10 +436,22 @@ export default function FinalsPage() {
     const isCurrentRitmik = !isAerobikDiscipline && (isRitmikDiscipline || isRitmikCategory(apparatusKeys));
     const showApparatusTab = !isAerobikDiscipline && (hasApparatus || isCurrentRitmik);
 
+    // ── Ritmik takım kuralı (alet × yaş): genç → 2+1, küçük/yıldız/minik → 2+2 ──
+    // Diğer disiplinler için scalar topN kullanılır (eski davranış)
+    const getRitmikTopN = (catKey, aletId) => {
+        const isGenc = (catKey || '').toLowerCase().includes('genc');
+        if (aletId === 'kurdele') return isGenc ? 1 : 2;  // genç: 1, diğer: 2
+        return 2;                                          // top: hep 2
+    };
+
     // Teams Processing
     const computeTeamResults = () => {
+        const isRitmikTeam = isRitmikCategory(apparatusKeys);
         const filteredResults = fullResults.filter(res => {
             if (excludedTeams.has(res.okul)) return false;
+            // Ritmik: yarismaTuru filtresi YOK — tüm sporcular okula göre takıma dahil
+            // Diğer: sadece yarismaTuru = takim olanlar (eski davranış)
+            if (isRitmikTeam) return true;
             const t = (res.yarismaTuru || res.katilimTuru || '').toLowerCase();
             return t === 'takim' || t === 'takım';
         });
@@ -455,34 +467,45 @@ export default function FinalsPage() {
         });
 
         const catKey = (selectedCategoryId || '').toLowerCase();
-        const isRitmikTeam = isRitmikCategory(apparatusKeys);
-        const topN = (isAerobikDiscipline || isRitmikTeam) ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
+        const topN = (isAerobikDiscipline) ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
 
-        const teamList = Object.values(clubScores).map(team => {
-            let totalScore = 0;
-            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, topN).reduce((sum, s) => sum + s, 0);
-            const apparatusTotals = {};
+        const teamList = Object.values(clubScores)
+            // Ritmik: en az 2 farklı sporcu varsa takım sayılsın (tek sporculu okul = bireysel)
+            .filter(team => {
+                if (!isRitmikTeam) return true;
+                const distinctScorers = new Set();
+                apparatusKeys.forEach(k => (team.scores[k] || []).forEach(s => { if (s > 0) distinctScorers.add(s); }));
+                return distinctScorers.size >= 2;
+            })
+            .map(team => {
+                let totalScore = 0;
+                const apparatusTotals = {};
 
-            apparatusKeys.forEach(key => {
-                const appTotal = topScores(team.scores[key]);
-                apparatusTotals[key] = appTotal;
-                totalScore += appTotal;
-            });
+                apparatusKeys.forEach(key => {
+                    // Ritmik: alet × yaş bazlı topN; diğer: tek topN
+                    const n = isRitmikTeam ? getRitmikTopN(catKey, key) : topN;
+                    const appTotal = [...(team.scores[key] || [])]
+                        .sort((a, b) => b - a)
+                        .slice(0, n)
+                        .reduce((sum, s) => sum + s, 0);
+                    apparatusTotals[key] = appTotal;
+                    totalScore += appTotal;
+                });
 
-            const deductionTotal = Object.values(teamDeductions)
-                .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
-                .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                const deductionTotal = Object.values(teamDeductions)
+                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                    .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
 
-            const finalScore = totalScore - deductionTotal;
+                const finalScore = totalScore - deductionTotal;
 
-            return {
-                name: team.name,
-                apparatusTotals,
-                totalScore,
-                deduction: deductionTotal,
-                finalScore
-            };
-        }).sort((a, b) => b.finalScore - a.finalScore);
+                return {
+                    name: team.name,
+                    apparatusTotals,
+                    totalScore,
+                    deduction: deductionTotal,
+                    finalScore
+                };
+            }).sort((a, b) => b.finalScore - a.finalScore);
 
         let lastTS = -1;
         let lastTR = 0;
@@ -802,8 +825,11 @@ export default function FinalsPage() {
     };
 
     const computeCatTeamResults = (resultsArr, appKeys, catId) => {
+        const isRitmikC = isRitmikCategory(appKeys);
         const filtered = resultsArr.filter(res => {
             if (excludedTeams.has(res.okul)) return false;
+            // Ritmik için yarismaTuru filtresi yok — tüm sporcular okula göre takıma dahil
+            if (isRitmikC) return true;
             const t = (res.yarismaTuru || res.katilimTuru || '').toLowerCase();
             return t === 'takim' || t === 'takım';
         });
@@ -819,25 +845,36 @@ export default function FinalsPage() {
         });
 
         const catKeyC = (catId || '').toLowerCase();
-        const isRitmikC = isRitmikCategory(appKeys);
-        const topNC = (isAerobikDiscipline || isRitmikC) ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);
+        const topNC = (isAerobikDiscipline) ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);
 
-        const teamsList = Object.values(clubScores).map(team => {
-            let total = 0;
-            const topScores = (arr) => [...arr].sort((a, b) => b - a).slice(0, topNC).reduce((s, x) => s + x, 0);
-            const appTotals = {};
-            appKeys.forEach(k => {
-                const t = topScores(team.scores[k]);
-                appTotals[k] = t;
-                total += t;
-            });
+        const teamsList = Object.values(clubScores)
+            // Ritmik: takım için min 2 farklı sporcu olmalı (tek sporculu okul takım değil)
+            .filter(team => {
+                if (!isRitmikC) return true;
+                const distinctScorers = new Set();
+                appKeys.forEach(k => (team.scores[k] || []).forEach(s => { if (s > 0) distinctScorers.add(s); }));
+                return distinctScorers.size >= 2;
+            })
+            .map(team => {
+                let total = 0;
+                const appTotals = {};
+                appKeys.forEach(k => {
+                    // Ritmik: alet × yaş bazlı topN
+                    const n = isRitmikC ? getRitmikTopN(catKeyC, k) : topNC;
+                    const t = [...(team.scores[k] || [])]
+                        .sort((a, b) => b - a)
+                        .slice(0, n)
+                        .reduce((s, x) => s + x, 0);
+                    appTotals[k] = t;
+                    total += t;
+                });
 
-            const dTotal = Object.values(teamDeductions || {})
-                .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === catId))
-                .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-            
-            return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
-        }).sort((a, b) => b.finalScore - a.finalScore);
+                const dTotal = Object.values(teamDeductions || {})
+                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === catId))
+                    .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+
+                return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
+            }).sort((a, b) => b.finalScore - a.finalScore);
 
         let ctLastS = -1;
         let ctLastR = 0;
