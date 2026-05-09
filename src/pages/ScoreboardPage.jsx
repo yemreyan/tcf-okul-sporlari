@@ -987,7 +987,7 @@ export default function ScoreboardPage() {
                                                                 <span className="sb-score-a">A {(val.a || 0).toFixed(2)}</span>
                                                                 <span className="sb-score-e">E {(val.eOnly || 0).toFixed(2)}</span>
                                                                 {(val.penalty || 0) > 0 && (
-                                                                    <span className="sb-score-pen">\u2212{(val.penalty || 0).toFixed(2)}</span>
+                                                                    <span className="sb-score-pen">-{(val.penalty || 0).toFixed(2)}</span>
                                                                 )}
                                                             </div>
                                                         ) : (
