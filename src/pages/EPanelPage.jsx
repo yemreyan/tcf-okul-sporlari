@@ -5,6 +5,8 @@ import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import RitmikLockedSummary from '../components/RitmikLockedSummary';
+import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
 
 export default function EPanelPage() {
@@ -37,6 +39,8 @@ export default function EPanelPage() {
 
     const [scoreInput, setScoreInput] = useState('');
     const [serverScore, setServerScore] = useState(null);
+    // Tüm scores objesi (kilit sonrası özet kart için — ritmik)
+    const [serverScores, setServerScores] = useState(null);
 
     const [compName, setCompName] = useState('...');
     const [refereeName, setRefereeName] = useState('...');
@@ -228,6 +232,7 @@ export default function EPanelPage() {
             }
 
             setServerScore(myScore);
+            setServerScores(scores);
 
             if (isLocked) {
                 setStatus('locked');
@@ -403,23 +408,34 @@ export default function EPanelPage() {
 
                 {!waitingForAlet && (status === 'sent' || status === 'locked') && (
                     <div className="view-section active sent-view">
-                        <span className="material-icons-round sent-icon" style={{ color: status === 'locked' ? '#6b7280' : 'var(--success)' }}>
-                            {status === 'locked' ? 'lock' : 'check_circle'}
-                        </span>
-                        <h2 className="sent-title">{status === 'locked' ? 'Puan Kilitlendi' : 'İletildi'}</h2>
+                        {/* Ritmik + kilit → tüm panel özeti göster (sporcu adı + DA/DB/A/E + Total) */}
+                        {isRitmik && status === 'locked' ? (
+                            <RitmikLockedSummary
+                                athleteName={athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : ''}
+                                aletLabel={ritmikAletLabels[currentAlet] || currentAlet}
+                                scores={serverScores}
+                            />
+                        ) : (
+                            <>
+                                <span className="material-icons-round sent-icon" style={{ color: status === 'locked' ? '#6b7280' : 'var(--success)' }}>
+                                    {status === 'locked' ? 'lock' : 'check_circle'}
+                                </span>
+                                <h2 className="sent-title">{status === 'locked' ? 'Puan Kilitlendi' : 'İletildi'}</h2>
 
-                        <div className="sent-score-display" style={{ color: status === 'locked' ? '#9ca3af' : 'var(--neon-green)' }}>
-                            {serverScore !== null ? Number(serverScore).toFixed(2) : ''}
-                        </div>
+                                <div className="sent-score-display" style={{ color: status === 'locked' ? '#9ca3af' : 'var(--neon-green)' }}>
+                                    {serverScore !== null ? Number(serverScore).toFixed(2) : ''}
+                                </div>
 
-                        <p className="sent-desc">
-                            {status === 'locked'
-                                ? 'Başhakem puanı onayladı. Artık değişiklik yapılamaz.'
-                                : 'Puanınız Başhakem ekranına ulaştı. Onay bekleniyor.'}
-                        </p>
+                                <p className="sent-desc">
+                                    {status === 'locked'
+                                        ? 'Başhakem puanı onayladı. Artık değişiklik yapılamaz.'
+                                        : 'Puanınız Başhakem ekranına ulaştı. Onay bekleniyor.'}
+                                </p>
 
-                        {status !== 'locked' && (
-                            <button className="edit-btn" onClick={requestEdit}>Düzeltme Yap</button>
+                                {status !== 'locked' && (
+                                    <button className="edit-btn" onClick={requestEdit}>Düzeltme Yap</button>
+                                )}
+                            </>
                         )}
                     </div>
                 )}

@@ -5,6 +5,8 @@ import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import RitmikLockedSummary from '../components/RitmikLockedSummary';
+import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
 
 // ── Panel konfigürasyonu ──────────────────────────────────────────────────────
@@ -100,6 +102,7 @@ export default function RitmikDPanelPage() {
     const [kesinInput, setKesinInput]           = useState('');  // kesinField değeri (dual only)
     const [serverScore, setServerScore]         = useState(null);
     const [serverKesin, setServerKesin]         = useState(null);
+    const [serverScores, setServerScores]       = useState(null);  // Tüm puanlar (özet kart için)
     const [compName, setCompName]               = useState('...');
 
     // ── Token doğrulama ──
@@ -160,6 +163,7 @@ export default function RitmikDPanelPage() {
         const scoreRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}`);
         const unsub = onValue(scoreRef, (snap) => {
             const data     = snap.val() || {};
+            setServerScores(data);
             const myScore  = data[config.mainField];
             const myKesin  = config.dual ? data[config.kesinField] : undefined;
             const isLocked = data.kilitli === true;
@@ -476,32 +480,30 @@ export default function RitmikDPanelPage() {
                 {/* Gönderildi / Kilitli */}
                 {!waitingForAlet && (status === 'sent' || status === 'locked') && (
                     <div className="view-section active sent-view">
-                        <span
-                            className="material-icons-round sent-icon"
-                            style={{ color: status === 'locked' ? '#6b7280' : 'var(--success)' }}
-                        >
-                            {status === 'locked' ? 'lock' : 'check_circle'}
-                        </span>
-                        <h2 className="sent-title">{status === 'locked' ? 'Puan Kilitlendi' : 'İletildi'}</h2>
+                        {status === 'locked' ? (
+                            /* Kilit sonrası: tüm panel sonuçları sporcu adı ile birlikte */
+                            <RitmikLockedSummary
+                                athleteName={athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : ''}
+                                aletLabel={aletLabel}
+                                scores={serverScores}
+                            />
+                        ) : (
+                            <>
+                                <span className="material-icons-round sent-icon" style={{ color: 'var(--success)' }}>check_circle</span>
+                                <h2 className="sent-title">İletildi</h2>
 
-                        {/* Dual: Kesin Puan göster */}
-                        {config.dual && serverKesin !== null && (
-                            <div className="sent-score-display" style={{ color: '#a78bfa', fontSize: '1.4rem', marginBottom: '4px' }}>
-                                {config.kesinLabel}: {Number(serverKesin).toFixed(3)}
-                            </div>
-                        )}
-                        {/* Ana puan */}
-                        <div className="sent-score-display" style={{ color: status === 'locked' ? '#9ca3af' : 'var(--neon-green)' }}>
-                            {config.mainLabel}: {serverScore !== null ? Number(serverScore).toFixed(3) : '—'}
-                        </div>
+                                {config.dual && serverKesin !== null && (
+                                    <div className="sent-score-display" style={{ color: '#a78bfa', fontSize: '1.4rem', marginBottom: '4px' }}>
+                                        {config.kesinLabel}: {Number(serverKesin).toFixed(3)}
+                                    </div>
+                                )}
+                                <div className="sent-score-display" style={{ color: 'var(--neon-green)' }}>
+                                    {config.mainLabel}: {serverScore !== null ? Number(serverScore).toFixed(3) : '—'}
+                                </div>
 
-                        <p className="sent-desc">
-                            {status === 'locked'
-                                ? 'Başhakem puanı onayladı. Artık değişiklik yapılamaz.'
-                                : 'Puanınız Başhakem ekranına ulaştı. Onay bekleniyor.'}
-                        </p>
-                        {status !== 'locked' && (
-                            <button className="edit-btn" onClick={requestEdit}>Düzeltme Yap</button>
+                                <p className="sent-desc">Puanınız Başhakem ekranına ulaştı. Onay bekleniyor.</p>
+                                <button className="edit-btn" onClick={requestEdit}>Düzeltme Yap</button>
+                            </>
                         )}
                     </div>
                 )}

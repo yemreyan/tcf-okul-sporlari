@@ -4,6 +4,8 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
+import RitmikLockedSummary from '../components/RitmikLockedSummary';
+import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
 import './AerobikLPanelPage.css';
 
@@ -44,6 +46,7 @@ export default function RitmikTPanelPage() {
 
     const [status, setStatus] = useState('waiting');
     const [serverData, setServerData] = useState(null);
+    const [serverScores, setServerScores] = useState(null);  // Tüm puanlar (özet kart için)
 
     const [compName, setCompName] = useState('...');
 
@@ -140,6 +143,7 @@ export default function RitmikTPanelPage() {
         );
         const unsub = onValue(scoreRef, (snap) => {
             const scores = snap.val() || {};
+            setServerScores(scores);
             const isLocked = scores.kilitli === true;
             const tPanel   = scores.tPanel  || null;
             const tMeta    = tPanel?.zaman_meta || null;
@@ -403,44 +407,38 @@ export default function RitmikTPanelPage() {
 
                 {!waitingForWrongAlet && (status === 'sent' || status === 'locked') && (
                     <div className="view-section active sent-view">
-                        <span
-                            className="material-icons-round sent-icon"
-                            style={{ color: status === 'locked' ? '#6b7280' : 'var(--success)' }}
-                        >
-                            {status === 'locked' ? 'lock' : 'check_circle'}
-                        </span>
-                        <h2 className="sent-title">
-                            {status === 'locked' ? 'Puan Kilitlendi' : 'İletildi'}
-                        </h2>
+                        {status === 'locked' ? (
+                            <RitmikLockedSummary
+                                athleteName={athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : ''}
+                                aletLabel={activeAletKey === 'top' ? 'Top' : activeAletKey === 'kurdele' ? 'Kurdele' : activeAletKey}
+                                scores={serverScores}
+                            />
+                        ) : (
+                            <>
+                                <span className="material-icons-round sent-icon" style={{ color: 'var(--success)' }}>check_circle</span>
+                                <h2 className="sent-title">İletildi</h2>
 
-                        {serverData && (
-                            <div className="lpanel-sent-details">
-                                <div className="lpanel-sent-row">
-                                    <span>Süre Kesintisi</span>
-                                    <strong
-                                        style={{
-                                            color: (serverData.value ?? 0) > 0 ? 'var(--danger)' : 'var(--neon-green)',
-                                            fontSize: '1.6rem',
-                                        }}
-                                    >
-                                        {(serverData.value ?? 0) > 0
-                                            ? `−${Number(serverData.value).toFixed(2)}`
-                                            : '0.00'}
-                                    </strong>
-                                </div>
-                            </div>
-                        )}
+                                {serverData && (
+                                    <div className="lpanel-sent-details">
+                                        <div className="lpanel-sent-row">
+                                            <span>Süre Kesintisi</span>
+                                            <strong
+                                                style={{
+                                                    color: (serverData.value ?? 0) > 0 ? 'var(--danger)' : 'var(--neon-green)',
+                                                    fontSize: '1.6rem',
+                                                }}
+                                            >
+                                                {(serverData.value ?? 0) > 0
+                                                    ? `−${Number(serverData.value).toFixed(2)}`
+                                                    : '0.00'}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                )}
 
-                        <p className="sent-desc">
-                            {status === 'locked'
-                                ? 'Başhakem puanı onayladı. Artık değişiklik yapılamaz.'
-                                : 'Verileriniz Başhakem ekranına ulaştı. Onay bekleniyor.'}
-                        </p>
-
-                        {status !== 'locked' && (
-                            <button className="edit-btn" onClick={requestEdit}>
-                                Düzeltme Yap
-                            </button>
+                                <p className="sent-desc">Verileriniz Başhakem ekranına ulaştı. Onay bekleniyor.</p>
+                                <button className="edit-btn" onClick={requestEdit}>Düzeltme Yap</button>
+                            </>
                         )}
                     </div>
                 )}
