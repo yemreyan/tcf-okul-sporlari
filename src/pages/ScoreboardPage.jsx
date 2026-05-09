@@ -520,12 +520,8 @@ export default function ScoreboardPage() {
 
         const sbCatKey = (currentView?.catId || '').toLowerCase();
         const sbTopN = isRitmikBased ? 2 : (sbCatKey.includes('yildiz') || sbCatKey.includes('genc')) ? 2 : 3;
-        // Ritmik için alet × yaş bazlı topN: genç → top=2 kurdele=1, diğer → top=2 kurdele=2
-        const ritmikTopN = (aletId) => {
-            const isGenc = sbCatKey.includes('genc');
-            if (aletId === 'kurdele') return isGenc ? 1 : 2;
-            return 2;
-        };
+        // Ritmik takım: max sporcu sayısı (genç: 3, diğer: 4)
+        const ritmikMaxTeamSize = sbCatKey.includes('genc') ? 3 : 4;
 
         const teams = [];
         Object.entries(teamAthletes).forEach(([teamName, members]) => {
@@ -547,16 +543,30 @@ export default function ScoreboardPage() {
                     if (topSum > 0) hasScore = true;
                 });
             } else if (isRitmikBased) {
+                // Ritmik takım kuralı:
+                //   1) Sporcular toplam puanlarına göre sıralanır, ilk maxSize alınır
+                //   2) Her alet için: bu sporcuların puanlarından en yüksek 2'si toplanır
+                const memberTotals = members.map(mId => {
+                    let mTotal = 0;
+                    apparatusList.forEach(alet => {
+                        const s = allScores[mId]?.[alet.id];
+                        if (s && s.sonuc) mTotal += parseFloat(s.sonuc);
+                    });
+                    return { id: mId, total: mTotal };
+                });
+                const eligibleMembers = memberTotals
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, ritmikMaxTeamSize)
+                    .map(m => m.id);
+
                 apparatusList.forEach(alet => {
                     const scoresArr = [];
-                    members.forEach(mId => {
+                    eligibleMembers.forEach(mId => {
                         const s = allScores[mId]?.[alet.id];
                         if (s && s.sonuc) scoresArr.push(parseFloat(s.sonuc));
                     });
                     scoresArr.sort((x, y) => y - x);
-                    // Ritmik: alet × yaş bazlı topN (genç kurdele = 1, diğer = 2)
-                    const n = ritmikTopN(alet.id);
-                    const topSum = scoresArr.slice(0, n).reduce((x, y) => x + y, 0);
+                    const topSum = scoresArr.slice(0, 2).reduce((x, y) => x + y, 0);
                     appTotals[alet.id] = topSum;
                     grandTotal += topSum;
                     if (topSum > 0) hasScore = true;
