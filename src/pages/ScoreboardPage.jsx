@@ -1059,12 +1059,12 @@ export default function ScoreboardPage() {
                                 </div>
                                 <div className="sf-score-divider">+</div>
                                 <div className={`sf-score-item sf-e ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
-                                    <div className="sf-score-label">A ORT</div>
+                                    <div className="sf-score-label">A SONUÇ</div>
                                     <div className="sf-score-value">{parseFloat(flashData.a || 0).toFixed(3)}</div>
                                 </div>
                                 <div className="sf-score-divider">+</div>
                                 <div className={`sf-score-item sf-e2 ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
-                                    <div className="sf-score-label">E ORT</div>
+                                    <div className="sf-score-label">E SONUÇ</div>
                                     <div className="sf-score-value">{parseFloat(flashData.e || 0).toFixed(3)}</div>
                                 </div>
                                 {parseFloat(flashData.pen || 0) > 0 && (

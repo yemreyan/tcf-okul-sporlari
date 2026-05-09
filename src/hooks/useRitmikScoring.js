@@ -302,11 +302,12 @@ export function useRitmikScoring() {
         const avgAll     = vals.reduce((s, v) => s + v, 0) / vals.length;
         const score      = Math.max(0, 10 - trimmedAvg);
 
-        // SJ değeri ile karşılaştır → gap = |panel ortalaması (avgAll) - SJ|
-        // Not: ekranda "A Ortalama" / "E Ortalama" olarak gösterilen değer avgAll (basit ortalama)
+        // SJ değeri ile karşılaştır → gap = |panel ortalaması (trimmedAvg) - SJ|
+        // Not: ekranda gösterilen "A Ortalama" / "E Ortalama" trimmedAvg (en yüksek+en düşük atılmış)
+        // GAP de aynı değer üzerinden hesaplanır ki UI ile tutarlı olsun.
         const sjNum   = parseFloat(sjValue);
         const sjValid = sjValue !== '' && sjValue !== null && sjValue !== undefined && !isNaN(sjNum);
-        const gap     = sjValid ? Math.abs(avgAll - sjNum) : 0;
+        const gap     = sjValid ? Math.abs(trimmedAvg - sjNum) : 0;
         const gapLevel = getGapLevel(gap);
         const gapOk   = gapLevel === 'ok';
 

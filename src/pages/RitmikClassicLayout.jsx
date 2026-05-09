@@ -441,7 +441,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                         <div className="cl-ae-stats">
                                             <div className="cl-ae-stat">
                                                 <label>A Ortalama</label>
-                                                <span className="cl-stat-val">{classicAResult.avg.toFixed(3)}</span>
+                                                <span className="cl-stat-val">{classicAResult.trimmedAvg.toFixed(3)}</span>
                                             </div>
                                             <div className="cl-ae-stat">
                                                 <label>GAP</label>
@@ -497,7 +497,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                         <div className="cl-ae-stats">
                                             <div className="cl-ae-stat">
                                                 <label>E Ortalama</label>
-                                                <span className="cl-stat-val">{classicEResult.avg.toFixed(3)}</span>
+                                                <span className="cl-stat-val">{classicEResult.trimmedAvg.toFixed(3)}</span>
                                             </div>
                                             <div className="cl-ae-stat">
                                                 <label>GAP</label>
