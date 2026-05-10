@@ -73,19 +73,21 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
     }, [selectedAthlete?.id, selectedAlet]);
 
     // ── SİL yardımcıları (her biri kendi field-key'ini unlock eder) ──
-    const silDA   = () => { setClassicDA(p => ({ ...p, da: '' }));   unlock('da');   setScoringFieldsTouched(true); };
-    const silDA1  = () => { setClassicDA(p => ({ ...p, da1: '' })); unlock('da1');  setScoringFieldsTouched(true); };
-    const silDA2  = () => { setClassicDA(p => ({ ...p, da2: '' })); unlock('da2');  setScoringFieldsTouched(true); };
-    const silSJDA = () => { setClassicDA(p => ({ ...p, sjda: '' })); unlock('sjda'); setScoringFieldsTouched(true); };
-    const silDB   = () => { setClassicDB(p => ({ ...p, db: '' }));   unlock('db');   setScoringFieldsTouched(true); };
-    const silDB1  = () => { setClassicDB(p => ({ ...p, db1: '' })); unlock('db1');  setScoringFieldsTouched(true); };
-    const silDB2  = () => { setClassicDB(p => ({ ...p, db2: '' })); unlock('db2');  setScoringFieldsTouched(true); };
-    const silSJDB = () => { setClassicDB(p => ({ ...p, sjdb: '' })); unlock('sjdb'); setScoringFieldsTouched(true); };
+    // Penalty alan adları (Firebase'deki anahtar)
+    const PENALTY_FB = { koordinator: 'penaltyKoordinatör', cizgi1: 'penaltyCizgi1', cizgi2: 'penaltyCizgi2', zaman: 'penaltyZaman' };
+    const silDA   = () => { setClassicDA(p => ({ ...p, da: '' }));   unlock('da');   setScoringFieldsTouched(true); clearFieldOverride('da');   clearFieldOverride('daScore'); };
+    const silDA1  = () => { setClassicDA(p => ({ ...p, da1: '' })); unlock('da1');  setScoringFieldsTouched(true); clearFieldOverride('da1'); };
+    const silDA2  = () => { setClassicDA(p => ({ ...p, da2: '' })); unlock('da2');  setScoringFieldsTouched(true); clearFieldOverride('da2'); };
+    const silSJDA = () => { setClassicDA(p => ({ ...p, sjda: '' })); unlock('sjda'); setScoringFieldsTouched(true); clearFieldOverride('sjda'); };
+    const silDB   = () => { setClassicDB(p => ({ ...p, db: '' }));   unlock('db');   setScoringFieldsTouched(true); clearFieldOverride('db');   clearFieldOverride('dbScore'); };
+    const silDB1  = () => { setClassicDB(p => ({ ...p, db1: '' })); unlock('db1');  setScoringFieldsTouched(true); clearFieldOverride('db1'); };
+    const silDB2  = () => { setClassicDB(p => ({ ...p, db2: '' })); unlock('db2');  setScoringFieldsTouched(true); clearFieldOverride('db2'); };
+    const silSJDB = () => { setClassicDB(p => ({ ...p, sjdb: '' })); unlock('sjdb'); setScoringFieldsTouched(true); clearFieldOverride('sjdb'); };
     const silA = (k) => { setAPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`a_${k}`); setScoringFieldsTouched(true); clearFieldOverride(`aPanel.${k}`); };
     const silE = (k) => { setEPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`e_${k}`); setScoringFieldsTouched(true); clearFieldOverride(`ePanel.${k}`); };
-    const silSJA = () => { setSjaInput(''); unlock('sja'); setScoringFieldsTouched(true); };
-    const silSJE = () => { setSjeInput(''); unlock('sje'); setScoringFieldsTouched(true); };
-    const silKes = (k) => { setClassicPenalty(p => ({ ...p, [k]: '' })); unlock(`pen_${k}`); setScoringFieldsTouched(true); };
+    const silSJA = () => { setSjaInput(''); unlock('sja'); setScoringFieldsTouched(true); clearFieldOverride('sja'); };
+    const silSJE = () => { setSjeInput(''); unlock('sje'); setScoringFieldsTouched(true); clearFieldOverride('sje'); };
+    const silKes = (k) => { setClassicPenalty(p => ({ ...p, [k]: '' })); unlock(`pen_${k}`); setScoringFieldsTouched(true); clearFieldOverride(PENALTY_FB[k]); };
 
     // Submit sonrası unlock'ları temizle
     const handleSubmitAndReset = async () => {
