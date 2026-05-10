@@ -841,9 +841,18 @@ export function useRitmikScoring() {
                 toast(`${RITMIK_ALETLER[otherAlet]?.label || otherAlet} aletinde zaten veri var. Önce o alet için tüm alanları SİL ile temizleyin.`, 'warning');
                 return false;
             }
-            // Atomik taşıma: hedefe yaz, kaynağı sil
+            // Hedef alete kopyalanmadan önce kaynak-spesifik bayrakları temizle:
+            //   - lockedFields: başhakem'in kaynak alette yaptığı override kilitleri
+            //                   (kopyalanırsa hedef alette hakemler 'Başhakem Kararı' uyarısı alır)
+            //   - kilitli: kaynak alet final kilitli olabilir; hedefte taze başlasın
+            const cleanedData = { ...data };
+            delete cleanedData.lockedFields;
+            delete cleanedData.kilitli;
+            cleanedData.timestamp = Date.now();
+
+            // Atomik taşıma: hedefe temizlenmiş veriyi yaz, kaynağı sil
             await update(ref(db), {
-                [`${basePath}/${otherAlet}`]:    data,
+                [`${basePath}/${otherAlet}`]:    cleanedData,
                 [`${basePath}/${selectedAlet}`]: null,
                 // Aktif alet de hedefe çevril (hakem panelleri yeni alete geçsin)
                 [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]: otherAlet,
