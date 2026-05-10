@@ -170,6 +170,10 @@ export function useRitmikScoring() {
     //    debounced yaz + ilgili hakem panelini KİLİTLE (yeni not gönderemez).
     //    fieldKey örnekleri: 'aPanel.j1', 'ePanel.j2', 'da1', 'da2', 'sjda', 'db1', 'db2', 'sjdb', 'sja', 'sje'
     const overrideTimers = useRef({});
+    // fieldKey örnekleri: 'aPanel.j1' → Firebase path 'aPanel/j1' (nokta yasaktır anahtar adında!)
+    // lockedFields key: noktayı '__' ile değiştir (flat key) → 'aPanel__j1'
+    const toFbPath = (fieldKey) => fieldKey.split('.').join('/');
+    const toLockKey = (fieldKey) => fieldKey.replace(/\./g, '__');
     const writeFieldOverride = useCallback((fieldKey, value) => {
         if (!selectedCompId || !selectedCategory || !selectedAthlete?.id || !selectedAlet) return;
         const timerKey = fieldKey;
@@ -181,8 +185,8 @@ export function useRitmikScoring() {
             const writeVal = (trimmed === '' || isNaN(num)) ? null : num;
             try {
                 await update(ref(db), {
-                    [`${basePath}/${fieldKey}`]:               writeVal,
-                    [`${basePath}/lockedFields/${fieldKey.replace(/\./g, '__')}`]: true,
+                    [`${basePath}/${toFbPath(fieldKey)}`]:               writeVal,
+                    [`${basePath}/lockedFields/${toLockKey(fieldKey)}`]: true,
                 });
             } catch (e) {
                 if (import.meta.env.DEV) console.error('writeFieldOverride error', e);
@@ -196,8 +200,8 @@ export function useRitmikScoring() {
         const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/${selectedAlet}`;
         try {
             await update(ref(db), {
-                [`${basePath}/${fieldKey}`]: null,
-                [`${basePath}/lockedFields/${fieldKey.replace(/\./g, '__')}`]: null,
+                [`${basePath}/${toFbPath(fieldKey)}`]: null,
+                [`${basePath}/lockedFields/${toLockKey(fieldKey)}`]: null,
             });
         } catch (e) {
             if (import.meta.env.DEV) console.error('clearFieldOverride error', e);
