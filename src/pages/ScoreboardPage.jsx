@@ -397,9 +397,10 @@ export default function ScoreboardPage() {
 
     const gridTemplate = useMemo(() => {
         const appCols = isColumnBased ? apparatusList.length : 0;
+        // CSS değişkenleri ile media query'lerden override edilebilir (mobile responsive)
         return appCols > 0
-            ? `64px 2.8fr repeat(${appCols}, 1fr) 1.4fr`
-            : `64px 2.8fr 1.4fr`;
+            ? `var(--sb-rank-w,64px) 2.8fr repeat(${appCols}, 1fr) var(--sb-total-w,1.4fr)`
+            : `var(--sb-rank-w,64px) 2.8fr var(--sb-total-w,1.4fr)`;
     }, [isColumnBased, apparatusList.length]);
 
     // Memoized individual ranking

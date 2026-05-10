@@ -1239,3 +1239,141 @@
         padding: 1.5rem;
     }
 }
+
+/* ─── ≤600px: Telefon Yatay/Dikey ───────────────────────────── */
+@media (max-width: 600px) {
+    /* Grid kolon genişliklerini mobilde küçült (JSX'teki inline var değerlerini override eder) */
+    .sb-thead,
+    .sb-row {
+        --sb-rank-w: 36px;
+        --sb-total-w: 1.1fr;
+    }
+
+    /* TOPBAR — dikey kompakt */
+    .sb-topbar {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        padding: 0.35rem 0.5rem;
+    }
+    .sb-topbar-left,
+    .sb-topbar-right { gap: 0.4rem; }
+    .sb-topbar-center {
+        order: -1;
+        flex-basis: 100%;
+        text-align: center;
+    }
+    .sb-comp-name { font-size: 0.78rem; }
+    .sb-cat-label { font-size: 0.68rem; }
+    .sb-clock { font-size: 0.7rem; }
+    .sb-live-badge { font-size: 0.6rem; padding: 0.2rem 0.45rem; gap: 4px; }
+    .sb-live-dot { width: 6px; height: 6px; }
+    .sb-stats-pill { font-size: 0.7rem; padding: 0.2rem 0.5rem; }
+    .sb-exit-btn { width: 28px; height: 28px; }
+    .sb-exit-btn i { font-size: 16px; }
+
+    /* VIEW BANNER */
+    .sb-view-banner {
+        padding: 0.4rem 0.5rem 0;
+    }
+    .sb-view-title { font-size: 0.78rem; letter-spacing: 1px; }
+    .sb-view-sub { font-size: 0.65rem; }
+    .sb-page-indicator { font-size: 0.6rem; }
+    .sb-view-nav {
+        position: static;
+        justify-content: center;
+        margin-top: 4px;
+    }
+    .sb-nav-dot { width: 6px; height: 6px; }
+
+    /* TABLE — daha sıkı grid */
+    .sb-thead,
+    .sb-tbody {
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+    }
+    .sb-thead { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+    .sb-th { font-size: 0.55rem; letter-spacing: 1px; }
+    .sb-app-abbr { font-size: 0.62rem; letter-spacing: 0.8px; }
+    .sb-app-img { width: 22px; height: 16px; }
+
+    .sb-row { padding: 0.4rem 0; gap: 0.1rem; }
+    .sb-cell { padding: 0 0.2rem; }
+    .sb-rank-num { font-size: 0.85rem; }
+    .sb-medal-icon { width: 22px; height: 22px; font-size: 0.7rem; }
+
+    .sb-name-cell { padding-left: 0.3rem; }
+    .sb-athlete-name { font-size: 0.78rem; }
+    .sb-team-name-label { font-size: 0.85rem; }
+    .sb-rank-tag { font-size: 0.6rem; margin-left: 4px; }
+    .sb-athlete-club { font-size: 0.6rem; }
+
+    .sb-score-cell { font-size: 0.72rem; }
+    .sb-score-total { font-size: 0.78rem; }
+    /* Mini D/E/A breakdown — telefonda daha küçük */
+    .sb-score-de { font-size: 0.55rem; gap: 0.2rem; }
+    .sb-score-de--ritmik {
+        font-size: 0.52rem;
+        column-gap: 0.25rem;
+        row-gap: 0.05rem;
+    }
+    .sb-total-cell { font-size: 0.85rem; }
+
+    /* FLASH CARD — telefonda neredeyse tam ekran */
+    .sb-flash-card {
+        width: 96%;
+        padding: 1rem 0.75rem;
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+    .sf-athlete { font-size: 1.4rem; line-height: 1.15; }
+    .sf-club { font-size: 0.75rem; }
+    .sf-apparatus { font-size: 0.85rem; padding: 0.3rem 0.75rem; }
+    .sf-new-score-tag { font-size: 0.65rem; padding: 0.25rem 0.6rem; }
+
+    .sf-scores {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        justify-content: center;
+    }
+    .sf-score-item {
+        min-width: 70px;
+        width: auto;
+        flex: 1 1 calc(50% - 0.4rem);
+        padding: 0.5rem 0.4rem;
+    }
+    .sf-score-label { font-size: 0.55rem; letter-spacing: 0.5px; }
+    .sf-score-value { font-size: 1.1rem; }
+    .sf-score-divider { display: none; }
+    .sf-total-value { font-size: 2.4rem; }
+    .sf-timer { height: 3px; }
+}
+
+/* ─── ≤400px: Çok küçük telefonlar ──────────────────────────── */
+@media (max-width: 400px) {
+    .sb-thead,
+    .sb-row {
+        --sb-rank-w: 30px;
+        --sb-total-w: 1fr;
+    }
+
+    .sb-comp-name { font-size: 0.7rem; }
+    .sb-cat-label { font-size: 0.6rem; }
+    .sb-th { font-size: 0.5rem; letter-spacing: 0.5px; }
+    .sb-app-abbr { font-size: 0.55rem; }
+    .sb-app-img { width: 18px; height: 14px; }
+    .sb-athlete-name { font-size: 0.7rem; }
+    .sb-athlete-club { font-size: 0.55rem; }
+    .sb-score-cell { font-size: 0.65rem; }
+    .sb-score-total { font-size: 0.72rem; }
+    .sb-total-cell { font-size: 0.78rem; }
+    .sb-rank-num { font-size: 0.75rem; }
+    .sb-medal-icon { width: 20px; height: 20px; font-size: 0.62rem; }
+    .sb-rank-tag { display: none; }
+    /* Daha kompakt: D/E mini değerlerini bu boyutta gizle */
+    .sb-score-de { display: none; }
+
+    .sf-athlete { font-size: 1.15rem; }
+    .sf-score-value { font-size: 0.95rem; }
+    .sf-total-value { font-size: 2rem; }
+}
