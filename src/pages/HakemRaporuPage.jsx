@@ -200,7 +200,33 @@ export default function HakemRaporuPage() {
 
             {loading && <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Yükleniyor…</div>}
 
-            {!loading && selectedCompId && (
+            {!loading && selectedCompId && logs.length === 0 && (
+                <div style={{
+                    padding: '2rem 1.5rem',
+                    background: '#fef3c7',
+                    border: '1px solid #fbbf24',
+                    borderRadius: 8,
+                    color: '#78350f',
+                    lineHeight: 1.6,
+                }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 8 }}>
+                        ⚠️ Bu yarışma için audit log kaydı yok
+                    </div>
+                    <p style={{ margin: '0 0 8px' }}>
+                        2026-04-07 ile bu sayfanın deploy edildiği tarih arası audit logging
+                        <strong> Firebase rule mismatch</strong> nedeniyle çalışmıyordu (validator
+                        <code style={{ background: '#fff', padding: '2px 5px', borderRadius: 3 }}>mesaj</code> bekliyordu, kod
+                        <code style={{ background: '#fff', padding: '2px 5px', borderRadius: 3 }}>message</code> yazıyordu).
+                    </p>
+                    <p style={{ margin: 0 }}>
+                        Bundan sonraki hakem submit'leri, başhakem müdahaleleri ve silme işlemleri
+                        otomatik kayda alınacak. Şu yarışmaya ait gelecekteki aksiyonlar burada
+                        görünür.
+                    </p>
+                </div>
+            )}
+
+            {!loading && selectedCompId && logs.length > 0 && (
                 <>
                     {/* Hakem özeti */}
                     {refereeSummary.length > 0 && (
