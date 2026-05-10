@@ -88,6 +88,10 @@ export default function ScoreboardPage() {
     // Pagination within each view
     const [pageIndex, setPageIndex] = useState(0);
 
+    // Athlete detail modal — sporcuya tıklayınca DA/DB/A/E ayrıntısı gösterilir
+    const [detailAth, setDetailAth] = useState(null);
+    const closeDetail = useCallback(() => setDetailAth(null), []);
+
     // Flash State
     const [flashData, setFlashData] = useState(null);
     const [isFlashing, setIsFlashing] = useState(false);
@@ -717,6 +721,7 @@ export default function ScoreboardPage() {
     // Reset pageIndex when viewIndex changes
     useEffect(() => {
         setPageIndex(0);
+        setDetailAth(null);
     }, [viewIndex]);
 
     // Fullscreen
@@ -1098,8 +1103,11 @@ export default function ScoreboardPage() {
                             return (
                                 <div
                                     key={ath.id}
-                                    className={`sb-row ${ath.rank <= 3 && ath.total > 0 ? `sb-medal-${ath.rank}` : ''}`}
+                                    className={`sb-row sb-row-clickable ${ath.rank <= 3 && ath.total > 0 ? `sb-medal-${ath.rank}` : ''}`}
                                     style={{ gridTemplateColumns: gridTemplate, animationDelay: `${localIdx * 0.04}s` }}
+                                    onClick={() => ath.total > 0 && setDetailAth(ath)}
+                                    role="button"
+                                    tabIndex={0}
                                 >
                                     <div className="sb-cell sb-rank">
                                         {ath.total > 0 && ath.rank <= 3 ? (
@@ -1174,6 +1182,91 @@ export default function ScoreboardPage() {
                     )
                 )}
             </div>
+
+            {/* ATHLETE DETAIL MODAL — sporcuya tıklayınca DA/DB/A/E ayrıntısı */}
+            {detailAth && (
+                <div className="sb-detail-overlay" onClick={closeDetail}>
+                    <div className="sb-detail-modal" onClick={e => e.stopPropagation()}>
+                        <button className="sb-detail-close" onClick={closeDetail} aria-label="Kapat">
+                            <i className="material-icons-round">close</i>
+                        </button>
+                        <div className="sb-detail-header">
+                            <div className="sb-detail-rank">
+                                {detailAth.rank > 0 && detailAth.rank <= 3 ? (
+                                    <div className={`sb-medal-icon sb-medal-icon-${detailAth.rank}`}>{detailAth.rank}</div>
+                                ) : (
+                                    <span className="sb-detail-rank-num">{detailAth.rank > 0 ? detailAth.rank : '-'}</span>
+                                )}
+                            </div>
+                            <div className="sb-detail-info">
+                                <h3 className="sb-detail-name">{detailAth.ad} {detailAth.soyad}</h3>
+                                <p className="sb-detail-club">{detailAth.okul || detailAth.kulup}</p>
+                            </div>
+                            <div className="sb-detail-total">
+                                <span className="sb-detail-total-label">TOPLAM</span>
+                                <span className="sb-detail-total-value">{detailAth.total.toFixed(3)}</span>
+                            </div>
+                        </div>
+
+                        <div className="sb-detail-body">
+                            {isColumnBased ? (
+                                apparatusList.map(alet => {
+                                    const sc = detailAth.appScores[alet.id];
+                                    const has = sc && sc.total > 0;
+                                    return (
+                                        <div key={alet.id} className={`sb-detail-app ${has ? '' : 'sb-detail-app--empty'}`}>
+                                            <div className="sb-detail-app-head">
+                                                <span className="sb-detail-app-name">{alet.name}</span>
+                                                <span className="sb-detail-app-total">
+                                                    {has ? sc.total.toFixed(3) : (sc?.isGecersiz || sc?.isDNS) ? '0.000' : '—'}
+                                                </span>
+                                            </div>
+                                            {has && (
+                                                <div className="sb-detail-app-grid">
+                                                    {isRitmikBased ? (
+                                                        <>
+                                                            <div className="sb-detail-cell"><span>DA</span><b>{(sc.da || 0).toFixed(3)}</b></div>
+                                                            <div className="sb-detail-cell"><span>DB</span><b>{(sc.db || 0).toFixed(3)}</b></div>
+                                                            <div className="sb-detail-cell"><span>A</span><b>{(sc.a || 0).toFixed(3)}</b></div>
+                                                            <div className="sb-detail-cell"><span>E</span><b>{(sc.eOnly || 0).toFixed(3)}</b></div>
+                                                            {(sc.penalty || 0) > 0 && (
+                                                                <div className="sb-detail-cell sb-detail-cell--pen"><span>Ceza</span><b>-{(sc.penalty || 0).toFixed(3)}</b></div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="sb-detail-cell"><span>D</span><b>{(sc.d || 0).toFixed(2)}</b></div>
+                                                            <div className="sb-detail-cell"><span>E</span><b>{(sc.e || 0).toFixed(3)}</b></div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            ) : (() => {
+                                const sc = detailAth.appScores['_total'];
+                                const has = sc && sc.total > 0;
+                                return (
+                                    <div className="sb-detail-app">
+                                        <div className="sb-detail-app-head">
+                                            <span className="sb-detail-app-name">Genel</span>
+                                            <span className="sb-detail-app-total">{has ? sc.total.toFixed(3) : '—'}</span>
+                                        </div>
+                                        {has && (
+                                            <div className="sb-detail-app-grid">
+                                                {sc.d > 0 && <div className="sb-detail-cell"><span>D</span><b>{sc.d.toFixed(2)}</b></div>}
+                                                {sc.a > 0 && <div className="sb-detail-cell"><span>A</span><b>{sc.a.toFixed(3)}</b></div>}
+                                                {sc.e > 0 && <div className="sb-detail-cell"><span>E</span><b>{sc.e.toFixed(3)}</b></div>}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* FLASH OVERLAY */}
             <div className={`sb-flash ${isFlashing ? 'sb-flash-visible' : ''}`}>
