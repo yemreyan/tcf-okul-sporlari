@@ -21,8 +21,12 @@ const TYPE_LABELS = {
     sj_field_override:    { label: 'Başhakem Müdahale', color: '#f59e0b' },
     score_field_cleared:  { label: 'Alan Silindi',   color: '#ef4444' },
     score_submitted:      { label: 'Skor Kaydedildi', color: '#22c55e' },
+    score_create:         { label: 'Skor Kaydı',     color: '#16a34a' },
     score_unlock:         { label: 'Kilit Açıldı',   color: '#8b5cf6' },
     alet_transfer:        { label: 'Alet Taşıma',    color: '#a855f7' },
+    login:                { label: 'Giriş',          color: '#64748b' },
+    logout:               { label: 'Çıkış',          color: '#94a3b8' },
+    competition_update:   { label: 'Yarışma Güncelleme', color: '#0891b2' },
 };
 
 const formatDateTime = (ts) => {
@@ -57,16 +61,41 @@ export default function HakemRaporuPage() {
     useEffect(() => {
         if (!selectedCompId) { setLogs([]); return; }
         setLoading(true);
+        // Tüm logları çek (orderByChild index'i yoksa Firebase eski tarz tarama yapar — yavaş ama çalışır)
+        // 1) İlk olarak indexed query dene
         const q = query(ref(db, 'logs'), orderByChild('competitionId'), equalTo(selectedCompId));
         get(q).then(snap => {
             const data = snap.val() || {};
             const arr = Object.entries(data)
                 .map(([id, v]) => ({ id, ...v }))
-                .filter(l => ['judge_score_submit', 'sj_field_override', 'score_field_cleared', 'score_submitted', 'score_unlock', 'alet_transfer'].includes(l.type))
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             setLogs(arr);
-        }).catch(() => setLogs([]))
-          .finally(() => setLoading(false));
+            // Eğer indexed sorgu boş döndüyse, fallback: tüm logları çek + JS'de filtrele
+            // (eski log'larda competitionId eksik olabilir)
+            if (arr.length === 0) {
+                return get(ref(db, 'logs')).then(allSnap => {
+                    const all = allSnap.val() || {};
+                    const matched = Object.entries(all)
+                        .map(([id, v]) => ({ id, ...v }))
+                        .filter(l => l.competitionId === selectedCompId)
+                        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    setLogs(matched);
+                });
+            }
+        }).catch(async () => {
+            // Indexed query başarısız → tam tarama fallback
+            try {
+                const allSnap = await get(ref(db, 'logs'));
+                const all = allSnap.val() || {};
+                const matched = Object.entries(all)
+                    .map(([id, v]) => ({ id, ...v }))
+                    .filter(l => l.competitionId === selectedCompId)
+                    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                setLogs(matched);
+            } catch {
+                setLogs([]);
+            }
+        }).finally(() => setLoading(false));
     }, [selectedCompId]);
 
     const filtered = useMemo(() => {
@@ -209,6 +238,7 @@ export default function HakemRaporuPage() {
                                 {filtered.map(l => {
                                     const tcfg = TYPE_LABELS[l.type] || { label: l.type, color: '#94a3b8' };
                                     const isSj = l.type === 'sj_field_override' || (l.data?.source === 'basHakem');
+                                    const fullMsg = l.message || l.mesaj || '';
                                     return (
                                         <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9', background: isSj ? 'rgba(245,158,11,0.06)' : 'transparent' }}>
                                             <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>{formatDateTime(l.timestamp)}</td>
@@ -217,12 +247,24 @@ export default function HakemRaporuPage() {
                                                     {tcfg.label}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '6px 10px', fontWeight: 600 }}>{l.athleteName || l.athleteId || '—'}</td>
+                                            <td style={{ padding: '6px 10px', fontWeight: 600 }}>
+                                                {l.athleteName || l.athleteId || (
+                                                    <span style={{ color: '#64748b', fontWeight: 400, fontStyle: 'italic' }}>{fullMsg.split(' — ')[0] || '—'}</span>
+                                                )}
+                                            </td>
                                             <td style={{ padding: '6px 10px' }}>{l.alet || '—'}</td>
                                             <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>{l.field || '—'}</td>
                                             <td style={{ padding: '6px 10px', textAlign: 'right', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{formatVal(l.oldValue)}</td>
-                                            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: isSj ? '#d97706' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{formatVal(l.newValue)}</td>
-                                            <td style={{ padding: '6px 10px', fontSize: 11, color: '#64748b' }}>{l.user || '—'}</td>
+                                            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: isSj ? '#d97706' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                                                {l.newValue !== null && l.newValue !== undefined ? formatVal(l.newValue) : (
+                                                    // Eski score_create: değeri mesajdan çıkar (örn. "Yer: 14.050")
+                                                    (() => {
+                                                        const m = fullMsg.match(/:\s*([\d.,]+)\s*$/);
+                                                        return m ? <span style={{ color: '#22c55e' }}>{m[1]}</span> : '—';
+                                                    })()
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '6px 10px', fontSize: 11, color: '#64748b' }} title={fullMsg}>{l.user || (fullMsg.length > 40 ? fullMsg.slice(0, 40) + '…' : fullMsg) || '—'}</td>
                                         </tr>
                                     );
                                 })}
