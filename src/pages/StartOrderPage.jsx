@@ -145,14 +145,32 @@ export default function StartOrderPage() {
 
                 const data = athletesSnap.val();
                 const loadedAthletes = [];
+                const namelessIds = [];
                 if (data) {
                     Object.keys(data).forEach(athId => {
+                        const ath = data[athId] || {};
+                        // İSİMSİZ KAYIT FİLTRESİ: ad VE soyad ikisi de boşsa gizle
+                        // (data corruption / yarım silme — display'de "isimsiz" görünmesin)
+                        const hasName = (ath.ad && String(ath.ad).trim()) || (ath.soyad && String(ath.soyad).trim());
+                        if (!hasName) {
+                            namelessIds.push(athId);
+                            return;
+                        }
                         loadedAthletes.push({
-                            ...data[athId],
+                            ...ath,
                             id: athId,
                             categoryId: filterCategory
                         });
                     });
+                }
+                // Arka planda Firebase'den orphan isimsiz kayıtları temizle
+                if (namelessIds.length > 0) {
+                    const cleanup = {};
+                    namelessIds.forEach(id => {
+                        cleanup[`${firebasePath}/${selectedCompId}/sporcular/${filterCategory}/${id}`] = null;
+                        cleanup[`${firebasePath}/${selectedCompId}/puanlar/${filterCategory}/${id}`]   = null;
+                    });
+                    update(ref(db), cleanup).catch(() => { /* noop */ });
                 }
 
                 const orderData = orderSnap.val();

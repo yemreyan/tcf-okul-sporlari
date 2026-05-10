@@ -210,6 +210,9 @@ export default function FinalsPage() {
 
             const sortedResults = athletes.map(([id, athlete]) => {
                 if (!athlete) return null;
+                // İSİMSİZ FİLTRE: ad/soyad boşsa görünmez
+                const hasName = (athlete.ad && String(athlete.ad).trim()) || (athlete.soyad && String(athlete.soyad).trim());
+                if (!hasName) return null;
                 const scoreData = categoryScores[id];
                 const finalScore  = parseFloat(scoreData?.sonuc || 0);
                 const dScoreVal   = parseFloat(scoreData?.dScore || 0);
@@ -294,6 +297,9 @@ export default function FinalsPage() {
         const sortedResults = participantIds.map(id => {
             const athlete = useGlobalAthletes ? globalAthletes[id] : categoryAthletes[id];
             if (!athlete) return null;
+            // İSİMSİZ FİLTRE: ad/soyad boşsa görünmez (data corruption / yarım kayıt)
+            const hasName = (athlete.ad && String(athlete.ad).trim()) || (athlete.soyad && String(athlete.soyad).trim());
+            if (!hasName) return null;
 
             if (useGlobalAthletes && athlete.kategori) {
                 const normSelected = (catData.name || catData.ad || selectedCategoryId).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -780,6 +786,9 @@ export default function FinalsPage() {
         const sortedC = participantIds.map(id => {
             const athlete = useGlobalAthletes ? globalAthletes[id] : catAth[id];
             if (!athlete) return null;
+            // İSİMSİZ FİLTRE
+            const hasName = (athlete.ad && String(athlete.ad).trim()) || (athlete.soyad && String(athlete.soyad).trim());
+            if (!hasName) return null;
 
             if (useGlobalAthletes && athlete.kategori) {
                 const normSelected = (catData.name || catData.ad || catId).toLowerCase().replace(/[^a-z0-9]/g, '');
