@@ -474,10 +474,12 @@ export default function FinalsPage() {
             // ── Ritmik takım hesabı: max 4 (genç: 3) sporcu, alet başına top 2 puan ──
             const maxSize = getRitmikMaxTeamSize(catKey);
             const clubMembers = {}; // {okul: {athId: {top, kurdele, total}}}
+            const clubIl = {};      // {okul: il}
 
             filteredResults.forEach(res => {
                 if (!res.okul) return;
                 if (!clubMembers[res.okul]) clubMembers[res.okul] = {};
+                if (!clubIl[res.okul] && res.il) clubIl[res.okul] = res.il;
                 const total = apparatusKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
                 clubMembers[res.okul][res.id] = {
                     ...apparatusKeys.reduce((acc, k) => ({ ...acc, [k]: res.scores[k] || 0 }), {}),
@@ -499,7 +501,7 @@ export default function FinalsPage() {
                         .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                     const finalScore = totalScore - deductionTotal;
                     const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
-                    return { name, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
+                    return { name, il: clubIl[name] || '', apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -516,9 +518,10 @@ export default function FinalsPage() {
         filteredResults.forEach(res => {
             if (!res.okul) return;
             if (!clubScores[res.okul]) {
-                clubScores[res.okul] = { name: res.okul, scores: {} };
+                clubScores[res.okul] = { name: res.okul, il: res.il || '', scores: {} };
                 apparatusKeys.forEach(key => clubScores[res.okul].scores[key] = []);
             }
+            if (!clubScores[res.okul].il && res.il) clubScores[res.okul].il = res.il;
             apparatusKeys.forEach(key => clubScores[res.okul].scores[key].push(res.scores[key]));
         });
 
@@ -540,7 +543,7 @@ export default function FinalsPage() {
                     .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
                     .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 const finalScore = totalScore - deductionTotal;
-                return { name: team.name, apparatusTotals, totalScore, deduction: deductionTotal, finalScore };
+                return { name: team.name, il: team.il || '', apparatusTotals, totalScore, deduction: deductionTotal, finalScore };
             }).sort((a, b) => b.finalScore - a.finalScore);
 
         let lastTS = -1;
@@ -569,7 +572,8 @@ export default function FinalsPage() {
                         return k === teamKey;
                     });
                     const teamName = matchAth?.okul || teamKey;
-                    return { teamKey, teamName, score };
+                    const teamIl = matchAth?.il || '';
+                    return { teamKey, teamName, teamIl, score };
                 })
                 .filter(e => e !== null && !excludedTeams.has(e.teamName))
                 .sort((a, b) => b.score - a.score);
@@ -584,6 +588,7 @@ export default function FinalsPage() {
                 lastTS = finalScore;
                 return {
                     name: e.teamName,
+                    il: e.teamIl || '',
                     top2Scores: [e.score],
                     totalScore: e.score,
                     deduction: deductionTotal,
@@ -600,7 +605,7 @@ export default function FinalsPage() {
         Object.entries(categoryAthletes).forEach(([id, athlete]) => {
             if (!athlete) return;
             const score = parseFloat(categoryScores[id]?.sonuc || 0);
-            if (score > 0) allEntries.push({ id, okul: athlete.okul || '', score });
+            if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', score });
         });
 
         // Kardeş kategoriler
@@ -608,7 +613,7 @@ export default function FinalsPage() {
             Object.entries(catD.athletes || {}).forEach(([id, athlete]) => {
                 if (!athlete) return;
                 const score = parseFloat(catD.scores?.[id]?.sonuc || 0);
-                if (score > 0) allEntries.push({ id, okul: athlete.okul || '', score });
+                if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', score });
             });
         });
 
@@ -616,9 +621,10 @@ export default function FinalsPage() {
 
         // Okul bazında havuzla
         const schoolMap = {};
-        allEntries.forEach(({ okul, score }) => {
+        allEntries.forEach(({ okul, il, score }) => {
             if (!okul) return;
-            if (!schoolMap[okul]) schoolMap[okul] = { name: okul, scores: [] };
+            if (!schoolMap[okul]) schoolMap[okul] = { name: okul, il: il || '', scores: [] };
+            if (!schoolMap[okul].il && il) schoolMap[okul].il = il;
             schoolMap[okul].scores.push(score);
         });
 
@@ -634,6 +640,7 @@ export default function FinalsPage() {
                     .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 return {
                     name: team.name,
+                    il: team.il || '',
                     top2Scores: top2,
                     totalScore,
                     deduction: deductionTotal,
@@ -914,9 +921,10 @@ export default function FinalsPage() {
         filtered.forEach(res => {
             if (!res.okul) return;
             if (!clubScores[res.okul]) {
-                clubScores[res.okul] = { name: res.okul, scores: {} };
+                clubScores[res.okul] = { name: res.okul, il: res.il || '', scores: {} };
                 appKeys.forEach(k => clubScores[res.okul].scores[k] = []);
             }
+            if (!clubScores[res.okul].il && res.il) clubScores[res.okul].il = res.il;
             appKeys.forEach(k => clubScores[res.okul].scores[k].push(res.scores[k]));
         });
 
@@ -937,7 +945,7 @@ export default function FinalsPage() {
                 const dTotal = Object.values(teamDeductions || {})
                     .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === catId))
                     .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-                return { name: team.name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
+                return { name: team.name, il: team.il || '', apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
             }).sort((a, b) => b.finalScore - a.finalScore);
 
         let ctLastS = -1;
@@ -1255,9 +1263,10 @@ export default function FinalsPage() {
                     ]];
 
                     const teamBody = teamResults.map((t) => {
+                        const teamLabel = t.il ? `${normalizeTR(t.name)} (${normalizeTR(t.il)})` : normalizeTR(t.name);
                         const row = [
                             { content: `${t.rank}.`, styles: { fontStyle: 'bold', halign: 'center' } },
-                            { content: normalizeTR(t.name), styles: { fontStyle: 'bold' } }
+                            { content: teamLabel, styles: { fontStyle: 'bold' } }
                         ];
                         apparatusKeysList.forEach(k => row.push({ content: fmtScore(t.apparatusTotals[k]), styles: { halign: 'center' } }));
                         row.push({ content: fmtScore(t.totalScore), styles: { halign: 'center' } });
@@ -1401,7 +1410,8 @@ export default function FinalsPage() {
                     const exportTeam = teamResults.map((t) => {
                         const row = {
                             'S.N.': t.rank,
-                            'Takım': t.name
+                            'Takım': t.name,
+                            'İl': t.il || ''
                         };
                         apparatusKeysList.forEach(key => row[`${APPARATUS_INFO[key]?.tr || key} (${APPARATUS_INFO[key]?.en || key})`] = parseFloat(formatScore(t.apparatusTotals[key])));
                         row['Alet Toplamı'] = parseFloat(formatScore(t.totalScore));
@@ -1765,7 +1775,10 @@ export default function FinalsPage() {
                                                     {aerobikTeams.map((team) => (
                                                         <tr key={team.name} className={getMedalClass(team.rank)}>
                                                             <td className="td-center rank-col"><span className="rank-badge">{team.rank}</span></td>
-                                                            <td className="team-col-bold">{team.name}</td>
+                                                            <td className="team-col-bold">
+                                                                {team.name}
+                                                                {team.il && <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>· {team.il}</span>}
+                                                            </td>
                                                             {isStepCategorySelected ? (
                                                                 <td className="td-center score-col">{formatScore(team.totalScore)}</td>
                                                             ) : (
@@ -1821,7 +1834,10 @@ export default function FinalsPage() {
                                                     return (
                                                         <tr key={team.name} className={getMedalClass(rank)}>
                                                             <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
-                                                            <td className="team-col-bold">{team.name}</td>
+                                                            <td className="team-col-bold">
+                                                                {team.name}
+                                                                {team.il && <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>· {team.il}</span>}
+                                                            </td>
                                                             {apparatusKeys.map(key => (
                                                                 <td key={key} className="td-center score-col">{formatScore(team.apparatusTotals[key])}</td>
                                                             ))}
