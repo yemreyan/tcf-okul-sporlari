@@ -158,6 +158,7 @@ export default function ScoreboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     const [autoStartedRef] = useState({ value: false });
+    const [pendingAutoLive, setPendingAutoLive] = useState(false);
     useEffect(() => {
         if (!urlPublicMode || autoStartedRef.value) return;
         if (!competitions[urlPublicMode.compId]) return;  // yarışma henüz yüklenmedi
@@ -173,10 +174,19 @@ export default function ScoreboardPage() {
             setSelectedCategories(new Set(Object.keys(comp.kategoriler)));
         }
 
-        if (urlPublicMode.autoLive) setIsLive(true);
+        if (urlPublicMode.autoLive) setPendingAutoLive(true);
         autoStartedRef.value = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [competitions, urlPublicMode]);
+
+    // Public mod için handleGoLive çağrısı — selectedCompId/selectedCategories state'i yerleştikten sonra
+    useEffect(() => {
+        if (!pendingAutoLive) return;
+        if (!selectedCompId || selectedCategories.size === 0) return;
+        setPendingAutoLive(false);
+        handleGoLive();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingAutoLive, selectedCompId, selectedCategories]);
 
     // Cleanup on unmount
     useEffect(() => {
