@@ -257,13 +257,14 @@ export default function ScoreboardPage() {
             liveUnsubsRef.current.push(unsubScores);
         });
 
-        // Flash trigger
+        // Flash trigger — son skor flash kartı (sayfa açılışında da gösterilir)
+        // Timestamp check: 25 saniyeden eski event'ler ignore edilir.
+        // Flash kartının gösterim süresi 20s olduğu için 25s'lik pencere
+        // sayfaya yeni bağlanan seyirciye son flash'ı yetiştirir.
         const flashRef = ref(db, `${firebasePath}/${selectedCompId}/flashTrigger`);
-        let isInitialLoad = true;
         const unsubFlash = onValue(flashRef, (snap) => {
-            if (isInitialLoad) { isInitialLoad = false; return; }
             const data = snap.val();
-            if (data && (Date.now() - data.timestamp < 10000)) {
+            if (data && data.timestamp && (Date.now() - data.timestamp < 25000)) {
                 triggerFlash(data);
             }
         });
