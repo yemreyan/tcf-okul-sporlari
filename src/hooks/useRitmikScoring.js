@@ -195,10 +195,34 @@ export function useRitmikScoring() {
     }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet]);
 
     // Sil yapıldığında lock'u kaldır + alanı null yap (hakem yeniden gönderebilsin)
+    // YENİ: Silmeden ÖNCE eski değeri Firebase'den oku, audit log'a yedekle.
     const clearFieldOverride = useCallback(async (fieldKey) => {
         if (!selectedCompId || !selectedCategory || !selectedAthlete?.id || !selectedAlet) return;
         const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/${selectedAlet}`;
         try {
+            // 1) Eski değeri oku (silinmeden önce backup için)
+            let oldValue = null;
+            try {
+                const snap = await get(ref(db, `${basePath}/${toFbPath(fieldKey)}`));
+                oldValue = snap.val();
+            } catch { /* noop */ }
+
+            // 2) Audit log: eski değeri kaydet
+            try {
+                await logAction('score_field_cleared', `Alan silindi: ${fieldKey}`, {
+                    user:          currentUser?.adSoyad || currentUser?.kullaniciAdi || 'admin',
+                    competitionId: selectedCompId,
+                    category:      selectedCategory,
+                    athleteId:     selectedAthlete.id,
+                    athleteName:   `${selectedAthlete.ad || ''} ${selectedAthlete.soyad || ''}`.trim(),
+                    alet:          selectedAlet,
+                    field:         fieldKey,
+                    oldValue:      oldValue,
+                    discipline:    'ritmik',
+                });
+            } catch { /* logging hatası kritik değil */ }
+
+            // 3) Asıl silme
             await update(ref(db), {
                 [`${basePath}/${toFbPath(fieldKey)}`]: null,
                 [`${basePath}/lockedFields/${toLockKey(fieldKey)}`]: null,
@@ -206,7 +230,7 @@ export function useRitmikScoring() {
         } catch (e) {
             if (import.meta.env.DEV) console.error('clearFieldOverride error', e);
         }
-    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet]);
+    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet, currentUser]);
 
     // ── Manuel refresh: hakem notları gecikirse buton ile zorla çek ──
     // Alan-bazlı merge ile sync yapılıyor: başhakemin elle değiştirdiği alanlar
@@ -588,14 +612,17 @@ export function useRitmikScoring() {
                 });
             } catch (_fe) { /* flash trigger hatası kritik değil */ }
 
-            await logAction('score_submitted', {
+            await logAction('score_submitted', `Skor kaydedildi: ${selectedAthlete.ad} ${selectedAthlete.soyad} · ${selectedAlet} · ${scoreData.sonuc}`, {
+                user:          currentUser?.adSoyad || currentUser?.kullaniciAdi || 'admin',
                 competitionId: selectedCompId,
                 category:      selectedCategory,
                 athleteId:     selectedAthlete.id,
+                athleteName:   `${selectedAthlete.ad || ''} ${selectedAthlete.soyad || ''}`.trim(),
                 alet:          selectedAlet,
                 finalScore:    scoreData.sonuc,
                 discipline:    'ritmik',
-                layout:        scoreData._layout || 'modern',
+                // TÜM puan verisi backup için (DA, DA1, DA2, SJDA, DB, DB1, DB2, SJDB, A panel, E panel, vb.)
+                data:          scoreData,
             });
 
             const next = getNextAthlete();
@@ -796,13 +823,15 @@ export function useRitmikScoring() {
                 // Aktif alet de hedefe çevril (hakem panelleri yeni alete geçsin)
                 [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]: otherAlet,
             });
-            await logAction('alet_transfer', {
+            await logAction('alet_transfer', `Alet taşındı: ${selectedAthlete.ad} ${selectedAthlete.soyad} · ${selectedAlet} → ${otherAlet}`, {
+                user:          currentUser?.adSoyad || currentUser?.kullaniciAdi || 'admin',
                 competitionId: selectedCompId,
                 category:      selectedCategory,
                 athleteId:     selectedAthlete.id,
-                from:          selectedAlet,
-                to:            otherAlet,
+                athleteName:   `${selectedAthlete.ad || ''} ${selectedAthlete.soyad || ''}`.trim(),
+                alet:          selectedAlet,
                 discipline:    'ritmik',
+                data:          { from: selectedAlet, to: otherAlet, payload: data },
             });
             toast(`Notlar ${RITMIK_ALETLER[otherAlet]?.label || otherAlet} aletine taşındı.`, 'success');
             // Local'i de yeni alete geçir
@@ -812,7 +841,7 @@ export function useRitmikScoring() {
             toast('Taşıma hatası: ' + e.message, 'error');
             return false;
         }
-    }, [selectedAthlete, selectedAlet, selectedCompId, selectedCategory, firebasePath, handleSelectAlet, toast]);
+    }, [selectedAthlete, selectedAlet, selectedCompId, selectedCategory, firebasePath, handleSelectAlet, toast, currentUser]);
 
     // ─── Sporcu Durum ───
     const getAthleteStatus = useCallback((athlete) => {

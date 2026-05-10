@@ -181,9 +181,9 @@
 
     "logs": {
       ".write": true,
-      ".indexOn": ["timestamp", "type", "competitionId", "user"],
+      ".indexOn": ["timestamp", "type", "competitionId", "user", "athleteId", "field"],
       "$logId": {
-        ".validate": "!data.exists() && newData.hasChildren(['timestamp', 'type', 'mesaj']) && newData.child('mesaj').val().length <= 500"
+        ".validate": "!data.exists() && newData.hasChildren(['timestamp', 'type']) && (newData.hasChild('message') || newData.hasChild('mesaj'))"
       }
     },
 
