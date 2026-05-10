@@ -118,11 +118,27 @@ export default function ScoreboardPage() {
     }, []);
 
     // Initial Data Fetch — tek seferlik okuma (puanlar dahil tüm node'u sürekli dinlemek gereksiz)
+    const [fetchError, setFetchError] = useState(null);
+    const [fetchDone, setFetchDone] = useState(false);
     useEffect(() => {
-        get(ref(db, firebasePath)).then(snapshot => {
-            const data = snapshot.val();
-            if (data) setCompetitions(filterCompetitionsByUser(data, currentUser));
-        });
+        let cancelled = false;
+        setFetchError(null);
+        setFetchDone(false);
+        get(ref(db, firebasePath))
+            .then(snapshot => {
+                if (cancelled) return;
+                const data = snapshot.val();
+                if (data) setCompetitions(filterCompetitionsByUser(data, currentUser));
+                else setCompetitions({});
+                setFetchDone(true);
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.error('[Scoreboard] Firebase okuma hatası:', err);
+                setFetchError(err?.message || 'Firebase bağlantı hatası');
+                setFetchDone(true);
+            });
+        return () => { cancelled = true; };
     }, [currentUser, firebasePath]);
 
     // ── URL parametreleri ile public mod (tcfscore.vercel.app entegrasyonu) ──
@@ -781,6 +797,12 @@ export default function ScoreboardPage() {
         // Public mod: URL'de compId varsa config ekranı YERİNE loading göster
         // (yarışma yüklenip auto-start tetiklenene kadar)
         if (urlPublicMode) {
+            const compFound = !!competitions[urlPublicMode.compId];
+            const errMsg = fetchError
+                ? `Bağlantı hatası: ${fetchError}`
+                : (fetchDone && !compFound)
+                    ? `Yarışma bulunamadı (compId: ${urlPublicMode.compId})`
+                    : null;
             return (
                 <div style={{
                     minHeight: '100vh',
@@ -791,17 +813,33 @@ export default function ScoreboardPage() {
                     background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
                     color: '#e2e8f0',
                     gap: '1.5rem',
+                    padding: '2rem',
+                    textAlign: 'center',
                 }}>
-                    <div style={{
-                        width: 56, height: 56,
-                        border: '4px solid rgba(99,102,241,0.25)',
-                        borderTopColor: '#6366f1',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                    }} />
-                    <div style={{ fontSize: '1.1rem', fontWeight: 600, opacity: 0.85 }}>
-                        Canlı skor yükleniyor…
-                    </div>
+                    {errMsg ? (
+                        <>
+                            <div style={{ fontSize: 56 }}>⚠️</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f87171' }}>
+                                {errMsg}
+                            </div>
+                            <div style={{ fontSize: '0.9rem', opacity: 0.7, maxWidth: 480 }}>
+                                URL parametrelerini kontrol edin veya yarışma sahibinden yeni bir bağlantı isteyin.
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div style={{
+                                width: 56, height: 56,
+                                border: '4px solid rgba(99,102,241,0.25)',
+                                borderTopColor: '#6366f1',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite',
+                            }} />
+                            <div style={{ fontSize: '1.1rem', fontWeight: 600, opacity: 0.85 }}>
+                                Canlı skor yükleniyor…
+                            </div>
+                        </>
+                    )}
                     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 </div>
             );
