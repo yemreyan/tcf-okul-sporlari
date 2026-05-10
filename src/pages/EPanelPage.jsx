@@ -460,6 +460,26 @@ export default function EPanelPage() {
                                 </span>
                                 <h2 className="sent-title">{status === 'locked' ? 'Puan Kilitlendi' : 'İletildi'}</h2>
 
+                                {athleteInfo && (
+                                    <div style={{
+                                        margin: '4px 0 12px',
+                                        padding: '0.55rem 1rem',
+                                        background: 'rgba(255,255,255,0.06)',
+                                        border: '1px solid rgba(255,255,255,0.12)',
+                                        borderRadius: '0.55rem',
+                                        textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>
+                                            {athleteInfo.ad} {athleteInfo.soyad}
+                                        </div>
+                                        {(athleteInfo.kulup || athleteInfo.okul) && (
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+                                                {athleteInfo.kulup || athleteInfo.okul}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="sent-score-display" style={{ color: status === 'locked' ? '#9ca3af' : 'var(--neon-green)' }}>
                                     {serverScore !== null ? Number(serverScore).toFixed(2) : ''}
                                 </div>

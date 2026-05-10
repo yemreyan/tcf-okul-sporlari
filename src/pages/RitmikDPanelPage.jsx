@@ -676,6 +676,31 @@ export default function RitmikDPanelPage() {
                                 <span className="material-icons-round sent-icon" style={{ color: 'var(--success)' }}>check_circle</span>
                                 <h2 className="sent-title">İletildi</h2>
 
+                                {athleteInfo && (
+                                    <div style={{
+                                        margin: '4px 0 12px',
+                                        padding: '0.55rem 1rem',
+                                        background: 'rgba(255,255,255,0.06)',
+                                        border: '1px solid rgba(255,255,255,0.12)',
+                                        borderRadius: '0.55rem',
+                                        textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>
+                                            {athleteInfo.ad} {athleteInfo.soyad}
+                                        </div>
+                                        {(athleteInfo.kulup || athleteInfo.okul) && (
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+                                                {athleteInfo.kulup || athleteInfo.okul}
+                                            </div>
+                                        )}
+                                        {aletLabel && (
+                                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.55)', marginTop: 2, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                                                {aletLabel}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {config.dual && serverKesin !== null && (
                                     <div className="sent-score-display" style={{ color: '#a78bfa', fontSize: '1.4rem', marginBottom: '4px' }}>
                                         {config.kesinLabel}: {Number(serverKesin).toFixed(3)}
