@@ -184,15 +184,40 @@ export function useRitmikScoring() {
             const num = parseFloat(trimmed);
             const writeVal = (trimmed === '' || isNaN(num)) ? null : num;
             try {
+                // 1) Eski değeri oku
+                let oldValue = null;
+                try {
+                    const snap = await get(ref(db, `${basePath}/${toFbPath(fieldKey)}`));
+                    oldValue = snap.val();
+                } catch { /* noop */ }
+
+                // 2) Yaz
                 await update(ref(db), {
                     [`${basePath}/${toFbPath(fieldKey)}`]:               writeVal,
                     [`${basePath}/lockedFields/${toLockKey(fieldKey)}`]: true,
                 });
+
+                // 3) Audit log: BAŞHAKEM override (source: 'basHakem')
+                try {
+                    await logAction('sj_field_override', `Başhakem override: ${fieldKey}: ${oldValue ?? '—'} → ${writeVal ?? '—'}`, {
+                        user:           currentUser?.adSoyad || currentUser?.kullaniciAdi || 'admin',
+                        competitionId:  selectedCompId,
+                        category:       selectedCategory,
+                        athleteId:      selectedAthlete.id,
+                        athleteName:    `${selectedAthlete.ad || ''} ${selectedAthlete.soyad || ''}`.trim(),
+                        alet:           selectedAlet,
+                        field:          fieldKey,
+                        oldValue:       oldValue,
+                        newValue:       writeVal,
+                        discipline:     'ritmik',
+                        data:           { source: 'basHakem', locked: true },
+                    });
+                } catch { /* noop */ }
             } catch (e) {
                 if (import.meta.env.DEV) console.error('writeFieldOverride error', e);
             }
         }, 500);
-    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet]);
+    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet, currentUser]);
 
     // Sil yapıldığında lock'u kaldır + alanı null yap (hakem yeniden gönderebilsin)
     // YENİ: Silmeden ÖNCE eski değeri Firebase'den oku, audit log'a yedekle.

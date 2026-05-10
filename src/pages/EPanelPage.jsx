@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { logAction } from '../lib/auditLogger';
 import RitmikLockedSummary from '../components/RitmikLockedSummary';
 import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
@@ -319,24 +320,49 @@ export default function EPanelPage() {
             return;
         }
 
+        // Önceki değer (audit için)
+        const prevValue = serverScore;
+
         try {
+            let logField = '';
             if (isRitmik) {
                 // Ritmik: puanlar/catId/athleteId/aletId/aPanel|ePanel → j1, j2...
                 const panelKey = panelType === 'a' ? 'aPanel' : 'ePanel';
                 const judgeKey = panelId.toLowerCase().replace(/^[ae]/, 'j'); // 'a1'→'j1'
                 const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}/${panelKey}`;
                 await update(ref(db, path), { [judgeKey]: val });
+                logField = `${panelKey}.${judgeKey}`;
             } else if (isAerobik) {
                 // Aerobik: puanlar/catId/athleteId/ePanel → { j1: val }
                 const judgeKey = panelId.toLowerCase().replace(/^e/, 'j'); // 'e1'→'j1'
                 const path = `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/ePanel`;
                 await update(ref(db, path), { [judgeKey]: val });
+                logField = `ePanel.${judgeKey}`;
             } else {
                 // Artistik: puanlar/catId/aletId/athleteId → { e1: val }
                 const path = `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`;
                 const field = panelId.toLowerCase();
                 await update(ref(db, path), { [field]: val });
+                logField = field;
             }
+
+            // Audit log: hakem submission (her gönderim ayrı kayıt)
+            try {
+                await logAction('judge_score_submit', `${refereeName || (panelId || '')} hakemi → ${logField}: ${prevValue ?? '—'} → ${val}`, {
+                    user:           refereeName || `panel:${panelId}`,
+                    competitionId:  compId,
+                    category:       catId,
+                    athleteId:      activeAthleteId,
+                    athleteName:    athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : '',
+                    alet:           isRitmik ? currentAlet : (aletId || ''),
+                    field:          logField,
+                    oldValue:       prevValue ?? null,
+                    newValue:       val,
+                    discipline:     disciplineId,
+                    data:           { source: 'hakem', panelId, panelType },
+                });
+            } catch { /* logging hatası kritik değil */ }
+
             setScoreInput('');
         } catch (e) {
             toast("Hata oluştu. Lütfen tekrar deneyin.", "error");

@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
+import { logAction } from '../lib/auditLogger';
 import RitmikLockedSummary from '../components/RitmikLockedSummary';
 import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
@@ -296,14 +297,35 @@ export default function RitmikDPanelPage() {
     };
     const getPath = () => `${firebasePath}/${compId}/puanlar/${catId}/${activeAthleteId}/${currentAlet}`;
 
+    // Audit log helper
+    const auditSubmit = async (field, oldVal, newVal) => {
+        try {
+            await logAction('judge_score_submit', `${(config.badge||panelType).toUpperCase()} hakemi → ${field}: ${oldVal ?? '—'} → ${newVal}`, {
+                user:           `panel:${panelType}`,
+                competitionId:  compId,
+                category:       catId,
+                athleteId:      activeAthleteId,
+                athleteName:    athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : '',
+                alet:           currentAlet,
+                field:          field,
+                oldValue:       oldVal ?? null,
+                newValue:       newVal,
+                discipline:     'ritmik',
+                data:           { source: 'hakem', panelType, badge: config.badge },
+            });
+        } catch { /* logging hatası kritik değil */ }
+    };
+
     // ── 1. Aşama: Ana not gönder (DA1 / DB1 / DA2 / SJDA / SJDB / SJA / SJE) ──
     const handleSendMain = async () => {
         if (!activeAthleteId || scoreInput === '') return;
         const mainVal = parseVal(scoreInput);
         if (mainVal === null) { toast('Geçersiz puan! 0 veya üzeri bir sayı girin.', 'warning'); return; }
         if (!currentAlet)     { toast('Henüz alet seçilmedi.', 'warning'); return; }
+        const prev = serverScore;
         try {
             await update(ref(db, getPath()), { [config.mainField]: mainVal });
+            await auditSubmit(config.mainField, prev, mainVal);
             setScoreInput('');
             // Listener subStep='kesin'e otomatik geçirecek (dual ise)
         } catch {
@@ -317,10 +339,12 @@ export default function RitmikDPanelPage() {
         const kesinVal = parseVal(kesinInput);
         if (kesinVal === null) { toast(`${config.kesinLabel} için geçersiz değer!`, 'warning'); return; }
         if (!currentAlet)      { toast('Henüz alet seçilmedi.', 'warning'); return; }
+        const prev = serverKesin;
         try {
             const updates = { [config.kesinField]: kesinVal };
             if (config.also) config.also.forEach(f => { updates[f] = kesinVal; });
             await update(ref(db, getPath()), updates);
+            await auditSubmit(config.kesinField, prev, kesinVal);
             setKesinInput('');
             // Listener status='sent'e otomatik geçirecek
         } catch {
