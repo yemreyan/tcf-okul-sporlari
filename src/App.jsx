@@ -144,7 +144,7 @@ function AppRoutes() {
         <Route path="/artistik/referees" element={<PD discipline="artistik" pageKey="referees"><RefereesPage /></PD>} />
         <Route path="/artistik/analytics" element={<PD discipline="artistik" pageKey="analytics"><AnalyticsPage /></PD>} />
         <Route path="/artistik/finals" element={<PD discipline="artistik" pageKey="finals"><FinalsPage /></PD>} />
-        <Route path="/artistik/scoreboard" element={<PD discipline="artistik" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/artistik/scoreboard" element={<D discipline="artistik"><ScoreboardPage /></D>} />
         <Route path="/artistik/links" element={<PD discipline="artistik" pageKey="links"><LinksPage /></PD>} />
         <Route path="/artistik/official-report" element={<PD discipline="artistik" pageKey="official_report"><OfficialReportPage /></PD>} />
         <Route path="/artistik/athlete/:compId/:catId/:athId" element={<PD discipline="artistik" pageKey="athletes"><AthleteProfilePage /></PD>} />
@@ -167,7 +167,7 @@ function AppRoutes() {
         <Route path="/aerobik/referees" element={<PD discipline="aerobik" pageKey="referees"><RefereesPage /></PD>} />
         <Route path="/aerobik/analytics" element={<PD discipline="aerobik" pageKey="analytics"><AnalyticsPage /></PD>} />
         <Route path="/aerobik/finals" element={<PD discipline="aerobik" pageKey="finals"><FinalsPage /></PD>} />
-        <Route path="/aerobik/scoreboard" element={<PD discipline="aerobik" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/aerobik/scoreboard" element={<D discipline="aerobik"><ScoreboardPage /></D>} />
         <Route path="/aerobik/links" element={<PD discipline="aerobik" pageKey="links"><LinksPage /></PD>} />
         <Route path="/aerobik/official-report" element={<PD discipline="aerobik" pageKey="official_report"><OfficialReportPage /></PD>} />
         <Route path="/aerobik/athlete/:compId/:catId/:athId" element={<PD discipline="aerobik" pageKey="athletes"><AthleteProfilePage /></PD>} />
@@ -192,7 +192,7 @@ function AppRoutes() {
         <Route path="/trampolin/referees" element={<PD discipline="trampolin" pageKey="referees"><RefereesPage /></PD>} />
         <Route path="/trampolin/analytics" element={<PD discipline="trampolin" pageKey="analytics"><AnalyticsPage /></PD>} />
         <Route path="/trampolin/finals" element={<PD discipline="trampolin" pageKey="finals"><FinalsPage /></PD>} />
-        <Route path="/trampolin/scoreboard" element={<PD discipline="trampolin" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/trampolin/scoreboard" element={<D discipline="trampolin"><ScoreboardPage /></D>} />
         <Route path="/trampolin/links" element={<PD discipline="trampolin" pageKey="links"><LinksPage /></PD>} />
         <Route path="/trampolin/official-report" element={<PD discipline="trampolin" pageKey="official_report"><OfficialReportPage /></PD>} />
         <Route path="/trampolin/athlete/:compId/:catId/:athId" element={<PD discipline="trampolin" pageKey="athletes"><AthleteProfilePage /></PD>} />
@@ -212,7 +212,7 @@ function AppRoutes() {
         <Route path="/parkur/referees" element={<PD discipline="parkur" pageKey="referees"><RefereesPage /></PD>} />
         <Route path="/parkur/analytics" element={<PD discipline="parkur" pageKey="analytics"><AnalyticsPage /></PD>} />
         <Route path="/parkur/finals" element={<PD discipline="parkur" pageKey="finals"><FinalsPage /></PD>} />
-        <Route path="/parkur/scoreboard" element={<PD discipline="parkur" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/parkur/scoreboard" element={<D discipline="parkur"><ScoreboardPage /></D>} />
         <Route path="/parkur/links" element={<PD discipline="parkur" pageKey="links"><LinksPage /></PD>} />
         <Route path="/parkur/official-report" element={<PD discipline="parkur" pageKey="official_report"><OfficialReportPage /></PD>} />
         <Route path="/parkur/athlete/:compId/:catId/:athId" element={<PD discipline="parkur" pageKey="athletes"><AthleteProfilePage /></PD>} />
@@ -232,7 +232,7 @@ function AppRoutes() {
         <Route path="/ritmik/referees" element={<PD discipline="ritmik" pageKey="referees"><RefereesPage /></PD>} />
         <Route path="/ritmik/analytics" element={<PD discipline="ritmik" pageKey="analytics"><AnalyticsPage /></PD>} />
         <Route path="/ritmik/finals" element={<PD discipline="ritmik" pageKey="finals"><FinalsPage /></PD>} />
-        <Route path="/ritmik/scoreboard" element={<PD discipline="ritmik" pageKey="scoreboard"><ScoreboardPage /></PD>} />
+        <Route path="/ritmik/scoreboard" element={<D discipline="ritmik"><ScoreboardPage /></D>} />
         <Route path="/ritmik/links" element={<PD discipline="ritmik" pageKey="links"><LinksPage /></PD>} />
         <Route path="/ritmik/official-report" element={<PD discipline="ritmik" pageKey="official_report"><OfficialReportPage /></PD>} />
         <Route path="/ritmik/athlete/:compId/:catId/:athId" element={<PD discipline="ritmik" pageKey="athletes"><AthleteProfilePage /></PD>} />
