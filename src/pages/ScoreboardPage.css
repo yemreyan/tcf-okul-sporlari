@@ -1539,6 +1539,26 @@
     .sf-score-divider { display: none; }
     .sf-total-value { font-size: 2.4rem; }
     .sf-timer { height: 3px; }
+
+    /* Ritmik flash — desktop'taki devasa boyutları mobilde override et */
+    .sf-scores--ritmik { gap: 0.4rem; }
+    .sf-scores--ritmik .sf-score-item {
+        min-width: 70px;
+        padding: 0.5rem 0.4rem;
+        flex: 1 1 calc(50% - 0.4rem);
+    }
+    .sf-scores--ritmik .sf-score-value { font-size: 1.15rem; letter-spacing: 0; }
+    .sf-scores--ritmik .sf-score-label { font-size: 0.55rem; letter-spacing: 0.5px; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-total-value { font-size: 2.6rem; letter-spacing: -1px; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-athlete { font-size: 1.4rem; line-height: 1.15; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-club { font-size: 0.75rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-apparatus { font-size: 0.85rem; letter-spacing: 0.08em; padding: 0.3rem 0.75rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-score-divider { display: none; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-total { margin-top: 1rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) { padding: 1rem 0.75rem; }
+    .sf-header { padding: 0; }
+    .sf-total { margin-top: 1rem; }
+    .sf-timer { margin-top: 1rem; }
 }
 
 /* ─── ≤400px: Çok küçük telefonlar ──────────────────────────── */
@@ -1568,4 +1588,12 @@
     .sf-athlete { font-size: 1.15rem; }
     .sf-score-value { font-size: 0.95rem; }
     .sf-total-value { font-size: 2rem; }
+
+    .sf-scores--ritmik .sf-score-item { padding: 0.4rem 0.3rem; min-width: 60px; }
+    .sf-scores--ritmik .sf-score-value { font-size: 0.95rem; }
+    .sf-scores--ritmik .sf-score-label { font-size: 0.5rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-total-value { font-size: 2.1rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-athlete { font-size: 1.15rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-club { font-size: 0.7rem; }
+    .sb-flash-card:has(.sf-scores--ritmik) .sf-apparatus { font-size: 0.75rem; padding: 0.25rem 0.6rem; }
 }
