@@ -154,6 +154,14 @@ export default function ScoreboardPage() {
         if (!compId) return null;
         const catIds = searchParams.get('catIds');
         const autoLive = searchParams.get('autoLive') === '1' || searchParams.get('autoLive') === 'true';
+        // Public scoreboard proxy için bu URL'i hatırla — kullanıcı geri/temizle yaparsa
+        // app fallback bu link'e geri yönlendirir
+        try {
+            if (typeof sessionStorage !== 'undefined' && typeof window !== 'undefined') {
+                const fullPath = window.location.pathname + window.location.search;
+                sessionStorage.setItem('tcfscore_last_url', fullPath);
+            }
+        } catch { /* noop */ }
         return {
             compId,
             catIds: catIds ? catIds.split(',').map(s => s.trim()).filter(Boolean) : null,
@@ -810,6 +818,37 @@ export default function ScoreboardPage() {
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
+        // tcfscore.vercel.app gibi public host'ta config ekranı GÖSTERİLMEZ
+        const isPublicHost = typeof window !== 'undefined' && window.location.hostname === 'tcfscore.vercel.app';
+        if (isPublicHost && !urlPublicMode) {
+            // Önce sessionStorage'taki son linke yönlen
+            const last = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tcfscore_last_url')) || null;
+            if (last && last !== (window.location.pathname + window.location.search)) {
+                window.location.replace(last);
+                return null;
+            }
+            // Hiç link yoksa kullanıcıya bilgi ver
+            return (
+                <div style={{
+                    minHeight: '100vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    color: '#e2e8f0',
+                    gap: '1.5rem',
+                    padding: '2rem',
+                    textAlign: 'center',
+                }}>
+                    <div style={{ fontSize: 56 }}>📺</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>Canlı yayın linki gerekli</div>
+                    <div style={{ fontSize: '0.9rem', opacity: 0.7, maxWidth: 480 }}>
+                        Bu sayfayı görüntülemek için yarışma sahibinden geçerli bir bağlantı isteyin.
+                    </div>
+                </div>
+            );
+        }
         // Public mod: URL'de compId varsa config ekranı YERİNE loading göster
         // (yarışma yüklenip auto-start tetiklenene kadar)
         if (urlPublicMode) {

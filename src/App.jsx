@@ -124,7 +124,35 @@ const PD = ({ discipline, pageKey, children }) => (
   </DisciplineProvider>
 );
 
+// Public scoreboard proxy host — bu host'tan gelen istekler menüye/uygulamaya
+// gidemez, SADECE scoreboard görür. Diğer tüm path'ler son ziyaret edilen
+// scoreboard linkine (sessionStorage) veya default'a yönlenir.
+const PUBLIC_HOSTS = ['tcfscore.vercel.app'];
+const isPublicScoreboardHost = () =>
+  typeof window !== 'undefined' && PUBLIC_HOSTS.includes(window.location.hostname);
+
+const PublicScoreboardFallback = () => {
+  const last = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tcfscore_last_url')) || '/ritmik/scoreboard';
+  return <Navigate to={last} replace />;
+};
+
+function PublicAppRoutes() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/artistik/scoreboard" element={<D discipline="artistik"><ScoreboardPage /></D>} />
+        <Route path="/aerobik/scoreboard" element={<D discipline="aerobik"><ScoreboardPage /></D>} />
+        <Route path="/trampolin/scoreboard" element={<D discipline="trampolin"><ScoreboardPage /></D>} />
+        <Route path="/parkur/scoreboard" element={<D discipline="parkur"><ScoreboardPage /></D>} />
+        <Route path="/ritmik/scoreboard" element={<D discipline="ritmik"><ScoreboardPage /></D>} />
+        <Route path="*" element={<PublicScoreboardFallback />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 function AppRoutes() {
+  if (isPublicScoreboardHost()) return <PublicAppRoutes />;
   return (
     <>
     <AnnouncementPopup />
