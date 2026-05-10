@@ -4,6 +4,7 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
+import { logAction } from '../lib/auditLogger';
 import RitmikLockedSummary from '../components/RitmikLockedSummary';
 import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
@@ -170,6 +171,22 @@ export default function RitmikTPanelPage() {
                 zaman: selectedDeduction,
                 zaman_meta: { value: selectedDeduction, timestamp: Date.now() },
             });
+            // Audit log: Zaman hakem submit'i
+            try {
+                await logAction('judge_score_submit', `ZAMAN hakemi → süre kesintisi -${selectedDeduction}`, {
+                    user:           'panel:zaman',
+                    competitionId:  compId,
+                    category:       catId,
+                    athleteId:      activeAthleteId,
+                    athleteName:    athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : '',
+                    alet:           currentAletKey,
+                    field:          'tPanel.zaman',
+                    oldValue:       null,
+                    newValue:       selectedDeduction,
+                    discipline:     'ritmik',
+                    data:           { source: 'hakem', panelType: 'zaman' },
+                });
+            } catch { /* noop */ }
         } catch {
             toast('Hata oluştu. Lütfen tekrar deneyin.', 'error');
         }

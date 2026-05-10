@@ -4,6 +4,7 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
+import { logAction } from '../lib/auditLogger';
 import RitmikLockedSummary from '../components/RitmikLockedSummary';
 import '../components/RitmikLockedSummary.css';
 import './EPanelPage.css';
@@ -170,6 +171,22 @@ export default function RitmikLPanelPage() {
                     timestamp: Date.now(),
                 },
             });
+            // Audit log: Çizgi hakem submit'i
+            try {
+                await logAction('judge_score_submit', `${panelType.toUpperCase()} hakemi → çizgi ihlali ${calls} adet (-${totalDeduction})`, {
+                    user:           `panel:${panelType}`,
+                    competitionId:  compId,
+                    category:       catId,
+                    athleteId:      activeAthleteId,
+                    athleteName:    athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : '',
+                    alet:           currentAletKey,
+                    field:          `lPanel.${panelType}`,
+                    oldValue:       null,
+                    newValue:       totalDeduction,
+                    discipline:     'ritmik',
+                    data:           { source: 'hakem', panelType, calls },
+                });
+            } catch { /* noop */ }
         } catch {
             toast('Hata oluştu. Lütfen tekrar deneyin.', 'error');
         }
