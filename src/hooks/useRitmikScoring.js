@@ -765,6 +765,55 @@ export function useRitmikScoring() {
     }, [unlockModal, unlockPassword, hashPassword, firebasePath, selectedCompId,
         selectedCategory, offlineWrite, toast, currentUser]);
 
+    // ─── Diğer Alete Taşı: Yanlış alet seçildiyse, mevcut alettteki tüm puan
+    //    verilerini diğer alete taşır, kaynağı temizler. Kilitliyse veya hedefte
+    //    veri varsa engellenir.
+    const transferToOtherAlet = useCallback(async () => {
+        if (!selectedAthlete || !selectedAlet || !selectedCompId || !selectedCategory) return;
+        const otherAlet = selectedAlet === 'top' ? 'kurdele' : 'top';
+        const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}`;
+        try {
+            const snap = await get(ref(db, `${basePath}/${selectedAlet}`));
+            const data = snap.val();
+            if (!data) {
+                toast('Bu alette taşınacak veri yok.', 'warning');
+                return false;
+            }
+            if (data.kilitli === true) {
+                toast('Bu alet kilitli — önce kilidi kaldırın.', 'warning');
+                return false;
+            }
+            const otherSnap = await get(ref(db, `${basePath}/${otherAlet}`));
+            const otherData = otherSnap.val();
+            if (otherData && Object.keys(otherData).length > 0) {
+                toast(`${RITMIK_ALETLER[otherAlet]?.label || otherAlet} aletinde zaten veri var. Önce o alet için tüm alanları SİL ile temizleyin.`, 'warning');
+                return false;
+            }
+            // Atomik taşıma: hedefe yaz, kaynağı sil
+            await update(ref(db), {
+                [`${basePath}/${otherAlet}`]:    data,
+                [`${basePath}/${selectedAlet}`]: null,
+                // Aktif alet de hedefe çevril (hakem panelleri yeni alete geçsin)
+                [`${firebasePath}/${selectedCompId}/aktifAlet/${selectedCategory}`]: otherAlet,
+            });
+            await logAction('alet_transfer', {
+                competitionId: selectedCompId,
+                category:      selectedCategory,
+                athleteId:     selectedAthlete.id,
+                from:          selectedAlet,
+                to:            otherAlet,
+                discipline:    'ritmik',
+            });
+            toast(`Notlar ${RITMIK_ALETLER[otherAlet]?.label || otherAlet} aletine taşındı.`, 'success');
+            // Local'i de yeni alete geçir
+            handleSelectAlet(otherAlet);
+            return true;
+        } catch (e) {
+            toast('Taşıma hatası: ' + e.message, 'error');
+            return false;
+        }
+    }, [selectedAthlete, selectedAlet, selectedCompId, selectedCategory, firebasePath, handleSelectAlet, toast]);
+
     // ─── Sporcu Durum ───
     const getAthleteStatus = useCallback((athlete) => {
         const score = existingScores[athlete.id];
@@ -843,6 +892,7 @@ export function useRitmikScoring() {
         handleConfirmSubmit, handleUnlock,
         refreshScores,
         writeFieldOverride, clearFieldOverride,
+        transferToOtherAlet,
         getAthleteStatus, getAletStatus,
         // Constants
         RITMIK_CATEGORIES, RITMIK_ALETLER,

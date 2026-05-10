@@ -58,6 +58,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         handleConfirmSubmit, handleUnlock,
         refreshScores,
         writeFieldOverride, clearFieldOverride,
+        transferToOtherAlet,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
     } = s;
@@ -217,6 +218,31 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                             <span className="cl-called-badge">
                                 <i className="material-icons-round" style={{ fontSize: 13 }}>campaign</i> Çağrıldı
                             </span>
+                        )}
+                        {/* Yanlış alet seçildiyse → diğer alete tüm notları taşı */}
+                        {!scoreLocked && existingScores[selectedAthlete.id]?.[selectedAlet] && (
+                            <button
+                                className="cl-btn cl-btn--transfer"
+                                style={{
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#fff', border: 'none',
+                                    padding: '0.4rem 0.85rem', borderRadius: '0.4rem',
+                                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                }}
+                                onClick={() => {
+                                    const otherAlet = selectedAlet === 'top' ? 'kurdele' : 'top';
+                                    const otherLabel = RITMIK_ALETLER[otherAlet]?.label || otherAlet;
+                                    const currentLabel = RITMIK_ALETLER[selectedAlet]?.label || selectedAlet;
+                                    if (window.confirm(`Tüm notlar "${currentLabel}" → "${otherLabel}" aletine taşınsın mı?\n\n${currentLabel} aleti boşalacak ve sporcu o alette yarışmamış sayılacak.`)) {
+                                        transferToOtherAlet();
+                                    }
+                                }}
+                                title="Yanlış alet seçildiyse, tüm notları diğer alete taşı"
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 14 }}>swap_horiz</i>
+                                Diğer Alete Taşı
+                            </button>
                         )}
                         {scoreLocked ? (
                             <button className="cl-btn cl-btn--unlock"
