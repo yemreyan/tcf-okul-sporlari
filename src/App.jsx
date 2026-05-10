@@ -53,6 +53,7 @@ const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
 // Ritmik — DA/DB hakem paneli (zorluk puan girişi)
 const RitmikDPanelPage = lazy(() => import('./pages/RitmikDPanelPage'));
 const HakemRaporuPage = lazy(() => import('./pages/HakemRaporuPage'));
+const HakemKarnesiPage = lazy(() => import('./pages/HakemKarnesiPage'));
 const RitmikLPanelPage = lazy(() => import('./pages/RitmikLPanelPage'));
 const RitmikTPanelPage = lazy(() => import('./pages/RitmikTPanelPage'));
 
@@ -278,6 +279,11 @@ function AppRoutes() {
         <Route path="/aerobik/hakem-raporu"   element={<PD discipline="aerobik"   pageKey="audit"><HakemRaporuPage /></PD>} />
         <Route path="/trampolin/hakem-raporu" element={<PD discipline="trampolin" pageKey="audit"><HakemRaporuPage /></PD>} />
         <Route path="/parkur/hakem-raporu"    element={<PD discipline="parkur"    pageKey="audit"><HakemRaporuPage /></PD>} />
+        <Route path="/ritmik/hakem-karnesi"   element={<PD discipline="ritmik"    pageKey="audit"><HakemKarnesiPage /></PD>} />
+        <Route path="/artistik/hakem-karnesi" element={<PD discipline="artistik"  pageKey="audit"><HakemKarnesiPage /></PD>} />
+        <Route path="/aerobik/hakem-karnesi"  element={<PD discipline="aerobik"   pageKey="audit"><HakemKarnesiPage /></PD>} />
+        <Route path="/trampolin/hakem-karnesi" element={<PD discipline="trampolin" pageKey="audit"><HakemKarnesiPage /></PD>} />
+        <Route path="/parkur/hakem-karnesi"   element={<PD discipline="parkur"    pageKey="audit"><HakemKarnesiPage /></PD>} />
 
         {/* ═══ ORTAK ARAÇLAR ═══ */}
         <Route path="/gorevli-kartlari" element={<ProtectedRoute redirectTo="/"><GorevliKartlariPage /></ProtectedRoute>} />
