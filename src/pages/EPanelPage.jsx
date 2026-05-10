@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -45,6 +45,13 @@ export default function EPanelPage() {
 
     const [compName, setCompName] = useState('...');
     const [refereeName, setRefereeName] = useState('...');
+
+    // Hakem Çağrısı (SJA → A panel / SJE → E panel) flash card durumu
+    const [calledFlash, setCalledFlash] = useState(null);
+    const callTimerRef  = useRef(null);
+    const callTickRef   = useRef(null);
+    const lastSeenTsRef = useRef(0);
+    const CALL_DURATION_MS = 10000;
 
     // Token doğrulama
     useEffect(() => {
@@ -254,6 +261,48 @@ export default function EPanelPage() {
 
         return () => unsubScore();
     }, [compId, catId, currentAlet, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
+
+    // ── Hakem Çağrısı listener (sadece Ritmik A/E hakem panelleri) ──
+    // SJA → A panel hakemleri  ·  SJE → E panel hakemleri
+    useEffect(() => {
+        if (!isRitmik) return;
+        if (!compId || !catId || !currentAlet || !tokenVerified) return;
+        const sjRole = panelType === 'a' ? 'sja' : panelType === 'e' ? 'sje' : null;
+        if (!sjRole) return;
+
+        const callRef = ref(db, `${firebasePath}/${compId}/refereeCalls/${catId}/${currentAlet}/${sjRole}`);
+        const unsub = onValue(callRef, (snap) => {
+            const data = snap.val();
+            if (!data || !data.ts) return;
+            const ts = Number(data.ts);
+            if (ts <= lastSeenTsRef.current) return;
+            const elapsed = Date.now() - ts;
+            if (elapsed >= CALL_DURATION_MS) { lastSeenTsRef.current = ts; return; }
+            lastSeenTsRef.current = ts;
+            const remaining = CALL_DURATION_MS - elapsed;
+            setCalledFlash({ remainingMs: remaining, total: CALL_DURATION_MS });
+
+            if (callTimerRef.current) clearTimeout(callTimerRef.current);
+            if (callTickRef.current)  clearInterval(callTickRef.current);
+
+            callTimerRef.current = setTimeout(() => {
+                setCalledFlash(null); callTimerRef.current = null;
+            }, remaining);
+            callTickRef.current = setInterval(() => {
+                setCalledFlash((prev) => {
+                    if (!prev) return prev;
+                    const newRem = prev.remainingMs - 200;
+                    if (newRem <= 0) return null;
+                    return { ...prev, remainingMs: newRem };
+                });
+            }, 200);
+        });
+        return () => {
+            unsub();
+            if (callTimerRef.current) { clearTimeout(callTimerRef.current); callTimerRef.current = null; }
+            if (callTickRef.current)  { clearInterval(callTickRef.current); callTickRef.current = null; }
+        };
+    }, [isRitmik, compId, catId, currentAlet, tokenVerified, panelType, firebasePath]);
 
     const handleSendScore = async () => {
         if (!activeAthleteId || scoreInput === '') return;
@@ -498,6 +547,59 @@ export default function EPanelPage() {
                     </div>
                 )}
             </div>
+
+            {/* Hakem Çağrısı Flash Card — SJA → A hakemleri / SJE → E hakemleri */}
+            {calledFlash && (
+                <div style={{
+                    position: 'fixed', inset: 0,
+                    background: 'rgba(15, 23, 42, 0.92)',
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 99999,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    gap: '1.5rem', padding: '2rem',
+                    textAlign: 'center',
+                    animation: 'pulse-call 1.5s ease-in-out infinite',
+                }}>
+                    <style>{`
+                        @keyframes pulse-call {
+                            0%, 100% { background: rgba(15,23,42,0.92); }
+                            50% { background: rgba(220,38,38,0.85); }
+                        }
+                        @keyframes shake-icon {
+                            0%, 100% { transform: rotate(0deg); }
+                            25% { transform: rotate(-15deg); }
+                            75% { transform: rotate(15deg); }
+                        }
+                    `}</style>
+                    <div style={{ fontSize: 96, animation: 'shake-icon 0.5s ease-in-out infinite' }}>📢</div>
+                    <div style={{
+                        fontSize: '2.4rem', fontWeight: 900,
+                        color: '#fbbf24', letterSpacing: '0.04em',
+                        textShadow: '0 4px 20px rgba(251,191,36,0.5)',
+                    }}>
+                        SJ PANELİNE GİDİNİZ
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', opacity: 0.9 }}>
+                        {(panelType === 'a' ? 'A' : 'E')}{panelId ? panelId.replace(/^[ae]/i, '') : ''} Hakemi
+                    </div>
+                    <div style={{
+                        width: '70%', maxWidth: 360, height: 8,
+                        background: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden',
+                        marginTop: '0.5rem',
+                    }}>
+                        <div style={{
+                            height: '100%',
+                            width: `${(calledFlash.remainingMs / calledFlash.total) * 100}%`,
+                            background: 'linear-gradient(90deg, #fbbf24, #ef4444)',
+                            transition: 'width 0.2s linear',
+                        }} />
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+                        {Math.ceil(calledFlash.remainingMs / 1000)} saniye
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
