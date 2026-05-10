@@ -500,8 +500,36 @@ export default function AthletesPage() {
             `"${name}" isimli sporcu silinecek. Bu işlem geri alınamaz.`,
             async () => {
                 try {
-                    const athRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${catId}/${athId}`);
-                    await remove(athRef);
+                    const compBase = `${firebasePath}/${selectedCompId}`;
+                    // CASCADE DELETE: sporcular + puanlar + siralama (tüm rotation'lar)
+                    const updates = {
+                        [`${compBase}/sporcular/${catId}/${athId}`]: null,
+                        [`${compBase}/puanlar/${catId}/${athId}`]:   null,
+                    };
+
+                    // Siralama: rotation_0, rotation_1, ... altında orphan kayıt varsa sil
+                    try {
+                        const orderSnap = await get(ref(db, `${compBase}/siralama/${catId}`));
+                        const orderData = orderSnap.val() || {};
+                        Object.keys(orderData).forEach(rotKey => {
+                            if (orderData[rotKey] && typeof orderData[rotKey] === 'object' && orderData[rotKey][athId] !== undefined) {
+                                updates[`${compBase}/siralama/${catId}/${rotKey}/${athId}`] = null;
+                            }
+                        });
+                    } catch { /* siralama yoksa zarar yok */ }
+
+                    // Aktif sporcu o ise temizle
+                    try {
+                        const activeSnap = await get(ref(db, `${compBase}/aktifSporcu/${catId}`));
+                        const active = activeSnap.val();
+                        const activeId = (active && typeof active === 'object') ? active.id : active;
+                        if (activeId === athId) {
+                            updates[`${compBase}/aktifSporcu/${catId}`]      = null;
+                            updates[`${compBase}/aktifSporcuBilgi/${catId}`] = null;
+                        }
+                    } catch { /* noop */ }
+
+                    await update(ref(db), updates);
                     // Sporcu silindi — okulun kalan sporcuları için takım türünü güncelle
                     await autoSyncTeamStatus(selectedCompId, [catId]);
                     toast(`${name} silindi.`, 'success');

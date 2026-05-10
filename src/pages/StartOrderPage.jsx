@@ -161,6 +161,9 @@ export default function StartOrderPage() {
                 let currentUnassigned = [...loadedAthletes];
 
                 if (orderData) {
+                    // Orphan temizliği: siralama'da var ama sporcular'da artık yok
+                    // (sporcu silindi → cascade'den önce eklenmiş eski kayıtlar)
+                    const orphanCleanup = {};
                     Object.keys(orderData).forEach(rotKey => {
                         const rotIndex = parseInt(rotKey.replace('rotation_', ''));
                         if (!isNaN(rotIndex)) {
@@ -172,7 +175,12 @@ export default function StartOrderPage() {
                                 const athDetails = loadedAthletes.find(a => a.id === id);
                                 const rotEntry = athletesInRot[id];
                                 const sirasi = rotEntry && typeof rotEntry === 'object' ? rotEntry.sirasi : 999;
-                                return athDetails ? { ...athDetails, sirasi } : null;
+                                if (!athDetails) {
+                                    // Orphan — siralama'dan da otomatik kaldır
+                                    orphanCleanup[`${firebasePath}/${selectedCompId}/siralama/${filterCategory}/${rotKey}/${id}`] = null;
+                                    return null;
+                                }
+                                return { ...athDetails, sirasi };
                             }).filter(a => a !== null).sort((a, b) => (a.sirasi || 999) - (b.sirasi || 999));
 
                             rotationsMap[rotIndex] = sortedAthletes;
@@ -181,6 +189,10 @@ export default function StartOrderPage() {
                             });
                         }
                     });
+                    // Orphan'ları arka planda temizle (Firebase'den)
+                    if (Object.keys(orphanCleanup).length > 0) {
+                        update(ref(db), orphanCleanup).catch(() => { /* noop */ });
+                    }
                 }
 
                 const currentRotations = [];
@@ -1511,22 +1523,30 @@ export default function StartOrderPage() {
                     });
                     for (let i = 0; i <= maxIdx; i++) catRotations.push([]);
 
+                    const pdfOrphanCleanup = {};
                     Object.keys(siraData).forEach((rotKey) => {
                         const rotIndex = parseInt(rotKey.replace('rotation_', ''));
                         if (!isNaN(rotIndex)) {
                             const athletesInRot = siraData[rotKey];
+                            if (!athletesInRot || typeof athletesInRot !== 'object') return;
                             const sorted = Object.keys(athletesInRot)
                                 .map((id) => {
                                     const ath = athletes.find((a) => a.id === id);
-                                    return ath
-                                        ? { ...ath, sirasi: athletesInRot[id].sirasi }
-                                        : null;
+                                    if (!ath) {
+                                        // Orphan — temizleme kuyruğu
+                                        pdfOrphanCleanup[`${firebasePath}/${selectedCompId}/siralama/${category}/${rotKey}/${id}`] = null;
+                                        return null;
+                                    }
+                                    return { ...ath, sirasi: athletesInRot[id].sirasi };
                                 })
                                 .filter(Boolean)
                                 .sort((a, b) => a.sirasi - b.sirasi);
                             catRotations[rotIndex] = sorted;
                         }
                     });
+                    if (Object.keys(pdfOrphanCleanup).length > 0) {
+                        update(ref(db), pdfOrphanCleanup).catch(() => { /* noop */ });
+                    }
                 }
 
                 // Sıralaması olmayan kategorileri atla
