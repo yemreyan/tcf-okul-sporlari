@@ -46,6 +46,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
         handleCallAthlete,
         handleModernSubmit,
         handleConfirmSubmit, handleUnlock,
+        writeFieldOverride,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
     } = s;
@@ -346,7 +347,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                                             <label>A{i + 1}</label>
                                             <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                 value={val} disabled={scoreLocked}
-                                                onChange={e => { setAPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
+                                                onChange={e => { const v = e.target.value; setAPanelLocal(p => ({ ...p, [key]: v })); setScoringFieldsTouched(true); writeFieldOverride(`aPanel.${key}`, v); }} />
                                             {!isNaN(num) && val !== '' && (
                                                 <span className="rtm-judge-result">{Math.max(0, 10 - num).toFixed(1)}</span>
                                             )}
@@ -387,7 +388,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                                             <label>E{i + 1}</label>
                                             <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                 value={val} disabled={scoreLocked}
-                                                onChange={e => { setEPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
+                                                onChange={e => { const v = e.target.value; setEPanelLocal(p => ({ ...p, [key]: v })); setScoringFieldsTouched(true); writeFieldOverride(`ePanel.${key}`, v); }} />
                                             {!isNaN(num) && val !== '' && (
                                                 <span className="rtm-judge-result">{Math.max(0, 10 - num).toFixed(1)}</span>
                                             )}

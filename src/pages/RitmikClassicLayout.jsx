@@ -57,6 +57,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         handleClassicSubmit,
         handleConfirmSubmit, handleUnlock,
         refreshScores,
+        writeFieldOverride, clearFieldOverride,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
     } = s;
@@ -80,8 +81,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
     const silDB1  = () => { setClassicDB(p => ({ ...p, db1: '' })); unlock('db1');  setScoringFieldsTouched(true); };
     const silDB2  = () => { setClassicDB(p => ({ ...p, db2: '' })); unlock('db2');  setScoringFieldsTouched(true); };
     const silSJDB = () => { setClassicDB(p => ({ ...p, sjdb: '' })); unlock('sjdb'); setScoringFieldsTouched(true); };
-    const silA = (k) => { setAPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`a_${k}`); setScoringFieldsTouched(true); };
-    const silE = (k) => { setEPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`e_${k}`); setScoringFieldsTouched(true); };
+    const silA = (k) => { setAPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`a_${k}`); setScoringFieldsTouched(true); clearFieldOverride(`aPanel.${k}`); };
+    const silE = (k) => { setEPanelLocal(p => { const n = { ...p }; delete n[k]; return n; }); unlock(`e_${k}`); setScoringFieldsTouched(true); clearFieldOverride(`ePanel.${k}`); };
     const silSJA = () => { setSjaInput(''); unlock('sja'); setScoringFieldsTouched(true); };
     const silSJE = () => { setSjeInput(''); unlock('sje'); setScoringFieldsTouched(true); };
     const silKes = (k) => { setClassicPenalty(p => ({ ...p, [k]: '' })); unlock(`pen_${k}`); setScoringFieldsTouched(true); };
@@ -462,7 +463,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                         <label>A{i + 1}</label>
                                                         <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                             value={val} disabled={isLocked(`a_${key}`)}
-                                                            onChange={e => { setAPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
+                                                            onChange={e => { const v = e.target.value; setAPanelLocal(p => ({ ...p, [key]: v })); setScoringFieldsTouched(true); writeFieldOverride(`aPanel.${key}`, v); }} />
                                                         {!isNaN(num) && val !== '' && (
                                                             <span className="cl-ae-result">{(10 - num).toFixed(1)}</span>
                                                         )}
@@ -518,7 +519,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                                         <label>E{i + 1}</label>
                                                         <input type="number" min="0" max="10" step="0.1" placeholder="0.0"
                                                             value={val} disabled={isLocked(`e_${key}`)}
-                                                            onChange={e => { setEPanelLocal(p => ({ ...p, [key]: e.target.value })); setScoringFieldsTouched(true); }} />
+                                                            onChange={e => { const v = e.target.value; setEPanelLocal(p => ({ ...p, [key]: v })); setScoringFieldsTouched(true); writeFieldOverride(`ePanel.${key}`, v); }} />
                                                         {!isNaN(num) && val !== '' && (
                                                             <span className="cl-ae-result">{(10 - num).toFixed(1)}</span>
                                                         )}

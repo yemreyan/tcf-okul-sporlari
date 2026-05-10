@@ -41,6 +41,7 @@ export default function EPanelPage() {
     const [serverScore, setServerScore] = useState(null);
     // Tüm scores objesi (kilit sonrası özet kart için — ritmik)
     const [serverScores, setServerScores] = useState(null);
+    const [fieldOverridden, setFieldOverridden] = useState(false);
 
     const [compName, setCompName] = useState('...');
     const [refereeName, setRefereeName] = useState('...');
@@ -213,6 +214,7 @@ export default function EPanelPage() {
         const unsubScore = onValue(scoreRef, (snap) => {
             const scores = snap.val() || {};
             let myScore, isLocked;
+            let fieldOverridden = false; // başhakem bu alanı değiştirip kilitledi mi
 
             if (isRitmik) {
                 // Ritmik: scores = { aPanel: {j1:..., j2:...}, ePanel: {j1:...}, kilitli:true, ... }
@@ -220,6 +222,9 @@ export default function EPanelPage() {
                 const judgeKey = panelId.toLowerCase().replace(/^[ae]/, 'j'); // 'a1'→'j1', 'e1'→'j1'
                 myScore = scores[panelKey]?.[judgeKey];
                 isLocked = scores.kilitli === true;
+                // Başhakem override kilidi (alan-bazlı)
+                const lockKey = `${panelKey}__${judgeKey}`;
+                fieldOverridden = scores.lockedFields?.[lockKey] === true;
             } else if (isAerobik) {
                 // Aerobik: scores = { ePanel: {j1:..., j2:...}, aPanel: {j1:...}, kilitli:true, ... }
                 const judgeKey = panelId.toLowerCase().replace(/^e/, 'j'); // 'e1'→'j1'
@@ -233,9 +238,13 @@ export default function EPanelPage() {
 
             setServerScore(myScore);
             setServerScores(scores);
+            setFieldOverridden(fieldOverridden);
 
             if (isLocked) {
                 setStatus('locked');
+            } else if (fieldOverridden) {
+                // Başhakem bu alanı kilitledi → 'sj_locked' özel durumu
+                setStatus('sj_locked');
             } else if (myScore !== undefined && myScore !== null && myScore !== '') {
                 setStatus('sent');
             } else {
@@ -248,6 +257,10 @@ export default function EPanelPage() {
 
     const handleSendScore = async () => {
         if (!activeAthleteId || scoreInput === '') return;
+        if (fieldOverridden) {
+            toast("Başhakem bu notu değiştirdi. Yeni not gönderemezsiniz.", "warning");
+            return;
+        }
 
         let valStr = String(scoreInput).replace(',', '.');
         const val = parseFloat(valStr);
@@ -402,6 +415,31 @@ export default function EPanelPage() {
                             <button className="send-btn" onClick={handleSendScore}>
                                 <span className="material-icons-round">send</span> GÖNDER
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Başhakem alanı kilitledi — yeni not gönderilemez */}
+                {!waitingForAlet && status === 'sj_locked' && athleteInfo && (
+                    <div className="view-section active sent-view">
+                        <span className="material-icons-round sent-icon" style={{ color: '#f59e0b', fontSize: 64 }}>
+                            gavel
+                        </span>
+                        <h2 className="sent-title" style={{ color: '#fbbf24' }}>Başhakem Kararı</h2>
+                        <p className="sent-desc" style={{ marginTop: 8 }}>
+                            Başhakem bu notu <strong>{serverScore != null ? Number(serverScore).toFixed(3) : '—'}</strong> olarak değiştirdi.<br/>
+                            Yeni not gönderemezsiniz. Düzeltme istiyorsanız Başhakem ile görüşün.
+                        </p>
+                        <div style={{
+                            marginTop: 16, padding: '0.75rem 1rem',
+                            background: 'rgba(245, 158, 11, 0.12)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.8rem',
+                            color: 'rgba(255,255,255,0.7)',
+                            textAlign: 'center',
+                        }}>
+                            Sporcu: <strong>{athleteInfo.ad} {athleteInfo.soyad}</strong>
                         </div>
                     </div>
                 )}

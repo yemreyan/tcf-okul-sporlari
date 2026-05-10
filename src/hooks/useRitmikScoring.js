@@ -3,7 +3,7 @@
  * Tüm Firebase okuma/yazma, hesaplama ve handler'lar burada.
  * Modern ve Classic layout aynı hook'u kullanır.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -165,6 +165,44 @@ export function useRitmikScoring() {
 
         return () => { unsubOrder(); unsubScores(); };
     }, [selectedCompId, selectedCategory, firebasePath]);
+
+    // ── Başhakem Field Override: A/E panel hakem notu değiştirilince Firebase'e
+    //    debounced yaz + ilgili hakem panelini KİLİTLE (yeni not gönderemez).
+    //    fieldKey örnekleri: 'aPanel.j1', 'ePanel.j2', 'da1', 'da2', 'sjda', 'db1', 'db2', 'sjdb', 'sja', 'sje'
+    const overrideTimers = useRef({});
+    const writeFieldOverride = useCallback((fieldKey, value) => {
+        if (!selectedCompId || !selectedCategory || !selectedAthlete?.id || !selectedAlet) return;
+        const timerKey = fieldKey;
+        if (overrideTimers.current[timerKey]) clearTimeout(overrideTimers.current[timerKey]);
+        overrideTimers.current[timerKey] = setTimeout(async () => {
+            const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/${selectedAlet}`;
+            const trimmed = String(value).trim().replace(',', '.');
+            const num = parseFloat(trimmed);
+            const writeVal = (trimmed === '' || isNaN(num)) ? null : num;
+            try {
+                await update(ref(db), {
+                    [`${basePath}/${fieldKey}`]:               writeVal,
+                    [`${basePath}/lockedFields/${fieldKey.replace(/\./g, '__')}`]: true,
+                });
+            } catch (e) {
+                if (import.meta.env.DEV) console.error('writeFieldOverride error', e);
+            }
+        }, 500);
+    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet]);
+
+    // Sil yapıldığında lock'u kaldır + alanı null yap (hakem yeniden gönderebilsin)
+    const clearFieldOverride = useCallback(async (fieldKey) => {
+        if (!selectedCompId || !selectedCategory || !selectedAthlete?.id || !selectedAlet) return;
+        const basePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedAthlete.id}/${selectedAlet}`;
+        try {
+            await update(ref(db), {
+                [`${basePath}/${fieldKey}`]: null,
+                [`${basePath}/lockedFields/${fieldKey.replace(/\./g, '__')}`]: null,
+            });
+        } catch (e) {
+            if (import.meta.env.DEV) console.error('clearFieldOverride error', e);
+        }
+    }, [firebasePath, selectedCompId, selectedCategory, selectedAthlete?.id, selectedAlet]);
 
     // ── Manuel refresh: hakem notları gecikirse buton ile zorla çek ──
     // Alan-bazlı merge ile sync yapılıyor: başhakemin elle değiştirdiği alanlar
@@ -800,6 +838,7 @@ export function useRitmikScoring() {
         handleModernSubmit, handleClassicSubmit,
         handleConfirmSubmit, handleUnlock,
         refreshScores,
+        writeFieldOverride, clearFieldOverride,
         getAthleteStatus, getAletStatus,
         // Constants
         RITMIK_CATEGORIES, RITMIK_ALETLER,
