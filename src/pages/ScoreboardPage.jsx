@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ref, onValue, get } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
@@ -124,6 +124,37 @@ export default function ScoreboardPage() {
             if (data) setCompetitions(filterCompetitionsByUser(data, currentUser));
         });
     }, [currentUser, firebasePath]);
+
+    // ── URL parametreleri ile public mod (tcfscore.vercel.app entegrasyonu) ──
+    // ?compId=X&catIds=A,B,C&autoLive=1 → otomatik yarışma+kategori seç + canlı başlat
+    const [searchParams] = useSearchParams();
+    const [autoStartedRef] = useState({ value: false });
+    useEffect(() => {
+        if (autoStartedRef.value) return;
+        const urlComp   = searchParams.get('compId');
+        const urlCats   = searchParams.get('catIds');
+        const urlAuto   = searchParams.get('autoLive') === '1' || searchParams.get('autoLive') === 'true';
+        if (!urlComp) return;
+        // Yarışma listesi yüklendiyse ve URL'deki id mevcutsa seç
+        if (competitions[urlComp]) {
+            setSelectedCompId(urlComp);
+            setSelectedCity((competitions[urlComp].il || '').toLocaleUpperCase('tr-TR'));
+            // Kategori seçimi (virgülle ayrılmış)
+            if (urlCats) {
+                const ids = urlCats.split(',').map(s => s.trim()).filter(Boolean);
+                if (ids.length > 0) setSelectedCategories(new Set(ids));
+            } else if (competitions[urlComp].kategoriler) {
+                // Kategori belirtilmediyse hepsini seç
+                setSelectedCategories(new Set(Object.keys(competitions[urlComp].kategoriler)));
+            }
+            if (urlAuto) {
+                // Auto-start delayed → state'lerin sync olması için
+                setTimeout(() => setIsLive(true), 800);
+            }
+            autoStartedRef.value = true;
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [competitions, searchParams]);
 
     // Cleanup on unmount
     useEffect(() => {

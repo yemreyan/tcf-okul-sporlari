@@ -22,6 +22,13 @@ export default function LinksPage() {
     const [baseUrl, setBaseUrl] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
     const [copiedId, setCopiedId] = useState(null);
+    // Public scoreboard link üretici — seçili kategoriler
+    const [publicCats, setPublicCats] = useState(new Set());
+    const togglePublicCat = (catId) => setPublicCats(prev => {
+        const next = new Set(prev);
+        if (next.has(catId)) next.delete(catId); else next.add(catId);
+        return next;
+    });
     const [expandedCats, setExpandedCats] = useState({});
     const [epanelToken, setEpanelToken] = useState('');
     const [selectedPanel, setSelectedPanel] = useState(null); // null | 'd' | 'e' | 'scoring' | 'a'
@@ -1323,6 +1330,100 @@ export default function LinksPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* ── Public Scoreboard Linki (tcfscore.vercel.app) ─────────── */}
+                {(() => {
+                    const catIdsParam = publicCats.size > 0 ? `&catIds=${[...publicCats].join(',')}` : '';
+                    const publicUrl = `https://tcfscore.vercel.app${routePrefix}/scoreboard?compId=${selectedCompId}${catIdsParam}&autoLive=1`;
+                    return (
+                        <div className="scoreboard-card" style={{ borderColor: '#0ea5e9', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
+                            <div className="scoreboard-card__qr">
+                                <QRCode value={publicUrl} size={120} level="M" />
+                            </div>
+                            <div className="scoreboard-card__info">
+                                <div className="scoreboard-card__badge" style={{ background: '#0284c7' }}>
+                                    <i className="material-icons-round">public</i>
+                                    Halka Açık Skor
+                                </div>
+                                <h2 className="scoreboard-card__title">Bağımsız Seyirci Linki — tcfscore.vercel.app</h2>
+                                <p className="scoreboard-card__desc">
+                                    Sistem domain'i (tcfokullar) görünmez. Seçili yarışma + kategoriler otomatik açılır
+                                    ve canlı mod aktif olur. Şifresiz, doğrudan paylaşılabilir.
+                                </p>
+
+                                {/* Kategori seçimi */}
+                                {categoryList.length > 0 && (
+                                    <div style={{ margin: '0.5rem 0 0.75rem' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#0c4a6e', marginBottom: 6, letterSpacing: 0.04 }}>
+                                            KATEGORİ SEÇİMİ {publicCats.size === 0 && <span style={{ fontWeight: 500, opacity: 0.7 }}>(boş = tümü)</span>}
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                            {categoryList.map(cat => {
+                                                const active = publicCats.has(cat.id);
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        onClick={() => togglePublicCat(cat.id)}
+                                                        style={{
+                                                            padding: '4px 10px',
+                                                            borderRadius: 9999,
+                                                            border: active ? '2px solid #0284c7' : '1.5px solid #cbd5e1',
+                                                            background: active ? '#0284c7' : '#fff',
+                                                            color: active ? '#fff' : '#475569',
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s',
+                                                        }}
+                                                    >
+                                                        {active && <span style={{ marginRight: 4 }}>✓</span>}
+                                                        {cat.name}
+                                                    </button>
+                                                );
+                                            })}
+                                            {publicCats.size > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPublicCats(new Set())}
+                                                    style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: 9999,
+                                                        border: 'none',
+                                                        background: 'transparent',
+                                                        color: '#64748b',
+                                                        fontSize: 11,
+                                                        cursor: 'pointer',
+                                                        textDecoration: 'underline',
+                                                    }}
+                                                >
+                                                    Temizle
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="scoreboard-card__url">
+                                    <code style={{ wordBreak: 'break-all' }}>{publicUrl}</code>
+                                </div>
+                                <div className="scoreboard-card__actions">
+                                    <button
+                                        className={`btn btn--outline ${copiedId === 'public-scoreboard' ? 'btn--copied' : ''}`}
+                                        onClick={() => copyToClipboard(publicUrl, 'public-scoreboard')}
+                                    >
+                                        <i className="material-icons-round">{copiedId === 'public-scoreboard' ? 'check' : 'content_copy'}</i>
+                                        {copiedId === 'public-scoreboard' ? 'Kopyalandı!' : 'Halka Açık Linki Kopyala'}
+                                    </button>
+                                    <a href={publicUrl} target="_blank" rel="noreferrer" className="btn btn--primary" style={{ background: '#0284c7' }}>
+                                        <i className="material-icons-round">open_in_new</i>
+                                        Aç
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Panel seçimi veya seçilen panel içeriği */}
                 {!selectedPanel ? (
