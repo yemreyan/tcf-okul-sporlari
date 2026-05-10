@@ -126,35 +126,41 @@ export default function ScoreboardPage() {
     }, [currentUser, firebasePath]);
 
     // ── URL parametreleri ile public mod (tcfscore.vercel.app entegrasyonu) ──
-    // ?compId=X&catIds=A,B,C&autoLive=1 → otomatik yarışma+kategori seç + canlı başlat
+    // ?compId=X&catIds=A,B,C&autoLive=1 → config ekranını ATLA, doğrudan live başlat
     const [searchParams] = useSearchParams();
+    // İlk render'da senkron oku — config ekranı hiç render olmasın
+    const urlPublicMode = useMemo(() => {
+        const compId = searchParams.get('compId');
+        if (!compId) return null;
+        const catIds = searchParams.get('catIds');
+        const autoLive = searchParams.get('autoLive') === '1' || searchParams.get('autoLive') === 'true';
+        return {
+            compId,
+            catIds: catIds ? catIds.split(',').map(s => s.trim()).filter(Boolean) : null,
+            autoLive,
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [autoStartedRef] = useState({ value: false });
     useEffect(() => {
-        if (autoStartedRef.value) return;
-        const urlComp   = searchParams.get('compId');
-        const urlCats   = searchParams.get('catIds');
-        const urlAuto   = searchParams.get('autoLive') === '1' || searchParams.get('autoLive') === 'true';
-        if (!urlComp) return;
-        // Yarışma listesi yüklendiyse ve URL'deki id mevcutsa seç
-        if (competitions[urlComp]) {
-            setSelectedCompId(urlComp);
-            setSelectedCity((competitions[urlComp].il || '').toLocaleUpperCase('tr-TR'));
-            // Kategori seçimi (virgülle ayrılmış)
-            if (urlCats) {
-                const ids = urlCats.split(',').map(s => s.trim()).filter(Boolean);
-                if (ids.length > 0) setSelectedCategories(new Set(ids));
-            } else if (competitions[urlComp].kategoriler) {
-                // Kategori belirtilmediyse hepsini seç
-                setSelectedCategories(new Set(Object.keys(competitions[urlComp].kategoriler)));
-            }
-            if (urlAuto) {
-                // Auto-start delayed → state'lerin sync olması için
-                setTimeout(() => setIsLive(true), 800);
-            }
-            autoStartedRef.value = true;
+        if (!urlPublicMode || autoStartedRef.value) return;
+        if (!competitions[urlPublicMode.compId]) return;  // yarışma henüz yüklenmedi
+
+        const comp = competitions[urlPublicMode.compId];
+        setSelectedCompId(urlPublicMode.compId);
+        setSelectedCity((comp.il || '').toLocaleUpperCase('tr-TR'));
+
+        // Kategori seçimi
+        if (urlPublicMode.catIds && urlPublicMode.catIds.length > 0) {
+            setSelectedCategories(new Set(urlPublicMode.catIds));
+        } else if (comp.kategoriler) {
+            setSelectedCategories(new Set(Object.keys(comp.kategoriler)));
         }
+
+        if (urlPublicMode.autoLive) setIsLive(true);
+        autoStartedRef.value = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [competitions, searchParams]);
+    }, [competitions, urlPublicMode]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -771,6 +777,35 @@ export default function ScoreboardPage() {
 
     // ─── CONFIG VIEW ───────────────────────────────────────────
     if (!isLive) {
+        // Public mod: URL'de compId varsa config ekranı YERİNE loading göster
+        // (yarışma yüklenip auto-start tetiklenene kadar)
+        if (urlPublicMode) {
+            return (
+                <div style={{
+                    minHeight: '100vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    color: '#e2e8f0',
+                    gap: '1.5rem',
+                }}>
+                    <div style={{
+                        width: 56, height: 56,
+                        border: '4px solid rgba(99,102,241,0.25)',
+                        borderTopColor: '#6366f1',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600, opacity: 0.85 }}>
+                        Canlı skor yükleniyor…
+                    </div>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+            );
+        }
+
         const availableCities = [...new Set(Object.values(competitions).map(c => (c.il || c.city || '').toLocaleUpperCase('tr-TR')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
         const compEntries = Object.entries(competitions)
             .filter(([id, comp]) => !selectedCity || (comp.il || comp.city || '').toLocaleUpperCase('tr-TR') === selectedCity);
