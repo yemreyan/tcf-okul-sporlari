@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ref, onValue, update, get } from 'firebase/database';
+import { ref, onValue, update, get, set } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { validateEPanelToken } from '../lib/epanelToken';
 import { useNotification } from '../lib/NotificationContext';
@@ -74,6 +74,20 @@ const PANEL_CONFIG = {
 
 const RITMIK_ALET_LABELS = { top: 'Top', kurdele: 'Kurdele' };
 
+// SJ panel → çağrılacak hedef hakem rolleri
+const SJ_TO_TARGETS = {
+    sjda: ['da1', 'da2'],
+    sjdb: ['db1', 'db2'],
+    sja: ['e_a'],
+    sje: ['e_e'],
+};
+// Hedef rolden SJ rolüne ters eşleme — listener için
+const TARGET_TO_SJ = {
+    da1: 'sjda', da2: 'sjda',
+    db1: 'sjdb', db2: 'sjdb',
+};
+const CALL_DURATION_MS = 10000;
+
 export default function RitmikDPanelPage() {
     const { toast } = useNotification();
     const { firebasePath } = useDiscipline();
@@ -104,6 +118,16 @@ export default function RitmikDPanelPage() {
     const [serverKesin, setServerKesin]         = useState(null);
     const [serverScores, setServerScores]       = useState(null);  // Tüm puanlar (özet kart için)
     const [compName, setCompName]               = useState('...');
+
+    // Hakem Çağır feature
+    const isSjPanel = panelType.startsWith('sj');
+    const sjTargets = SJ_TO_TARGETS[panelType] || [];
+    const targetSjRole = TARGET_TO_SJ[panelType]; // null değilse: bu panel çağrı dinler
+    const [callerActive, setCallerActive] = useState(false); // SJ panel: az önce çağırıldı banner
+    const [calledFlash, setCalledFlash]   = useState(null);  // hedef panel: { remainingMs }
+    const callTimerRef    = useRef(null);
+    const callTickRef     = useRef(null);
+    const lastSeenTsRef   = useRef(0);
 
     // ── Token doğrulama ──
     useEffect(() => {
@@ -200,6 +224,71 @@ export default function RitmikDPanelPage() {
         return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [compId, catId, currentAlet, activeAthleteId, panelType, tokenVerified, firebasePath]);
+
+    // ── Hakem Çağır: hedef panel listener (DA1/DA2/DB1/DB2) ──
+    useEffect(() => {
+        if (!targetSjRole) return;
+        if (!compId || !catId || !currentAlet || !tokenVerified) return;
+
+        const callRef = ref(db, `${firebasePath}/${compId}/refereeCalls/${catId}/${currentAlet}/${targetSjRole}`);
+        const unsub = onValue(callRef, (snap) => {
+            const data = snap.val();
+            if (!data || !data.ts) return;
+            const ts = Number(data.ts);
+            if (ts <= lastSeenTsRef.current) return; // eski/duplicate
+            const elapsed = Date.now() - ts;
+            if (elapsed >= CALL_DURATION_MS) {
+                lastSeenTsRef.current = ts; // eski, ignore et ama tekrar tetiklenmesin
+                return;
+            }
+            lastSeenTsRef.current = ts;
+            const remaining = CALL_DURATION_MS - elapsed;
+            setCalledFlash({ remainingMs: remaining, total: CALL_DURATION_MS });
+
+            if (callTimerRef.current) clearTimeout(callTimerRef.current);
+            if (callTickRef.current)  clearInterval(callTickRef.current);
+
+            callTimerRef.current = setTimeout(() => {
+                setCalledFlash(null);
+                callTimerRef.current = null;
+            }, remaining);
+
+            // Geri sayım için tick
+            callTickRef.current = setInterval(() => {
+                setCalledFlash((prev) => {
+                    if (!prev) return prev;
+                    const newRem = prev.remainingMs - 200;
+                    if (newRem <= 0) return null;
+                    return { ...prev, remainingMs: newRem };
+                });
+            }, 200);
+        });
+
+        return () => {
+            unsub();
+            if (callTimerRef.current) { clearTimeout(callTimerRef.current); callTimerRef.current = null; }
+            if (callTickRef.current)  { clearInterval(callTickRef.current); callTickRef.current = null; }
+        };
+    }, [targetSjRole, compId, catId, currentAlet, tokenVerified, firebasePath]);
+
+    // ── Hakem Çağır: SJ panel buton handler ──
+    const handleCallReferees = async () => {
+        if (!isSjPanel) return;
+        if (!compId || !catId || !currentAlet) {
+            toast('Henüz alet seçilmedi.', 'warning');
+            return;
+        }
+        try {
+            const callRef = ref(db, `${firebasePath}/${compId}/refereeCalls/${catId}/${currentAlet}/${panelType}`);
+            await set(callRef, { ts: Date.now(), fromRole: panelType });
+            setCallerActive(true);
+            setTimeout(() => setCallerActive(false), CALL_DURATION_MS);
+            const targets = sjTargets.join(', ').toUpperCase();
+            toast(`${targets} hakemleri çağrıldı (${CALL_DURATION_MS/1000}s)`, 'success');
+        } catch {
+            toast('Hakem çağırma başarısız!', 'error');
+        }
+    };
 
     const parseVal = (str) => {
         const v = parseFloat(String(str).replace(',', '.'));
@@ -299,6 +388,41 @@ export default function RitmikDPanelPage() {
                     {config.badge}
                 </div>
             </div>
+
+            {/* SJ Panel: Hakem Çağır Butonu */}
+            {isSjPanel && (
+                <div style={{
+                    display: 'flex', justifyContent: 'center',
+                    padding: '0.6rem 1rem 0',
+                }}>
+                    <button
+                        type="button"
+                        onClick={handleCallReferees}
+                        disabled={!currentAlet || callerActive}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: '0.7rem 1.4rem',
+                            background: callerActive
+                                ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                                : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                            color: '#fff',
+                            border: 'none', borderRadius: '0.6rem',
+                            fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.04em',
+                            cursor: (!currentAlet || callerActive) ? 'not-allowed' : 'pointer',
+                            opacity: (!currentAlet) ? 0.55 : 1,
+                            boxShadow: '0 6px 16px rgba(245,158,11,0.35)',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <span className="material-icons-round" style={{ fontSize: 22 }}>
+                            {callerActive ? 'check_circle' : 'campaign'}
+                        </span>
+                        {callerActive
+                            ? `Çağrıldı: ${(sjTargets.join(' / ')).toUpperCase()}`
+                            : `Hakem Çağır (${(sjTargets.join(' / ')).toUpperCase()})`}
+                    </button>
+                </div>
+            )}
 
             <div className="epanel-main">
                 {/* Yanlış alet aktif mi? */}
@@ -473,6 +597,66 @@ export default function RitmikDPanelPage() {
                                     </button>
                                 </>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Hakem Çağrısı Flash Card — DA1/DA2/DB1/DB2 paneli için */}
+                {calledFlash && (
+                    <div style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(15, 23, 42, 0.92)',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 99999,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: '1.5rem', padding: '2rem',
+                        textAlign: 'center',
+                        animation: 'pulse-call 1.5s ease-in-out infinite',
+                    }}>
+                        <style>{`
+                            @keyframes pulse-call {
+                                0%, 100% { background: rgba(15,23,42,0.92); }
+                                50% { background: rgba(220,38,38,0.85); }
+                            }
+                            @keyframes shake-icon {
+                                0%, 100% { transform: rotate(0deg); }
+                                25% { transform: rotate(-15deg); }
+                                75% { transform: rotate(15deg); }
+                            }
+                        `}</style>
+                        <div style={{
+                            fontSize: 96,
+                            animation: 'shake-icon 0.5s ease-in-out infinite',
+                        }}>📢</div>
+                        <div style={{
+                            fontSize: '2.4rem', fontWeight: 900,
+                            color: '#fbbf24', letterSpacing: '0.04em',
+                            textShadow: '0 4px 20px rgba(251,191,36,0.5)',
+                        }}>
+                            SJ PANELİNE GİDİNİZ
+                        </div>
+                        <div style={{
+                            fontSize: '1.1rem', fontWeight: 700,
+                            color: '#fff', opacity: 0.9,
+                        }}>
+                            {aletLabel} · {config.badge} Hakemi
+                        </div>
+                        <div style={{
+                            width: '70%', maxWidth: 360,
+                            height: 8, background: 'rgba(255,255,255,0.15)',
+                            borderRadius: 4, overflow: 'hidden',
+                            marginTop: '0.5rem',
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${(calledFlash.remainingMs / calledFlash.total) * 100}%`,
+                                background: 'linear-gradient(90deg, #fbbf24, #ef4444)',
+                                transition: 'width 0.2s linear',
+                            }} />
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}>
+                            {Math.ceil(calledFlash.remainingMs / 1000)} saniye
                         </div>
                     </div>
                 )}

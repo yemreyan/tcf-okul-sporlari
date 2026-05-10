@@ -167,74 +167,73 @@ export function useRitmikScoring() {
     }, [selectedCompId, selectedCategory, firebasePath]);
 
     // ── Manuel refresh: hakem notları gecikirse buton ile zorla çek ──
-    // Önemli: scoringFieldsTouched=true ise sync useEffect Firebase verilerini panellere yansıtmaz.
-    //         Bu yüzden refresh sırasında touched flag'ini de sıfırlıyoruz.
+    // Alan-bazlı merge ile sync yapılıyor: başhakemin elle değiştirdiği alanlar
+    // (local'de dolu) korunur, sadece boş alanlar Firebase'den doldurulur.
     const refreshScores = useCallback(async () => {
         if (!selectedCompId || !selectedCategory) return;
         try {
             const snap = await get(ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}`));
-            setScoringFieldsTouched(false);   // touched filtresini bypass et
             setExistingScores(snap.val() || {});
+            // touched flag'ine artık dokunmuyoruz; merge mantığı her durumda çalışır
         } catch (e) {
             if (import.meta.env.DEV) console.error('refreshScores error', e);
         }
     }, [selectedCompId, selectedCategory, firebasePath]);
 
-    // ─── A/E panel hakem notları için ÖZEL sync (touched bağımsız) ───
-    // Başhakem A1-A4 / E1-E4 alanlarına genelde manuel müdahale etmez;
-    // sadece SİL yapınca o alan unlock olur. Bu yüzden hakem notları
-    // her existingScores değişiminde panellere yansımalı, touched filtresi UYGULANMAMALI.
+    // ─── Alan-bazlı merge yardımcıları ───
+    // Local string'in DOLU değeri varsa korunur; yoksa Firebase değeri yazılır.
+    // Bu sayede başhakemin elle yaptığı düzenlemeler hakem güncellemelerinden etkilenmez.
+    const mergeStr = (localStr, fbVal) => {
+        if (localStr !== '' && localStr != null) return localStr;
+        return (fbVal != null) ? String(fbVal) : '';
+    };
+    // Panel objesi (j1, j2, j3, j4 gibi) — her alan için ayrı korur
+    const mergePanel = (localPanel, fbPanel) => {
+        const out = { ...(fbPanel || {}) };
+        Object.entries(localPanel || {}).forEach(([k, v]) => {
+            if (v !== '' && v != null) out[k] = v;
+        });
+        return out;
+    };
+
+    // ─── Panel senkronizasyonu (alan-bazlı merge) ───
+    // existingScores değiştiğinde panellere YANSITILIR ama:
+    //   - Başhakemin elle değiştirdiği (local'de dolu) alanlar KORUNUR
+    //   - Sadece boş local alanlar Firebase'den doldurulur
+    // Bu yüzden artık scoringFieldsTouched bypass mantığına gerek YOK.
     useEffect(() => {
         if (!selectedAthlete) return;
         const sc = existingScores[selectedAthlete.id]?.[selectedAlet];
-        if (sc) {
-            if (sc.aPanel) setAPanelLocal(sc.aPanel);
-            if (sc.ePanel) setEPanelLocal(sc.ePanel);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [existingScores, selectedAthlete?.id, selectedAlet]);
-
-    // ─── Panel senkronizasyonu (sporcu/alet değişince) ───
-    useEffect(() => {
-        if (!selectedAthlete || scoringFieldsTouched) return;
-        const sc = existingScores[selectedAthlete.id]?.[selectedAlet];
-        if (sc) {
-            // Modern
-            setAPanelLocal(sc.aPanel || {});
-            setEPanelLocal(sc.ePanel || {});
-            setDbScoreInput(sc.dbScore != null ? String(sc.dbScore) : '');
-            setDaScoreInput(sc.daScore != null ? String(sc.daScore) : '');
-            setPenaltyInput(sc.penaltyTotal != null ? String(sc.penaltyTotal) : '');
-            // Classic
-            setClassicDA({
-                da:   sc.da   != null ? String(sc.da)   : '',
-                da1:  sc.da1  != null ? String(sc.da1)  : '',
-                da2:  sc.da2  != null ? String(sc.da2)  : '',
-                sjda: sc.sjda != null ? String(sc.sjda) : '',
-            });
-            setClassicDB({
-                db:   sc.db   != null ? String(sc.db)   : '',
-                db1:  sc.db1  != null ? String(sc.db1)  : '',
-                db2:  sc.db2  != null ? String(sc.db2)  : '',
-                sjdb: sc.sjdb != null ? String(sc.sjdb) : '',
-            });
-            setSjaInput(sc.sja != null ? String(sc.sja) : '');
-            setSjeInput(sc.sje != null ? String(sc.sje) : '');
-            // L (Çizgi 1/2) ve T (Zaman) hakem panellerinden gelen otomatik veri fallback'i:
-            // Başhakem manuel girmediyse panel hakemlerinin verisi gösterilir.
-            setClassicPenalty({
-                koordinator: sc.penaltyKoordinatör != null ? String(sc.penaltyKoordinatör) : '',
-                cizgi1:      sc.penaltyCizgi1      != null ? String(sc.penaltyCizgi1)
-                            : sc.lPanel?.cizgi1   != null ? String(sc.lPanel.cizgi1) : '',
-                cizgi2:      sc.penaltyCizgi2      != null ? String(sc.penaltyCizgi2)
-                            : sc.lPanel?.cizgi2   != null ? String(sc.lPanel.cizgi2) : '',
-                zaman:       sc.penaltyZaman       != null ? String(sc.penaltyZaman)
-                            : sc.tPanel?.zaman    != null ? String(sc.tPanel.zaman) : '',
-            });
-        }
-        // Not: sc yoksa resetPanel ÇAĞIRMIYORUZ — Firebase listener bir anlık null/boş
-        // yanıt verirse mevcut panel verisi kaybolmamalı. Reset sadece sporcu/alet
-        // değişiminde (handleSelectAthlete, handleSelectAlet) yapılır.
+        if (!sc) return;
+        // Modern + A/E paneli — alan-bazlı merge
+        setAPanelLocal(prev => mergePanel(prev, sc.aPanel));
+        setEPanelLocal(prev => mergePanel(prev, sc.ePanel));
+        setDbScoreInput(prev => mergeStr(prev, sc.dbScore));
+        setDaScoreInput(prev => mergeStr(prev, sc.daScore));
+        setPenaltyInput(prev => mergeStr(prev, sc.penaltyTotal));
+        // Classic DA/DB — her alan ayrı merge
+        setClassicDA(prev => ({
+            da:   mergeStr(prev.da,   sc.da),
+            da1:  mergeStr(prev.da1,  sc.da1),
+            da2:  mergeStr(prev.da2,  sc.da2),
+            sjda: mergeStr(prev.sjda, sc.sjda),
+        }));
+        setClassicDB(prev => ({
+            db:   mergeStr(prev.db,   sc.db),
+            db1:  mergeStr(prev.db1,  sc.db1),
+            db2:  mergeStr(prev.db2,  sc.db2),
+            sjdb: mergeStr(prev.sjdb, sc.sjdb),
+        }));
+        setSjaInput(prev => mergeStr(prev, sc.sja));
+        setSjeInput(prev => mergeStr(prev, sc.sje));
+        // Penalty (L/T panellerinden gelen değerler fallback olarak kalmaya devam eder)
+        setClassicPenalty(prev => ({
+            koordinator: mergeStr(prev.koordinator, sc.penaltyKoordinatör),
+            cizgi1:      mergeStr(prev.cizgi1, sc.penaltyCizgi1 ?? sc.lPanel?.cizgi1),
+            cizgi2:      mergeStr(prev.cizgi2, sc.penaltyCizgi2 ?? sc.lPanel?.cizgi2),
+            zaman:       mergeStr(prev.zaman,  sc.penaltyZaman  ?? sc.tPanel?.zaman),
+        }));
+        // Not: sc yoksa hiçbir şey yapmıyoruz — mevcut local state korunur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id, selectedAlet]);
 
