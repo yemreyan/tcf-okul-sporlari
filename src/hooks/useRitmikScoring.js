@@ -147,8 +147,20 @@ export function useRitmikScoring() {
         });
 
         const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}`);
+        let firstScoreSnap = true;
         const unsubScores = onValue(scoresRef, (snap) => {
-            setExistingScores(snap.val() || {});
+            const val = snap.val();
+            // Network glitch / kısa süreli null koruması:
+            //   İlk yüklemede null gelirse {} set et.
+            //   Sonraki onay'larda null gelirse önceki state'i koru (veri kaybı olmasın).
+            if (val !== null && val !== undefined) {
+                setExistingScores(val);
+                firstScoreSnap = false;
+            } else if (firstScoreSnap) {
+                setExistingScores({});
+                firstScoreSnap = false;
+            }
+            // val === null && !firstScoreSnap → mevcut state'e dokunma
         });
 
         return () => { unsubOrder(); unsubScores(); };
@@ -219,9 +231,10 @@ export function useRitmikScoring() {
                 zaman:       sc.penaltyZaman       != null ? String(sc.penaltyZaman)
                             : sc.tPanel?.zaman    != null ? String(sc.tPanel.zaman) : '',
             });
-        } else {
-            resetPanel();
         }
+        // Not: sc yoksa resetPanel ÇAĞIRMIYORUZ — Firebase listener bir anlık null/boş
+        // yanıt verirse mevcut panel verisi kaybolmamalı. Reset sadece sporcu/alet
+        // değişiminde (handleSelectAthlete, handleSelectAlet) yapılır.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id, selectedAlet]);
 
