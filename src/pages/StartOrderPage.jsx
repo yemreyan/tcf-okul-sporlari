@@ -1468,9 +1468,10 @@ export default function StartOrderPage() {
 
         try {
             const compName = competitions[selectedCompId]?.isim || 'Yarışma';
-            const allCategories = Object.keys(
-                competitions[selectedCompId]?.sporcular || {}
-            ).sort();
+            // Kategori seçilmişse SADECE onu PDF'e koy; aksi halde hepsi
+            const allCategories = filterCategory
+                ? [filterCategory]
+                : Object.keys(competitions[selectedCompId]?.sporcular || {}).sort();
 
             if (allCategories.length === 0) {
                 showToast("Bu yarışma için kategori bulunamadı.", 'warning');
@@ -1634,7 +1635,10 @@ export default function StartOrderPage() {
             }
 
             const safeCompName = compName.replace(/[\\/:*?"<>|]/g, '_');
-            doc.save(`${safeCompName}_Tum_Kategoriler_Cikis_Sirasi.pdf`);
+            const fileSuffix = filterCategory
+                ? `_${filterCategory.replace(/[\\/:*?"<>|]/g, '_')}_Cikis_Sirasi`
+                : '_Tum_Kategoriler_Cikis_Sirasi';
+            doc.save(`${safeCompName}${fileSuffix}.pdf`);
         } catch (err) {
             if (import.meta.env.DEV) console.error('PDF oluşturma hatası:', err);
             showToast('PDF oluşturulurken bir hata oluştu: ' + err.message, 'error');
@@ -1804,7 +1808,10 @@ export default function StartOrderPage() {
                 } catch { tarihStr = compTarih; }
             }
 
-            const allCategories = Object.keys(comp?.sporcular || {}).sort();
+            // Kategori seçilmişse SADECE onu Excel'e koy; aksi halde hepsi
+            const allCategories = filterCategory
+                ? [filterCategory]
+                : Object.keys(comp?.sporcular || {}).sort();
             if (allCategories.length === 0) {
                 showToast("Bu yarışma için kategori bulunamadı.", 'warning');
                 return;
