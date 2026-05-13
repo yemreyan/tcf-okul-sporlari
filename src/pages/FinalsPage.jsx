@@ -1111,8 +1111,10 @@ export default function FinalsPage() {
 
                 // Usable width calculations
                 const usableW = pageW - 2 * mg;
-                const fixedW = 10 + 26 + 26 + 36 + 16; // sira+ad+soyad+okul+toplam
-                const appColW = Math.max(28, Math.min(38, (usableW - fixedW) / Math.max(appCount, 1)));
+                // Sabit kolon toplamı: sira(10) + ad(26) + soyad(26) + okul(34) + toplam(16) + fark(14) = 126 mm
+                // 6 aletli kategorilerde (erkekler) min 28 clamp'i sığma sorunu yaratıyordu; 22'ye düşürüldü.
+                const fixedW = 10 + 26 + 26 + 34 + 16 + 14;
+                const appColW = Math.max(22, Math.min(38, (usableW - fixedW) / Math.max(appCount, 1)));
 
                 // ── BIREYSEL GENEL TASNIF ──
                 drawHeader(catName, 'GENEL TASNIF');
