@@ -1055,7 +1055,7 @@ export default function ScoringPage() {
                                                                                 <td key={i}>
                                                                                     <button
                                                                                         className={`diff-count-btn ${selectedCount === i ? 'diff-selected' : ''} ${wouldExceed ? 'diff-count-btn--disabled' : ''}`}
-                                                                                        onClick={() => !wouldExceed && setDifficultyMoves(prev => ({ ...prev, [group]: i }))}
+                                                                                        onClick={() => { if (!wouldExceed) { setDifficultyMoves(prev => ({ ...prev, [group]: i })); setScoringFieldsTouched(true); } }}
                                                                                         disabled={wouldExceed}
                                                                                         title={wouldExceed ? `Maksimum ${diffMaxMoves} hareket sınırına ulaşıldı` : ''}
                                                                                     >
@@ -1102,6 +1102,7 @@ export default function ScoringPage() {
                                                                             const next = [...crGroupValues];
                                                                             next[idx] = val;
                                                                             setCrGroupValues(next);
+                                                                            setScoringFieldsTouched(true);
                                                                         }}
                                                                     >
                                                                         {Number(val).toFixed(1)}
@@ -1119,7 +1120,7 @@ export default function ScoringPage() {
                                                                 <button
                                                                     key={val}
                                                                     className={`diff-opt-btn ${parseFloat(crValue) === val ? 'diff-opt-selected' : ''}`}
-                                                                    onClick={() => setCrValue(val)}
+                                                                    onClick={() => { setCrValue(val); setScoringFieldsTouched(true); }}
                                                                 >
                                                                     {Number(val).toFixed(1)}
                                                                 </button>
@@ -1136,7 +1137,7 @@ export default function ScoringPage() {
                                                             <button
                                                                 key={val}
                                                                 className={`diff-opt-btn ${parseFloat(cvValue) === val ? 'diff-opt-selected' : ''}`}
-                                                                onClick={() => setCvValue(val)}
+                                                                onClick={() => { setCvValue(val); setScoringFieldsTouched(true); }}
                                                             >
                                                                 {Number(val).toFixed(1)}
                                                             </button>
@@ -1152,7 +1153,7 @@ export default function ScoringPage() {
                                                             <button
                                                                 key={val}
                                                                 className={`diff-opt-btn ${parseFloat(btrsValue) === val ? 'diff-opt-selected' : ''}`}
-                                                                onClick={() => setBtrsValue(val)}
+                                                                onClick={() => { setBtrsValue(val); setScoringFieldsTouched(true); }}
                                                             >
                                                                 {Number(val).toFixed(1)}
                                                             </button>
@@ -1166,7 +1167,7 @@ export default function ScoringPage() {
                                                     <strong>{calculatedDScore.toFixed(2)}</strong>
                                                 </div>
 
-                                                <button className="btn-quick-blue clear-btn" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => { setDifficultyMoves({}); setCrValue(0); setCrGroupValues([0,0,0,0]); setCvValue(0); setBtrsValue(0); }}>
+                                                <button className="btn-quick-blue clear-btn" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => { setDifficultyMoves({}); setCrValue(0); setCrGroupValues([0,0,0,0]); setCvValue(0); setBtrsValue(0); setScoringFieldsTouched(true); }}>
                                                     <i className="material-icons-round" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: 4 }}>refresh</i> D-Puanını Sıfırla
                                                 </button>
                                             </div>
@@ -1180,7 +1181,7 @@ export default function ScoringPage() {
                                                             <div className="skill-btn-group">
                                                                 <button
                                                                     className={`skill-val-btn ${(!skillScores[skill.id] || Number(skillScores[skill.id]) === 0) ? 'selected' : ''}`}
-                                                                    onClick={() => setSkillScores(prev => ({ ...prev, [skill.id]: 0 }))}
+                                                                    onClick={() => { setSkillScores(prev => ({ ...prev, [skill.id]: 0 })); setScoringFieldsTouched(true); }}
                                                                 >
                                                                     0.0
                                                                 </button>
@@ -1188,7 +1189,7 @@ export default function ScoringPage() {
                                                                     <button
                                                                         key={v}
                                                                         className={`skill-val-btn ${String(skillScores[skill.id]) === String(v) ? 'selected' : ''}`}
-                                                                        onClick={() => setSkillScores(prev => ({ ...prev, [skill.id]: v }))}
+                                                                        onClick={() => { setSkillScores(prev => ({ ...prev, [skill.id]: v })); setScoringFieldsTouched(true); }}
                                                                     >
                                                                         {v}
                                                                     </button>
