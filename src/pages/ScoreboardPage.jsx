@@ -36,16 +36,12 @@ const APPARATUS_MAP = {
     tumbling: { abbr: 'TU' },
 };
 
-// Apparatus SVG illustrations
-const APPARATUS_IMAGES = {
-    yer: '<svg viewBox="0 0 40 28" fill="none"><rect x="2" y="18" width="36" height="8" rx="2" fill="#94A3B8"/><rect x="4" y="20" width="32" height="4" rx="1" fill="#CBD5E1"/><path d="M14 8L20 2L26 8" stroke="#64748B" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="13" r="3" fill="#64748B"/></svg>',
-    atlama: '<svg viewBox="0 0 40 28" fill="none"><rect x="8" y="12" width="24" height="14" rx="3" fill="#94A3B8"/><rect x="10" y="14" width="20" height="10" rx="2" fill="#CBD5E1"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
-    paralel: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="6" width="2" height="20" rx="1" fill="#64748B"/><rect x="32" y="6" width="2" height="20" rx="1" fill="#64748B"/><rect x="4" y="6" width="6" height="3" rx="1" fill="#94A3B8"/><rect x="30" y="6" width="6" height="3" rx="1" fill="#94A3B8"/><rect x="8" y="7" width="24" height="2" rx="1" fill="#CBD5E1"/><rect x="8" y="14" width="24" height="2" rx="1" fill="#CBD5E1"/></svg>',
-    barfiks: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="4" width="3" height="22" rx="1" fill="#64748B"/><rect x="31" y="4" width="3" height="22" rx="1" fill="#64748B"/><rect x="5" y="4" width="30" height="3" rx="1.5" fill="#94A3B8"/></svg>',
-    halka: '<svg viewBox="0 0 40 28" fill="none"><rect x="18" y="0" width="4" height="8" rx="1" fill="#64748B"/><line x1="12" y1="8" x2="20" y2="8" stroke="#94A3B8" stroke-width="1.5"/><line x1="20" y1="8" x2="28" y2="8" stroke="#94A3B8" stroke-width="1.5"/><circle cx="12" cy="16" r="5" stroke="#94A3B8" stroke-width="2.5" fill="none"/><circle cx="28" cy="16" r="5" stroke="#94A3B8" stroke-width="2.5" fill="none"/></svg>',
-    kulplu: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="16" width="32" height="8" rx="3" fill="#94A3B8"/><rect x="6" y="18" width="28" height="4" rx="2" fill="#CBD5E1"/><path d="M12 16Q12 10 16 10Q20 10 20 16" stroke="#64748B" stroke-width="2" fill="none"/><path d="M20 16Q20 10 24 10Q28 10 28 16" stroke="#64748B" stroke-width="2" fill="none"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
-    denge: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="10" width="32" height="3" rx="1.5" fill="#94A3B8"/><rect x="6" y="12" width="28" height="2" rx="1" fill="#CBD5E1"/><rect x="8" y="13" width="3" height="13" rx="1" fill="#64748B"/><rect x="29" y="13" width="3" height="13" rx="1" fill="#64748B"/></svg>',
-    asimetrik: '<svg viewBox="0 0 40 28" fill="none"><rect x="6" y="2" width="3" height="24" rx="1" fill="#64748B"/><rect x="31" y="2" width="3" height="24" rx="1" fill="#64748B"/><rect x="5" y="4" width="30" height="2.5" rx="1" fill="#94A3B8"/><rect x="5" y="16" width="30" height="2.5" rx="1" fill="#94A3B8"/></svg>',
+// Apparatus PNG icons — `public/apparatus/{id}.png`
+// Vite serves /public at root; Vercel deploy aynı path'i korur.
+const APPARATUS_PNG = new Set(['yer', 'atlama', 'paralel', 'barfiks', 'halka', 'kulplu', 'denge', 'asimetrik']);
+
+// Diğer aletler (mantar, kasa, trampolin, tumbling) için yedek inline SVG
+const APPARATUS_SVG_FALLBACK = {
     mantar: '<svg viewBox="0 0 40 28" fill="none"><ellipse cx="20" cy="18" rx="16" ry="6" fill="#94A3B8"/><ellipse cx="20" cy="17" rx="14" ry="5" fill="#CBD5E1"/><rect x="8" y="22" width="4" height="4" rx="1" fill="#64748B"/><rect x="28" y="22" width="4" height="4" rx="1" fill="#64748B"/></svg>',
     kasa: '<svg viewBox="0 0 40 28" fill="none"><rect x="8" y="12" width="24" height="14" rx="3" fill="#94A3B8"/><rect x="10" y="14" width="20" height="10" rx="2" fill="#CBD5E1"/><rect x="2" y="22" width="6" height="4" rx="1" fill="#64748B"/><rect x="32" y="22" width="6" height="4" rx="1" fill="#64748B"/></svg>',
     trampolin: '<svg viewBox="0 0 40 28" fill="none"><rect x="4" y="20" width="32" height="6" rx="2" fill="#94A3B8"/><path d="M6 20Q20 10 34 20" stroke="#64748B" stroke-width="2" fill="none"/><rect x="4" y="20" width="2" height="6" rx="1" fill="#64748B"/><rect x="34" y="20" width="2" height="6" rx="1" fill="#64748B"/></svg>',
@@ -53,7 +49,18 @@ const APPARATUS_IMAGES = {
 };
 
 function ApparatusIcon({ id, className }) {
-    const svgStr = APPARATUS_IMAGES[id];
+    if (APPARATUS_PNG.has(id)) {
+        return (
+            <img
+                className={className}
+                src={`/apparatus/${id}.png`}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+            />
+        );
+    }
+    const svgStr = APPARATUS_SVG_FALLBACK[id];
     if (!svgStr) return null;
     return (
         <img

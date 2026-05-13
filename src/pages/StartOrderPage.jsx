@@ -18,7 +18,19 @@ export default function StartOrderPage() {
     const [selectedCompId, setSelectedCompId] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
 
-    const MAX_PER_ROTATION = 8;
+    // Grup başına maksimum sporcu — kullanıcı arayüzden değiştirebilir
+    const DEFAULT_MAX_PER_ROTATION = 8;
+    const [maxPerRotation, setMaxPerRotation] = useState(() => {
+        try {
+            const saved = parseInt(localStorage.getItem('startOrder_maxPerRotation'), 10);
+            return (saved >= 1 && saved <= 20) ? saved : DEFAULT_MAX_PER_ROTATION;
+        } catch { return DEFAULT_MAX_PER_ROTATION; }
+    });
+    const MAX_PER_ROTATION = maxPerRotation; // Backward compat — tüm referansları etkiler
+    // localStorage'a kaydet
+    useEffect(() => {
+        try { localStorage.setItem('startOrder_maxPerRotation', String(maxPerRotation)); } catch { /* noop */ }
+    }, [maxPerRotation]);
 
     // State
     const [rotations, setRotations] = useState([]); // Dynamic rotation count
@@ -2047,6 +2059,58 @@ export default function StartOrderPage() {
 
                     {hasPermission('start_order', 'duzenle') && (
                         <>
+                            {/* Grup boyutu + Tümünü Boşalt — yeni kontroller */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.6rem',
+                                padding: '0.45rem 0.75rem',
+                                background: 'rgba(99, 102, 241, 0.08)',
+                                border: '1px solid rgba(99, 102, 241, 0.25)',
+                                borderRadius: '0.5rem',
+                            }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                                    Grup Boyutu:
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="20"
+                                    value={maxPerRotation}
+                                    onChange={e => {
+                                        const v = parseInt(e.target.value, 10);
+                                        if (v >= 1 && v <= 20) setMaxPerRotation(v);
+                                    }}
+                                    style={{
+                                        width: '60px', padding: '0.35rem 0.5rem',
+                                        border: '1px solid #cbd5e1', borderRadius: '0.35rem',
+                                        fontWeight: 700, textAlign: 'center', fontSize: '0.9rem',
+                                    }}
+                                    title="Her gruba maksimum sporcu sayısı (1-20). Atama butonları bu değeri kullanır."
+                                />
+                                <button
+                                    className="btn-random-assign"
+                                    style={{ background: '#ef4444', color: '#fff' }}
+                                    onClick={() => {
+                                        if (rotations.every(r => r.length === 0)) {
+                                            showToast('Boşaltılacak grup yok.', 'warning');
+                                            return;
+                                        }
+                                        const total = rotations.reduce((s, r) => s + r.length, 0);
+                                        if (!window.confirm(`${total} sporcu tüm gruplardan çıkarılıp "Boştaki Sporcular" listesine alınacak. Devam edilsin mi?`)) return;
+                                        const allAthletes = rotations.flat();
+                                        setUnassigned(prev => {
+                                            const merged = [...prev, ...allAthletes];
+                                            return merged.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'));
+                                        });
+                                        setRotations([]);
+                                        showToast(`${total} sporcu boşaltıldı.`, 'success');
+                                    }}
+                                    disabled={!selectedCompId || !filterCategory || rotations.every(r => r.length === 0)}
+                                    title="Tüm grupları boşalt, sporcuları 'Boştaki Sporcular' listesine al"
+                                >
+                                    <i className="material-icons-round">layers_clear</i>
+                                    Tümünü Boşalt
+                                </button>
+                            </div>
                             <button
                                 className="btn-random-assign"
                                 onClick={handleSortByFirebaseId}
