@@ -874,16 +874,16 @@
 .sf-new-score-tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     background: rgba(99, 102, 241, 0.15);
     border: 1px solid rgba(165, 180, 252, 0.4);
     color: #A5B4FC;
-    font-size: 0.72rem;
+    font-size: 1rem;
     font-weight: 900;
-    letter-spacing: 3px;
-    padding: 5px 14px;
-    border-radius: 4px;
-    margin-bottom: 1.5rem;
+    letter-spacing: 4px;
+    padding: 7px 18px;
+    border-radius: 6px;
+    margin-bottom: 2rem;
     animation: tagPulse 2.5s ease-in-out infinite;
 }
 
@@ -893,7 +893,7 @@
 }
 
 .sf-new-score-tag i {
-    font-size: 0.9rem;
+    font-size: 1.2rem;
     animation: bellShake 2.2s ease-in-out infinite;
 }
 
@@ -906,7 +906,7 @@
 }
 
 .sf-athlete {
-    font-size: 3rem;
+    font-size: 4.5rem;
     font-weight: 900;
     color: #F1F5F9;
     margin: 0;
@@ -916,24 +916,24 @@
 }
 
 .sf-club {
-    font-size: 1.05rem;
+    font-size: 1.6rem;
     color: #94A3B8;
     font-weight: 600;
-    margin: 0.3rem 0 0;
+    margin: 0.5rem 0 0;
     letter-spacing: 0.3px;
 }
 
 .sf-apparatus {
     display: inline-block;
-    margin-top: 1rem;
-    padding: 0.35rem 1.2rem;
+    margin-top: 1.2rem;
+    padding: 0.55rem 1.6rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
-    font-size: 0.85rem;
+    border-radius: 6px;
+    font-size: 1.4rem;
     font-weight: 900;
     color: #94A3B8;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
 }
 
 /* ---- Score panels ---- */
@@ -941,17 +941,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    margin: 2rem 0;
+    gap: 1.5rem;
+    margin: 3rem 0;
 }
 
 .sf-score-item {
-    padding: 1.2rem 1.5rem;
-    border-radius: 10px;
+    padding: 1.8rem 2rem;
+    border-radius: 12px;
     border: 1px solid transparent;
     opacity: 0;
     transform: translateY(24px) scale(0.8);
-    min-width: 130px;
+    min-width: 180px;
     /* no transition — animation handles reveal */
 }
 
@@ -967,16 +967,16 @@
 }
 
 .sf-score-label {
-    font-size: 0.65rem;
+    font-size: 1rem;
     font-weight: 800;
-    letter-spacing: 2px;
-    margin-bottom: 0.4rem;
+    letter-spacing: 2.5px;
+    margin-bottom: 0.6rem;
     text-transform: uppercase;
     opacity: 0.75;
 }
 
 .sf-score-value {
-    font-size: 2.4rem;
+    font-size: 4rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -1090,7 +1090,7 @@
 
 /* Divider */
 .sf-score-divider {
-    font-size: 1.8rem;
+    font-size: 3rem;
     font-weight: 200;
     color: rgba(255, 255, 255, 0.12);
     opacity: 0;
@@ -1104,7 +1104,7 @@
 
 /* ---- Total Score ---- */
 .sf-total {
-    margin-top: 1.5rem;
+    margin-top: 2.5rem;
     opacity: 0;
     transform: scale(0.45);
 }
@@ -1121,10 +1121,11 @@
 }
 
 .sf-total-value {
-    font-size: 5rem;
+    font-size: 11rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    letter-spacing: -3px;
     display: inline-block;
     background: linear-gradient(135deg, #FCD34D 0%, #F59E0B 35%, #FBBF24 55%, #D97706 100%);
     background-clip: text;
@@ -1174,9 +1175,12 @@
     .sb-athlete-name { font-size: 0.95rem; }
     .sb-score-cell { font-size: 0.95rem; }
     .sb-total-cell { font-size: 1.2rem; }
-    .sf-athlete { font-size: 2.5rem; }
-    .sf-score-value { font-size: 2rem; }
-    .sf-total-value { font-size: 4rem; }
+    .sf-athlete { font-size: 3.6rem; }
+    .sf-club { font-size: 1.3rem; }
+    .sf-apparatus { font-size: 1.15rem; }
+    .sf-score-value { font-size: 3rem; }
+    .sf-score-item { min-width: 150px; padding: 1.4rem 1.6rem; }
+    .sf-total-value { font-size: 8.5rem; }
 }
 
 @media (max-width: 1024px) {
@@ -1191,10 +1195,14 @@
     .sb-score-cell { font-size: 0.85rem; }
     .sb-total-cell { font-size: 1.05rem; }
     .sb-medal-icon { width: 26px; height: 26px; font-size: 0.75rem; }
-    .sf-scores { flex-wrap: wrap; gap: 0.75rem; }
-    .sf-score-item { min-width: 100px; padding: 1rem; }
-    .sf-score-value { font-size: 1.6rem; }
-    .sf-total-value { font-size: 3rem; }
+    .sf-athlete { font-size: 2.8rem; }
+    .sf-club { font-size: 1.1rem; }
+    .sf-apparatus { font-size: 1rem; }
+    .sf-scores { flex-wrap: wrap; gap: 0.9rem; }
+    .sf-score-item { min-width: 120px; padding: 1.2rem 1.3rem; }
+    .sf-score-value { font-size: 2.3rem; }
+    .sf-score-label { font-size: 0.85rem; }
+    .sf-total-value { font-size: 6.5rem; }
 }
 
 @media (max-width: 768px) {
