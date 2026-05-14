@@ -478,16 +478,22 @@ export default function FinalsPage() {
 
         if (isRitmikTeam) {
             // ── Ritmik takım hesabı: max 4 (genç: 3) sporcu, alet başına top 2 puan ──
+            // GRUPLAMA: okul + il (aynı isimli okul farklı illerde olabilir)
             const maxSize = getRitmikMaxTeamSize(catKey);
-            const clubMembers = {}; // {okul: {athId: {top, kurdele, total}}}
-            const clubIl = {};      // {okul: il}
+            const clubMembers = {}; // {"OKUL|IL": {athId: {...}}}
+            const clubMeta = {};    // {"OKUL|IL": {name, il}}
 
             filteredResults.forEach(res => {
                 if (!res.okul) return;
-                if (!clubMembers[res.okul]) clubMembers[res.okul] = {};
-                if (!clubIl[res.okul] && res.il) clubIl[res.okul] = res.il;
+                const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
+                const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
+                const teamKey = `${okulKey}|${ilKey}`;
+                if (!clubMembers[teamKey]) {
+                    clubMembers[teamKey] = {};
+                    clubMeta[teamKey] = { name: res.okul, il: res.il || '' };
+                }
                 const total = apparatusKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
-                clubMembers[res.okul][res.id] = {
+                clubMembers[teamKey][res.id] = {
                     ...apparatusKeys.reduce((acc, k) => ({ ...acc, [k]: res.scores[k] || 0 }), {}),
                     total,
                 };
@@ -499,15 +505,16 @@ export default function FinalsPage() {
                     const scoredCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
                     return scoredCount >= 2;
                 })
-                .map(([name, members]) => {
+                .map(([teamKey, members]) => {
+                    const meta = clubMeta[teamKey] || { name: teamKey, il: '' };
                     const apparatusTotals = calcRitmikTeamApparatusTotals(members, apparatusKeys, maxSize);
                     const totalScore = Object.values(apparatusTotals).reduce((s, v) => s + v, 0);
                     const deductionTotal = Object.values(teamDeductions)
-                        .filter(d => d.teamName === name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                        .filter(d => d.teamName === meta.name && (!d.categoryId || d.categoryId === selectedCategoryId))
                         .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                     const finalScore = totalScore - deductionTotal;
                     const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
-                    return { name, il: clubIl[name] || '', apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
+                    return { name: meta.name, il: meta.il, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -520,15 +527,19 @@ export default function FinalsPage() {
         }
 
         // ── Standart (artistik vs.) takım hesabı ──
+        // GRUPLAMA: okul + il birleşik anahtar
         const clubScores = {};
         filteredResults.forEach(res => {
             if (!res.okul) return;
-            if (!clubScores[res.okul]) {
-                clubScores[res.okul] = { name: res.okul, il: res.il || '', scores: {} };
-                apparatusKeys.forEach(key => clubScores[res.okul].scores[key] = []);
+            const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
+            const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
+            const teamKey = `${okulKey}|${ilKey}`;
+            if (!clubScores[teamKey]) {
+                clubScores[teamKey] = { name: res.okul, il: res.il || '', scores: {} };
+                apparatusKeys.forEach(key => clubScores[teamKey].scores[key] = []);
             }
-            if (!clubScores[res.okul].il && res.il) clubScores[res.okul].il = res.il;
-            apparatusKeys.forEach(key => clubScores[res.okul].scores[key].push(res.scores[key]));
+            if (!clubScores[teamKey].il && res.il) clubScores[teamKey].il = res.il;
+            apparatusKeys.forEach(key => clubScores[teamKey].scores[key].push(res.scores[key]));
         });
 
         const topN = (isAerobikDiscipline) ? 2 : ((catKey.includes('yildiz') || catKey.includes('genc')) ? 2 : 3);
@@ -890,11 +901,18 @@ export default function FinalsPage() {
         if (isRitmikC) {
             const maxSize = getRitmikMaxTeamSize(catKeyC);
             const clubMembers = {};
+            const clubMetaC = {};
             filtered.forEach(res => {
                 if (!res.okul) return;
-                if (!clubMembers[res.okul]) clubMembers[res.okul] = {};
+                const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
+                const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
+                const teamKey = `${okulKey}|${ilKey}`;
+                if (!clubMembers[teamKey]) {
+                    clubMembers[teamKey] = {};
+                    clubMetaC[teamKey] = { name: res.okul, il: res.il || '' };
+                }
                 const total = appKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
-                clubMembers[res.okul][res.id] = {
+                clubMembers[teamKey][res.id] = {
                     ...appKeys.reduce((acc, k) => ({ ...acc, [k]: res.scores[k] || 0 }), {}),
                     total,
                 };
@@ -906,14 +924,15 @@ export default function FinalsPage() {
                     const scoredCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
                     return scoredCount >= 2;
                 })
-                .map(([name, members]) => {
+                .map(([teamKey, members]) => {
+                    const meta = clubMetaC[teamKey] || { name: teamKey, il: '' };
                     const appTotals = calcRitmikTeamApparatusTotals(members, appKeys, maxSize);
                     const total = Object.values(appTotals).reduce((s, v) => s + v, 0);
                     const dTotal = Object.values(teamDeductions || {})
-                        .filter(d => d.teamName === name && (!d.categoryId || d.categoryId === catId))
+                        .filter(d => d.teamName === meta.name && (!d.categoryId || d.categoryId === catId))
                         .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
                     const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
-                    return { name, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: scoredMemberCount, maxSize };
+                    return { name: meta.name, il: meta.il, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -925,16 +944,19 @@ export default function FinalsPage() {
             });
         }
 
-        // Standart hesap (artistik vs.)
+        // Standart hesap (artistik vs.) — okul + il birleşik anahtar
         const clubScores = {};
         filtered.forEach(res => {
             if (!res.okul) return;
-            if (!clubScores[res.okul]) {
-                clubScores[res.okul] = { name: res.okul, il: res.il || '', scores: {} };
-                appKeys.forEach(k => clubScores[res.okul].scores[k] = []);
+            const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
+            const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
+            const teamKey = `${okulKey}|${ilKey}`;
+            if (!clubScores[teamKey]) {
+                clubScores[teamKey] = { name: res.okul, il: res.il || '', scores: {} };
+                appKeys.forEach(k => clubScores[teamKey].scores[k] = []);
             }
-            if (!clubScores[res.okul].il && res.il) clubScores[res.okul].il = res.il;
-            appKeys.forEach(k => clubScores[res.okul].scores[k].push(res.scores[k]));
+            if (!clubScores[teamKey].il && res.il) clubScores[teamKey].il = res.il;
+            appKeys.forEach(k => clubScores[teamKey].scores[k].push(res.scores[k]));
         });
 
         const topNC = (isAerobikDiscipline) ? 2 : ((catKeyC.includes('yildiz') || catKeyC.includes('genc')) ? 2 : 3);

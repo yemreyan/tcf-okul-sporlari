@@ -283,15 +283,18 @@ export default function AthletesPage() {
                 const groupCats = getAerobikGroupCats(catId);
 
                 // Gruptaki tüm kategorilerdeki sporcuları yükle
-                const schoolGroups = {}; // okul → [{ id, catId, ...ath }]
+                // GRUPLAMA ANAHTARI: okul + il (aynı isimli okul farklı illerde olabilir)
+                const schoolGroups = {}; // "okul|il" → [{ id, catId, ...ath }]
                 for (const gCatId of groupCats) {
                     const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${gCatId}`));
                     if (!snap.exists()) continue;
                     Object.entries(snap.val()).forEach(([id, ath]) => {
-                        const okul = (ath.okul || ath.kulup || '').trim();
+                        const okul = (ath.okul || ath.kulup || '').trim().toLocaleUpperCase('tr-TR');
                         if (!okul) return;
-                        if (!schoolGroups[okul]) schoolGroups[okul] = [];
-                        schoolGroups[okul].push({ id, catId: gCatId, ...ath });
+                        const il = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                        const groupKey = `${okul}|${il}`;
+                        if (!schoolGroups[groupKey]) schoolGroups[groupKey] = [];
+                        schoolGroups[groupKey].push({ id, catId: gCatId, ...ath });
                     });
                 }
 
@@ -330,12 +333,15 @@ export default function AthletesPage() {
             if (!snap.exists()) continue;
 
             const allAthletes = snap.val();
+            // GRUPLAMA ANAHTARI: okul + il (aynı isimli okul farklı illerde olabilir)
             const schoolGroups = {};
             Object.entries(allAthletes).forEach(([id, ath]) => {
-                const okul = (ath.okul || ath.kulup || '').trim();
+                const okul = (ath.okul || ath.kulup || '').trim().toLocaleUpperCase('tr-TR');
                 if (!okul) return;
-                if (!schoolGroups[okul]) schoolGroups[okul] = [];
-                schoolGroups[okul].push({ id, ...ath });
+                const il = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                const groupKey = `${okul}|${il}`;
+                if (!schoolGroups[groupKey]) schoolGroups[groupKey] = [];
+                schoolGroups[groupKey].push({ id, ...ath });
             });
 
             const updates = {};

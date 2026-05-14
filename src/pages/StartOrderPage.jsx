@@ -322,7 +322,10 @@ export default function StartOrderPage() {
             athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
-                    const school = ath.okul || 'Bilinmeyen Takım';
+                    // Okul + il birleşik anahtar — aynı isimli okul farklı illerde olabilir
+                    const okulName = (ath.okul || 'Bilinmeyen Takım').trim().toLocaleUpperCase('tr-TR');
+                    const ilName = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                    const school = `${okulName}|${ilName}`;
                     if (!teamsMap[school]) teamsMap[school] = [];
                     teamsMap[school].push(ath);
                 } else {
@@ -428,7 +431,10 @@ export default function StartOrderPage() {
             athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
-                    const school = ath.okul || 'Bilinmeyen Takım';
+                    // Okul + il birleşik anahtar — aynı isimli okul farklı illerde olabilir
+                    const okulName = (ath.okul || 'Bilinmeyen Takım').trim().toLocaleUpperCase('tr-TR');
+                    const ilName = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                    const school = `${okulName}|${ilName}`;
                     if (!teamsMap[school]) teamsMap[school] = [];
                     teamsMap[school].push(ath);
                 } else {
@@ -559,7 +565,10 @@ export default function StartOrderPage() {
             athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
-                    const school = ath.okul || 'Bilinmeyen Takım';
+                    // Okul + il birleşik anahtar — aynı isimli okul farklı illerde olabilir
+                    const okulName = (ath.okul || 'Bilinmeyen Takım').trim().toLocaleUpperCase('tr-TR');
+                    const ilName = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                    const school = `${okulName}|${ilName}`;
                     if (!teamsMap[school]) teamsMap[school] = [];
                     teamsMap[school].push(ath);
                 } else {
@@ -682,7 +691,10 @@ export default function StartOrderPage() {
             athletesToAssign.forEach(ath => {
                 const type = (ath.yarismaTuru || 'ferdi').toLowerCase();
                 if (type === 'takim' || type === 'takım') {
-                    const school = ath.okul || 'Bilinmeyen Takım';
+                    // Okul + il birleşik anahtar — aynı isimli okul farklı illerde olabilir
+                    const okulName = (ath.okul || 'Bilinmeyen Takım').trim().toLocaleUpperCase('tr-TR');
+                    const ilName = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+                    const school = `${okulName}|${ilName}`;
                     if (!teamsMap[school]) teamsMap[school] = [];
                     teamsMap[school].push(ath);
                 } else {
