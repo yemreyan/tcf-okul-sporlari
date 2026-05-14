@@ -47,6 +47,10 @@ export default function StartOrderPage() {
     // Modals
     const [personGroupModal, setPersonGroupModal] = useState(null);
     const [districtModal, setDistrictModal] = useState(null);
+    const [rotationMatrixModal, setRotationMatrixModal] = useState(false);
+    // Alet bazlı rotasyon: { aletId: [groupIdx0, groupIdx1, ...] }
+    // groupIdx i'inci slotta hangi grubun olduğunu söyler. Default: [0,1,2,...]
+    const [apparatusRotation, setApparatusRotation] = useState({});
 
     // Toast System
     const [toasts, setToasts] = useState([]);
@@ -150,10 +154,12 @@ export default function StartOrderPage() {
         const loadData = async () => {
             try {
                 // Her iki veriyi de aynı anda oku
-                const [athletesSnap, orderSnap] = await Promise.all([
+                const [athletesSnap, orderSnap, rotSnap] = await Promise.all([
                     get(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${filterCategory}`)),
-                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${filterCategory}`))
+                    get(ref(db, `${firebasePath}/${selectedCompId}/siralama/${filterCategory}`)),
+                    get(ref(db, `${firebasePath}/${selectedCompId}/apparatusRotation/${filterCategory}`)),
                 ]);
+                setApparatusRotation(rotSnap.val() || {});
 
                 const data = athletesSnap.val();
                 const loadedAthletes = [];
@@ -2117,6 +2123,16 @@ export default function StartOrderPage() {
                                     <i className="material-icons-round">layers_clear</i>
                                     Tümünü Boşalt
                                 </button>
+                                <button
+                                    className="btn-random-assign"
+                                    style={{ background: '#8b5cf6', color: '#fff' }}
+                                    onClick={() => setRotationMatrixModal(true)}
+                                    disabled={!selectedCompId || !filterCategory || rotations.every(r => r.length === 0)}
+                                    title="Alet bazlı rotasyon matrisi — her aletin grupları farklı sırayla dolanır"
+                                >
+                                    <i className="material-icons-round">swap_horiz</i>
+                                    Alet Rotasyonu
+                                </button>
                             </div>
                             <button
                                 className="btn-random-assign"
@@ -2575,6 +2591,172 @@ export default function StartOrderPage() {
                     </div>
                 </div>
             )}
+
+            {/* Alet Rotasyon Matrisi Modal */}
+            {rotationMatrixModal && (() => {
+                const comp = competitions[selectedCompId];
+                const catData = comp?.kategoriler?.[filterCategory] || {};
+                let aletler = [];
+                if (Array.isArray(catData.aletler)) {
+                    aletler = catData.aletler.map(a => typeof a === 'object' ? { id: a.id || a.value, name: a.name || a.label || a.id } : { id: a, name: a });
+                } else if (catData.aletler && typeof catData.aletler === 'object') {
+                    aletler = Object.keys(catData.aletler).map(k => ({ id: k, name: catData.aletler[k]?.name || k }));
+                }
+                const numGroups = rotations.length;
+                const defaultOrder = Array.from({ length: numGroups }, (_, i) => i);
+
+                // Geçici state: modal açıkken kullanıcı düzenler, Uygula'ya basınca Firebase'e gider
+                const currentMatrix = {};
+                aletler.forEach(a => {
+                    const saved = apparatusRotation[a.id];
+                    const valid = Array.isArray(saved) && saved.length === numGroups
+                        && saved.every(n => Number.isInteger(n) && n >= 0 && n < numGroups);
+                    currentMatrix[a.id] = valid ? saved : defaultOrder;
+                });
+
+                const updateCell = (aletId, slotIdx, newGroupIdx) => {
+                    const updated = { ...apparatusRotation };
+                    const arr = [...(updated[aletId] || defaultOrder)];
+                    arr[slotIdx] = newGroupIdx;
+                    updated[aletId] = arr;
+                    setApparatusRotation(updated);
+                };
+
+                const applyShiftPreset = () => {
+                    // Olimpik rotasyon: her alet bir slot kayık
+                    const newMatrix = {};
+                    aletler.forEach((a, aIdx) => {
+                        newMatrix[a.id] = Array.from({ length: numGroups }, (_, i) => (i + aIdx) % numGroups);
+                    });
+                    setApparatusRotation(newMatrix);
+                };
+
+                const resetToDefault = () => {
+                    const newMatrix = {};
+                    aletler.forEach(a => { newMatrix[a.id] = defaultOrder; });
+                    setApparatusRotation(newMatrix);
+                };
+
+                const saveMatrix = async () => {
+                    try {
+                        const cleaned = {};
+                        aletler.forEach(a => {
+                            cleaned[a.id] = apparatusRotation[a.id] || defaultOrder;
+                        });
+                        await update(ref(db, `${firebasePath}/${selectedCompId}/apparatusRotation`), {
+                            [filterCategory]: cleaned,
+                        });
+                        showToast('Alet rotasyonu kaydedildi.', 'success');
+                        setRotationMatrixModal(false);
+                    } catch (e) {
+                        showToast('Kayıt başarısız: ' + (e.message || ''), 'error');
+                    }
+                };
+
+                if (aletler.length === 0) {
+                    return (
+                        <div className="confirm-overlay" onClick={() => setRotationMatrixModal(false)}>
+                            <div className="confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+                                <h3>Alet Rotasyonu</h3>
+                                <p>Bu kategoride alet tanımlı değil. Önce kategori için aletleri tanımlayın.</p>
+                                <div className="confirm-actions">
+                                    <button className="confirm-btn confirm-btn--cancel" onClick={() => setRotationMatrixModal(false)}>Kapat</button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="confirm-overlay" onClick={() => setRotationMatrixModal(false)}>
+                        <div className="confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 900, width: '95%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <h3 style={{ margin: 0 }}>
+                                    <i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: 6 }}>swap_horiz</i>
+                                    Alet Bazlı Rotasyon
+                                </h3>
+                                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{filterCategory}</span>
+                            </div>
+                            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0 0 0.85rem' }}>
+                                Her satır bir alet, her sütun bir slot. Hücreler hangi grubun o slotta o alete gireceğini gösterir.
+                                Tıklayarak grup numarasını değiştirebilirsin.
+                            </p>
+
+                            <div style={{ display: 'flex', gap: 8, marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+                                <button onClick={applyShiftPreset} style={{
+                                    padding: '0.45rem 0.85rem', background: '#0ea5e9', color: '#fff',
+                                    border: 'none', borderRadius: 6, fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem',
+                                }}>
+                                    <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>auto_awesome</i>
+                                    Olimpik Kaydır (Atlama:1-2-3, Yer:2-3-1, Denge:3-1-2…)
+                                </button>
+                                <button onClick={resetToDefault} style={{
+                                    padding: '0.45rem 0.85rem', background: '#64748b', color: '#fff',
+                                    border: 'none', borderRadius: 6, fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem',
+                                }}>
+                                    <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>refresh</i>
+                                    Sıfırla (Hepsi 1-2-3…)
+                                </button>
+                            </div>
+
+                            <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9' }}>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontSize: '0.75rem', color: '#475569' }}>ALET</th>
+                                            {Array.from({ length: numGroups }, (_, i) => (
+                                                <th key={i} style={{ padding: '8px 12px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontSize: '0.75rem', color: '#475569' }}>
+                                                    SLOT {i + 1}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {aletler.map(alet => {
+                                            const rowOrder = currentMatrix[alet.id] || defaultOrder;
+                                            return (
+                                                <tr key={alet.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                    <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{alet.name}</td>
+                                                    {rowOrder.map((groupIdx, slotIdx) => (
+                                                        <td key={slotIdx} style={{ padding: 6, textAlign: 'center' }}>
+                                                            <select
+                                                                value={groupIdx}
+                                                                onChange={e => updateCell(alet.id, slotIdx, parseInt(e.target.value, 10))}
+                                                                style={{
+                                                                    padding: '6px 10px', borderRadius: 8,
+                                                                    border: '2px solid #c4b5fd', background: '#ede9fe',
+                                                                    fontWeight: 800, color: '#5b21b6', fontSize: '0.9rem',
+                                                                    cursor: 'pointer', width: '90%',
+                                                                }}
+                                                            >
+                                                                {Array.from({ length: numGroups }, (_, gIdx) => (
+                                                                    <option key={gIdx} value={gIdx}>Grup {gIdx + 1}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.7rem' }}>
+                                ℹ️ Aynı slotta aynı grup birden fazla alette olabilir — istersen her grubu sadece BİR alete koy (klasik Olimpik kural).
+                            </div>
+
+                            <div className="confirm-actions" style={{ marginTop: '1rem' }}>
+                                <button className="confirm-btn confirm-btn--cancel" onClick={() => setRotationMatrixModal(false)}>Vazgeç</button>
+                                <button className="confirm-btn confirm-btn--ok" onClick={saveMatrix}>
+                                    <i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: 4 }}>save</i>
+                                    Kaydet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
