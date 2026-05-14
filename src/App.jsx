@@ -54,6 +54,8 @@ const RitmikScoringPage = lazy(() => import('./pages/RitmikScoringPage'));
 const RitmikDPanelPage = lazy(() => import('./pages/RitmikDPanelPage'));
 const HakemRaporuPage = lazy(() => import('./pages/HakemRaporuPage'));
 const HakemKarnesiPage = lazy(() => import('./pages/HakemKarnesiPage'));
+const ArtistikTPanelPage = lazy(() => import('./pages/ArtistikTPanelPage'));
+const ArtistikLPanelPage = lazy(() => import('./pages/ArtistikLPanelPage'));
 const RitmikLPanelPage = lazy(() => import('./pages/RitmikLPanelPage'));
 const RitmikTPanelPage = lazy(() => import('./pages/RitmikTPanelPage'));
 
@@ -185,6 +187,8 @@ function AppRoutes() {
         <Route path="/artistik/audit-log" element={<SuperAdminRoute><AuditLogPage /></SuperAdminRoute>} />
         <Route path="/artistik/role-management" element={<SuperAdminRoute><RoleManagementPage /></SuperAdminRoute>} />
         <Route path="/artistik/epanel" element={<D discipline="artistik"><EPanelPage /></D>} />
+        <Route path="/artistik/tpanel" element={<D discipline="artistik"><ArtistikTPanelPage /></D>} />
+        <Route path="/artistik/lpanel" element={<D discipline="artistik"><ArtistikLPanelPage /></D>} />
 
         {/* ═══ AEROBİK CİMNASTİK ═══ */}
         <Route path="/aerobik" element={<D discipline="aerobik"><HomePage /></D>} />

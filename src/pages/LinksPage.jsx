@@ -1187,6 +1187,68 @@ export default function LinksPage() {
                                                         </div>
                                                     );
                                                 })}
+
+                                                {/* Artistik Zaman Hakemi — sadece yer ve denge için */}
+                                                {disciplineId === 'artistik' && (alet.id === 'yer' || alet.id === 'denge') && (() => {
+                                                    const tUrl = `${baseUrl}${routePrefix}/tpanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                                    const tCardId = `${cat.id}-${alet.id}-tpanel`;
+                                                    return (
+                                                        <div className="panel-card printable-card" key="tpanel" style={{ borderColor: '#f97316' }}>
+                                                            <div className="panel-card__badge-row">
+                                                                <span className="panel-card__badge" style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>ZAMAN</span>
+                                                                <span className="panel-card__meta">{cat.name}</span>
+                                                            </div>
+                                                            <div className="panel-card__alet">{alet.name}</div>
+                                                            <div className="panel-card__qr">
+                                                                <QRCode value={tUrl} size={100} level="M" />
+                                                            </div>
+                                                            <div className="panel-card__actions no-print">
+                                                                <button
+                                                                    className={`panel-action ${copiedId === tCardId ? 'panel-action--copied' : ''}`}
+                                                                    onClick={() => copyToClipboard(tUrl, tCardId)}
+                                                                    title="Linki kopyala"
+                                                                >
+                                                                    <i className="material-icons-round">{copiedId === tCardId ? 'check' : 'content_copy'}</i>
+                                                                </button>
+                                                                <a href={tUrl} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                    <i className="material-icons-round">open_in_new</i>
+                                                                </a>
+                                                            </div>
+                                                            <div className="panel-card__print-label print-only">Zaman Hakemi</div>
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                {/* Artistik Çizgi Hakemi — sadece yer için */}
+                                                {disciplineId === 'artistik' && alet.id === 'yer' && (() => {
+                                                    const lUrl = `${baseUrl}${routePrefix}/lpanel?competitionId=${selectedCompId}&catId=${cat.id}&aletId=${alet.id}${epanelToken ? `&token=${epanelToken}` : ''}`;
+                                                    const lCardId = `${cat.id}-${alet.id}-lpanel`;
+                                                    return (
+                                                        <div className="panel-card printable-card" key="lpanel" style={{ borderColor: '#06b6d4' }}>
+                                                            <div className="panel-card__badge-row">
+                                                                <span className="panel-card__badge" style={{ background: 'linear-gradient(135deg,#06b6d4,#0e7490)' }}>ÇİZGİ</span>
+                                                                <span className="panel-card__meta">{cat.name}</span>
+                                                            </div>
+                                                            <div className="panel-card__alet">{alet.name}</div>
+                                                            <div className="panel-card__qr">
+                                                                <QRCode value={lUrl} size={100} level="M" />
+                                                            </div>
+                                                            <div className="panel-card__actions no-print">
+                                                                <button
+                                                                    className={`panel-action ${copiedId === lCardId ? 'panel-action--copied' : ''}`}
+                                                                    onClick={() => copyToClipboard(lUrl, lCardId)}
+                                                                    title="Linki kopyala"
+                                                                >
+                                                                    <i className="material-icons-round">{copiedId === lCardId ? 'check' : 'content_copy'}</i>
+                                                                </button>
+                                                                <a href={lUrl} target="_blank" rel="noreferrer" className="panel-action" title="Yeni sekmede aç">
+                                                                    <i className="material-icons-round">open_in_new</i>
+                                                                </a>
+                                                            </div>
+                                                            <div className="panel-card__print-label print-only">Çizgi Hakemi</div>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     ))
