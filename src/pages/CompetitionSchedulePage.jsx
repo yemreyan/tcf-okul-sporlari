@@ -476,8 +476,10 @@ export default function CompetitionSchedulePage() {
             }
 
             // Tüm kategori-alet çiftlerini sporcu sayısına göre oturumlara böl
+            // YARIŞMAZ olarak işaretlenenleri atla
             const allSlots = [];
             compCatKeys.forEach(catKey => {
+                if (planAyarlari.kategoriGunAtamalari?.[catKey] === -1) return;  // hariç
                 const aletler = getAletlerForCat(catKey);
                 const totalAthletes = freshAthleteCounts[catKey] || 0;
 
@@ -1808,6 +1810,39 @@ export default function CompetitionSchedulePage() {
                                             <h3><i className="material-icons-round">summarize</i> Gün Bazlı Kategori Listesi</h3>
                                             <p className="plan-card-hint">Hangi günde hangi kategoriler yarışacak (özet)</p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {(() => {
+                                                    // Excluded kategorileri ayrıca göster
+                                                    const excluded = compCatKeys.filter(ck => planAyarlari.kategoriGunAtamalari?.[ck] === -1);
+                                                    return excluded.length > 0 ? (
+                                                        <div style={{
+                                                            background: 'rgba(239,68,68,0.06)',
+                                                            border: '1px solid rgba(239,68,68,0.3)',
+                                                            borderRadius: 10,
+                                                            padding: '0.75rem 1rem',
+                                                        }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.55rem' }}>
+                                                                <div style={{ fontWeight: 800, color: '#991b1b', fontSize: '0.9rem' }}>
+                                                                    <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>block</i>
+                                                                    Yarışmaz (Hariç)
+                                                                </div>
+                                                                <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999 }}>
+                                                                    {excluded.length} kategori
+                                                                </span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                                {excluded.map(ck => (
+                                                                    <span key={ck} style={{
+                                                                        background: '#fff', border: '1px solid #fca5a5',
+                                                                        color: '#dc2626', padding: '4px 10px', borderRadius: 999,
+                                                                        fontSize: '0.78rem', fontWeight: 700, textDecoration: 'line-through',
+                                                                    }}>
+                                                                        {getCategoryLabel(ck)}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null;
+                                                })()}
                                                 {dateRange.map((tarih, dayIdx) => {
                                                     const cats = compCatKeys.filter(ck => (planAyarlari.kategoriGunAtamalari?.[ck] ?? 0) === dayIdx);
                                                     return (
@@ -1862,7 +1897,7 @@ export default function CompetitionSchedulePage() {
                                     {compCatKeys.length > 0 && (
                                         <div className="plan-card">
                                             <h3><i className="material-icons-round">view_week</i> Kategori → Gün Ataması</h3>
-                                            <p className="plan-card-hint">Her kategori için hangi gün yarışılacağını seçin</p>
+                                            <p className="plan-card-hint">Her kategori için hangi gün yarışılacağını seçin — "Yarışmaz" seçilen kategoriler programdan tamamen hariç tutulur.</p>
                                             <div className="cat-day-assign-table">
                                                 <div className="cat-day-row cat-day-header">
                                                     <span className="cat-day-name">Kategori</span>
@@ -1872,25 +1907,36 @@ export default function CompetitionSchedulePage() {
                                                             <small>{new Date(d).toLocaleDateString('tr-TR', {day:'numeric', month:'short'})}</small>
                                                         </span>
                                                     ))}
+                                                    <span className="cat-day-col" style={{ background: 'rgba(239,68,68,0.08)', borderLeft: '2px solid #ef4444' }}>
+                                                        <strong style={{ color: '#dc2626' }}>YARIŞMAZ</strong>
+                                                        <small style={{ color: '#94a3b8' }}>hariç tut</small>
+                                                    </span>
                                                 </div>
                                                 {compCatKeys.map(catKey => {
                                                     const curDay = planAyarlari.kategoriGunAtamalari?.[catKey] ?? 0;
+                                                    const isExcluded = curDay === -1;
                                                     return (
-                                                        <div key={catKey} className="cat-day-row">
-                                                            <span className="cat-day-name">{getCategoryLabel(catKey)}</span>
+                                                        <div key={catKey} className="cat-day-row" style={isExcluded ? { opacity: 0.55 } : undefined}>
+                                                            <span className="cat-day-name" style={isExcluded ? { textDecoration: 'line-through', color: '#94a3b8' } : undefined}>
+                                                                {getCategoryLabel(catKey)}
+                                                            </span>
                                                             {dateRange.map((d, i) => (
                                                                 <span key={d} className="cat-day-col">
-                                                                    {dateRange.length === 1 ? (
-                                                                        <span className="cat-day-dot active" title="Tek gün — tüm kategoriler bu günde" />
-                                                                    ) : (
-                                                                        <label className="cat-day-radio">
-                                                                            <input type="radio" name={`day-cat-${catKey}`} checked={curDay === i}
-                                                                                onChange={() => updateKategoriGun(catKey, i)} />
-                                                                            <span className={`cat-day-dot ${curDay === i ? 'active' : ''}`} />
-                                                                        </label>
-                                                                    )}
+                                                                    <label className="cat-day-radio">
+                                                                        <input type="radio" name={`day-cat-${catKey}`} checked={curDay === i}
+                                                                            onChange={() => updateKategoriGun(catKey, i)} />
+                                                                        <span className={`cat-day-dot ${curDay === i ? 'active' : ''}`} />
+                                                                    </label>
                                                                 </span>
                                                             ))}
+                                                            <span className="cat-day-col" style={{ background: 'rgba(239,68,68,0.05)', borderLeft: '2px solid rgba(239,68,68,0.4)' }}>
+                                                                <label className="cat-day-radio" title="Bu kategoriyi yarışmadan tamamen hariç tut">
+                                                                    <input type="radio" name={`day-cat-${catKey}`} checked={isExcluded}
+                                                                        onChange={() => updateKategoriGun(catKey, -1)} />
+                                                                    <span className={`cat-day-dot ${isExcluded ? 'active' : ''}`}
+                                                                        style={isExcluded ? { background: '#ef4444', borderColor: '#dc2626' } : undefined} />
+                                                                </label>
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
