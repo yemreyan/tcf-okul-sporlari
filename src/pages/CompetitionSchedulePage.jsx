@@ -597,6 +597,19 @@ export default function CompetitionSchedulePage() {
 
     const handleSetBaslangicTarihi = useCallback(async (tarih) => {
         if (!selectedCompId) return;
+        // KAZARA değişiklik koruma: kullanıcıdan onay al
+        const oldStartStr = selectedComp?.baslangicTarihi;
+        if (oldStartStr && oldStartStr !== tarih) {
+            const oldStartFmt = new Date(oldStartStr).toLocaleDateString('tr-TR');
+            const newStartFmt = new Date(tarih).toLocaleDateString('tr-TR');
+            const ok = window.confirm(
+                `YARIŞMA BAŞLANGIÇ TARİHİNİ DEĞİŞTİRMEK üzeresin.\n\n` +
+                `Eski: ${oldStartFmt}\nYeni: ${newStartFmt}\n\n` +
+                `Bu yarışmanın gerçek başlama tarihini günceller (bitiş tarihi de aynı şekilde kayacak). ` +
+                `Sadece görüntülemek/filtrelemek için tarih seçmek istiyorsan vazgeç ve sayfadaki gün filtresini kullan.\n\nDevam edilsin mi?`
+            );
+            if (!ok) return;
+        }
         try {
             // Bitiş tarihi de güncelle (gün farkını koru)
             const oldStart = new Date(selectedComp?.baslangicTarihi || tarih);
@@ -1535,6 +1548,15 @@ export default function CompetitionSchedulePage() {
                                                 min={selectedComp?.baslangicTarihi || ''}
                                                 onChange={e => {
                                                     if (!selectedCompId) return;
+                                                    const oldEnd = selectedComp?.bitisTarihi;
+                                                    if (oldEnd && oldEnd !== e.target.value) {
+                                                        const ok = window.confirm(
+                                                            `YARIŞMA BİTİŞ TARİHİNİ DEĞİŞTİRMEK üzeresin.\n\n` +
+                                                            `Eski: ${new Date(oldEnd).toLocaleDateString('tr-TR')}\n` +
+                                                            `Yeni: ${new Date(e.target.value).toLocaleDateString('tr-TR')}\n\nDevam edilsin mi?`
+                                                        );
+                                                        if (!ok) { e.target.value = oldEnd; return; }
+                                                    }
                                                     update(ref(db, `${firebasePath}/${selectedCompId}`), { bitisTarihi: e.target.value })
                                                         .then(() => toast('Bitiş tarihi güncellendi', 'success'))
                                                         .catch(err => toast('Hata: ' + err.message, 'error'));
@@ -1769,6 +1791,63 @@ export default function CompetitionSchedulePage() {
                                                     </div>
                                                 );
                                             })}
+                                        </div>
+                                    )}
+
+                                    {/* Gün Bazlı Kategori Özeti — atamaların ÖZETİ */}
+                                    {compCatKeys.length > 0 && dateRange.length > 0 && (
+                                        <div className="plan-card">
+                                            <h3><i className="material-icons-round">summarize</i> Gün Bazlı Kategori Listesi</h3>
+                                            <p className="plan-card-hint">Hangi günde hangi kategoriler yarışacak (özet)</p>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {dateRange.map((tarih, dayIdx) => {
+                                                    const cats = compCatKeys.filter(ck => (planAyarlari.kategoriGunAtamalari?.[ck] ?? 0) === dayIdx);
+                                                    return (
+                                                        <div key={tarih} style={{
+                                                            background: '#f8fafc',
+                                                            border: '1px solid #cbd5e1',
+                                                            borderRadius: 10,
+                                                            padding: '0.75rem 1rem',
+                                                        }}>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                marginBottom: cats.length > 0 ? '0.55rem' : 0,
+                                                            }}>
+                                                                <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>
+                                                                    {dayIdx + 1}. Gün — {new Date(tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })}
+                                                                </div>
+                                                                <span style={{
+                                                                    background: cats.length > 0 ? '#dbeafe' : '#fee2e2',
+                                                                    color: cats.length > 0 ? '#1e40af' : '#991b1b',
+                                                                    fontSize: '0.72rem', fontWeight: 800,
+                                                                    padding: '3px 9px', borderRadius: 999,
+                                                                }}>
+                                                                    {cats.length} kategori
+                                                                </span>
+                                                            </div>
+                                                            {cats.length > 0 ? (
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                                    {cats.map(ck => (
+                                                                        <span key={ck} style={{
+                                                                            background: '#fff', border: '1px solid #c7d2fe',
+                                                                            color: '#4338ca', padding: '4px 10px', borderRadius: 999,
+                                                                            fontSize: '0.78rem', fontWeight: 700,
+                                                                        }}>
+                                                                            {getCategoryLabel(ck)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                                                    Bu güne henüz kategori atanmadı.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
