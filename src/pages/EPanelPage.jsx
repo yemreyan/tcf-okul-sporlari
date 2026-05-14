@@ -528,6 +528,103 @@ export default function EPanelPage() {
                                 aletLabel={ritmikAletLabels[currentAlet] || currentAlet}
                                 scores={serverScores}
                             />
+                        ) : (!isRitmik && !isAerobik && status === 'locked' && serverScores) ? (
+                            /* Artistik kilit → D / E / Penalty / Total özeti (ritmikteki yapıya benzer) */
+                            <div style={{
+                                width: '100%', maxWidth: 460, margin: '0 auto',
+                                background: 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(16,185,129,0.06))',
+                                border: '1px solid rgba(34,197,94,0.35)',
+                                borderRadius: 14, padding: '1.25rem 1rem',
+                                boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+                            }}>
+                                <div style={{ textAlign: 'center', marginBottom: '0.85rem' }}>
+                                    <span className="material-icons-round" style={{ fontSize: 32, color: '#22c55e' }}>verified</span>
+                                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginTop: 4 }}>
+                                        {athleteInfo ? `${athleteInfo.ad || ''} ${athleteInfo.soyad || ''}`.trim() : ''}
+                                    </div>
+                                    {(athleteInfo?.kulup || athleteInfo?.okul) && (
+                                        <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)' }}>
+                                            {athleteInfo.kulup || athleteInfo.okul}
+                                        </div>
+                                    )}
+                                    <div style={{
+                                        display: 'inline-block', marginTop: 6,
+                                        padding: '2px 10px', background: 'rgba(255,255,255,0.08)',
+                                        borderRadius: 999, fontSize: '0.7rem', fontWeight: 800,
+                                        color: '#a7f3d0', letterSpacing: '0.1em', textTransform: 'uppercase',
+                                    }}>
+                                        {aletId || ''} · Puan Kilitli
+                                    </div>
+                                </div>
+                                <div style={{
+                                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                                    gap: '0.6rem', marginBottom: '0.85rem',
+                                }}>
+                                    {(() => {
+                                        const sc = serverScores || {};
+                                        const dVal = parseFloat(sc.dScore ?? sc.calc_D ?? 0);
+                                        const eVal = parseFloat(sc.eScore ?? sc.calc_E ?? sc.ePuani ?? 0);
+                                        const penVal = parseFloat(sc.neutralDeductions ?? sc.tarafsiz ?? sc.calc_MissingPen ?? 0);
+                                        const items = [
+                                            { label: 'D', val: dVal, color: '#a78bfa' },
+                                            { label: 'E', val: eVal, color: '#86efac' },
+                                            { label: 'CEZA', val: penVal, color: '#fca5a5' },
+                                        ];
+                                        return items.map(it => (
+                                            <div key={it.label} style={{
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: 8, padding: '0.6rem 0.4rem',
+                                                textAlign: 'center',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.65rem', fontWeight: 800,
+                                                    color: it.color, letterSpacing: '1.5px',
+                                                    textTransform: 'uppercase', marginBottom: 4,
+                                                }}>{it.label}</div>
+                                                <div style={{
+                                                    fontSize: '1.4rem', fontWeight: 900,
+                                                    color: '#fff', fontVariantNumeric: 'tabular-nums',
+                                                }}>
+                                                    {it.val.toFixed(it.label === 'D' ? 2 : 3)}
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                                {/* Toplam */}
+                                {(() => {
+                                    const sc = serverScores || {};
+                                    const total = parseFloat(sc.finalScore ?? sc.sonuc ?? sc.sonPuan ?? 0);
+                                    return (
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(245,158,11,0.10))',
+                                            border: '1px solid rgba(251,191,36,0.45)',
+                                            borderRadius: 10, padding: '0.7rem',
+                                            textAlign: 'center',
+                                        }}>
+                                            <div style={{
+                                                fontSize: '0.7rem', fontWeight: 800,
+                                                color: '#fde68a', letterSpacing: '2px',
+                                                textTransform: 'uppercase', marginBottom: 4,
+                                            }}>FİNAL SKOR</div>
+                                            <div style={{
+                                                fontSize: '2.2rem', fontWeight: 900,
+                                                color: '#fcd34d', fontVariantNumeric: 'tabular-nums',
+                                                lineHeight: 1,
+                                            }}>
+                                                {total.toFixed(3)}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                                <p style={{
+                                    fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)',
+                                    textAlign: 'center', marginTop: '0.7rem', marginBottom: 0,
+                                }}>
+                                    Başhakem onayladı. Sonraki sporcu çağırıldığında ekran yenilenecek.
+                                </p>
+                            </div>
                         ) : (
                             <>
                                 <span className="material-icons-round sent-icon" style={{ color: status === 'locked' ? '#6b7280' : 'var(--success)' }}>
