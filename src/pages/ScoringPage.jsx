@@ -624,68 +624,53 @@ export default function ScoringPage() {
         return currentUser?.rolAdi === 'Super Admin' || currentUser?.kullaniciAdi === 'admin';
     };
 
-    // ── Notları Kaydır: Tüm sporcuların puanlarını N sıra yukarı/aşağı kaydırır.
-    //    Kullanım: sırası ile not girerken hatalı kaymış girişleri düzeltir.
-    //    Yön 'up'  → her sporcu BİR ÖNCEKİ sporcunun şu anki puanını alır
-    //               (örnek: hata aşağı kaymış; geri al)
-    //    Yön 'down'→ her sporcu BİR SONRAKİ sporcunun şu anki puanını alır
-    //               (örnek: hata yukarı kaymış; geri al)
-    //    Sınır dışı (boundary) sporcular boş kalır.
-    const computeShiftMapping = useCallback((direction = 'up', steps = 1) => {
-        if (!selectedApparatus || athletesByRotation.length === 0) return null;
-        const allAth = athletesByRotation.flat();
-        if (allAth.length < 2) return null;
-        const offset = (direction === 'down') ? -steps : steps;
-        // mapping[oldAthId] = newAthId  (oldAthId'in puanı newAthId'e gidecek)
-        const mapping = [];
-        for (let i = 0; i < allAth.length; i++) {
-            const targetIdx = i + offset;
-            if (targetIdx < 0 || targetIdx >= allAth.length) {
-                mapping.push({ source: allAth[i], target: null });  // boşa düşecek
-            } else {
-                mapping.push({ source: allAth[i], target: allAth[targetIdx] });
-            }
-        }
-        return mapping;
-    }, [selectedApparatus, athletesByRotation]);
-
-    const handleApplyShift = async (direction, steps) => {
+    // ── Tek Sporcu Not Taşıma/Değiştirme:
+    //    Kaynak sporcunun puanı hedef sporcuya taşınır (veya değiştirilir).
+    //    Kullanım: 'X sporcusuna girdiğim notu aslında Y sporcusuna girmem
+    //    gerekiyormuş — düzelt' senaryosu.
+    //    Mode 'move' → kaynak boşalır, hedefe yazılır (hedefin eski verisi gider)
+    //    Mode 'swap' → kaynak ve hedef tamamen takas edilir
+    const handleApplyTransfer = async ({ sourceId, targetId, mode }) => {
         if (!selectedCompId || !selectedCategory || !selectedApparatus) return;
-        const mapping = computeShiftMapping(direction, steps);
-        if (!mapping) {
-            toast('Kaydırma için sporcu listesi boş veya yetersiz.', 'warning');
+        if (!sourceId || !targetId || sourceId === targetId) {
+            toast('Kaynak ve hedef sporcu farklı olmalı.', 'warning');
             return;
         }
         setShiftModal(prev => prev ? { ...prev, applying: true } : prev);
         try {
-            // Önce mevcut puanları toplu çek (snapshot)
             const baseScorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}`;
-            const snap = await get(ref(db, baseScorePath));
-            const allScores = snap.val() || {};
+            // Önce iki sporcunun mevcut datasını çek
+            const [sSnap, tSnap] = await Promise.all([
+                get(ref(db, `${baseScorePath}/${sourceId}`)),
+                get(ref(db, `${baseScorePath}/${targetId}`)),
+            ]);
+            const sourceData = sSnap.val();
+            const targetData = tSnap.val();
 
-            // Hedef yazımı: targetId → kaynak data
+            if (!sourceData) {
+                toast('Kaynak sporcunun puanı yok, taşınacak veri bulunamadı.', 'warning');
+                setShiftModal(prev => prev ? { ...prev, applying: false } : prev);
+                return;
+            }
+
             const updates = {};
-            // 1) Tüm hedef sporculara kaynak datasını yaz (veya null)
-            mapping.forEach(({ source, target }) => {
-                if (!target) return; // boundary kaynak → düşecek (clear aşağıda)
-                const sourceData = allScores[source.id] || null;
-                updates[`${baseScorePath}/${target.id}`] = sourceData;
-            });
-            // 2) Hiçbir hedef olarak yazılmamış sporcuların kayıtlarını temizle
-            //    (yani veri akışında hedef olmayanlar boş kalsın)
-            const targetIds = new Set(mapping.filter(m => m.target).map(m => m.target.id));
-            mapping.forEach(({ source }) => {
-                if (!targetIds.has(source.id)) {
-                    updates[`${baseScorePath}/${source.id}`] = null;
-                }
-            });
+            if (mode === 'swap') {
+                updates[`${baseScorePath}/${sourceId}`] = targetData ?? null;
+                updates[`${baseScorePath}/${targetId}`] = sourceData;
+            } else {
+                // 'move': kaynak boşalır, hedefe yazılır (hedefin eski verisi GİDECEK)
+                updates[`${baseScorePath}/${sourceId}`] = null;
+                updates[`${baseScorePath}/${targetId}`] = sourceData;
+            }
 
             await update(ref(db), updates);
-            toast(`Puanlar ${steps} sıra ${direction === 'up' ? 'yukarı' : 'aşağı'} kaydırıldı.`, 'success');
+            toast(mode === 'swap'
+                ? 'Puanlar iki sporcu arasında takas edildi.'
+                : 'Puan hedef sporcuya taşındı, kaynak boşaltıldı.', 'success');
             setShiftModal(null);
         } catch (err) {
-            if (import.meta.env.DEV) console.error('shift error', err);
-            toast('Kaydırma başarısız: ' + (err.message || ''), 'error');
+            if (import.meta.env.DEV) console.error('transfer error', err);
+            toast('Aktarma başarısız: ' + (err.message || ''), 'error');
             setShiftModal(prev => prev ? { ...prev, applying: false } : prev);
         }
     };
@@ -977,11 +962,11 @@ export default function ScoringPage() {
                             {apparatusOptions.map(app => <option key={app.id} value={app.id}>{app.name}</option>)}
                         </select>
 
-                        {/* Notları Kaydır — hata düzeltme aracı */}
+                        {/* Not Aktar — yanlış sporcuya girilen notu doğru sporcuya taşı */}
                         {selectedApparatus && athletesByRotation.length > 0 && (
                             <button
                                 type="button"
-                                onClick={() => setShiftModal({ direction: 'up', steps: 1, applying: false })}
+                                onClick={() => setShiftModal({ sourceId: '', targetId: '', mode: 'move', applying: false })}
                                 style={{
                                     marginTop: 8,
                                     width: '100%',
@@ -998,10 +983,10 @@ export default function ScoringPage() {
                                     justifyContent: 'center',
                                     gap: 6,
                                 }}
-                                title="Sırası ile yanlış girilen notları toplu kaydırarak düzelt"
+                                title="Yanlış sporcuya girdiğin notu başka bir sporcuya taşı/değiştir"
                             >
-                                <i className="material-icons-round" style={{ fontSize: 16 }}>swap_vert</i>
-                                Notları Kaydır (Hata Düzelt)
+                                <i className="material-icons-round" style={{ fontSize: 16 }}>swap_horiz</i>
+                                Not Aktar (Hata Düzelt)
                             </button>
                         )}
                     </div>
@@ -1737,103 +1722,145 @@ export default function ScoringPage() {
                 </div>
             )}
 
-            {/* Notları Kaydır Modalı */}
+            {/* Not Aktar Modalı — kaynak sporcunun notu hedef sporcuya */}
             {shiftModal && (() => {
-                const mapping = computeShiftMapping(shiftModal.direction, shiftModal.steps);
-                if (!mapping) return null;
-                const transferCount = mapping.filter(m => m.target).length;
-                const losingDataCount = mapping.filter(m => !m.target).length;
+                const allAth = athletesByRotation.flat();
+                // Puanı olan sporcular (kaynak için)
+                const scoredIds = new Set(Object.keys(existingScores || {}).filter(id => {
+                    const s = existingScores[id];
+                    return s && (s.dScore != null || s.eScore != null || s.calc_D != null || s.calc_E != null
+                        || s.sonuc != null || s.finalScore != null
+                        || Object.keys(s).some(k => /^e\d+$/i.test(k)));
+                }));
+                const fmtName = a => `${a.ad || ''} ${a.soyad || ''}${a.okul ? ' · ' + a.okul : ''}`.trim();
+                const findAth = id => allAth.find(a => a.id === id);
+                const sourceAth = shiftModal.sourceId ? findAth(shiftModal.sourceId) : null;
+                const targetAth = shiftModal.targetId ? findAth(shiftModal.targetId) : null;
+                const sourceData = sourceAth ? existingScores[sourceAth.id] : null;
+                const targetData = targetAth ? existingScores[targetAth.id] : null;
+
+                const fmt = (v) => v == null ? '—' : Number(v).toFixed(3);
+                const buildPreview = (data) => {
+                    if (!data) return null;
+                    const d = data.dScore ?? data.calc_D ?? 0;
+                    const e = data.eScore ?? data.calc_E ?? 0;
+                    const p = data.tarafsiz ?? data.neutralDeductions ?? 0;
+                    const t = data.finalScore ?? data.sonuc ?? 0;
+                    return { d, e, p, t };
+                };
+                const srcPrev = buildPreview(sourceData);
+                const tgtPrev = buildPreview(targetData);
+
                 return (
                     <div className="scoring-modal-overlay" onClick={() => !shiftModal.applying && setShiftModal(null)}>
-                        <div className="scoring-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
+                        <div className="scoring-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
                             <div className="scoring-modal-header">
-                                <i className="material-icons-round" style={{ color: '#f59e0b' }}>swap_vert</i>
-                                <h3>Notları Toplu Kaydır</h3>
+                                <i className="material-icons-round" style={{ color: '#f59e0b' }}>swap_horiz</i>
+                                <h3>Not Aktar / Değiştir</h3>
                             </div>
                             <div className="scoring-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                                 <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-                                    Bu alet için tüm sporcuların puanları seçilen sayıda satır kaydırılır.
-                                    Sınırda kalan sporcuların verisi <strong style={{ color: '#fca5a5' }}>silinir</strong>.
+                                    Yanlış sporcuya girilen puanı, doğru sporcuya taşı.
                                 </p>
 
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                                    <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Yön:</label>
-                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                                        <input type="radio" name="shiftDir" checked={shiftModal.direction === 'up'}
-                                            onChange={() => setShiftModal(p => ({ ...p, direction: 'up' }))} />
-                                        <span>⬆ Yukarı (her not bir önceki sporcuya)</span>
+                                {/* Kaynak Sporcu */}
+                                <div>
+                                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>
+                                        Kaynak Sporcu (puanı taşınacak)
                                     </label>
+                                    <select
+                                        value={shiftModal.sourceId}
+                                        onChange={e => setShiftModal(p => ({ ...p, sourceId: e.target.value }))}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}
+                                    >
+                                        <option value="">— Sporcu Seçin (sadece puanı olanlar) —</option>
+                                        {allAth.filter(a => scoredIds.has(a.id)).map(a => (
+                                            <option key={a.id} value={a.id}>{fmtName(a)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Hedef Sporcu */}
+                                <div>
+                                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>
+                                        Hedef Sporcu (puan buraya gidecek)
+                                    </label>
+                                    <select
+                                        value={shiftModal.targetId}
+                                        onChange={e => setShiftModal(p => ({ ...p, targetId: e.target.value }))}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}
+                                    >
+                                        <option value="">— Sporcu Seçin —</option>
+                                        {allAth.map(a => (
+                                            <option key={a.id} value={a.id} disabled={a.id === shiftModal.sourceId}>{fmtName(a)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Mod */}
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>İşlem:</label>
                                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                                        <input type="radio" name="shiftDir" checked={shiftModal.direction === 'down'}
-                                            onChange={() => setShiftModal(p => ({ ...p, direction: 'down' }))} />
-                                        <span>⬇ Aşağı (her not bir sonraki sporcuya)</span>
+                                        <input type="radio" name="mode" checked={shiftModal.mode === 'move'}
+                                            onChange={() => setShiftModal(p => ({ ...p, mode: 'move' }))} />
+                                        <span><strong>Taşı</strong> (kaynak boşalır; hedefin eski verisi silinir)</span>
+                                    </label>
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: -4 }}>
+                                    <label style={{ fontWeight: 700, fontSize: '0.85rem', visibility: 'hidden' }}>İşlem:</label>
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                        <input type="radio" name="mode" checked={shiftModal.mode === 'swap'}
+                                            onChange={() => setShiftModal(p => ({ ...p, mode: 'swap' }))} />
+                                        <span><strong>Değiştir</strong> (iki sporcunun puanları takas edilir)</span>
                                     </label>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                                    <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Adım sayısı:</label>
-                                    <input type="number" min="1" max="20" value={shiftModal.steps}
-                                        onChange={e => setShiftModal(p => ({ ...p, steps: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
-                                        style={{ width: 80, padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 700 }} />
-                                </div>
-
-                                <div style={{
-                                    background: 'rgba(245,158,11,0.08)',
-                                    border: '1px solid rgba(245,158,11,0.3)',
-                                    borderRadius: 8,
-                                    padding: '0.6rem 0.85rem',
-                                    fontSize: '0.85rem',
-                                    color: '#fbbf24',
-                                }}>
-                                    <strong>{transferCount}</strong> sporcunun puanları yeni hedeflere yazılacak.
-                                    {losingDataCount > 0 && (
-                                        <span> <strong style={{ color: '#fca5a5' }}>{losingDataCount}</strong> sporcunun verisi sınır dışında kalacağı için silinecek.</span>
-                                    )}
-                                </div>
-
-                                {/* Önizleme — ilk 8 satır */}
-                                <div style={{
-                                    maxHeight: 280, overflowY: 'auto',
-                                    background: '#0f172a', borderRadius: 8, padding: '0.5rem',
-                                }}>
-                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: 6, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                        Önizleme (kaynak sporcu puanı → hedef sporcuya)
+                                {/* Önizleme */}
+                                {sourceAth && targetAth && (
+                                    <div style={{
+                                        display: 'grid', gridTemplateColumns: '1fr 28px 1fr',
+                                        gap: 10, alignItems: 'center',
+                                        background: '#0f172a', borderRadius: 8, padding: '0.7rem',
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Kaynak</div>
+                                            <div style={{ color: '#cbd5e1', fontWeight: 700 }}>{fmtName(sourceAth)}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#86efac', marginTop: 4, fontFamily: 'monospace' }}>
+                                                {srcPrev ? `D ${fmt(srcPrev.d)} · E ${fmt(srcPrev.e)} · TZF ${fmt(srcPrev.p)} · Σ ${fmt(srcPrev.t)}` : 'Veri yok'}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', fontSize: 22, color: '#f59e0b' }}>
+                                            {shiftModal.mode === 'swap' ? '⇄' : '→'}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Hedef</div>
+                                            <div style={{ color: '#cbd5e1', fontWeight: 700 }}>{fmtName(targetAth)}</div>
+                                            <div style={{ fontSize: '0.75rem', color: tgtPrev ? '#fca5a5' : '#64748b', marginTop: 4, fontFamily: 'monospace' }}>
+                                                {tgtPrev
+                                                    ? (shiftModal.mode === 'swap'
+                                                        ? `D ${fmt(tgtPrev.d)} · E ${fmt(tgtPrev.e)} · TZF ${fmt(tgtPrev.p)} (kaynağa gider)`
+                                                        : `D ${fmt(tgtPrev.d)} · E ${fmt(tgtPrev.e)} (üzerine yazılacak!)`)
+                                                    : 'Boş (henüz puanı yok)'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <table style={{ width: '100%', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ color: '#94a3b8' }}>
-                                                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Kaynak</th>
-                                                <th style={{ width: 30, textAlign: 'center' }}>→</th>
-                                                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Hedef</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {mapping.map((m, idx) => (
-                                                <tr key={m.source.id} style={{ borderTop: '1px solid #1e293b' }}>
-                                                    <td style={{ padding: '4px 8px', color: '#cbd5e1' }}>
-                                                        {idx + 1}. {m.source.ad} {m.source.soyad}
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', color: '#64748b' }}>→</td>
-                                                    <td style={{ padding: '4px 8px', color: m.target ? '#86efac' : '#fca5a5' }}>
-                                                        {m.target ? `${m.target.ad} ${m.target.soyad}` : '⚠ SİLİNECEK (sınır dışı)'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                )}
                             </div>
                             <div className="scoring-modal-actions">
                                 <button className="modal-btn cancel" onClick={() => !shiftModal.applying && setShiftModal(null)} disabled={shiftModal.applying}>
                                     <i className="material-icons-round">close</i> Vazgeç
                                 </button>
-                                <button className="modal-btn confirm" onClick={() => handleApplyShift(shiftModal.direction, shiftModal.steps)} disabled={shiftModal.applying}
-                                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                                <button
+                                    className="modal-btn confirm"
+                                    onClick={() => handleApplyTransfer({ sourceId: shiftModal.sourceId, targetId: shiftModal.targetId, mode: shiftModal.mode })}
+                                    disabled={shiftModal.applying || !shiftModal.sourceId || !shiftModal.targetId || shiftModal.sourceId === shiftModal.targetId}
+                                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                                >
                                     {shiftModal.applying
                                         ? <div className="spinner-small" />
-                                        : <i className="material-icons-round">swap_vert</i>
+                                        : <i className="material-icons-round">swap_horiz</i>
                                     }
-                                    Kaydır ve Kaydet
+                                    {shiftModal.mode === 'swap' ? 'Takas Et' : 'Taşı'}
                                 </button>
                             </div>
                         </div>
