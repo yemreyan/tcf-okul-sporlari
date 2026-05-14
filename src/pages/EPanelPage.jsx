@@ -588,15 +588,13 @@ export default function EPanelPage() {
                                 {isRitmik && panelType === 'a' ? 'Artistlik Kesintisi / A Puanı' : 'Uygulama Kesintisi / E Puanı'}
                             </div>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="none"
                                 className="score-input"
                                 placeholder="-"
-                                step="0.1"
-                                min="0"
-                                max="10"
                                 value={scoreInput}
-                                onChange={(e) => setScoreInput(e.target.value)}
-                                autoFocus
+                                readOnly
+                                onFocus={(e) => e.target.blur()}
                             />
                             <div className="quick-buttons">
                                 <button type="button" onClick={() => setScoreInput('0.1')}>-0.1</button>
@@ -604,6 +602,55 @@ export default function EPanelPage() {
                                 <button type="button" onClick={() => setScoreInput('0.5')}>-0.5</button>
                                 <button type="button" onClick={() => setScoreInput('1.0')}>-1.0</button>
                             </div>
+
+                            {/* Özel Numpad — tabletin yerleşik klavyesi yerine */}
+                            <div className="epanel-numpad">
+                                {['1','2','3','4','5','6','7','8','9'].map(d => (
+                                    <button key={d} type="button" className="numpad-btn"
+                                        onClick={() => {
+                                            // Aynı sayıya 2'den fazla sıfır ekleme — virgül yoksa max 2 hane
+                                            const cur = String(scoreInput || '');
+                                            // 10.0+ önlemek için 10 üstü yaz
+                                            const next = cur + d;
+                                            const num = parseFloat(next);
+                                            if (!isNaN(num) && num > 10) return;
+                                            // Virgülden sonra max 3 hane
+                                            if (cur.includes('.')) {
+                                                const dec = cur.split('.')[1] || '';
+                                                if (dec.length >= 3) return;
+                                            }
+                                            setScoreInput(next);
+                                        }}
+                                    >{d}</button>
+                                ))}
+                                <button type="button" className="numpad-btn numpad-btn--dot"
+                                    onClick={() => {
+                                        const cur = String(scoreInput || '');
+                                        if (cur.includes('.')) return;
+                                        setScoreInput(cur === '' ? '0.' : cur + '.');
+                                    }}
+                                >.</button>
+                                <button type="button" className="numpad-btn"
+                                    onClick={() => {
+                                        const cur = String(scoreInput || '');
+                                        const next = cur + '0';
+                                        const num = parseFloat(next);
+                                        if (!isNaN(num) && num > 10) return;
+                                        if (cur.includes('.')) {
+                                            const dec = cur.split('.')[1] || '';
+                                            if (dec.length >= 3) return;
+                                        }
+                                        setScoreInput(next);
+                                    }}
+                                >0</button>
+                                <button type="button" className="numpad-btn numpad-btn--del"
+                                    onClick={() => setScoreInput(s => String(s || '').slice(0, -1))}
+                                    title="Sil"
+                                >
+                                    <span className="material-icons-round" style={{ fontSize: 22 }}>backspace</span>
+                                </button>
+                            </div>
+
                             <button className="send-btn" onClick={handleSendScore}>
                                 <span className="material-icons-round">send</span> GÖNDER
                             </button>
