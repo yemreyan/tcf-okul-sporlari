@@ -50,6 +50,9 @@ export default function ScoringPage() {
     const [ePanelTouched, setEPanelTouched] = useState({});
     // "Kullanıcı dokundu mu?" takibi — Firebase'den gelen güncelleme kullanıcı girişini ezmemesi için
     const [scoringFieldsTouched, setScoringFieldsTouched] = useState(false);
+    // Not kaydırma (shift) modalı
+    const [shiftModal, setShiftModal] = useState(null);
+    // shiftModal yapısı: { direction: 'down'|'up', steps: 1, applying: false }
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null);
     const [successModal, setSuccessModal] = useState(null);
@@ -621,6 +624,72 @@ export default function ScoringPage() {
         return currentUser?.rolAdi === 'Super Admin' || currentUser?.kullaniciAdi === 'admin';
     };
 
+    // ── Notları Kaydır: Tüm sporcuların puanlarını N sıra yukarı/aşağı kaydırır.
+    //    Kullanım: sırası ile not girerken hatalı kaymış girişleri düzeltir.
+    //    Yön 'up'  → her sporcu BİR ÖNCEKİ sporcunun şu anki puanını alır
+    //               (örnek: hata aşağı kaymış; geri al)
+    //    Yön 'down'→ her sporcu BİR SONRAKİ sporcunun şu anki puanını alır
+    //               (örnek: hata yukarı kaymış; geri al)
+    //    Sınır dışı (boundary) sporcular boş kalır.
+    const computeShiftMapping = useCallback((direction = 'up', steps = 1) => {
+        if (!selectedApparatus || athletesByRotation.length === 0) return null;
+        const allAth = athletesByRotation.flat();
+        if (allAth.length < 2) return null;
+        const offset = (direction === 'down') ? -steps : steps;
+        // mapping[oldAthId] = newAthId  (oldAthId'in puanı newAthId'e gidecek)
+        const mapping = [];
+        for (let i = 0; i < allAth.length; i++) {
+            const targetIdx = i + offset;
+            if (targetIdx < 0 || targetIdx >= allAth.length) {
+                mapping.push({ source: allAth[i], target: null });  // boşa düşecek
+            } else {
+                mapping.push({ source: allAth[i], target: allAth[targetIdx] });
+            }
+        }
+        return mapping;
+    }, [selectedApparatus, athletesByRotation]);
+
+    const handleApplyShift = async (direction, steps) => {
+        if (!selectedCompId || !selectedCategory || !selectedApparatus) return;
+        const mapping = computeShiftMapping(direction, steps);
+        if (!mapping) {
+            toast('Kaydırma için sporcu listesi boş veya yetersiz.', 'warning');
+            return;
+        }
+        setShiftModal(prev => prev ? { ...prev, applying: true } : prev);
+        try {
+            // Önce mevcut puanları toplu çek (snapshot)
+            const baseScorePath = `${firebasePath}/${selectedCompId}/puanlar/${selectedCategory}/${selectedApparatus}`;
+            const snap = await get(ref(db, baseScorePath));
+            const allScores = snap.val() || {};
+
+            // Hedef yazımı: targetId → kaynak data
+            const updates = {};
+            // 1) Tüm hedef sporculara kaynak datasını yaz (veya null)
+            mapping.forEach(({ source, target }) => {
+                if (!target) return; // boundary kaynak → düşecek (clear aşağıda)
+                const sourceData = allScores[source.id] || null;
+                updates[`${baseScorePath}/${target.id}`] = sourceData;
+            });
+            // 2) Hiçbir hedef olarak yazılmamış sporcuların kayıtlarını temizle
+            //    (yani veri akışında hedef olmayanlar boş kalsın)
+            const targetIds = new Set(mapping.filter(m => m.target).map(m => m.target.id));
+            mapping.forEach(({ source }) => {
+                if (!targetIds.has(source.id)) {
+                    updates[`${baseScorePath}/${source.id}`] = null;
+                }
+            });
+
+            await update(ref(db), updates);
+            toast(`Puanlar ${steps} sıra ${direction === 'up' ? 'yukarı' : 'aşağı'} kaydırıldı.`, 'success');
+            setShiftModal(null);
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('shift error', err);
+            toast('Kaydırma başarısız: ' + (err.message || ''), 'error');
+            setShiftModal(prev => prev ? { ...prev, applying: false } : prev);
+        }
+    };
+
     const handleCallAthlete = async () => {
         setIsAthleteCalled(true);
         try {
@@ -907,6 +976,34 @@ export default function ScoringPage() {
                             <option value="">Alet Seçin</option>
                             {apparatusOptions.map(app => <option key={app.id} value={app.id}>{app.name}</option>)}
                         </select>
+
+                        {/* Notları Kaydır — hata düzeltme aracı */}
+                        {selectedApparatus && athletesByRotation.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setShiftModal({ direction: 'up', steps: 1, applying: false })}
+                                style={{
+                                    marginTop: 8,
+                                    width: '100%',
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '0.55rem 0.85rem',
+                                    borderRadius: 8,
+                                    fontWeight: 800,
+                                    fontSize: '0.82rem',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                }}
+                                title="Sırası ile yanlış girilen notları toplu kaydırarak düzelt"
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 16 }}>swap_vert</i>
+                                Notları Kaydır (Hata Düzelt)
+                            </button>
+                        )}
                     </div>
 
 
@@ -1639,6 +1736,110 @@ export default function ScoringPage() {
                     </div>
                 </div>
             )}
+
+            {/* Notları Kaydır Modalı */}
+            {shiftModal && (() => {
+                const mapping = computeShiftMapping(shiftModal.direction, shiftModal.steps);
+                if (!mapping) return null;
+                const transferCount = mapping.filter(m => m.target).length;
+                const losingDataCount = mapping.filter(m => !m.target).length;
+                return (
+                    <div className="scoring-modal-overlay" onClick={() => !shiftModal.applying && setShiftModal(null)}>
+                        <div className="scoring-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
+                            <div className="scoring-modal-header">
+                                <i className="material-icons-round" style={{ color: '#f59e0b' }}>swap_vert</i>
+                                <h3>Notları Toplu Kaydır</h3>
+                            </div>
+                            <div className="scoring-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+                                    Bu alet için tüm sporcuların puanları seçilen sayıda satır kaydırılır.
+                                    Sınırda kalan sporcuların verisi <strong style={{ color: '#fca5a5' }}>silinir</strong>.
+                                </p>
+
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Yön:</label>
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                        <input type="radio" name="shiftDir" checked={shiftModal.direction === 'up'}
+                                            onChange={() => setShiftModal(p => ({ ...p, direction: 'up' }))} />
+                                        <span>⬆ Yukarı (her not bir önceki sporcuya)</span>
+                                    </label>
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                        <input type="radio" name="shiftDir" checked={shiftModal.direction === 'down'}
+                                            onChange={() => setShiftModal(p => ({ ...p, direction: 'down' }))} />
+                                        <span>⬇ Aşağı (her not bir sonraki sporcuya)</span>
+                                    </label>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Adım sayısı:</label>
+                                    <input type="number" min="1" max="20" value={shiftModal.steps}
+                                        onChange={e => setShiftModal(p => ({ ...p, steps: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+                                        style={{ width: 80, padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 700 }} />
+                                </div>
+
+                                <div style={{
+                                    background: 'rgba(245,158,11,0.08)',
+                                    border: '1px solid rgba(245,158,11,0.3)',
+                                    borderRadius: 8,
+                                    padding: '0.6rem 0.85rem',
+                                    fontSize: '0.85rem',
+                                    color: '#fbbf24',
+                                }}>
+                                    <strong>{transferCount}</strong> sporcunun puanları yeni hedeflere yazılacak.
+                                    {losingDataCount > 0 && (
+                                        <span> <strong style={{ color: '#fca5a5' }}>{losingDataCount}</strong> sporcunun verisi sınır dışında kalacağı için silinecek.</span>
+                                    )}
+                                </div>
+
+                                {/* Önizleme — ilk 8 satır */}
+                                <div style={{
+                                    maxHeight: 280, overflowY: 'auto',
+                                    background: '#0f172a', borderRadius: 8, padding: '0.5rem',
+                                }}>
+                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: 6, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                        Önizleme (kaynak sporcu puanı → hedef sporcuya)
+                                    </div>
+                                    <table style={{ width: '100%', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ color: '#94a3b8' }}>
+                                                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Kaynak</th>
+                                                <th style={{ width: 30, textAlign: 'center' }}>→</th>
+                                                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Hedef</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {mapping.map((m, idx) => (
+                                                <tr key={m.source.id} style={{ borderTop: '1px solid #1e293b' }}>
+                                                    <td style={{ padding: '4px 8px', color: '#cbd5e1' }}>
+                                                        {idx + 1}. {m.source.ad} {m.source.soyad}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', color: '#64748b' }}>→</td>
+                                                    <td style={{ padding: '4px 8px', color: m.target ? '#86efac' : '#fca5a5' }}>
+                                                        {m.target ? `${m.target.ad} ${m.target.soyad}` : '⚠ SİLİNECEK (sınır dışı)'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div className="scoring-modal-actions">
+                                <button className="modal-btn cancel" onClick={() => !shiftModal.applying && setShiftModal(null)} disabled={shiftModal.applying}>
+                                    <i className="material-icons-round">close</i> Vazgeç
+                                </button>
+                                <button className="modal-btn confirm" onClick={() => handleApplyShift(shiftModal.direction, shiftModal.steps)} disabled={shiftModal.applying}
+                                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                                    {shiftModal.applying
+                                        ? <div className="spinner-small" />
+                                        : <i className="material-icons-round">swap_vert</i>
+                                    }
+                                    Kaydır ve Kaydet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
