@@ -228,6 +228,13 @@ export default function CompetitionSchedulePage() {
         return [...merged];
     }, [selectedComp]);
 
+    // 'Yarışmaz' (kategoriGunAtamalari === -1) olarak işaretlenen kategoriler hariç,
+    // aktif/yarışacak kategori anahtarları. Rotasyon, program, saatler vb. burayı kullanır.
+    const activeCompCatKeys = useMemo(() => {
+        const ata = planAyarlari?.kategoriGunAtamalari || {};
+        return compCatKeys.filter(ck => ata[ck] !== -1);
+    }, [compCatKeys, planAyarlari?.kategoriGunAtamalari]);
+
     const getAletlerForCat = (catKey) => {
         const cat = compKategoriler[catKey];
         if (!cat?.aletler) return [];
@@ -250,7 +257,15 @@ export default function CompetitionSchedulePage() {
         const grouped = {};
         dateRange.forEach(d => { grouped[d] = []; });
 
+        // 'Yarışmaz' işaretli kategorilerin oturumlarını gizle
+        const excludedCats = new Set(
+            Object.entries(planAyarlari?.kategoriGunAtamalari || {})
+                .filter(([, v]) => v === -1)
+                .map(([k]) => k)
+        );
+
         Object.entries(sessions).forEach(([id, sess]) => {
+            if (sess.kategori && excludedCats.has(sess.kategori)) return; // gizle
             const d = sess.tarih || dateRange[0];
             if (!grouped[d]) grouped[d] = [];
             grouped[d].push({ id, ...sess });
@@ -259,7 +274,7 @@ export default function CompetitionSchedulePage() {
         // Saate göre sırala
         Object.values(grouped).forEach(arr => arr.sort((a, b) => (a.saat || '').localeCompare(b.saat || '')));
         return grouped;
-    }, [sessions, dateRange]);
+    }, [sessions, dateRange, planAyarlari?.kategoriGunAtamalari]);
 
     // ── Modal işlemleri ──
     const openAddModal = (tarih) => {
@@ -476,10 +491,9 @@ export default function CompetitionSchedulePage() {
             }
 
             // Tüm kategori-alet çiftlerini sporcu sayısına göre oturumlara böl
-            // YARIŞMAZ olarak işaretlenenleri atla
+            // YARIŞMAZ olarak işaretlenenleri atla (activeCompCatKeys hariç tutarı zaten filtreli)
             const allSlots = [];
-            compCatKeys.forEach(catKey => {
-                if (planAyarlari.kategoriGunAtamalari?.[catKey] === -1) return;  // hariç
+            activeCompCatKeys.forEach(catKey => {
                 const aletler = getAletlerForCat(catKey);
                 const totalAthletes = freshAthleteCounts[catKey] || 0;
 
@@ -742,7 +756,7 @@ export default function CompetitionSchedulePage() {
             const dayPanelMap = {};
             dateRange.forEach(d => { dayPanelMap[d] = {}; for (let p = 1; p <= hakemGrubuSayisi; p++) dayPanelMap[d][p] = []; });
 
-            compCatKeys.forEach(catKey => {
+            activeCompCatKeys.forEach(catKey => {
                 const ayar = getAerobikCatAyar(catKey);
                 const catDayAthletes = getCatDayAthletes(catKey);
                 catDayAthletes.forEach(entry => {
@@ -960,7 +974,7 @@ export default function CompetitionSchedulePage() {
             const kategoriGunAta = planAyarlari.kategoriGunAtamalari || {};
             const dayCategories = {};
             dateRange.forEach((tarih) => { dayCategories[tarih] = []; });
-            compCatKeys.forEach(catKey => {
+            activeCompCatKeys.forEach(catKey => {
                 const dayIdx = kategoriGunAta[catKey] ?? 0;
                 const tarih = dateRange[Math.min(dayIdx, dateRange.length - 1)] || dateRange[0];
                 if (tarih) dayCategories[tarih].push(catKey);
@@ -1336,7 +1350,7 @@ export default function CompetitionSchedulePage() {
     // rotationMatrix — wave-aware: her dalga kendi matrisiyle gösterilir
     const rotationMatrix = useMemo(() => {
         const result = {};
-        compCatKeys.forEach(catKey => {
+        activeCompCatKeys.forEach(catKey => {
             const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
             if (!aletlerSirali.length) return;
             const numAlet = aletlerSirali.length;
@@ -1513,7 +1527,14 @@ export default function CompetitionSchedulePage() {
                             </div>
                             <div className="sched-comp-info__detail">
                                 <i className="material-icons-round">category</i>
-                                <span>{compCatKeys.length} kategori</span>
+                                <span>
+                                    {activeCompCatKeys.length} kategori
+                                    {compCatKeys.length !== activeCompCatKeys.length && (
+                                        <small style={{ color: '#94a3b8', marginLeft: 4 }}>
+                                            ({compCatKeys.length - activeCompCatKeys.length} hariç)
+                                        </small>
+                                    )}
+                                </span>
                             </div>
                             <div className="sched-comp-info__detail">
                                 <i className="material-icons-round">groups</i>
@@ -1960,7 +1981,7 @@ export default function CompetitionSchedulePage() {
                                                 Sporcu sayısını boş bırakırsanız kalan sporcular günlere eşit bölünür.
                                             </p>
 
-                                            {compCatKeys.map(catKey => {
+                                            {activeCompCatKeys.map(catKey => {
                                                 const ayar = getAerobikCatAyar(catKey);
                                                 const total = athleteCounts[catKey] || 0;
                                                 const sporcuSn = planAyarlari.sporcuBasinaSureSn || 120;
@@ -2084,7 +2105,7 @@ export default function CompetitionSchedulePage() {
                                                 const hakemGrubuSayisi = planAyarlari.hakemGrubuSayisi || 2;
                                                 const dayPanels = {};
                                                 for (let p = 1; p <= hakemGrubuSayisi; p++) dayPanels[p] = [];
-                                                compCatKeys.forEach(catKey => {
+                                                activeCompCatKeys.forEach(catKey => {
                                                     const ayar = getAerobikCatAyar(catKey);
                                                     const total = athleteCounts[catKey] || 0;
                                                     const expSum = ayar.gunler.reduce((s, g) => s + (g.sporcuSayisi != null ? g.sporcuSayisi : 0), 0);
@@ -2159,11 +2180,11 @@ export default function CompetitionSchedulePage() {
                         )}
 
 
-                        {/* TAB: ROTASYON PLANI */}
+                        {/* TAB: ROTASYON PLANI — Yarışmaz kategoriler hariç */}
                         {activeTab === 'rotasyon' && !isAerobikDiscipline && (
                             <div className="sched-tab-content">
-                                {compCatKeys.length === 0 && <div className="sched-empty"><i className="material-icons-round">category</i><p>Yarışmada kategori bulunamadı</p></div>}
-                                {compCatKeys.map(catKey => {
+                                {activeCompCatKeys.length === 0 && <div className="sched-empty"><i className="material-icons-round">category</i><p>Yarışacak kategori bulunamadı</p></div>}
+                                {activeCompCatKeys.map(catKey => {
                                     const aletlerSirali = getOlimpikSira(catKey, getAletlerForCat(catKey));
                                     const catGruplar = gruplar[catKey] || [];
                                     const catPlan = rotasyonPlani[catKey] || {};
@@ -2616,7 +2637,7 @@ export default function CompetitionSchedulePage() {
                                         onChange={e => setFormData(p => ({ ...p, kategori: e.target.value, alet: '' }))}
                                     >
                                         <option value="">Seçin</option>
-                                        {compCatKeys.map(catKey => (
+                                        {activeCompCatKeys.map(catKey => (
                                             <option key={catKey} value={catKey}>{getCategoryLabel(catKey)}</option>
                                         ))}
                                     </select>
@@ -2632,7 +2653,7 @@ export default function CompetitionSchedulePage() {
                                         onChange={e => setFormData(p => ({ ...p, kategori: e.target.value }))}
                                     >
                                         <option value="">— Tüm Kategoriler —</option>
-                                        {compCatKeys.map(catKey => (
+                                        {activeCompCatKeys.map(catKey => (
                                             <option key={catKey} value={catKey}>{getCategoryLabel(catKey)}</option>
                                         ))}
                                     </select>
