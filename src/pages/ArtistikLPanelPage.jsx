@@ -100,6 +100,8 @@ export default function ArtistikLPanelPage() {
         try {
             await update(ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`), {
                 tarafsiz: newTotal,
+                neutralDeductions: newTotal,
+                TarafsizKesinti: newTotal,
             });
             setSessionDeduction(s => +(s + amount).toFixed(2));
             setViolationCount(c => c + 1);

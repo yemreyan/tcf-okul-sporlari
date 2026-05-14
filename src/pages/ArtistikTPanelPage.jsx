@@ -136,8 +136,12 @@ export default function ArtistikTPanelPage() {
         if (status !== 'scoring' || !activeAthleteId) return;
         const newTotal = +(serverDeduction + amount).toFixed(2);
         try {
+            // Üç alana birden yaz: ScoringPage'in farklı sürümleri farklı alan
+            // adlarını okuyabilir (tarafsiz / neutralDeductions / TarafsizKesinti).
             await update(ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${aletId}/${activeAthleteId}`), {
                 tarafsiz: newTotal,
+                neutralDeductions: newTotal,
+                TarafsizKesinti: newTotal,
             });
             setSessionDeduction(s => +(s + amount).toFixed(2));
             try {

@@ -227,22 +227,29 @@ export default function ScoringPage() {
 
     // 5c. Tarafsız Kesinti dedicated sync — Zaman/Çizgi hakem panellerinden
     //     gelen güncellemeler başhakem D paneline dokunsa BİLE yansımalı.
-    //     scoringFieldsTouched bypass'lı, sadece Firebase değeri değişirse set eder.
-    const lastSyncedTarafsizRef = useRef(null);
+    //     scoringFieldsTouched bypass'lı.
+    //
+    // Mantık: Firebase'deki son değeri ref'te tut. Her existingScores
+    // değişiminde Firebase'i kontrol et. Firebase değişmişse state'i de güncelle
+    // (kullanıcı typing'ini stomplamaz çünkü typing Firebase'i değiştirmez —
+    // ancak panel yazısı Firebase'i değiştirir → senkronize edilir).
+    const lastSyncedTarafsizRef = useRef(undefined);
     useEffect(() => {
-        // Sporcu/alet değişince ref sıfırla → ilk sync yapılsın
-        lastSyncedTarafsizRef.current = null;
+        // Sporcu/alet değişince ref sıfırla
+        lastSyncedTarafsizRef.current = undefined;
     }, [selectedAthlete?.id, selectedApparatus]);
     useEffect(() => {
         if (!selectedAthlete) return;
         const scores = existingScores[selectedAthlete.id];
         if (!scores) return;
-        const fbVal = scores.tarafsiz ?? scores.neutralDeductions;
-        if (fbVal === undefined || fbVal === null) return;
-        const num = parseFloat(fbVal);
-        if (isNaN(num)) return;
-        // Sadece Firebase değeri değiştiyse güncelle (kullanıcı typing'ini stomplama)
+        const fbRaw = scores.tarafsiz ?? scores.neutralDeductions ?? scores.TarafsizKesinti;
+        if (fbRaw === undefined || fbRaw === null) return;
+        const num = parseFloat(fbRaw) || 0;
+        // Sadece Firebase değeri DEĞİŞTİYSE state'i güncelle
         if (num !== lastSyncedTarafsizRef.current) {
+            if (import.meta.env.DEV) {
+                console.log('[Tarafsiz sync]', { prev: lastSyncedTarafsizRef.current, new: num, athId: selectedAthlete.id });
+            }
             lastSyncedTarafsizRef.current = num;
             setNeutralDeductions(num);
         }
