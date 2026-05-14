@@ -296,10 +296,12 @@ export default function AthletesPage() {
                 }
 
                 // min=2 max=4: okuldaki toplam sporcu sayısına göre takim/ferdi
+                // (yarismaTuruKilitli=true olanlar atlanır — kullanıcı manuel ayarladı)
                 const updates = {};
                 Object.values(schoolGroups).forEach(grp => {
                     const newTur = grp.length >= 2 ? 'takim' : 'ferdi';
                     grp.forEach(ath => {
+                        if (ath.yarismaTuruKilitli === true) return; // manuel — atla
                         if ((ath.yarismaTuru || 'ferdi') !== newTur) {
                             updates[`${firebasePath}/${compId}/sporcular/${ath.catId}/${ath.id}/yarismaTuru`] = newTur;
                         }
@@ -340,6 +342,7 @@ export default function AthletesPage() {
             Object.values(schoolGroups).forEach(group => {
                 const newTur = group.length >= rules.min ? 'takim' : 'ferdi';
                 group.forEach(ath => {
+                    if (ath.yarismaTuruKilitli === true) return; // manuel — atla
                     if ((ath.yarismaTuru || 'ferdi') !== newTur) {
                         updates[`${firebasePath}/${compId}/sporcular/${catId}/${ath.id}/yarismaTuru`] = newTur;
                     }
@@ -592,6 +595,7 @@ export default function AthletesPage() {
                     updates[`${firebasePath}/${selectedCompId}/sporcular/${newCatId}/${athId}`] = {
                         ...formData,
                         kulup: formData.okul,   // okul ile senkron
+                        yarismaTuruKilitli: true, // kullanıcı manuel ayarladı, autoSync override etmesin
                         id: athId,
                         adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
                         soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
@@ -626,7 +630,11 @@ export default function AthletesPage() {
                     await autoSyncTeamStatus(selectedCompId, [oldCatId, newCatId]);
                 } else {
                     // Sadece güncelle — kulup her zaman okul ile senkron
-                    await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), { ...formData, kulup: formData.okul });
+                    await update(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${formData.categoryId}/${editingAthlete.id}`), {
+                        ...formData,
+                        kulup: formData.okul,
+                        yarismaTuruKilitli: true,
+                    });
                     // Aynı kategorideki okul takım türünü güncelle
                     await autoSyncTeamStatus(selectedCompId, [formData.categoryId]);
                 }
@@ -636,6 +644,7 @@ export default function AthletesPage() {
                 await set(newRef, {
                     ...formData,
                     kulup: formData.okul,   // okul ile senkron
+                    yarismaTuruKilitli: true, // kullanıcı formdan girdi
                     id: newRef.key,
                     adSoyad: `${formData.ad} ${formData.soyad}`.trim(),
                     soyadAd: `${formData.soyad} ${formData.ad}`.trim(),
@@ -1228,6 +1237,10 @@ export default function AthletesPage() {
                     updates[`${basePath}/${field}`] = bulkNewValue;
                     if (field === 'okul') {
                         updates[`${basePath}/kulup`] = bulkNewValue;
+                    }
+                    if (field === 'yarismaTuru') {
+                        // Bulk edit ile manuel değiştirildi → autoSync override etmesin
+                        updates[`${basePath}/yarismaTuruKilitli`] = true;
                     }
 
                     // Siralama verisini güncelle
