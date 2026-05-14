@@ -218,7 +218,15 @@ export default function CompetitionSchedulePage() {
         return selectedComp.kategoriler;
     }, [selectedComp]);
 
-    const compCatKeys = useMemo(() => Object.keys(compKategoriler), [compKategoriler]);
+    // Kategori anahtarları: hem 'kategoriler' hem 'sporcular' node'larından gelen
+    // tüm key'leri birleştir. Bazı yarışmalarda kategori 'sporcular' altında olup
+    // 'kategoriler' altında olmayabiliyor — bu durumda da gözükmesi gerekir.
+    const compCatKeys = useMemo(() => {
+        const fromKat = Object.keys(selectedComp?.kategoriler || {});
+        const fromSpo = Object.keys(selectedComp?.sporcular || {}).filter(k => k && k !== 'undefined');
+        const merged = new Set([...fromKat, ...fromSpo]);
+        return [...merged];
+    }, [selectedComp]);
 
     const getAletlerForCat = (catKey) => {
         const cat = compKategoriler[catKey];
