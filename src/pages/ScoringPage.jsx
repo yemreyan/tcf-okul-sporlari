@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '../lib/firebase';
@@ -224,6 +224,30 @@ export default function ScoringPage() {
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingScores, selectedAthlete?.id]);
+
+    // 5c. Tarafsız Kesinti dedicated sync — Zaman/Çizgi hakem panellerinden
+    //     gelen güncellemeler başhakem D paneline dokunsa BİLE yansımalı.
+    //     scoringFieldsTouched bypass'lı, sadece Firebase değeri değişirse set eder.
+    const lastSyncedTarafsizRef = useRef(null);
+    useEffect(() => {
+        // Sporcu/alet değişince ref sıfırla → ilk sync yapılsın
+        lastSyncedTarafsizRef.current = null;
+    }, [selectedAthlete?.id, selectedApparatus]);
+    useEffect(() => {
+        if (!selectedAthlete) return;
+        const scores = existingScores[selectedAthlete.id];
+        if (!scores) return;
+        const fbVal = scores.tarafsiz ?? scores.neutralDeductions;
+        if (fbVal === undefined || fbVal === null) return;
+        const num = parseFloat(fbVal);
+        if (isNaN(num)) return;
+        // Sadece Firebase değeri değiştiyse güncelle (kullanıcı typing'ini stomplama)
+        if (num !== lastSyncedTarafsizRef.current) {
+            lastSyncedTarafsizRef.current = num;
+            setNeutralDeductions(num);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingScores, selectedAthlete?.id, selectedApparatus]);
 
     // 5b. Sync D-score ve diğer alanları Firebase'den yükle (kullanıcı henüz dokunmadıysa)
     // Bu özellikle existingScores sporcu seçildikten sonra geldiğinde formu doldurmak için gerekli
