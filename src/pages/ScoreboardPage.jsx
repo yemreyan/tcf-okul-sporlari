@@ -809,6 +809,23 @@ export default function ScoreboardPage() {
         }, 20000);
     }, []);
 
+    // Flash kartını manuel kapat — kullanıcı karta tıklayınca
+    const dismissFlash = useCallback(() => {
+        if (flashTimeoutRef.current) { clearTimeout(flashTimeoutRef.current); flashTimeoutRef.current = null; }
+        if (flashPhaseRef.current)   { clearTimeout(flashPhaseRef.current);   flashPhaseRef.current = null; }
+        setIsFlashing(false);
+        isFlashingRef.current = false;
+        // Animasyon için kısa süre sonra veriyi temizle ve sıradakini çalıştır
+        setTimeout(() => {
+            setFlashData(null);
+            setFlashPhase(0);
+            if (flashQueue.current.length > 0) {
+                const next = flashQueue.current.shift();
+                setTimeout(() => showFlash(next), 400);
+            }
+        }, 500);
+    }, [showFlash]);
+
     // Flash trigger — queues if already flashing
     const triggerFlash = useCallback((data) => {
         if (isFlashingRef.current) {
@@ -1421,8 +1438,15 @@ export default function ScoreboardPage() {
                 </div>
             )}
 
-            {/* FLASH OVERLAY */}
-            <div className={`sb-flash ${isFlashing ? 'sb-flash-visible' : ''}`}>
+            {/* FLASH OVERLAY — tıklayınca kapanır */}
+            <div
+                className={`sb-flash ${isFlashing ? 'sb-flash-visible' : ''}`}
+                onClick={isFlashing ? dismissFlash : undefined}
+                role={isFlashing ? 'button' : undefined}
+                tabIndex={isFlashing ? 0 : -1}
+                style={isFlashing ? { cursor: 'pointer' } : undefined}
+                title={isFlashing ? 'Kapatmak için tıkla' : undefined}
+            >
                 {flashData && (
                     <div className="sb-flash-card">
                         <div className="sf-header">
