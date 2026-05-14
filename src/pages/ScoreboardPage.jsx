@@ -92,6 +92,10 @@ export default function ScoreboardPage() {
     const [views, setViews] = useState([]);
     const [viewTransition, setViewTransition] = useState(false);
 
+    // Public mod kontrolleri: auto-cycle durdur, sporcu arama, manuel ilerletme
+    const [paused, setPaused] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
     // Pagination within each view
     const [pageIndex, setPageIndex] = useState(0);
 
@@ -692,7 +696,7 @@ export default function ScoreboardPage() {
 
     // Cycle Timer — handles view cycling and pagination
     useEffect(() => {
-        if (!isLive || isFlashing || views.length === 0) return;
+        if (!isLive || isFlashing || views.length === 0 || paused) return;
 
         const PAGE_DURATION = 8000;
         const PROGRESS_INTERVAL = 50;
@@ -731,7 +735,23 @@ export default function ScoreboardPage() {
             clearInterval(cycleTimerRef.current);
             clearInterval(progressTimerRef.current);
         };
-    }, [isLive, isFlashing, views, viewIndex, fullRanking.length]);
+    }, [isLive, isFlashing, views, viewIndex, fullRanking.length, paused]);
+
+    // Arama: query varsa otomatik akışı durdur + eşleşen ilk sporcuya jump
+    useEffect(() => {
+        if (!searchQuery || !searchQuery.trim()) return;
+        setPaused(true);  // arama yaparken otomatik geçişi durdur
+        const q = searchQuery.toLocaleLowerCase('tr-TR');
+        const matchIdx = fullRanking.findIndex(item => {
+            const name = (item.ad ? `${item.ad} ${item.soyad || ''}` : item.name || '').toLocaleLowerCase('tr-TR');
+            const club = (item.okul || item.kulup || '').toLocaleLowerCase('tr-TR');
+            return name.includes(q) || club.includes(q);
+        });
+        if (matchIdx >= 0) {
+            const targetPage = Math.floor(matchIdx / PAGE_SIZE);
+            setPageIndex(targetPage);
+        }
+    }, [searchQuery, fullRanking]);
 
     // Reset pageIndex when viewIndex changes
     useEffect(() => {
@@ -1311,6 +1331,93 @@ export default function ScoreboardPage() {
                             })()}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Public mod kontrol çubuğu — sadece urlPublicMode'da görünür */}
+            {urlPublicMode && (
+                <div className="sb-public-controls">
+                    {/* Arama */}
+                    <div className="sb-pc-search">
+                        <i className="material-icons-round">search</i>
+                        <input
+                            type="text"
+                            placeholder="Sporcu / okul ara..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                        {searchQuery && (
+                            <button className="sb-pc-search-clear" onClick={() => setSearchQuery('')} title="Aramayı temizle">
+                                <i className="material-icons-round">close</i>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Önceki sayfa */}
+                    <button
+                        className="sb-pc-btn"
+                        onClick={() => setPageIndex(p => Math.max(0, p - 1))}
+                        disabled={pageIndex === 0}
+                        title="Önceki sayfa"
+                    >
+                        <i className="material-icons-round">chevron_left</i>
+                    </button>
+
+                    {/* Sayfa göstergesi */}
+                    <div className="sb-pc-page-info">
+                        {pageIndex + 1} / {totalPages}
+                    </div>
+
+                    {/* Sonraki sayfa */}
+                    <button
+                        className="sb-pc-btn"
+                        onClick={() => setPageIndex(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={pageIndex >= totalPages - 1}
+                        title="Sonraki sayfa"
+                    >
+                        <i className="material-icons-round">chevron_right</i>
+                    </button>
+
+                    {/* Pause / Play */}
+                    <button
+                        className={`sb-pc-btn sb-pc-btn--toggle ${paused ? 'sb-pc-btn--paused' : ''}`}
+                        onClick={() => setPaused(p => !p)}
+                        title={paused ? 'Otomatik akışı başlat' : 'Otomatik akışı duraklat'}
+                    >
+                        <i className="material-icons-round">{paused ? 'play_arrow' : 'pause'}</i>
+                        <span className="sb-pc-btn-label">{paused ? 'OYNAT' : 'DURAKLAT'}</span>
+                    </button>
+
+                    {/* View geçişleri: Ferdi / Takım */}
+                    {views.length > 1 && (
+                        <div className="sb-pc-view-switch">
+                            <button
+                                className="sb-pc-btn"
+                                onClick={() => setViewIndex(v => (v - 1 + views.length) % views.length)}
+                                title="Önceki görünüm"
+                            >
+                                <i className="material-icons-round">first_page</i>
+                            </button>
+                            <select
+                                className="sb-pc-view-select"
+                                value={viewIndex}
+                                onChange={e => { setViewIndex(parseInt(e.target.value, 10)); setPageIndex(0); }}
+                            >
+                                {views.map((v, i) => (
+                                    <option key={i} value={i}>
+                                        {v.title} — {v.subtitle}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                className="sb-pc-btn"
+                                onClick={() => setViewIndex(v => (v + 1) % views.length)}
+                                title="Sonraki görünüm"
+                            >
+                                <i className="material-icons-round">last_page</i>
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

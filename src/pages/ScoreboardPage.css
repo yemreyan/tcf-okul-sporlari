@@ -1278,6 +1278,155 @@
     }
 }
 
+/* ─── PUBLIC MODE CONTROL BAR ───────────────────────────────── */
+.sb-public-controls {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    max-width: 96vw;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.sb-pc-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 25px;
+    min-width: 180px;
+    max-width: 260px;
+}
+.sb-pc-search i {
+    color: #94a3b8;
+    font-size: 18px;
+}
+.sb-pc-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #f1f5f9;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    min-width: 0;
+}
+.sb-pc-search input::placeholder {
+    color: #64748b;
+}
+.sb-pc-search-clear {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+.sb-pc-search-clear:hover {
+    color: #f1f5f9;
+}
+
+.sb-pc-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+    border-radius: 22px;
+    height: 38px;
+    min-width: 38px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all 0.15s;
+}
+.sb-pc-btn:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(165, 180, 252, 0.4);
+}
+.sb-pc-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.sb-pc-btn--toggle {
+    background: rgba(34, 197, 94, 0.18);
+    border-color: rgba(34, 197, 94, 0.4);
+}
+.sb-pc-btn--paused {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fbbf24;
+}
+.sb-pc-btn-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.sb-pc-page-info {
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 50px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.sb-pc-view-switch {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+.sb-pc-view-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+    border-radius: 16px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    max-width: 200px;
+}
+.sb-pc-view-select option {
+    background: #0f172a;
+    color: #f1f5f9;
+}
+
+/* Mobil */
+@media (max-width: 700px) {
+    .sb-public-controls {
+        bottom: 8px;
+        gap: 4px;
+        padding: 6px 8px;
+    }
+    .sb-pc-search { min-width: 130px; max-width: 180px; padding: 4px 8px; }
+    .sb-pc-search input { font-size: 12px; }
+    .sb-pc-btn { height: 32px; min-width: 32px; padding: 0 6px; font-size: 11px; }
+    .sb-pc-btn-label { display: none; }
+    .sb-pc-page-info { font-size: 11px; min-width: 36px; }
+    .sb-pc-view-select { font-size: 11px; max-width: 120px; padding: 4px 8px; }
+}
+
 /* ─── ATHLETE DETAIL MODAL ──────────────────────────────────── */
 .sb-row-clickable { cursor: pointer; }
 .sb-row-clickable:active { transform: scale(0.99); }
