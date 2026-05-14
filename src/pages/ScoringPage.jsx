@@ -783,6 +783,7 @@ export default function ScoringPage() {
                     adSoyad: `${savedAthlete.ad} ${savedAthlete.soyad}`,
                     kulup: savedAthlete.okul || savedAthlete.kulup,
                     aletAd: apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus,
+                    aletId: selectedApparatus,  // PNG/SVG ikon için
                     d: calculatedDScore,
                     e: currentEScore,
                     pen: missingPenalty + tarafsizKesinti,

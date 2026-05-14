@@ -1326,7 +1326,10 @@ export default function ScoreboardPage() {
                             <h1 className="sf-athlete">{flashData.adSoyad}</h1>
                             <p className="sf-club">{flashData.kulup}</p>
                             <div className="sf-apparatus">
-                                {flashData.aletAd?.toUpperCase()}
+                                {flashData.aletId && APPARATUS_PNG.has(flashData.aletId) && (
+                                    <ApparatusIcon id={flashData.aletId} className="sf-apparatus-icon" />
+                                )}
+                                <span>{flashData.aletAd?.toUpperCase()}</span>
                             </div>
                         </div>
 
@@ -1364,26 +1367,34 @@ export default function ScoreboardPage() {
                             </div>
                         ) : (
                             /* ── Artistik / diğer: D SCORE / E SCORE / PENALTY ── */
-                            <div className="sf-scores">
-                                <div className={`sf-score-item sf-d ${flashPhase >= 1 ? 'sf-reveal' : ''}`}>
-                                    <div className="sf-score-label">D SCORE</div>
-                                    <div className="sf-score-value">{parseFloat(flashData.d || 0).toFixed(2)}</div>
-                                </div>
-                                <div className="sf-score-divider">+</div>
-                                <div className={`sf-score-item sf-e ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
-                                    <div className="sf-score-label">E SCORE</div>
-                                    <div className="sf-score-value">{parseFloat(flashData.e || 0).toFixed(3)}</div>
-                                </div>
-                                {parseFloat(flashData.pen || 0) > 0 && (
-                                    <>
-                                        <div className="sf-score-divider">-</div>
-                                        <div className={`sf-score-item sf-pen ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
-                                            <div className="sf-score-label">PENALTY</div>
-                                            <div className="sf-score-value">{parseFloat(flashData.pen || 0).toFixed(2)}</div>
-                                        </div>
-                                    </>
+                            <>
+                                {/* Büyük alet ikonu — score kısmında belirgin sembol */}
+                                {flashData.aletId && APPARATUS_PNG.has(flashData.aletId) && (
+                                    <div className="sf-big-apparatus">
+                                        <ApparatusIcon id={flashData.aletId} className="sf-big-apparatus-icon" />
+                                    </div>
                                 )}
-                            </div>
+                                <div className="sf-scores">
+                                    <div className={`sf-score-item sf-d ${flashPhase >= 1 ? 'sf-reveal' : ''}`}>
+                                        <div className="sf-score-label">D SCORE</div>
+                                        <div className="sf-score-value">{parseFloat(flashData.d || 0).toFixed(2)}</div>
+                                    </div>
+                                    <div className="sf-score-divider">+</div>
+                                    <div className={`sf-score-item sf-e ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
+                                        <div className="sf-score-label">E SCORE</div>
+                                        <div className="sf-score-value">{parseFloat(flashData.e || 0).toFixed(3)}</div>
+                                    </div>
+                                    {parseFloat(flashData.pen || 0) > 0 && (
+                                        <>
+                                            <div className="sf-score-divider">-</div>
+                                            <div className={`sf-score-item sf-pen ${flashPhase >= 2 ? 'sf-reveal' : ''}`}>
+                                                <div className="sf-score-label">PENALTY</div>
+                                                <div className="sf-score-value">{parseFloat(flashData.pen || 0).toFixed(2)}</div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </>
                         )}
 
                         <div className={`sf-total ${flashPhase >= 3 ? 'sf-reveal-total' : ''}`}>
