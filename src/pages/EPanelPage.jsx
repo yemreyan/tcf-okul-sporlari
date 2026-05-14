@@ -268,9 +268,15 @@ export default function EPanelPage() {
     }, [compId, catId, currentAlet, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
 
     // ── Kabul oranı listener: bu hakemin gönderdiği notların ne kadarı
-    //    trimmed-mean'de sayıldı? (kategorideki tüm sporcular için)
+    //    trimmed-mean'de sayıldı? (yarışma+kategori+alet bazında)
     useEffect(() => {
         if (!compId || !catId || !panelId || !tokenVerified) return;
+        // Ritmik için currentAlet bekleniyor — yoksa hesap yapma
+        if (isRitmik && !currentAlet) {
+            setAcceptanceRatio(null);
+            setAcceptanceCounts({ counted: 0, total: 0 });
+            return;
+        }
         // Path: artistik → puanlar/{cat}/{aletId} ; aerobik → puanlar/{cat} ; ritmik → puanlar/{cat}
         let scopeRef;
         if (isRitmik || isAerobik) {
@@ -314,13 +320,13 @@ export default function EPanelPage() {
 
             if (isRitmik) {
                 // puanlar/{cat}/{athId}/{aletKey}/aPanel|ePanel/j{N}
+                // SADECE currentAlet (yarışma+kategori+alet)
                 const panelKey = panelType === 'a' ? 'aPanel' : 'ePanel';
                 Object.values(data).forEach(athScores => {
                     if (!athScores || typeof athScores !== 'object') return;
-                    Object.values(athScores).forEach(aletScore => {
-                        if (!aletScore || typeof aletScore !== 'object') return;
-                        evalPanelKeys(aletScore[panelKey]);
-                    });
+                    const aletScore = athScores[currentAlet];
+                    if (!aletScore || typeof aletScore !== 'object') return;
+                    evalPanelKeys(aletScore[panelKey]);
                 });
             } else if (isAerobik) {
                 // puanlar/{cat}/{athId}/ePanel/j{N}
@@ -341,7 +347,7 @@ export default function EPanelPage() {
             setAcceptanceRatio(total > 0 ? counted / total : null);
         });
         return () => unsub();
-    }, [compId, catId, aletId, panelId, panelType, tokenVerified, isRitmik, isAerobik, firebasePath]);
+    }, [compId, catId, aletId, currentAlet, panelId, panelType, tokenVerified, isRitmik, isAerobik, firebasePath]);
 
     // ── Hakem Çağrısı listener (sadece Ritmik A/E hakem panelleri) ──
     // SJA → A panel hakemleri  ·  SJE → E panel hakemleri
