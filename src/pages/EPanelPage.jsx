@@ -517,32 +517,15 @@ export default function EPanelPage() {
                         </div>
                     )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="epanel-header-right">
                     {acceptanceRatio !== null && acceptanceCounts.total >= 3 && (
                         <div
+                            className={`epanel-acc-badge ${
+                                acceptanceRatio >= 0.85 ? 'epanel-acc-badge--good'
+                                : acceptanceRatio >= 0.7 ? 'epanel-acc-badge--warn'
+                                : 'epanel-acc-badge--bad'
+                            }`}
                             title={`${acceptanceCounts.counted}/${acceptanceCounts.total}`}
-                            style={{
-                                padding: '0.45rem 0.75rem',
-                                background: acceptanceRatio >= 0.85
-                                    ? 'rgba(34,197,94,0.15)'
-                                    : acceptanceRatio >= 0.7
-                                        ? 'rgba(245,158,11,0.15)'
-                                        : 'rgba(239,68,68,0.15)',
-                                border: `1px solid ${acceptanceRatio >= 0.85
-                                    ? 'rgba(34,197,94,0.4)'
-                                    : acceptanceRatio >= 0.7
-                                        ? 'rgba(245,158,11,0.4)'
-                                        : 'rgba(239,68,68,0.4)'}`,
-                                borderRadius: 8,
-                                fontSize: '1.1rem', fontWeight: 800,
-                                color: acceptanceRatio >= 0.85
-                                    ? '#86efac'
-                                    : acceptanceRatio >= 0.7
-                                        ? '#fbbf24'
-                                        : '#fca5a5',
-                                fontVariantNumeric: 'tabular-nums',
-                                letterSpacing: '0.5px',
-                            }}
                         >
                             %{Math.round(acceptanceRatio * 100)}
                         </div>

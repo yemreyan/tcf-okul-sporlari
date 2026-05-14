@@ -272,6 +272,79 @@
     border-color: rgba(252, 165, 165, 0.7);
 }
 
+/* Mobil */
+@media (max-width: 600px) {
+    .epanel-numpad {
+        gap: 0.35rem;
+        margin: 0.6rem 0;
+    }
+    .numpad-btn {
+        padding: 0.75rem 0;
+        font-size: 1.25rem;
+        border-radius: 10px;
+    }
+}
+@media (max-width: 400px) {
+    .numpad-btn {
+        padding: 0.6rem 0;
+        font-size: 1.1rem;
+    }
+}
+
+/* Header right: panel-badge + acceptance ratio */
+.epanel-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.epanel-acc-badge {
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+.epanel-acc-badge--good {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #86efac;
+}
+.epanel-acc-badge--warn {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+.epanel-acc-badge--bad {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+
+@media (max-width: 600px) {
+    .epanel-header-right { gap: 6px; }
+    .epanel-acc-badge { padding: 0.3rem 0.5rem; font-size: 0.85rem; border-radius: 6px; }
+}
+@media (max-width: 400px) {
+    .epanel-acc-badge { font-size: 0.75rem; padding: 0.25rem 0.45rem; }
+}
+
+/* Artistik T panel — kronometre responsive */
+.atpanel-stopwatch-time { font-size: 3.6rem; }
+.atpanel-stopwatch-unit { font-size: 1.3rem; }
+@media (max-width: 600px) {
+    .atpanel-stopwatch-time { font-size: 2.6rem; }
+    .atpanel-stopwatch-unit { font-size: 1rem; }
+    .atpanel-stopwatch { padding: 0.9rem 0.6rem !important; }
+}
+@media (max-width: 400px) {
+    .atpanel-stopwatch-time { font-size: 2.2rem; }
+}
+
+
 /* Send Button */
 .send-btn {
     width: 100%;

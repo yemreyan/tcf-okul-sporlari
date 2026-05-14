@@ -2699,8 +2699,8 @@ export default function StartOrderPage() {
                                 </button>
                             </div>
 
-                            <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #cbd5e1' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                            <div className="rotation-matrix-wrapper" style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                                <table className="rotation-matrix-table" style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                                     <thead>
                                         <tr style={{ background: '#f1f5f9' }}>
                                             <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontSize: '0.75rem', color: '#475569' }}>ALET</th>

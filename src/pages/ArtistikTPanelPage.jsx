@@ -203,18 +203,18 @@ export default function ArtistikTPanelPage() {
                         </div>
 
                         {/* Kronometre */}
-                        <div style={{
+                        <div className="atpanel-stopwatch" style={{
                             margin: '1rem 0', textAlign: 'center',
                             background: 'rgba(0,0,0,0.3)', borderRadius: 12,
                             border: '1px solid rgba(255,255,255,0.1)',
                             padding: '1.25rem 1rem',
                         }}>
-                            <div style={{
-                                fontSize: '3.6rem', fontWeight: 900, color: running ? '#22c55e' : '#fff',
+                            <div className="atpanel-stopwatch-time" style={{
+                                fontWeight: 900, color: running ? '#22c55e' : '#fff',
                                 fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px', lineHeight: 1,
                                 transition: 'color 0.2s',
                             }}>
-                                {elapsed.toFixed(1)}<span style={{ fontSize: '1.3rem', color: '#94a3b8', marginLeft: 4 }}>sn</span>
+                                {elapsed.toFixed(1)}<span className="atpanel-stopwatch-unit" style={{ color: '#94a3b8', marginLeft: 4 }}>sn</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 14 }}>
                                 {!running ? (
