@@ -46,6 +46,10 @@ export default function EPanelPage() {
 
     const [compName, setCompName] = useState('...');
     const [refereeName, setRefereeName] = useState('...');
+    // Hakem kabul oranı: trimmed-mean'e dahil edilen / toplam gönderim
+    // (sağ üst köşede % olarak gösterilir, neyin oranı olduğu açıklanmaz)
+    const [acceptanceRatio, setAcceptanceRatio] = useState(null);
+    const [acceptanceCounts, setAcceptanceCounts] = useState({ counted: 0, total: 0 });
 
     // Hakem Çağrısı (SJA → A panel / SJE → E panel) flash card durumu
     const [calledFlash, setCalledFlash] = useState(null);
@@ -263,6 +267,82 @@ export default function EPanelPage() {
         return () => unsubScore();
     }, [compId, catId, currentAlet, activeAthleteId, panelId, panelType, tokenVerified, isRitmik, isAerobik]);
 
+    // ── Kabul oranı listener: bu hakemin gönderdiği notların ne kadarı
+    //    trimmed-mean'de sayıldı? (kategorideki tüm sporcular için)
+    useEffect(() => {
+        if (!compId || !catId || !panelId || !tokenVerified) return;
+        // Path: artistik → puanlar/{cat}/{aletId} ; aerobik → puanlar/{cat} ; ritmik → puanlar/{cat}
+        let scopeRef;
+        if (isRitmik || isAerobik) {
+            scopeRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}`);
+        } else {
+            if (!aletId) return;
+            scopeRef = ref(db, `${firebasePath}/${compId}/puanlar/${catId}/${aletId}`);
+        }
+        const myKey = isRitmik
+            ? panelId.toLowerCase().replace(/^[ae]/, 'j') // 'a2' → 'j2'
+            : isAerobik
+                ? panelId.toLowerCase().replace(/^e/, 'j')
+                : panelId.toLowerCase(); // 'e2' → 'e2' (artistik)
+
+        const unsub = onValue(scopeRef, snap => {
+            const data = snap.val() || {};
+            let counted = 0;
+            let total = 0;
+
+            // findTrimmed: 4+ değer → en yüksek + en düşük atılır
+            const evalPanelKeys = (panelObj) => {
+                if (!panelObj || typeof panelObj !== 'object') return;
+                const myVal = panelObj[myKey];
+                if (myVal === undefined || myVal === null || myVal === '') return;
+                const numMy = parseFloat(myVal);
+                if (isNaN(numMy)) return;
+                total++;
+                // Diğer hakem değerlerini topla
+                const vals = Object.entries(panelObj)
+                    .filter(([k, v]) => /^j\d+$/i.test(k) || /^e\d+$/i.test(k))
+                    .map(([k, v]) => ({ k, v: parseFloat(v) }))
+                    .filter(e => !isNaN(e.v));
+                if (vals.length < 4) {
+                    counted++; // 3 veya daha az → hepsi sayılır
+                    return;
+                }
+                vals.sort((a, b) => a.v - b.v);
+                const droppedKeys = [vals[0].k, vals[vals.length - 1].k];
+                if (!droppedKeys.includes(myKey)) counted++;
+            };
+
+            if (isRitmik) {
+                // puanlar/{cat}/{athId}/{aletKey}/aPanel|ePanel/j{N}
+                const panelKey = panelType === 'a' ? 'aPanel' : 'ePanel';
+                Object.values(data).forEach(athScores => {
+                    if (!athScores || typeof athScores !== 'object') return;
+                    Object.values(athScores).forEach(aletScore => {
+                        if (!aletScore || typeof aletScore !== 'object') return;
+                        evalPanelKeys(aletScore[panelKey]);
+                    });
+                });
+            } else if (isAerobik) {
+                // puanlar/{cat}/{athId}/ePanel/j{N}
+                Object.values(data).forEach(athScores => {
+                    if (!athScores || typeof athScores !== 'object') return;
+                    evalPanelKeys(athScores.ePanel);
+                });
+            } else {
+                // artistik: puanlar/{cat}/{aletId}/{athId}/e{N}
+                Object.values(data).forEach(athScores => {
+                    if (!athScores || typeof athScores !== 'object') return;
+                    // athScores doğrudan e1/e2/e3/e4 içeriyor
+                    evalPanelKeys(athScores);
+                });
+            }
+
+            setAcceptanceCounts({ counted, total });
+            setAcceptanceRatio(total > 0 ? counted / total : null);
+        });
+        return () => unsub();
+    }, [compId, catId, aletId, panelId, panelType, tokenVerified, isRitmik, isAerobik, firebasePath]);
+
     // ── Hakem Çağrısı listener (sadece Ritmik A/E hakem panelleri) ──
     // SJA → A panel hakemleri  ·  SJE → E panel hakemleri
     useEffect(() => {
@@ -431,7 +511,38 @@ export default function EPanelPage() {
                         </div>
                     )}
                 </div>
-                <div className="panel-badge">{panelId.toUpperCase()}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {acceptanceRatio !== null && acceptanceCounts.total >= 3 && (
+                        <div
+                            title={`${acceptanceCounts.counted}/${acceptanceCounts.total}`}
+                            style={{
+                                padding: '0.45rem 0.75rem',
+                                background: acceptanceRatio >= 0.85
+                                    ? 'rgba(34,197,94,0.15)'
+                                    : acceptanceRatio >= 0.7
+                                        ? 'rgba(245,158,11,0.15)'
+                                        : 'rgba(239,68,68,0.15)',
+                                border: `1px solid ${acceptanceRatio >= 0.85
+                                    ? 'rgba(34,197,94,0.4)'
+                                    : acceptanceRatio >= 0.7
+                                        ? 'rgba(245,158,11,0.4)'
+                                        : 'rgba(239,68,68,0.4)'}`,
+                                borderRadius: 8,
+                                fontSize: '1.1rem', fontWeight: 800,
+                                color: acceptanceRatio >= 0.85
+                                    ? '#86efac'
+                                    : acceptanceRatio >= 0.7
+                                        ? '#fbbf24'
+                                        : '#fca5a5',
+                                fontVariantNumeric: 'tabular-nums',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
+                            %{Math.round(acceptanceRatio * 100)}
+                        </div>
+                    )}
+                    <div className="panel-badge">{panelId.toUpperCase()}</div>
+                </div>
             </div>
 
             <div className="epanel-main">
