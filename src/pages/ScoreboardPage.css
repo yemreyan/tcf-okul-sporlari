@@ -851,6 +851,8 @@
 .sb-flash-card {
     width: 98%;
     max-width: 2200px;
+    max-height: 95vh;
+    overflow: hidden;
     text-align: center;
     transform: translateY(80px) scale(0.88);
     opacity: 0;
@@ -858,6 +860,47 @@
     position: relative;
     z-index: 1;
     padding: 3rem 3rem;
+    /* Yükseklik-bazlı dinamik ölçek — küçük ekranlarda taşmayı önler */
+    --card-vh: 1;
+}
+
+/* Yükseklik kısa olduğunda elemanları orantılı küçült (atlama / VT ekran taşması) */
+@media (max-height: 800px) {
+    .sb-flash-card { padding: 2rem 2.5rem; }
+    .sb-flash-card .sf-athlete { font-size: 5rem; }
+    .sb-flash-card .sf-club { font-size: 1.8rem; }
+    .sb-flash-card .sf-apparatus { font-size: 1.6rem; padding: 0.6rem 1.6rem; margin-top: 1rem; }
+    .sb-flash-card .sf-apparatus-icon { width: 60px; height: 60px; }
+    .sb-flash-card .sf-big-apparatus-icon { width: 180px; height: 180px; }
+    .sb-flash-card .sf-big-apparatus { margin: 1rem 0 0.5rem; }
+    .sb-flash-card .sf-scores { margin: 2rem 0; gap: 1.5rem; }
+    .sb-flash-card .sf-score-item { padding: 1.5rem 2rem; min-width: 200px; }
+    .sb-flash-card .sf-score-value { font-size: 5rem; }
+    .sb-flash-card .sf-score-label { font-size: 1.1rem; }
+    .sb-flash-card .sf-total-value { font-size: 10rem; }
+    .sb-flash-card .sf-score-divider { font-size: 3rem; }
+    .sb-flash-card .sf-total { margin-top: 1rem; }
+    .sb-flash-card .sf-new-score-tag { font-size: 1.2rem; padding: 8px 18px; margin-bottom: 1.5rem; }
+    .sb-flash-card .sf-timer { margin-top: 1.5rem; }
+}
+
+@media (max-height: 650px) {
+    .sb-flash-card { padding: 1.2rem 1.5rem; }
+    .sb-flash-card .sf-athlete { font-size: 3.5rem; }
+    .sb-flash-card .sf-club { font-size: 1.3rem; }
+    .sb-flash-card .sf-apparatus { font-size: 1.2rem; padding: 0.4rem 1.1rem; }
+    .sb-flash-card .sf-apparatus-icon { width: 44px; height: 44px; }
+    .sb-flash-card .sf-big-apparatus-icon { width: 110px; height: 110px; }
+    .sb-flash-card .sf-big-apparatus { margin: 0.5rem 0; }
+    .sb-flash-card .sf-scores { margin: 1.2rem 0; gap: 1rem; }
+    .sb-flash-card .sf-score-item { padding: 1rem 1.5rem; min-width: 160px; }
+    .sb-flash-card .sf-score-value { font-size: 3.5rem; }
+    .sb-flash-card .sf-score-label { font-size: 0.9rem; }
+    .sb-flash-card .sf-total-value { font-size: 6.5rem; }
+    .sb-flash-card .sf-score-divider { font-size: 2rem; }
+    .sb-flash-card .sf-total { margin-top: 0.5rem; }
+    .sb-flash-card .sf-new-score-tag { font-size: 0.95rem; padding: 5px 12px; margin-bottom: 0.85rem; }
+    .sb-flash-card .sf-timer { margin-top: 0.8rem; height: 4px; }
 }
 
 .sb-flash-visible .sb-flash-card {
