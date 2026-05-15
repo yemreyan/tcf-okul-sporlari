@@ -12,7 +12,7 @@
  *  3) SPORCU BAZLI — sporcu × alet panel notları
  */
 import { useEffect, useMemo, useState } from 'react';
-import { ref, get } from 'firebase/database';
+import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
@@ -115,12 +115,56 @@ function spearman(xs, ys) {
     return 1 - (6 * d2) / (n * (n * n - 1));
 }
 
-// FIG-tarzı sabit tolerans bantları (panel kesilmiş-ort. referans).
-function figBand(absDev) {
-    if (absDev <= 0.10) return { key: 'mukemmel', label: 'Mükemmel', color: '#22c55e' };
-    if (absDev <= 0.20) return { key: 'kabul',    label: 'Kabul edilebilir', color: '#84cc16' };
-    if (absDev <= 0.30) return { key: 'sinirda',  label: 'Sınırda', color: '#f59e0b' };
+// FIG-tarzı tolerans bantları (panel kesilmiş-ort. referans).
+// panelEScore verilirse seviye-bağımlı: yüksek skorda tolerans daralır.
+function figToleranceScale(panelEScore) {
+    if (panelEScore == null || isNaN(panelEScore)) return 1;
+    if (panelEScore >= 9.0) return 0.7;
+    if (panelEScore >= 8.0) return 1.0;
+    return 1.3;
+}
+function figBand(absDev, panelEScore) {
+    const s = figToleranceScale(panelEScore);
+    if (absDev <= 0.10 * s) return { key: 'mukemmel', label: 'Mükemmel', color: '#22c55e' };
+    if (absDev <= 0.20 * s) return { key: 'kabul',    label: 'Kabul edilebilir', color: '#84cc16' };
+    if (absDev <= 0.30 * s) return { key: 'sinirda',  label: 'Sınırda', color: '#f59e0b' };
     return { key: 'sapkin', label: 'Sapkın', color: '#ef4444' };
+}
+
+// İsim normalizasyonu — tr-TR küçük harf + diakritik sade + tek boşluk.
+function normalizeName(s) {
+    return String(s || '')
+        .toLocaleLowerCase('tr-TR')
+        .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+// Global referees düğümünde isimle eşleşen hakem kaydını bul → {il, brove} vb.
+function matchReferee(refereesGlobal, name) {
+    if (!refereesGlobal || !name) return null;
+    const target = normalizeName(name);
+    if (!target) return null;
+    for (const r of Object.values(refereesGlobal)) {
+        if (r && normalizeName(r.adSoyad || r.name) === target) return r;
+    }
+    return null;
+}
+// 0–100 kompozit kalite skoru (yüksek = iyi).
+function qualityScore(inst) {
+    const rc = inst.rankCorr == null ? 1 : inst.rankCorr;
+    const raw = inst.avgAbsDev * 160 + Math.abs(inst.avgSignedDev) * 120
+        + (1 - rc) * 60 + inst.trimmedRatio * 40;
+    return Math.round(100 - Math.max(0, Math.min(100, raw)));
+}
+// Bröveye göre beklenen asgari kalite skoru.
+function breScoreThreshold(brove) {
+    const b = String(brove || '').toLocaleLowerCase('tr-TR');
+    if (b.includes('uluslararas')) return 85;
+    if (b.includes('milli')) return 75;
+    if (b.includes('bölge') || b.includes('bolge')) return 60;
+    return 0;
 }
 // Bütünsel FIG derecesi — mutlak sapma + eğilim + sıralama sadakati.
 function figVerdict(inst) {
@@ -145,7 +189,8 @@ export default function HakemKarnesiPage() {
 
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
-    const [data, setData] = useState({ scores: {}, athletes: {}, referees: {} });
+    const [data, setData] = useState({ scores: {}, athletes: {}, referees: {}, logs: {} });
+    const [refereesGlobal, setRefereesGlobal] = useState({});
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState(isArtistik ? 'analiz' : 'judge'); // analiz | judge | athlete
     const [selectedJudge, setSelectedJudge] = useState(null); // drill-down
@@ -163,17 +208,26 @@ export default function HakemKarnesiPage() {
         });
     }, [firebasePath, currentUser]);
 
+    // Global hakem listesi (il / brove eşleştirmesi için) — bir kez
+    useEffect(() => {
+        get(ref(db, 'referees')).then(snap => setRefereesGlobal(snap.val() || {})).catch(() => {});
+    }, []);
+
     // Skor + sporcu verisi
     useEffect(() => {
-        if (!selectedCompId) { setData({ scores: {}, athletes: {}, referees: {} }); return; }
+        if (!selectedCompId) { setData({ scores: {}, athletes: {}, referees: {}, logs: {} }); return; }
         setLoading(true);
         setSelectedJudge(null);
         Promise.all([
             get(ref(db, `${firebasePath}/${selectedCompId}/puanlar`)),
             get(ref(db, `${firebasePath}/${selectedCompId}/sporcular`)),
             get(ref(db, `${firebasePath}/${selectedCompId}/hakemler`)),
-        ]).then(([scoresSnap, athsSnap, refsSnap]) => {
-            setData({ scores: scoresSnap.val() || {}, athletes: athsSnap.val() || {}, referees: refsSnap.val() || {} });
+            get(query(ref(db, 'logs'), orderByChild('competitionId'), equalTo(selectedCompId))).catch(() => ({ val: () => ({}) })),
+        ]).then(([scoresSnap, athsSnap, refsSnap, logsSnap]) => {
+            setData({
+                scores: scoresSnap.val() || {}, athletes: athsSnap.val() || {},
+                referees: refsSnap.val() || {}, logs: logsSnap.val() || {},
+            });
         }).finally(() => setLoading(false));
     }, [selectedCompId, firebasePath]);
 
@@ -472,6 +526,38 @@ export default function HakemKarnesiPage() {
         })).sort((a, b) => a.avgEDeduction - b.avgEDeduction);
     }, [filteredEvals, isArtistik]);
 
+    /* ── revisionStats: audit log'dan hakem not düzeltmeleri ───────────── */
+    const revisionStats = useMemo(() => {
+        // instanceKey (`cat|alet|e1`) → { count, byAthlete, recent[] }
+        const byInst = {};
+        Object.values(data.logs || {}).forEach(log => {
+            if (!log || typeof log !== 'object') return;
+            const fld = String(log.field || '');
+            if (!/^e\d+$/i.test(fld)) return;
+            if (log.discipline && log.discipline !== disciplineId) return;
+            const cat = log.category, alet = log.alet;
+            if (!cat || !alet) return;
+            const ikey = `${cat}|${alet}|${fld.toLowerCase()}`;
+            const rec = byInst[ikey] = byInst[ikey] || { count: 0, byAthlete: {}, recent: [] };
+            rec.count++;
+            const aid = log.athleteId || '?';
+            rec.byAthlete[aid] = (rec.byAthlete[aid] || 0) + 1;
+            rec.recent.push({
+                athleteId: aid, ts: log.timestamp || 0, user: log.user || '',
+                oldValue: log.oldValue, newValue: log.newValue,
+            });
+        });
+        const result = {};
+        Object.entries(byInst).forEach(([ikey, rec]) => {
+            // düzeltme = bir sporcuda 1'den fazla log → fazlalıklar
+            let revisions = 0;
+            Object.values(rec.byAthlete).forEach(c => { revisions += Math.max(0, c - 1); });
+            rec.recent.sort((a, b) => b.ts - a.ts);
+            result[ikey] = { revisionCount: revisions, totalLogs: rec.count, recent: rec.recent.slice(0, 8) };
+        });
+        return result;
+    }, [data.logs, disciplineId]);
+
     /* ── judgeInstances: FIG hakem-alet örnekleri (kategori×alet×slot) ─── */
     const judgeInstances = useMemo(() => {
         if (!isArtistik) return [];
@@ -484,6 +570,7 @@ export default function HakemKarnesiPage() {
                     slot: judgeKey(k),
                     signed: [], abs: [], trimmedCount: 0,
                     judgeScores: [], panelAvgs: [], athleteRows: [],
+                    homeCount: 0, homeSignedSum: 0, awaySignedSum: 0, awayCount: 0,
                 };
                 const dev = v - ev.eAvg;
                 const isTrim = ev.eTrimmed.includes(k);
@@ -495,7 +582,7 @@ export default function HakemKarnesiPage() {
                 inst.athleteRows.push({
                     athName: ev.athName || ev.athId,
                     athIl: ev.athIl, judgeScore: v, panelAvg: ev.eAvg,
-                    dev, band: figBand(Math.abs(dev)), trimmed: isTrim,
+                    dev, band: figBand(Math.abs(dev), ev.eAvg), trimmed: isTrim,
                 });
             });
         });
@@ -505,9 +592,25 @@ export default function HakemKarnesiPage() {
             const avgAbsDev = count ? sum(inst.abs) / count : 0;
             const avgSignedDev = count ? sum(inst.signed) / count : 0;
             const figBands = { mukemmel: 0, kabul: 0, sinirda: 0, sapkin: 0 };
-            inst.abs.forEach(a => { figBands[figBand(a).key]++; });
+            inst.athleteRows.forEach(r => { figBands[r.band.key]++; });
             const realName = resolveJudgeName(data.referees, inst.catId, inst.aletId, inst.rawSlot);
             const ctxLabel = `${inst.slot} · ${aletLabel(inst.aletId)} · ${catLabel(inst.catId)}`;
+            // İl kayırma — hakemin ili biliniyorsa
+            const refRec = realName ? matchReferee(refereesGlobal, realName) : null;
+            const judgeIl = refRec?.il || null;
+            const judgeBrove = refRec?.brove || null;
+            let homeBias = null, homeCount = 0;
+            if (judgeIl) {
+                const norm = (x) => normalizeName(x);
+                let hs = 0, hc = 0, as = 0, ac = 0;
+                inst.athleteRows.forEach((r, i) => {
+                    const d = inst.signed[i];
+                    if (r.athIl && norm(r.athIl) === norm(judgeIl)) { hs += d; hc++; }
+                    else if (r.athIl) { as += d; ac++; }
+                });
+                homeCount = hc;
+                if (hc > 0 && ac > 0) homeBias = (hs / hc) - (as / ac);
+            }
             const out = {
                 ...inst, count,
                 trimmedRatio: count ? inst.trimmedCount / count : 0,
@@ -522,12 +625,17 @@ export default function HakemKarnesiPage() {
                 name: realName || ctxLabel,
                 displayName: realName || ctxLabel,
                 ctxLabel,
+                judgeIl, judgeBrove, homeBias, homeCount,
+                revisionCount: revisionStats[inst.key]?.revisionCount || 0,
                 athleteRows: inst.athleteRows.sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev)),
             };
             out.verdict = figVerdict(out);
+            out.qualityScore = qualityScore(out);
+            out.broveThreshold = breScoreThreshold(judgeBrove);
+            out.underBrove = !!judgeBrove && out.qualityScore < out.broveThreshold;
             return out;
         }).sort((a, b) => a.aletId.localeCompare(b.aletId) || a.catId.localeCompare(b.catId) || a.slot.localeCompare(b.slot));
-    }, [filteredEvals, isArtistik, data.referees]);
+    }, [filteredEvals, isArtistik, data.referees, refereesGlobal, revisionStats]);
 
     /* ── KPI ──────────────────────────────────────────────────────────── */
     const kpi = useMemo(() => {
@@ -539,6 +647,73 @@ export default function HakemKarnesiPage() {
         const categoryCount = new Set(filteredEvals.map(ev => ev.catId).filter(Boolean)).size;
         return { totalEval, judgeCount, avgConsistency, bestJudge: best?.judge || '—', categoryCount };
     }, [isArtistik, judgeStatsArtistik, filteredEvals]);
+
+    /* ── Anomali / Uyarı Merkezi ───────────────────────────────────────── */
+    const anomalies = useMemo(() => {
+        if (!isArtistik) return [];
+        const list = [];
+        judgeInstances.forEach(inst => {
+            const ctx = { judge: inst.hasRealName ? inst.name : inst.slot, alet: aletLabel(inst.aletId), kategori: catLabel(inst.catId) };
+            if (inst.avgAbsDev > 0.30)
+                list.push({ ...ctx, severity: 'yuksek', mesaj: `Ortalama mutlak sapma ${fmt3(inst.avgAbsDev)} — FIG toleransı dışında` });
+            if (Math.abs(inst.avgSignedDev) > 0.15)
+                list.push({ ...ctx, severity: 'orta', mesaj: `Sistematik ${inst.avgSignedDev > 0 ? 'sert' : 'yumuşak'} eğilim (${fmt3(inst.avgSignedDev)})` });
+            if (inst.rankCorr != null && inst.rankCorr < 0.5)
+                list.push({ ...ctx, severity: 'yuksek', mesaj: `Sıralama paneli yansıtmıyor (ρ=${fmt2(inst.rankCorr)})` });
+            if (inst.trimmedRatio > 0.5)
+                list.push({ ...ctx, severity: 'orta', mesaj: `Notları sık uç değer — %${(inst.trimmedRatio * 100).toFixed(0)} sayılmıyor` });
+            if (inst.homeBias != null && Math.abs(inst.homeBias) > 0.12)
+                list.push({ ...ctx, severity: 'yuksek', mesaj: `Kendi iline (${inst.judgeIl}) ${inst.homeBias < 0 ? 'yumuşak — kayırma' : 'sert'} eğilim (${fmt3(inst.homeBias)})` });
+            if (inst.underBrove)
+                list.push({ ...ctx, severity: 'orta', mesaj: `${inst.judgeBrove} brövesine göre beklenenin altında (skor ${inst.qualityScore}/${inst.broveThreshold})` });
+        });
+        return list.sort((a, b) => (a.severity === 'yuksek' ? 0 : 1) - (b.severity === 'yuksek' ? 0 : 1));
+    }, [isArtistik, judgeInstances]);
+
+    /* ── Sporcu Etkilenme Analizi ──────────────────────────────────────── */
+    const athleteImpact = useMemo(() => {
+        if (!isArtistik) return [];
+        const rows = [];
+        filteredEvals.forEach(ev => {
+            const counted = ev.eValues.filter(x => !ev.eTrimmed.includes(x.k));
+            if (counted.length === 0) return;
+            let maxDev = 0, maxK = null;
+            counted.forEach(({ k, v }) => {
+                const d = Math.abs(v - ev.eAvg);
+                if (d > maxDev) { maxDev = d; maxK = k; }
+            });
+            const spread = stdDev(ev.eValues.map(x => x.v));
+            const judgeName = maxK
+                ? (resolveJudgeName(data.referees, ev.catId, ev.aletId, maxK) || judgeKey(maxK))
+                : '—';
+            rows.push({
+                athName: ev.athName || ev.athId, athIl: ev.athIl,
+                alet: aletLabel(ev.aletId), kategori: catLabel(ev.catId),
+                spread, maxDev, judge: judgeName,
+                impact: spread + maxDev,
+            });
+        });
+        return rows.sort((a, b) => b.impact - a.impact).slice(0, 15);
+    }, [isArtistik, filteredEvals, data.referees]);
+
+    /* ── Yarışma Hakemlik Sağlık Skoru / Özet Panosu ──────────────────── */
+    const healthSummary = useMemo(() => {
+        if (!isArtistik || judgeInstances.length === 0) return null;
+        const n = judgeInstances.length;
+        const avgQuality = judgeInstances.reduce((s, i) => s + i.qualityScore, 0) / n;
+        const problem = judgeInstances.filter(i => i.verdict.label === 'İncelenmeli' || i.verdict.label === 'Sınırda').length;
+        const avgConsistency = judgeInstances.reduce((s, i) => s + i.avgAbsDev, 0) / n;
+        const sorted = [...judgeInstances].sort((a, b) => b.qualityScore - a.qualityScore);
+        return {
+            healthScore: Math.round(avgQuality),
+            judgeInstanceCount: n,
+            problemCount: problem,
+            avgConsistency,
+            anomalyCount: anomalies.length,
+            best: sorted[0],
+            worst: sorted[sorted.length - 1],
+        };
+    }, [isArtistik, judgeInstances, anomalies]);
 
     /* ── Grafik verileri ──────────────────────────────────────────────── */
     const chartData = useMemo(() => {
@@ -897,6 +1072,66 @@ export default function HakemKarnesiPage() {
             {/* ═══ ANALİZ SEKMESİ (artistik) ═══ */}
             {!loading && tab === 'analiz' && isArtistik && judgeStatsArtistik.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Yarışma Hakemlik Sağlık Panosu */}
+                    {healthSummary && (() => {
+                        const hs = healthSummary.healthScore;
+                        const hsColor = hs >= 80 ? '#22c55e' : hs >= 60 ? '#f59e0b' : '#ef4444';
+                        return (
+                            <div style={{ ...cardBox, borderLeft: `5px solid ${hsColor}` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                                    <div style={{ textAlign: 'center', minWidth: 120 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Sağlık Skoru</div>
+                                        <div style={{ fontSize: '2.6rem', fontWeight: 900, color: hsColor, lineHeight: 1.1 }}>{hs}</div>
+                                        <div style={{ fontSize: 11, color: '#94a3b8' }}>/ 100</div>
+                                    </div>
+                                    <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+                                        <FigStat label="Hakem-Alet" value={healthSummary.judgeInstanceCount} />
+                                        <FigStat label="Sorunlu Hakem" value={healthSummary.problemCount}
+                                            color={healthSummary.problemCount > 0 ? '#ef4444' : '#22c55e'} />
+                                        <FigStat label="Anomali" value={healthSummary.anomalyCount}
+                                            color={healthSummary.anomalyCount > 0 ? '#ef4444' : '#22c55e'} />
+                                        <FigStat label="Ort. Tutarlılık" value={fmt3(healthSummary.avgConsistency)} />
+                                        <FigStat label="En İyi" value={healthSummary.best?.hasRealName ? healthSummary.best.name : healthSummary.best?.slot}
+                                            color="#22c55e" hint={`${healthSummary.best?.qualityScore}`} />
+                                        <FigStat label="En Zayıf" value={healthSummary.worst?.hasRealName ? healthSummary.worst.name : healthSummary.worst?.slot}
+                                            color="#ef4444" hint={`${healthSummary.worst?.qualityScore}`} />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Anomali / Uyarı Merkezi */}
+                    <div style={{ ...cardBox, borderLeft: `5px solid ${anomalies.length ? '#ef4444' : '#22c55e'}` }}>
+                        <div style={cardTitle}>
+                            <i className="material-icons-round" style={{ verticalAlign: 'middle', marginRight: 6, fontSize: 18, color: anomalies.length ? '#ef4444' : '#22c55e' }}>
+                                {anomalies.length ? 'warning' : 'verified'}
+                            </i>
+                            Anomali / Uyarı Merkezi {anomalies.length > 0 && <span style={{ color: '#ef4444' }}>({anomalies.length})</span>}
+                        </div>
+                        {anomalies.length === 0 ? (
+                            <div style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Belirgin bir hakemlik anomalisi tespit edilmedi.</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                                {anomalies.map((a, i) => (
+                                    <div key={i} style={{
+                                        display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5,
+                                        padding: '6px 10px', borderRadius: 6,
+                                        background: a.severity === 'yuksek' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                                    }}>
+                                        <span style={{
+                                            background: a.severity === 'yuksek' ? '#ef4444' : '#f59e0b', color: '#fff',
+                                            fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap',
+                                        }}>{a.severity === 'yuksek' ? 'YÜKSEK' : 'ORTA'}</span>
+                                        <span>
+                                            <strong>{a.judge}</strong> · {a.alet} · {a.kategori} — {a.mesaj}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {/* KPI kartları */}
                     {kpi && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
@@ -905,6 +1140,46 @@ export default function HakemKarnesiPage() {
                             <KpiCard color="#F59E0B" icon="speed" label="Ort. Panel Sapması" value={fmt3(kpi.avgConsistency)} />
                             <KpiCard color="#22C55E" icon="emoji_events" label="En Tutarlı Hakem" value={kpi.bestJudge} />
                             <KpiCard color="#EC4899" icon="category" label="Kategori Sayısı" value={kpi.categoryCount} />
+                        </div>
+                    )}
+
+                    {/* Sporcu Etkilenme Analizi */}
+                    {athleteImpact.length > 0 && (
+                        <div style={cardBox}>
+                            <div style={cardTitle}>Sporcu Etkilenme Analizi <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— panel açıklığı ve en uç hakem notundan en çok etkilenen sporcular</span></div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                            <th style={{ ...th, textAlign: 'left' }}>SPORCU</th>
+                                            <th style={th}>ALET</th>
+                                            <th style={th}>KATEGORİ</th>
+                                            <th style={th}>PANEL AÇIKLIĞI</th>
+                                            <th style={th}>EN UÇ SAPMA</th>
+                                            <th style={{ ...th, textAlign: 'left' }}>EN UZAK HAKEM</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {athleteImpact.map((r, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ ...td, fontWeight: 700 }}>
+                                                    {r.athName}
+                                                    {r.athIl && <span style={{ marginLeft: 6, fontSize: 10, color: '#94a3b8' }}>{r.athIl}</span>}
+                                                </td>
+                                                <td style={tdCenter}>{r.alet}</td>
+                                                <td style={tdCenter}>{r.kategori}</td>
+                                                <td style={{ ...tdCenter, color: r.spread <= 0.2 ? '#22c55e' : r.spread <= 0.4 ? '#f59e0b' : '#ef4444', fontWeight: 700 }}>{fmt3(r.spread)}</td>
+                                                <td style={{ ...tdCenter, fontWeight: 700, color: r.maxDev > 0.3 ? '#ef4444' : '#0f172a' }}>{fmt3(r.maxDev)}</td>
+                                                <td style={td}>{r.judge}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={hintBar}>
+                                <strong>Panel Açıklığı</strong>: E jürisi notlarının std sapması — yüksek = hakemler bu sporcuda anlaşamadı.
+                                <strong> En Uç Sapma</strong>: sayılan hakemler içinde panelden en uzak not.
+                            </div>
                         </div>
                     )}
 
