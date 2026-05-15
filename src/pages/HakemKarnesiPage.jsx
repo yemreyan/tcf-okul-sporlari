@@ -21,7 +21,7 @@ import * as XLSX from 'xlsx';
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     Cell, ReferenceLine, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-    ScatterChart, Scatter, ZAxis, Legend,
+    ScatterChart, Scatter, ZAxis, Legend, LineChart, Line,
 } from 'recharts';
 
 /* ── Sabitler ───────────────────────────────────────────────────────── */
@@ -197,6 +197,11 @@ export default function HakemKarnesiPage() {
     const [figExpanded, setFigExpanded] = useState({}); // FIG kart key → sporcu tablosu açık
     const [figSearch, setFigSearch] = useState('');
     const [figVerdictFilter, setFigVerdictFilter] = useState([]); // boş = tümü
+    const [cmpA, setCmpA] = useState(''); // karşılaştırma — hakem örnek key
+    const [cmpB, setCmpB] = useState('');
+    const [seasonJudge, setSeasonJudge] = useState(''); // sezon — normalize isim
+    const [seasonData, setSeasonData] = useState(null);
+    const [seasonLoading, setSeasonLoading] = useState(false);
     const [pdfBusy, setPdfBusy] = useState(false);
     // Filtreler
     const [filterCinsiyet, setFilterCinsiyet] = useState('all'); // all | erkek | kadin
@@ -981,7 +986,7 @@ export default function HakemKarnesiPage() {
 
     /* ── Render ───────────────────────────────────────────────────────── */
     const tabs = isArtistik
-        ? [['analiz', 'Analiz'], ['fig', 'FIG Karne'], ['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']]
+        ? [['analiz', 'Analiz'], ['fig', 'FIG Karne'], ['compare', 'Karşılaştır'], ['season', 'Sezon'], ['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']]
         : [['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']];
 
     return (
@@ -2016,6 +2021,128 @@ export default function HakemKarnesiPage() {
                 })()
             )}
 
+            {/* ═══ KARŞILAŞTIR ═══ */}
+            {!loading && tab === 'compare' && isArtistik && (
+                judgeInstances.length < 2 ? (
+                    <div style={emptyBox}>Karşılaştırma için en az iki hakem-alet kaydı gerekir.</div>
+                ) : (() => {
+                    const instA = judgeInstances.find(i => i.key === cmpA);
+                    const instB = judgeInstances.find(i => i.key === cmpB);
+                    const optLabel = (i) => `${i.hasRealName ? i.name : i.slot} — ${aletLabel(i.aletId)} · ${catLabel(i.catId)}`;
+                    const sel = (val, set, other) => (
+                        <select value={val} onChange={e => set(e.target.value)}
+                            style={{ width: '100%', padding: '0.55rem', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+                            <option value="">— Hakem Seçiniz —</option>
+                            {judgeInstances.map(i => <option key={i.key} value={i.key} disabled={i.key === other}>{optLabel(i)}</option>)}
+                        </select>
+                    );
+                    const rows = instA && instB ? [
+                        ['Kalite Skoru', instA.qualityScore, instB.qualityScore, 'hi'],
+                        ['Değerlendirme', instA.count, instB.count, null],
+                        ['Ort. Mutlak Sapma', fmt3(instA.avgAbsDev), fmt3(instB.avgAbsDev), 'lo', instA.avgAbsDev, instB.avgAbsDev],
+                        ['Eğilim (bias)', fmt3(instA.avgSignedDev), fmt3(instB.avgSignedDev), 'abslo', Math.abs(instA.avgSignedDev), Math.abs(instB.avgSignedDev)],
+                        ['Tutarlılık (std)', fmt3(instA.stdDev), fmt3(instB.stdDev), 'lo', instA.stdDev, instB.stdDev],
+                        ['Sayılmama %', pct(instA.trimmedRatio), pct(instB.trimmedRatio), 'lo', instA.trimmedRatio, instB.trimmedRatio],
+                        ['Sıralama ρ', instA.rankCorr == null ? '—' : fmt2(instA.rankCorr), instB.rankCorr == null ? '—' : fmt2(instB.rankCorr), 'hi', instA.rankCorr ?? -9, instB.rankCorr ?? -9],
+                        ['Tolerans İçi %', pct(instA.inToleranceRatio), pct(instB.inToleranceRatio), 'hi', instA.inToleranceRatio, instB.inToleranceRatio],
+                        ['Not Düzeltme', instA.revisionCount, instB.revisionCount, 'lo', instA.revisionCount, instB.revisionCount],
+                    ] : [];
+                    const winColor = (row, side) => {
+                        const dir = row[3]; if (!dir) return '#0f172a';
+                        const a = row[4] != null ? row[4] : (typeof row[1] === 'number' ? row[1] : null);
+                        const b = row[5] != null ? row[5] : (typeof row[2] === 'number' ? row[2] : null);
+                        if (a == null || b == null || a === b) return '#0f172a';
+                        const aWins = dir === 'hi' ? a > b : a < b;
+                        return (side === 'A') === aWins ? '#22c55e' : '#94a3b8';
+                    };
+                    // ortak sporcular
+                    const common = instA && instB ? (() => {
+                        const mapB = {}; instB.athleteRows.forEach(r => { mapB[r.athName] = r; });
+                        return instA.athleteRows.filter(r => mapB[r.athName]).map(r => ({ athName: r.athName, devA: r.dev, devB: mapB[r.athName].dev }));
+                    })() : [];
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ ...cardBox, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, minWidth: 240 }}><label style={lbl}>HAKEM A</label>{sel(cmpA, setCmpA, cmpB)}</div>
+                                <div style={{ flex: 1, minWidth: 240 }}><label style={lbl}>HAKEM B</label>{sel(cmpB, setCmpB, cmpA)}</div>
+                            </div>
+                            {(!instA || !instB) ? (
+                                <div style={emptyBox}>Karşılaştırmak için iki hakem seçiniz.</div>
+                            ) : (
+                                <>
+                                    <div style={cardBox}>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                                        <th style={{ ...th, textAlign: 'left' }}>METRİK</th>
+                                                        <th style={th}>{instA.hasRealName ? instA.name : instA.slot}</th>
+                                                        <th style={th}>{instB.hasRealName ? instB.name : instB.slot}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                        <td style={{ ...td, fontWeight: 700 }}>Verdict</td>
+                                                        <td style={tdCenter}><span style={{ ...figBadge(instA.verdict.color) }}>{instA.verdict.label}</span></td>
+                                                        <td style={tdCenter}><span style={{ ...figBadge(instB.verdict.color) }}>{instB.verdict.label}</span></td>
+                                                    </tr>
+                                                    {rows.map((row, i) => (
+                                                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ ...td, fontWeight: 700 }}>{row[0]}</td>
+                                                            <td style={{ ...tdCenter, fontWeight: 800, color: winColor(row, 'A') }}>{row[1]}</td>
+                                                            <td style={{ ...tdCenter, fontWeight: 800, color: winColor(row, 'B') }}>{row[2]}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div style={hintBar}>Yeşil = o metrikte daha iyi olan hakem.</div>
+                                    </div>
+                                    {common.length > 0 && (
+                                        <div style={cardBox}>
+                                            <div style={cardTitle}>Ortak Sporcularda Sapma Kıyası <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— iki hakemin aynı sporcuya panel ortalamasına göre sapması</span></div>
+                                            <div style={{ overflowX: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                    <thead>
+                                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                                            <th style={{ ...th, textAlign: 'left' }}>SPORCU</th>
+                                                            <th style={th}>{instA.hasRealName ? instA.name : instA.slot}</th>
+                                                            <th style={th}>{instB.hasRealName ? instB.name : instB.slot}</th>
+                                                            <th style={th}>FARK</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {common.sort((a, b) => Math.abs(b.devA - b.devB) - Math.abs(a.devA - a.devB)).map((r, i) => (
+                                                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                                <td style={{ ...td, fontWeight: 700 }}>{r.athName}</td>
+                                                                <td style={{ ...tdCenter, color: r.devA > 0 ? '#ef4444' : '#0ea5e9' }}>{r.devA > 0 ? '+' : ''}{fmt3(r.devA)}</td>
+                                                                <td style={{ ...tdCenter, color: r.devB > 0 ? '#ef4444' : '#0ea5e9' }}>{r.devB > 0 ? '+' : ''}{fmt3(r.devB)}</td>
+                                                                <td style={{ ...tdCenter, fontWeight: 700 }}>{fmt3(Math.abs(r.devA - r.devB))}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    );
+                })()
+            )}
+
+            {/* ═══ SEZON ═══ */}
+            {!loading && tab === 'season' && isArtistik && (
+                <SeasonView
+                    firebasePath={firebasePath} disciplineId={disciplineId}
+                    competitions={competitions} refereesGlobal={refereesGlobal}
+                    seasonJudge={seasonJudge} setSeasonJudge={setSeasonJudge}
+                    seasonData={seasonData} setSeasonData={setSeasonData}
+                    seasonLoading={seasonLoading} setSeasonLoading={setSeasonLoading}
+                />
+            )}
+
             {/* ═══ HAKEM BAZLI ═══ */}
             {!loading && tab === 'judge' && judgeStats.length > 0 && (
                 <div style={cardBox}>
@@ -2138,6 +2265,149 @@ function FigStat({ label, value, color, hint }) {
                 {value}
                 {hint && <span style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', marginLeft: 4 }}>{hint}</span>}
             </div>
+        </div>
+    );
+}
+
+/* ── Sezon Trendi — çoklu yarışma görünümü ──────────────────────────── */
+function SeasonView({ firebasePath, competitions, seasonJudge, setSeasonJudge,
+    seasonData, setSeasonData, seasonLoading, setSeasonLoading }) {
+
+    const scan = async () => {
+        setSeasonLoading(true);
+        try {
+            const ids = Object.keys(competitions || {});
+            const byJudge = {}; // norm → { name, comps: { compId: {absSum,signedSum,count} } }
+            await Promise.all(ids.map(async (cid) => {
+                const [pSnap, hSnap] = await Promise.all([
+                    get(ref(db, `${firebasePath}/${cid}/puanlar`)),
+                    get(ref(db, `${firebasePath}/${cid}/hakemler`)),
+                ]);
+                const scores = pSnap.val() || {};
+                const hak = hSnap.val() || {};
+                Object.entries(scores).forEach(([catId, catScores]) => {
+                    Object.entries(catScores || {}).forEach(([aletId, aletScores]) => {
+                        if (!aletScores || typeof aletScores !== 'object') return;
+                        Object.values(aletScores).forEach(node => {
+                            if (!node || typeof node !== 'object') return;
+                            const ePanel = {};
+                            Object.entries(node).forEach(([k, v]) => { if (/^e\d+$/i.test(k)) ePanel[k] = v; });
+                            const res = findTrimmedKeys(ePanel);
+                            if (res.values.length === 0) return;
+                            res.values.forEach(({ k, v }) => {
+                                const name = resolveJudgeName(hak, catId, aletId, k);
+                                if (!name) return;
+                                const nn = normalizeName(name);
+                                const rec = byJudge[nn] = byJudge[nn] || { name, comps: {} };
+                                const c = rec.comps[cid] = rec.comps[cid] || { absSum: 0, signedSum: 0, count: 0 };
+                                const dev = v - res.trimmedAvg;
+                                c.absSum += Math.abs(dev); c.signedSum += dev; c.count++;
+                            });
+                        });
+                    });
+                });
+            }));
+            const judges = Object.entries(byJudge).map(([nn, rec]) => {
+                const comps = Object.entries(rec.comps).map(([cid, c]) => {
+                    const comp = competitions[cid] || {};
+                    return {
+                        compId: cid, name: comp.isim || cid,
+                        date: comp.tarih || comp.baslangicTarihi || comp.yil || '',
+                        count: c.count,
+                        avgAbsDev: c.count ? c.absSum / c.count : 0,
+                        bias: c.count ? c.signedSum / c.count : 0,
+                    };
+                }).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                return { norm: nn, name: rec.name, comps };
+            }).filter(j => j.comps.length > 0).sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
+            setSeasonData({ judges });
+        } finally { setSeasonLoading(false); }
+    };
+
+    const judge = seasonData?.judges?.find(j => j.norm === seasonJudge);
+    const chartRows = judge ? judge.comps.map(c => ({
+        name: c.name.length > 16 ? c.name.slice(0, 15) + '…' : c.name,
+        avgAbsDev: +c.avgAbsDev.toFixed(3), bias: +c.bias.toFixed(3),
+    })) : [];
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ ...cardBox, background: '#f8fafc' }}>
+                <div style={cardTitle}>Sezon Trendi — Hakem Çoklu Yarışma Analizi</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>
+                    Tüm yarışmalar taranır; bir hakemin sezon boyunca tutarlılık ve eğilim
+                    değişimi izlenir. Tarama tüm yarışmaların puan verisini okur — biraz sürebilir.
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button onClick={scan} disabled={seasonLoading}
+                        style={{
+                            padding: '0.55rem 1.1rem', borderRadius: 6, border: 'none', cursor: seasonLoading ? 'default' : 'pointer',
+                            background: seasonLoading ? '#94a3b8' : '#6366f1', color: '#fff', fontWeight: 700,
+                        }}>
+                        {seasonLoading ? 'Taranıyor…' : seasonData ? 'Yeniden Tara' : 'Tüm Yarışmaları Tara'}
+                    </button>
+                    {seasonData && (
+                        <select value={seasonJudge} onChange={e => setSeasonJudge(e.target.value)}
+                            style={{ minWidth: 260, padding: '0.55rem', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+                            <option value="">— Hakem Seçiniz ({seasonData.judges.length}) —</option>
+                            {seasonData.judges.map(j => <option key={j.norm} value={j.norm}>{j.name} ({j.comps.length} yarışma)</option>)}
+                        </select>
+                    )}
+                </div>
+            </div>
+
+            {judge && (
+                <>
+                    <div style={cardBox}>
+                        <div style={cardTitle}>{judge.name} — Sezon Eğilim Grafiği</div>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={chartRows}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip />
+                                <Legend />
+                                <ReferenceLine y={0} stroke="#94a3b8" />
+                                <Line type="monotone" dataKey="avgAbsDev" name="Ort. Mutlak Sapma" stroke="#ef4444" strokeWidth={2} />
+                                <Line type="monotone" dataKey="bias" name="Eğilim (bias)" stroke="#0ea5e9" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div style={cardBox}>
+                        <div style={cardTitle}>Yarışma Bazlı Detay</div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                        <th style={{ ...th, textAlign: 'left' }}>YARIŞMA</th>
+                                        <th style={th}>TARİH</th>
+                                        <th style={th}>DEĞ.</th>
+                                        <th style={th}>ORT. MUTLAK SAPMA</th>
+                                        <th style={th}>EĞİLİM</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {judge.comps.map(c => (
+                                        <tr key={c.compId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td style={{ ...td, fontWeight: 700 }}>{c.name}</td>
+                                            <td style={tdCenter}>{c.date || '—'}</td>
+                                            <td style={tdCenter}>{c.count}</td>
+                                            <td style={{ ...tdCenter, fontWeight: 700, color: figBand(c.avgAbsDev).color }}>{fmt3(c.avgAbsDev)}</td>
+                                            <td style={{ ...tdCenter, fontWeight: 700, color: c.bias > 0.05 ? '#ef4444' : c.bias < -0.05 ? '#0ea5e9' : '#22c55e' }}>
+                                                {c.bias > 0 ? '+' : ''}{fmt3(c.bias)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={hintBar}>Sapma düşük + eğilim 0'a yakın = sezon boyunca istikrarlı, tarafsız hakem.</div>
+                    </div>
+                </>
+            )}
+            {seasonData && !judge && (
+                <div style={emptyBox}>Trendi görmek için yukarıdan bir hakem seçiniz.</div>
+            )}
         </div>
     );
 }
