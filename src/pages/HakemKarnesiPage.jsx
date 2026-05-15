@@ -949,29 +949,73 @@ export default function HakemKarnesiPage() {
                 );
             });
 
-            // FIG Hakem-Alet Detay sayfası (isimli) — sadece tüm karne çıktısında
+            // FIG Hakem-Alet Detay — görselli kart düzeni (sadece tüm karne çıktısında)
             if (!onlyJudge && judgeInstances.length > 0) {
-                doc.addPage();
-                doc.setFont(font); doc.setFontSize(17);
-                doc.text('FIG HAKEM-ALET DETAY RAPORU', 14, 18);
-                doc.setFontSize(10); doc.setTextColor(90);
-                doc.text(String(compName), 14, 25);
-                doc.text('Tolerans: <=0.10 Mukemmel | <=0.20 Kabul | <=0.30 Sinirda | >0.30 Sapkin', 14, 31);
-                doc.setTextColor(0);
-                autoTable(doc, {
-                    startY: 36,
-                    head: [['Hakem', 'Alet', 'Kategori', 'Deg.', 'Mutlak Sapma', 'Egilim', 'Std', 'Tol. Ici %', 'Sira r', 'Verdict']],
-                    body: judgeInstances.map(inst => [
-                        inst.hasRealName ? inst.name : inst.slot,
-                        aletLabel(inst.aletId), catLabel(inst.catId),
-                        String(inst.count), fmt3(inst.avgAbsDev), fmt3(inst.avgSignedDev),
-                        fmt3(inst.stdDev), pct(inst.inToleranceRatio),
-                        inst.rankCorr == null ? '-' : fmt2(inst.rankCorr),
-                        inst.verdict.label,
-                    ]),
-                    theme: 'striped', styles: { font, fontSize: 8 },
-                    headStyles: { fillColor: [99, 102, 241] },
-                    margin: { left: 14, right: 14 },
+                const hex2rgb = (h) => {
+                    const n = parseInt(h.replace('#', ''), 16);
+                    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+                };
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                const cardW = pageW - 28, cardH = 46, gap = 6;
+                let y = 0;
+                const headerFn = () => {
+                    doc.addPage();
+                    doc.setFont(font); doc.setFontSize(16); doc.setTextColor(0);
+                    doc.text('FIG HAKEM-ALET DETAY RAPORU', 14, 16);
+                    doc.setFontSize(9); doc.setTextColor(90);
+                    doc.text(String(compName), 14, 22);
+                    doc.setTextColor(0);
+                    y = 28;
+                };
+                headerFn();
+                judgeInstances.forEach(inst => {
+                    if (y + cardH > pageH - 12) headerFn();
+                    const x = 14;
+                    // kart çerçevesi
+                    doc.setDrawColor(220); doc.setFillColor(255, 255, 255);
+                    doc.roundedRect(x, y, cardW, cardH, 2, 2, 'S');
+                    // isim
+                    doc.setFont(font); doc.setFontSize(11); doc.setTextColor(15);
+                    doc.text(String(inst.hasRealName ? inst.name : inst.slot).slice(0, 40), x + 4, y + 7);
+                    doc.setFontSize(8); doc.setTextColor(110);
+                    doc.text(`${inst.slot} | ${aletLabel(inst.aletId)} | ${catLabel(inst.catId)}`, x + 4, y + 12);
+                    // verdict rozeti
+                    const vc = hex2rgb(inst.verdict.color);
+                    doc.setFillColor(vc[0], vc[1], vc[2]);
+                    doc.roundedRect(x + cardW - 52, y + 3, 48, 8, 2, 2, 'F');
+                    doc.setTextColor(255); doc.setFontSize(8);
+                    doc.text(String(inst.verdict.label), x + cardW - 28, y + 8.5, { align: 'center' });
+                    // KPI satırı
+                    doc.setTextColor(40); doc.setFontSize(8);
+                    const kpi = `Deg: ${inst.count}   Mutlak Sapma: ${fmt3(inst.avgAbsDev)}   Egilim: ${fmt3(inst.avgSignedDev)}   Std: ${fmt3(inst.stdDev)}   Sira r: ${inst.rankCorr == null ? '-' : fmt2(inst.rankCorr)}   Kalite: ${inst.qualityScore}/100`;
+                    doc.text(kpi, x + 4, y + 20);
+                    // FIG tolerans bant çubuğu
+                    const barX = x + 4, barY = y + 25, barW = cardW - 8, barH = 6;
+                    const bands = [
+                        ['#22c55e', inst.figBands.mukemmel], ['#84cc16', inst.figBands.kabul],
+                        ['#f59e0b', inst.figBands.sinirda], ['#ef4444', inst.figBands.sapkin],
+                    ];
+                    const total = inst.count || 1;
+                    let bx = barX;
+                    bands.forEach(([col, n]) => {
+                        if (n <= 0) return;
+                        const w = barW * (n / total);
+                        const c = hex2rgb(col);
+                        doc.setFillColor(c[0], c[1], c[2]);
+                        doc.rect(bx, barY, w, barH, 'F');
+                        if (w > 6) {
+                            doc.setTextColor(255); doc.setFontSize(7);
+                            doc.text(String(n), bx + w / 2, barY + 4.2, { align: 'center' });
+                        }
+                        bx += w;
+                    });
+                    doc.setTextColor(110); doc.setFontSize(7);
+                    doc.text(`Tolerans ici: ${pct(inst.inToleranceRatio)}`
+                        + (inst.judgeBrove ? `   Brove: ${inst.judgeBrove}` : '')
+                        + (inst.revisionCount ? `   Duzeltme: ${inst.revisionCount}` : ''),
+                        barX, y + cardH - 3);
+                    y += cardH + gap;
                 });
             }
 
