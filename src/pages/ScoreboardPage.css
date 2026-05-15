@@ -849,9 +849,9 @@
 
 /* Card: slides up from below with spring overshoot */
 .sb-flash-card {
-    width: 98%;
-    max-width: 2200px;
-    max-height: 95vh;
+    width: 96%;
+    max-width: 1800px;
+    max-height: 92vh;
     overflow: hidden;
     text-align: center;
     transform: translateY(80px) scale(0.88);
@@ -859,48 +859,26 @@
     transition: transform 0.75s cubic-bezier(0.22, 1.35, 0.36, 1), opacity 0.4s ease;
     position: relative;
     z-index: 1;
-    padding: 3rem 3rem;
-    /* Yükseklik-bazlı dinamik ölçek — küçük ekranlarda taşmayı önler */
-    --card-vh: 1;
+    padding: 2.25rem 2.5rem;
 }
 
-/* Yükseklik kısa olduğunda elemanları orantılı küçült (atlama / VT ekran taşması) */
-@media (max-height: 800px) {
-    .sb-flash-card { padding: 2rem 2.5rem; }
-    .sb-flash-card .sf-athlete { font-size: 5rem; }
-    .sb-flash-card .sf-club { font-size: 1.8rem; }
-    .sb-flash-card .sf-apparatus { font-size: 1.6rem; padding: 0.6rem 1.6rem; margin-top: 1rem; }
-    .sb-flash-card .sf-apparatus-icon { width: 60px; height: 60px; }
-    .sb-flash-card .sf-big-apparatus-icon { width: 180px; height: 180px; }
-    .sb-flash-card .sf-big-apparatus { margin: 1rem 0 0.5rem; }
-    .sb-flash-card .sf-scores { margin: 2rem 0; gap: 1.5rem; }
-    .sb-flash-card .sf-score-item { padding: 1.5rem 2rem; min-width: 200px; }
-    .sb-flash-card .sf-score-value { font-size: 5rem; }
-    .sb-flash-card .sf-score-label { font-size: 1.1rem; }
-    .sb-flash-card .sf-total-value { font-size: 10rem; }
-    .sb-flash-card .sf-score-divider { font-size: 3rem; }
-    .sb-flash-card .sf-total { margin-top: 1rem; }
-    .sb-flash-card .sf-new-score-tag { font-size: 1.2rem; padding: 8px 18px; margin-bottom: 1.5rem; }
-    .sb-flash-card .sf-timer { margin-top: 1.5rem; }
-}
-
-@media (max-height: 650px) {
-    .sb-flash-card { padding: 1.2rem 1.5rem; }
-    .sb-flash-card .sf-athlete { font-size: 3.5rem; }
-    .sb-flash-card .sf-club { font-size: 1.3rem; }
-    .sb-flash-card .sf-apparatus { font-size: 1.2rem; padding: 0.4rem 1.1rem; }
-    .sb-flash-card .sf-apparatus-icon { width: 44px; height: 44px; }
-    .sb-flash-card .sf-big-apparatus-icon { width: 110px; height: 110px; }
-    .sb-flash-card .sf-big-apparatus { margin: 0.5rem 0; }
-    .sb-flash-card .sf-scores { margin: 1.2rem 0; gap: 1rem; }
-    .sb-flash-card .sf-score-item { padding: 1rem 1.5rem; min-width: 160px; }
-    .sb-flash-card .sf-score-value { font-size: 3.5rem; }
-    .sb-flash-card .sf-score-label { font-size: 0.9rem; }
-    .sb-flash-card .sf-total-value { font-size: 6.5rem; }
-    .sb-flash-card .sf-score-divider { font-size: 2rem; }
-    .sb-flash-card .sf-total { margin-top: 0.5rem; }
-    .sb-flash-card .sf-new-score-tag { font-size: 0.95rem; padding: 5px 12px; margin-bottom: 0.85rem; }
-    .sb-flash-card .sf-timer { margin-top: 0.8rem; height: 4px; }
+/* Kısa pencerelerde (laptop yatay yarım ekran vb.) ek küçültme */
+@media (max-height: 700px) {
+    .sb-flash-card { padding: 1.4rem 1.7rem; }
+    .sb-flash-card .sf-athlete { font-size: 3.8rem; }
+    .sb-flash-card .sf-club { font-size: 1.4rem; }
+    .sb-flash-card .sf-apparatus { font-size: 1.25rem; padding: 0.45rem 1.2rem; margin-top: 0.8rem; }
+    .sb-flash-card .sf-apparatus-icon { width: 48px; height: 48px; }
+    .sb-flash-card .sf-big-apparatus-icon { width: 130px; height: 130px; }
+    .sb-flash-card .sf-big-apparatus { margin: 0.6rem 0 0.4rem; }
+    .sb-flash-card .sf-scores { margin: 1.4rem 0; gap: 1.1rem; }
+    .sb-flash-card .sf-score-item { padding: 1.1rem 1.6rem; min-width: 170px; }
+    .sb-flash-card .sf-score-value { font-size: 3.7rem; }
+    .sb-flash-card .sf-score-label { font-size: 0.95rem; }
+    .sb-flash-card .sf-total-value { font-size: 7rem; }
+    .sb-flash-card .sf-score-divider { font-size: 2.2rem; }
+    .sb-flash-card .sf-total { margin-top: 0.6rem; }
+    .sb-flash-card .sf-new-score-tag { font-size: 1rem; padding: 6px 14px; margin-bottom: 1rem; }
 }
 
 .sb-flash-visible .sb-flash-card {
@@ -916,16 +894,16 @@
 .sf-new-score-tag {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     background: rgba(99, 102, 241, 0.15);
     border: 1px solid rgba(165, 180, 252, 0.4);
     color: #A5B4FC;
-    font-size: 1.5rem;
+    font-size: 1.15rem;
     font-weight: 900;
-    letter-spacing: 5px;
-    padding: 12px 28px;
-    border-radius: 10px;
-    margin-bottom: 2.5rem;
+    letter-spacing: 4px;
+    padding: 8px 20px;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
     animation: tagPulse 2.5s ease-in-out infinite;
 }
 
@@ -935,7 +913,7 @@
 }
 
 .sf-new-score-tag i {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     animation: bellShake 2.2s ease-in-out infinite;
 }
 
@@ -948,44 +926,44 @@
 }
 
 .sf-athlete {
-    font-size: 7.5rem;
+    font-size: 5.5rem;
     font-weight: 900;
     color: #F1F5F9;
     margin: 0;
     line-height: 1.1;
-    letter-spacing: -1px;
-    text-shadow: 0 0 60px rgba(165, 180, 252, 0.4);
+    letter-spacing: -0.5px;
+    text-shadow: 0 0 50px rgba(165, 180, 252, 0.35);
 }
 
 .sf-club {
-    font-size: 2.6rem;
+    font-size: 1.9rem;
     color: #94A3B8;
     font-weight: 600;
-    margin: 0.8rem 0 0;
-    letter-spacing: 0.5px;
+    margin: 0.6rem 0 0;
+    letter-spacing: 0.4px;
 }
 
 .sf-apparatus {
     display: inline-flex;
     align-items: center;
-    gap: 1.2rem;
-    margin-top: 1.8rem;
-    padding: 0.9rem 2.4rem;
+    gap: 0.9rem;
+    margin-top: 1.2rem;
+    padding: 0.65rem 1.7rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    font-size: 2.3rem;
+    border-radius: 8px;
+    font-size: 1.7rem;
     font-weight: 900;
     color: #CBD5E1;
-    letter-spacing: 5px;
+    letter-spacing: 4px;
 }
 
 /* Flash card içindeki alet PNG ikonu (header pill içinde) */
 .sf-apparatus-icon {
-    width: 88px;
-    height: 88px;
+    width: 64px;
+    height: 64px;
     object-fit: contain;
-    filter: drop-shadow(0 4px 16px rgba(165, 180, 252, 0.3));
+    filter: drop-shadow(0 4px 12px rgba(165, 180, 252, 0.25));
 }
 
 /* Score kısmında BÜYÜK alet ikonu (artistik için) */
@@ -993,13 +971,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2rem 0 1rem;
+    margin: 1.2rem 0 0.6rem;
 }
 .sf-big-apparatus-icon {
-    width: 280px;
-    height: 280px;
+    width: 180px;
+    height: 180px;
     object-fit: contain;
-    filter: drop-shadow(0 12px 36px rgba(165, 180, 252, 0.4));
+    filter: drop-shadow(0 8px 24px rgba(165, 180, 252, 0.35));
     opacity: 0;
     animation: sfApparatusReveal 0.7s cubic-bezier(0.22, 1.35, 0.36, 1) forwards 0.15s;
 }
@@ -1013,17 +991,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2.5rem;
-    margin: 4rem 0;
+    gap: 1.8rem;
+    margin: 2.5rem 0;
 }
 
 .sf-score-item {
-    padding: 2.5rem 3rem;
-    border-radius: 16px;
+    padding: 1.8rem 2.2rem;
+    border-radius: 14px;
     border: 1px solid transparent;
     opacity: 0;
     transform: translateY(24px) scale(0.8);
-    min-width: 260px;
+    min-width: 210px;
     /* no transition — animation handles reveal */
 }
 
@@ -1039,16 +1017,16 @@
 }
 
 .sf-score-label {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
     font-weight: 800;
-    letter-spacing: 3px;
-    margin-bottom: 0.85rem;
+    letter-spacing: 2.5px;
+    margin-bottom: 0.65rem;
     text-transform: uppercase;
     opacity: 0.75;
 }
 
 .sf-score-value {
-    font-size: 7rem;
+    font-size: 5rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -1162,7 +1140,7 @@
 
 /* Divider */
 .sf-score-divider {
-    font-size: 4.5rem;
+    font-size: 3rem;
     font-weight: 200;
     color: rgba(255, 255, 255, 0.18);
     opacity: 0;
@@ -1193,8 +1171,8 @@
 }
 
 .sf-total-value {
-    font-size: 15rem;
-    letter-spacing: -3px;
+    font-size: 9.5rem;
+    letter-spacing: -2px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
     line-height: 1;
