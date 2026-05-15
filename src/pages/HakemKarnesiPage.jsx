@@ -78,6 +78,65 @@ const detectCinsiyet = (catId, ath) => {
     return 'diger';
 };
 
+/* ── FIG çerçevesi yardımcıları ──────────────────────────────────────── */
+// hakemler[catId][aletId][slot] → obje ise .name, string ise kendisi, yoksa null.
+// slot küçük/büyük harf toleranslı (e1 / E1).
+function resolveJudgeName(referees, catId, aletId, slot) {
+    const node = referees?.[catId]?.[aletId];
+    if (!node) return null;
+    const lo = String(slot).toLowerCase(), up = String(slot).toUpperCase();
+    const v = node[lo] != null ? node[lo] : node[up];
+    if (v == null) return null;
+    if (typeof v === 'object') return v.name ? String(v.name).trim() || null : null;
+    const s = String(v).trim();
+    return s || null;
+}
+
+// Spearman sıra korelasyonu — beraberliklerde ortalama sıra.
+function rankArray(arr) {
+    const idx = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+    const ranks = new Array(arr.length);
+    let i = 0;
+    while (i < idx.length) {
+        let j = i;
+        while (j + 1 < idx.length && idx[j + 1].v === idx[i].v) j++;
+        const avg = (i + j) / 2 + 1;
+        for (let k = i; k <= j; k++) ranks[idx[k].i] = avg;
+        i = j + 1;
+    }
+    return ranks;
+}
+function spearman(xs, ys) {
+    const n = xs.length;
+    if (n < 3) return null;
+    const rx = rankArray(xs), ry = rankArray(ys);
+    let d2 = 0;
+    for (let i = 0; i < n; i++) d2 += (rx[i] - ry[i]) ** 2;
+    return 1 - (6 * d2) / (n * (n * n - 1));
+}
+
+// FIG-tarzı sabit tolerans bantları (panel kesilmiş-ort. referans).
+function figBand(absDev) {
+    if (absDev <= 0.10) return { key: 'mukemmel', label: 'Mükemmel', color: '#22c55e' };
+    if (absDev <= 0.20) return { key: 'kabul',    label: 'Kabul edilebilir', color: '#84cc16' };
+    if (absDev <= 0.30) return { key: 'sinirda',  label: 'Sınırda', color: '#f59e0b' };
+    return { key: 'sapkin', label: 'Sapkın', color: '#ef4444' };
+}
+// Bütünsel FIG derecesi — mutlak sapma + eğilim + sıralama sadakati.
+function figVerdict(inst) {
+    const { avgAbsDev, avgSignedDev, rankCorr } = inst;
+    const bias = Math.abs(avgSignedDev);
+    if (rankCorr != null && rankCorr < 0.5)
+        return { label: 'İncelenmeli', color: '#ef4444', note: 'Sıralama sadakati düşük' };
+    if (avgAbsDev <= 0.10 && bias <= 0.05 && (rankCorr == null || rankCorr >= 0.9))
+        return { label: 'Mükemmel', color: '#22c55e', note: 'Panele çok yakın, tarafsız' };
+    if (avgAbsDev <= 0.20)
+        return { label: 'Kabul edilebilir', color: '#84cc16', note: 'FIG toleransı içinde' };
+    if (avgAbsDev <= 0.30)
+        return { label: 'Sınırda', color: '#f59e0b', note: 'Tolerans sınırında' };
+    return { label: 'İncelenmeli', color: '#ef4444', note: 'Sapma FIG toleransı dışında' };
+}
+
 export default function HakemKarnesiPage() {
     const { firebasePath, label: discLabel, id: disciplineId } = useDiscipline();
     const { currentUser } = useAuth();
@@ -86,10 +145,11 @@ export default function HakemKarnesiPage() {
 
     const [competitions, setCompetitions] = useState({});
     const [selectedCompId, setSelectedCompId] = useState('');
-    const [data, setData] = useState({ scores: {}, athletes: {} });
+    const [data, setData] = useState({ scores: {}, athletes: {}, referees: {} });
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState(isArtistik ? 'analiz' : 'judge'); // analiz | judge | athlete
     const [selectedJudge, setSelectedJudge] = useState(null); // drill-down
+    const [figExpanded, setFigExpanded] = useState({}); // FIG kart key → sporcu tablosu açık
     const [pdfBusy, setPdfBusy] = useState(false);
     // Filtreler
     const [filterCinsiyet, setFilterCinsiyet] = useState('all'); // all | erkek | kadin
@@ -105,14 +165,15 @@ export default function HakemKarnesiPage() {
 
     // Skor + sporcu verisi
     useEffect(() => {
-        if (!selectedCompId) { setData({ scores: {}, athletes: {} }); return; }
+        if (!selectedCompId) { setData({ scores: {}, athletes: {}, referees: {} }); return; }
         setLoading(true);
         setSelectedJudge(null);
         Promise.all([
             get(ref(db, `${firebasePath}/${selectedCompId}/puanlar`)),
             get(ref(db, `${firebasePath}/${selectedCompId}/sporcular`)),
-        ]).then(([scoresSnap, athsSnap]) => {
-            setData({ scores: scoresSnap.val() || {}, athletes: athsSnap.val() || {} });
+            get(ref(db, `${firebasePath}/${selectedCompId}/hakemler`)),
+        ]).then(([scoresSnap, athsSnap, refsSnap]) => {
+            setData({ scores: scoresSnap.val() || {}, athletes: athsSnap.val() || {}, referees: refsSnap.val() || {} });
         }).finally(() => setLoading(false));
     }, [selectedCompId, firebasePath]);
 
@@ -411,6 +472,63 @@ export default function HakemKarnesiPage() {
         })).sort((a, b) => a.avgEDeduction - b.avgEDeduction);
     }, [filteredEvals, isArtistik]);
 
+    /* ── judgeInstances: FIG hakem-alet örnekleri (kategori×alet×slot) ─── */
+    const judgeInstances = useMemo(() => {
+        if (!isArtistik) return [];
+        const m = {};
+        filteredEvals.forEach(ev => {
+            ev.eValues.forEach(({ k, v }) => {
+                const key = `${ev.catId}|${ev.aletId}|${k}`;
+                const inst = m[key] = m[key] || {
+                    key, catId: ev.catId, aletId: ev.aletId, rawSlot: k,
+                    slot: judgeKey(k),
+                    signed: [], abs: [], trimmedCount: 0,
+                    judgeScores: [], panelAvgs: [], athleteRows: [],
+                };
+                const dev = v - ev.eAvg;
+                const isTrim = ev.eTrimmed.includes(k);
+                inst.signed.push(dev);
+                inst.abs.push(Math.abs(dev));
+                if (isTrim) inst.trimmedCount++;
+                inst.judgeScores.push(v);
+                inst.panelAvgs.push(ev.eAvg);
+                inst.athleteRows.push({
+                    athName: ev.athName || ev.athId,
+                    athIl: ev.athIl, judgeScore: v, panelAvg: ev.eAvg,
+                    dev, band: figBand(Math.abs(dev)), trimmed: isTrim,
+                });
+            });
+        });
+        return Object.values(m).map(inst => {
+            const count = inst.abs.length;
+            const sum = (a) => a.reduce((x, y) => x + y, 0);
+            const avgAbsDev = count ? sum(inst.abs) / count : 0;
+            const avgSignedDev = count ? sum(inst.signed) / count : 0;
+            const figBands = { mukemmel: 0, kabul: 0, sinirda: 0, sapkin: 0 };
+            inst.abs.forEach(a => { figBands[figBand(a).key]++; });
+            const realName = resolveJudgeName(data.referees, inst.catId, inst.aletId, inst.rawSlot);
+            const ctxLabel = `${inst.slot} · ${aletLabel(inst.aletId)} · ${catLabel(inst.catId)}`;
+            const out = {
+                ...inst, count,
+                trimmedRatio: count ? inst.trimmedCount / count : 0,
+                avgAbsDev, avgSignedDev,
+                stdDev: stdDev(inst.signed),
+                minDev: count ? Math.min(...inst.signed) : 0,
+                maxDev: count ? Math.max(...inst.signed) : 0,
+                figBands,
+                inToleranceRatio: count ? (figBands.mukemmel + figBands.kabul) / count : 0,
+                rankCorr: spearman(inst.judgeScores, inst.panelAvgs),
+                hasRealName: !!realName,
+                name: realName || ctxLabel,
+                displayName: realName || ctxLabel,
+                ctxLabel,
+                athleteRows: inst.athleteRows.sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev)),
+            };
+            out.verdict = figVerdict(out);
+            return out;
+        }).sort((a, b) => a.aletId.localeCompare(b.aletId) || a.catId.localeCompare(b.catId) || a.slot.localeCompare(b.slot));
+    }, [filteredEvals, isArtistik, data.referees]);
+
     /* ── KPI ──────────────────────────────────────────────────────────── */
     const kpi = useMemo(() => {
         if (!isArtistik || judgeStatsArtistik.length === 0) return null;
@@ -520,6 +638,27 @@ export default function HakemKarnesiPage() {
                 });
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kr), 'Kategori Bazlı Sapma');
             }
+
+            // Sheet 4: FIG Hakem-Alet Detay (isimli)
+            if (judgeInstances.length > 0) {
+                const fr = judgeInstances.map(inst => ({
+                    'Hakem': inst.hasRealName ? inst.name : inst.slot,
+                    'İsim Atandı': inst.hasRealName ? 'Evet' : 'Hayır',
+                    'Alet': aletLabel(inst.aletId),
+                    'Kategori': catLabel(inst.catId),
+                    'Slot': inst.slot,
+                    'Değerlendirme': inst.count,
+                    'Ort. Mutlak Sapma': fmt3(inst.avgAbsDev),
+                    'Eğilim (bias)': fmt3(inst.avgSignedDev),
+                    'Eğilim Yorumu': inst.avgSignedDev > 0.05 ? 'Sert' : inst.avgSignedDev < -0.05 ? 'Yumuşak' : 'Dengeli',
+                    'Tutarlılık (std)': fmt3(inst.stdDev),
+                    'Sayılmama %': pct(inst.trimmedRatio),
+                    'Tolerans İçi %': pct(inst.inToleranceRatio),
+                    'Sıralama ρ': inst.rankCorr == null ? '' : fmt2(inst.rankCorr),
+                    'FIG Verdict': inst.verdict.label,
+                }));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fr), 'FIG Hakem-Alet Detay');
+            }
         } else {
             const jr = judgeStats.map(j => ({
                 'Hakem': j.judge, 'Toplam': j.total, 'Sayılan': j.counted, 'Sayılmayan': j.trimmed,
@@ -628,6 +767,32 @@ export default function HakemKarnesiPage() {
                 );
             });
 
+            // FIG Hakem-Alet Detay sayfası (isimli) — sadece tüm karne çıktısında
+            if (!onlyJudge && judgeInstances.length > 0) {
+                doc.addPage();
+                doc.setFont(font); doc.setFontSize(17);
+                doc.text('FIG HAKEM-ALET DETAY RAPORU', 14, 18);
+                doc.setFontSize(10); doc.setTextColor(90);
+                doc.text(String(compName), 14, 25);
+                doc.text('Tolerans: <=0.10 Mukemmel | <=0.20 Kabul | <=0.30 Sinirda | >0.30 Sapkin', 14, 31);
+                doc.setTextColor(0);
+                autoTable(doc, {
+                    startY: 36,
+                    head: [['Hakem', 'Alet', 'Kategori', 'Deg.', 'Mutlak Sapma', 'Egilim', 'Std', 'Tol. Ici %', 'Sira r', 'Verdict']],
+                    body: judgeInstances.map(inst => [
+                        inst.hasRealName ? inst.name : inst.slot,
+                        aletLabel(inst.aletId), catLabel(inst.catId),
+                        String(inst.count), fmt3(inst.avgAbsDev), fmt3(inst.avgSignedDev),
+                        fmt3(inst.stdDev), pct(inst.inToleranceRatio),
+                        inst.rankCorr == null ? '-' : fmt2(inst.rankCorr),
+                        inst.verdict.label,
+                    ]),
+                    theme: 'striped', styles: { font, fontSize: 8 },
+                    headStyles: { fillColor: [99, 102, 241] },
+                    margin: { left: 14, right: 14 },
+                });
+            }
+
             const safe = String(compName).replace(/[\\/:*?"<>|]/g, '_').slice(0, 40);
             doc.save(onlyJudge ? `Hakem_Karnesi_${onlyJudge}_${safe}.pdf` : `Hakem_Karneleri_${safe}.pdf`);
         } catch (e) {
@@ -639,7 +804,7 @@ export default function HakemKarnesiPage() {
 
     /* ── Render ───────────────────────────────────────────────────────── */
     const tabs = isArtistik
-        ? [['analiz', 'Analiz'], ['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']]
+        ? [['analiz', 'Analiz'], ['fig', 'FIG Karne'], ['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']]
         : [['judge', 'Hakem Bazlı'], ['athlete', 'Sporcu Bazlı']];
 
     return (
@@ -1285,6 +1450,157 @@ export default function HakemKarnesiPage() {
                 </div>
             )}
 
+            {/* ═══ FIG KARNE — hakem-alet detay raporu ═══ */}
+            {!loading && tab === 'fig' && isArtistik && (
+                judgeInstances.length === 0 ? (
+                    <div style={emptyBox}>Bu filtre için hakem-alet kaydı yok.</div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={{ ...cardBox, background: '#f8fafc' }}>
+                            <div style={cardTitle}>FIG Çerçevesinde Hakem-Alet Detay Raporu</div>
+                            <div style={{ fontSize: 12, color: '#64748b' }}>
+                                Her alet × kategori için atanmış hakemin notu, panelin kesilmiş ortalamasına
+                                (referans) göre değerlendirilir. <strong>Tolerans bantları:</strong>{' '}
+                                <span style={{ color: '#22c55e', fontWeight: 700 }}>≤0.10 Mükemmel</span> ·{' '}
+                                <span style={{ color: '#84cc16', fontWeight: 700 }}>≤0.20 Kabul</span> ·{' '}
+                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>≤0.30 Sınırda</span> ·{' '}
+                                <span style={{ color: '#ef4444', fontWeight: 700 }}>&gt;0.30 Sapkın</span>.
+                            </div>
+                        </div>
+                        {[...new Set(judgeInstances.map(i => i.aletId))].map(aletId => (
+                            <div key={aletId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: 4 }}>
+                                    {aletLabel(aletId)}
+                                </div>
+                                {judgeInstances.filter(i => i.aletId === aletId).map(inst => {
+                                    const open = !!figExpanded[inst.key];
+                                    const bandsArr = [
+                                        { ...figBand(0.05), n: inst.figBands.mukemmel },
+                                        { ...figBand(0.15), n: inst.figBands.kabul },
+                                        { ...figBand(0.25), n: inst.figBands.sinirda },
+                                        { ...figBand(0.40), n: inst.figBands.sapkin },
+                                    ];
+                                    return (
+                                        <div key={inst.key} style={cardBox}>
+                                            {/* Başlık */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+                                                        {inst.hasRealName ? inst.name : inst.slot}
+                                                        {!inst.hasRealName && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>(isim atanmamış)</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                                                        {inst.slot} · {aletLabel(inst.aletId)} · {catLabel(inst.catId)}
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    background: inst.verdict.color, color: '#fff', fontWeight: 800,
+                                                    fontSize: 12, padding: '6px 12px', borderRadius: 999,
+                                                }}>
+                                                    {inst.verdict.label}
+                                                    <span style={{ fontWeight: 500, marginLeft: 6, opacity: 0.9 }}>· {inst.verdict.note}</span>
+                                                </div>
+                                            </div>
+                                            {/* KPI satırı */}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+                                                <FigStat label="Değerlendirme" value={inst.count} />
+                                                <FigStat label="Ort. Mutlak Sapma" value={fmt3(inst.avgAbsDev)} color={figBand(inst.avgAbsDev).color} />
+                                                <FigStat label="Eğilim (bias)" value={`${inst.avgSignedDev > 0 ? '+' : ''}${fmt3(inst.avgSignedDev)}`}
+                                                    color={inst.avgSignedDev > 0.05 ? '#ef4444' : inst.avgSignedDev < -0.05 ? '#0ea5e9' : '#22c55e'}
+                                                    hint={inst.avgSignedDev > 0.05 ? 'sert' : inst.avgSignedDev < -0.05 ? 'yumuşak' : 'dengeli'} />
+                                                <FigStat label="Tutarlılık (std)" value={fmt3(inst.stdDev)} />
+                                                <FigStat label="Sayılmama %" value={pct(inst.trimmedRatio)} />
+                                                <FigStat label="Sıralama ρ" value={inst.rankCorr == null ? '—' : fmt2(inst.rankCorr)}
+                                                    color={inst.rankCorr == null ? '#94a3b8' : inst.rankCorr >= 0.9 ? '#22c55e' : inst.rankCorr >= 0.5 ? '#f59e0b' : '#ef4444'} />
+                                            </div>
+                                            {/* FIG tolerans dağılımı */}
+                                            <div style={{ marginTop: 12 }}>
+                                                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>
+                                                    FIG TOLERANS DAĞILIMI ({pct(inst.inToleranceRatio)} tolerans içi)
+                                                </div>
+                                                <div style={{ display: 'flex', height: 22, borderRadius: 6, overflow: 'hidden', background: '#f1f5f9' }}>
+                                                    {bandsArr.filter(b => b.n > 0).map(b => (
+                                                        <div key={b.key} title={`${b.label}: ${b.n}`}
+                                                            style={{
+                                                                flex: b.n, background: b.color, color: '#fff', fontSize: 11,
+                                                                fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            }}>
+                                                            {b.n}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+                                                    {bandsArr.map(b => (
+                                                        <span key={b.key} style={{ fontSize: 10, color: '#64748b' }}>
+                                                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: b.color, marginRight: 3 }} />
+                                                            {b.label}: <strong>{b.n}</strong>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {/* Sıralama yorumu */}
+                                            <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+                                                <strong>Sıralama Sadakati:</strong>{' '}
+                                                {inst.rankCorr == null
+                                                    ? 'Yetersiz sporcu (ρ hesaplanamadı).'
+                                                    : inst.rankCorr >= 0.9 ? 'Hakem sporcuları panelle neredeyse birebir aynı sıralıyor.'
+                                                    : inst.rankCorr >= 0.5 ? 'Sıralamada kısmi sapma var.'
+                                                    : 'Sıralama paneli yansıtmıyor — incelenmeli.'}
+                                            </div>
+                                            {/* Sporcu detay aç/kapa */}
+                                            <button onClick={() => setFigExpanded(s => ({ ...s, [inst.key]: !s[inst.key] }))}
+                                                style={{
+                                                    marginTop: 10, background: 'none', border: '1px solid #cbd5e1',
+                                                    borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                                                    color: '#475569', cursor: 'pointer',
+                                                }}>
+                                                {open ? '▲ Sporcu detayını gizle' : `▼ Sporcu bazlı sapma (${inst.count})`}
+                                            </button>
+                                            {open && (
+                                                <div style={{ overflowX: 'auto', marginTop: 8 }}>
+                                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                        <thead>
+                                                            <tr style={{ background: '#f1f5f9' }}>
+                                                                <th style={{ ...th, textAlign: 'left' }}>SPORCU</th>
+                                                                <th style={th}>HAKEM NOTU</th>
+                                                                <th style={th}>PANEL ORT.</th>
+                                                                <th style={th}>SAPMA</th>
+                                                                <th style={th}>BANT</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {inst.athleteRows.map((r, ri) => (
+                                                                <tr key={ri} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                                    <td style={{ ...td, fontWeight: 700 }}>
+                                                                        {r.athName}
+                                                                        {r.trimmed && <span style={{ marginLeft: 6, fontSize: 10, color: '#ef4444', fontWeight: 800 }}>(X) sayılmadı</span>}
+                                                                        {r.athIl && <span style={{ marginLeft: 6, fontSize: 10, color: '#94a3b8' }}>{r.athIl}</span>}
+                                                                    </td>
+                                                                    <td style={{ ...tdCenter, fontWeight: 700 }}>{fmt2(r.judgeScore)}</td>
+                                                                    <td style={tdCenter}>{fmt3(r.panelAvg)}</td>
+                                                                    <td style={{ ...tdCenter, fontWeight: 700, color: r.dev > 0 ? '#ef4444' : '#0ea5e9' }}>
+                                                                        {r.dev > 0 ? '+' : ''}{fmt3(r.dev)}
+                                                                    </td>
+                                                                    <td style={tdCenter}>
+                                                                        <span style={{ background: r.band.color, color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
+                                                                            {r.band.label}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )
+            )}
+
             {/* ═══ HAKEM BAZLI ═══ */}
             {!loading && tab === 'judge' && judgeStats.length > 0 && (
                 <div style={cardBox}>
@@ -1395,6 +1711,18 @@ function KpiCard({ color, icon, label, value }) {
                 {label}
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>{value}</div>
+        </div>
+    );
+}
+
+function FigStat({ label, value, color, hint }) {
+    return (
+        <div style={{ minWidth: 92 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 900, color: color || '#0f172a' }}>
+                {value}
+                {hint && <span style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', marginLeft: 4 }}>{hint}</span>}
+            </div>
         </div>
     );
 }
