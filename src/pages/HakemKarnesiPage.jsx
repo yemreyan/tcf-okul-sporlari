@@ -195,6 +195,8 @@ export default function HakemKarnesiPage() {
     const [tab, setTab] = useState(isArtistik ? 'analiz' : 'judge'); // analiz | judge | athlete
     const [selectedJudge, setSelectedJudge] = useState(null); // drill-down
     const [figExpanded, setFigExpanded] = useState({}); // FIG kart key → sporcu tablosu açık
+    const [figSearch, setFigSearch] = useState('');
+    const [figVerdictFilter, setFigVerdictFilter] = useState([]); // boş = tümü
     const [pdfBusy, setPdfBusy] = useState(false);
     // Filtreler
     const [filterCinsiyet, setFilterCinsiyet] = useState('all'); // all | erkek | kadin
@@ -1183,6 +1185,51 @@ export default function HakemKarnesiPage() {
                         </div>
                     )}
 
+                    {/* Not Düzeltme Geçmişi (audit log) */}
+                    {(() => {
+                        const revList = judgeInstances
+                            .filter(i => i.revisionCount > 0)
+                            .sort((a, b) => b.revisionCount - a.revisionCount);
+                        if (revList.length === 0) return null;
+                        return (
+                            <div style={cardBox}>
+                                <div style={cardTitle}>Not Düzeltme Geçmişi <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— audit log: hakemlerin gönderilmiş notu kaç kez değiştirdiği</span></div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                        <thead>
+                                            <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                                <th style={{ ...th, textAlign: 'left' }}>HAKEM</th>
+                                                <th style={th}>ALET · KATEGORİ</th>
+                                                <th style={th}>DÜZELTME</th>
+                                                <th style={{ ...th, textAlign: 'left' }}>SON DÜZELTMELER</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {revList.map(inst => {
+                                                const recent = revisionStats[inst.key]?.recent || [];
+                                                return (
+                                                    <tr key={inst.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                        <td style={{ ...td, fontWeight: 700 }}>{inst.hasRealName ? inst.name : inst.slot}</td>
+                                                        <td style={{ ...tdCenter, color: '#64748b' }}>{aletLabel(inst.aletId)} · {catLabel(inst.catId)}</td>
+                                                        <td style={{ ...tdCenter, fontWeight: 800, color: '#f59e0b' }}>{inst.revisionCount}</td>
+                                                        <td style={{ ...td, fontSize: 11, color: '#64748b' }}>
+                                                            {recent.slice(0, 4).map((rv, ri) => (
+                                                                <span key={ri} style={{ marginRight: 10 }}>
+                                                                    {rv.ts ? new Date(rv.ts).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                                    {' '}<strong>{rv.oldValue ?? '—'}→{rv.newValue ?? '—'}</strong>
+                                                                </span>
+                                                            ))}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     {/* Grafikler — 2 sütun */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
                         <ChartCard title="Sayılma Oranı (%)" hint="Yüksek = notları daha sık ortalamada kalan, tutarlı hakem">
@@ -1729,25 +1776,97 @@ export default function HakemKarnesiPage() {
             {!loading && tab === 'fig' && isArtistik && (
                 judgeInstances.length === 0 ? (
                     <div style={emptyBox}>Bu filtre için hakem-alet kaydı yok.</div>
-                ) : (
+                ) : (() => {
+                    const sv = normalizeName(figSearch);
+                    const filtered = judgeInstances.filter(i => {
+                        if (sv && !normalizeName(i.displayName).includes(sv) && !normalizeName(i.ctxLabel).includes(sv)) return false;
+                        if (figVerdictFilter.length && !figVerdictFilter.includes(i.verdict.label)) return false;
+                        return true;
+                    });
+                    const leader = [...judgeInstances].sort((a, b) => b.qualityScore - a.qualityScore);
+                    const VERDICTS = ['Mükemmel', 'Kabul edilebilir', 'Sınırda', 'İncelenmeli'];
+                    const toggleVerdict = (v) => setFigVerdictFilter(f => f.includes(v) ? f.filter(x => x !== v) : [...f, v]);
+                    return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div style={{ ...cardBox, background: '#f8fafc' }}>
                             <div style={cardTitle}>FIG Çerçevesinde Hakem-Alet Detay Raporu</div>
                             <div style={{ fontSize: 12, color: '#64748b' }}>
                                 Her alet × kategori için atanmış hakemin notu, panelin kesilmiş ortalamasına
-                                (referans) göre değerlendirilir. <strong>Tolerans bantları:</strong>{' '}
-                                <span style={{ color: '#22c55e', fontWeight: 700 }}>≤0.10 Mükemmel</span> ·{' '}
-                                <span style={{ color: '#84cc16', fontWeight: 700 }}>≤0.20 Kabul</span> ·{' '}
-                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>≤0.30 Sınırda</span> ·{' '}
-                                <span style={{ color: '#ef4444', fontWeight: 700 }}>&gt;0.30 Sapkın</span>.
+                                (referans) göre değerlendirilir. Tolerans bantları panel E-skoruna göre uyarlanır
+                                (yüksek skorda daralır). <strong>Bantlar:</strong>{' '}
+                                <span style={{ color: '#22c55e', fontWeight: 700 }}>Mükemmel</span> ·{' '}
+                                <span style={{ color: '#84cc16', fontWeight: 700 }}>Kabul</span> ·{' '}
+                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Sınırda</span> ·{' '}
+                                <span style={{ color: '#ef4444', fontWeight: 700 }}>Sapkın</span>.
                             </div>
                         </div>
-                        {[...new Set(judgeInstances.map(i => i.aletId))].map(aletId => (
+
+                        {/* Hakem Lider Tablosu */}
+                        <div style={cardBox}>
+                            <div style={cardTitle}>Hakem Lider Tablosu <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— kompozit kalite skoruna göre (sapma + eğilim + sıralama + uç değer)</span></div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                            <th style={th}>#</th>
+                                            <th style={{ ...th, textAlign: 'left' }}>HAKEM</th>
+                                            <th style={{ ...th, textAlign: 'left' }}>ALET · KATEGORİ</th>
+                                            <th style={th}>KALİTE</th>
+                                            <th style={th}>MUTLAK SAPMA</th>
+                                            <th style={th}>SIRALAMA ρ</th>
+                                            <th style={th}>VERDICT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {leader.map((inst, i) => {
+                                            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+                                            return (
+                                                <tr key={inst.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ ...tdCenter, fontWeight: 800 }}>{medal}</td>
+                                                    <td style={{ ...td, fontWeight: 700 }}>{inst.hasRealName ? inst.name : inst.slot}</td>
+                                                    <td style={{ ...td, color: '#64748b' }}>{aletLabel(inst.aletId)} · {catLabel(inst.catId)}</td>
+                                                    <td style={{ ...tdCenter, fontWeight: 900, color: inst.qualityScore >= 80 ? '#22c55e' : inst.qualityScore >= 60 ? '#f59e0b' : '#ef4444' }}>{inst.qualityScore}</td>
+                                                    <td style={tdCenter}>{fmt3(inst.avgAbsDev)}</td>
+                                                    <td style={tdCenter}>{inst.rankCorr == null ? '—' : fmt2(inst.rankCorr)}</td>
+                                                    <td style={tdCenter}>
+                                                        <span style={{ background: inst.verdict.color, color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>{inst.verdict.label}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Arama + verdict filtresi */}
+                        <div style={{ ...cardBox, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <input value={figSearch} onChange={e => setFigSearch(e.target.value)}
+                                placeholder="Hakem ara (isim / alet / kategori)…"
+                                style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.7rem', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }} />
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {VERDICTS.map(v => {
+                                    const on = figVerdictFilter.includes(v);
+                                    const col = v === 'Mükemmel' ? '#22c55e' : v === 'Kabul edilebilir' ? '#84cc16' : v === 'Sınırda' ? '#f59e0b' : '#ef4444';
+                                    return (
+                                        <button key={v} onClick={() => toggleVerdict(v)}
+                                            style={{
+                                                padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                                border: `1.5px solid ${col}`, background: on ? col : '#fff', color: on ? '#fff' : col,
+                                            }}>{v}</button>
+                                    );
+                                })}
+                            </div>
+                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>{filtered.length} / {judgeInstances.length}</span>
+                        </div>
+
+                        {filtered.length === 0 && <div style={emptyBox}>Arama/filtreyle eşleşen hakem yok.</div>}
+                        {[...new Set(filtered.map(i => i.aletId))].map(aletId => (
                             <div key={aletId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: 4 }}>
                                     {aletLabel(aletId)}
                                 </div>
-                                {judgeInstances.filter(i => i.aletId === aletId).map(inst => {
+                                {filtered.filter(i => i.aletId === aletId).map(inst => {
                                     const open = !!figExpanded[inst.key];
                                     const bandsArr = [
                                         { ...figBand(0.05), n: inst.figBands.mukemmel },
@@ -1767,13 +1886,33 @@ export default function HakemKarnesiPage() {
                                                     <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                                                         {inst.slot} · {aletLabel(inst.aletId)} · {catLabel(inst.catId)}
                                                     </div>
+                                                    {/* Rozetler */}
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                                        {inst.judgeBrove && (
+                                                            <span style={figBadge('#6366f1')}>{inst.judgeBrove}{inst.judgeIl ? ` · ${inst.judgeIl}` : ''}</span>
+                                                        )}
+                                                        {inst.underBrove && (
+                                                            <span style={figBadge('#ef4444')}>⚠ Brövenin altında ({inst.qualityScore}/{inst.broveThreshold})</span>
+                                                        )}
+                                                        {inst.revisionCount > 0 && (
+                                                            <span style={figBadge('#f59e0b')}>🔁 {inst.revisionCount} düzeltme</span>
+                                                        )}
+                                                        {inst.homeBias != null && Math.abs(inst.homeBias) > 0.12 && (
+                                                            <span style={figBadge('#ef4444')}>⚠ Kendi iline {inst.homeBias < 0 ? 'yumuşak' : 'sert'} ({fmt3(inst.homeBias)})</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div style={{
-                                                    background: inst.verdict.color, color: '#fff', fontWeight: 800,
-                                                    fontSize: 12, padding: '6px 12px', borderRadius: 999,
-                                                }}>
-                                                    {inst.verdict.label}
-                                                    <span style={{ fontWeight: 500, marginLeft: 6, opacity: 0.9 }}>· {inst.verdict.note}</span>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{
+                                                        background: inst.verdict.color, color: '#fff', fontWeight: 800,
+                                                        fontSize: 12, padding: '6px 12px', borderRadius: 999, display: 'inline-block',
+                                                    }}>
+                                                        {inst.verdict.label}
+                                                        <span style={{ fontWeight: 500, marginLeft: 6, opacity: 0.9 }}>· {inst.verdict.note}</span>
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                                                        Kalite Skoru: <strong style={{ color: inst.qualityScore >= 80 ? '#22c55e' : inst.qualityScore >= 60 ? '#f59e0b' : '#ef4444', fontSize: 14 }}>{inst.qualityScore}</strong>/100
+                                                    </div>
                                                 </div>
                                             </div>
                                             {/* KPI satırı */}
@@ -1873,7 +2012,8 @@ export default function HakemKarnesiPage() {
                             </div>
                         ))}
                     </div>
-                )
+                    );
+                })()
             )}
 
             {/* ═══ HAKEM BAZLI ═══ */}
@@ -2021,6 +2161,10 @@ const cardBox = { background: '#fff', borderRadius: 8, border: '1px solid #e2e8f
 const cardTitle = { fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 };
 const emptyBox = { padding: 24, textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' };
 const hintBar = { padding: '8px 4px 0', fontSize: 11, color: '#64748b' };
+const figBadge = (color) => ({
+    background: color, color: '#fff', fontSize: 10, fontWeight: 800,
+    padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
+});
 const btnStyle = (bg, disabled) => ({
     background: bg, color: '#fff', border: 'none', padding: '0.6rem 1rem',
     borderRadius: '0.4rem', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
