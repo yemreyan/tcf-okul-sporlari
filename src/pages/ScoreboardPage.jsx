@@ -1499,12 +1499,6 @@ export default function ScoreboardPage() {
                         ) : (
                             /* ── Artistik / diğer: D SCORE / E SCORE / PENALTY ── */
                             <>
-                                {/* Büyük alet ikonu — score kısmında belirgin sembol */}
-                                {flashData.aletId && APPARATUS_PNG.has(flashData.aletId) && (
-                                    <div className="sf-big-apparatus">
-                                        <ApparatusIcon id={flashData.aletId} className="sf-big-apparatus-icon" />
-                                    </div>
-                                )}
                                 <div className="sf-scores">
                                     <div className={`sf-score-item sf-d ${flashPhase >= 1 ? 'sf-reveal' : ''}`}>
                                         <div className="sf-score-label">D SCORE</div>
