@@ -60,6 +60,18 @@ const stdDev = (arr) => {
     const m = arr.reduce((a, b) => a + b, 0) / arr.length;
     return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
 };
+const judgeKey = (k) => 'E' + String(k).replace(/\D/g, '');  // 'e3'/'j3' → 'E3'
+
+// Kategori adından / sporcu objesinden cinsiyet tespiti
+const detectCinsiyet = (catId, ath) => {
+    const s = (catId || '').toLocaleLowerCase('tr-TR');
+    if (s.includes('erkek') || s.includes('bay ')) return 'erkek';
+    if (s.includes('kiz') || s.includes('kız') || s.includes('kadin') || s.includes('kadın') || s.includes('bayan')) return 'kadin';
+    const ac = (ath?.cinsiyet || '').toLocaleLowerCase('tr-TR');
+    if (ac.startsWith('e')) return 'erkek';
+    if (ac.startsWith('k')) return 'kadin';
+    return 'diger';
+};
 
 export default function HakemKarnesiPage() {
     const { firebasePath, label: discLabel, id: disciplineId } = useDiscipline();
@@ -74,6 +86,9 @@ export default function HakemKarnesiPage() {
     const [tab, setTab] = useState(isArtistik ? 'analiz' : 'judge'); // analiz | judge | athlete
     const [selectedJudge, setSelectedJudge] = useState(null); // drill-down
     const [pdfBusy, setPdfBusy] = useState(false);
+    // Filtreler
+    const [filterCinsiyet, setFilterCinsiyet] = useState('all'); // all | erkek | kadin
+    const [filterAlet, setFilterAlet] = useState('all');         // all | aletId
 
     // Yarışmalar
     useEffect(() => {
@@ -116,6 +131,7 @@ export default function HakemKarnesiPage() {
                             catId, aletId, athId,
                             athName: `${ath.ad || ''} ${ath.soyad || ''}`.trim(),
                             athIl: ath.il || '', athOkul: ath.okul || ath.kulup || '',
+                            cinsiyet: detectCinsiyet(catId, ath),
                             alet: aletId,
                             ePanel, eTrimmed: eRes.trimmed, eValues: eRes.values, eAvg: eRes.trimmedAvg,
                             aPanel: {}, aTrimmed: [], aValues: [], aAvg: 0,
@@ -138,6 +154,7 @@ export default function HakemKarnesiPage() {
                             catId, athId,
                             athName: `${ath.ad || ''} ${ath.soyad || ''}`.trim(),
                             athIl: ath.il || '', athOkul: ath.okul || ath.kulup || '',
+                            cinsiyet: detectCinsiyet(catId, ath),
                             alet,
                             aPanel: aletScore.aPanel || {}, ePanel: aletScore.ePanel || {},
                             aTrimmed: aRes.trimmed, aValues: aRes.values, aAvg: aRes.trimmedAvg,
@@ -150,11 +167,18 @@ export default function HakemKarnesiPage() {
         return list;
     }, [data, isRitmik, isArtistik]);
 
+    /* ── Filtre uygulanmış değerlendirmeler ────────────────────────────── */
+    const filteredEvals = useMemo(() => evaluations.filter(ev => {
+        if (filterCinsiyet !== 'all' && ev.cinsiyet !== filterCinsiyet) return false;
+        if (filterAlet !== 'all' && ev.alet !== filterAlet) return false;
+        return true;
+    }), [evaluations, filterCinsiyet, filterAlet]);
+
     /* ── judgeStats: temel hakem agregatı (her iki disiplin) ───────────── */
     const judgeStats = useMemo(() => {
         const stats = {};
         const init = (key) => stats[key] = stats[key] || { total: 0, trimmed: 0, ilDist: {}, devs: [] };
-        evaluations.forEach(ev => {
+        filteredEvals.forEach(ev => {
             ev.aValues.forEach(({ k, v }) => {
                 const jk = 'A' + k.replace(/[ej]/i, '');
                 init(jk); stats[jk].total++;
@@ -180,14 +204,14 @@ export default function HakemKarnesiPage() {
             avgDeviation: s.devs.length ? s.devs.reduce((a, b) => a + b, 0) / s.devs.length : 0,
             ilDist: s.ilDist,
         })).sort((a, b) => a.judge.localeCompare(b.judge));
-    }, [evaluations]);
+    }, [filteredEvals]);
 
     /* ── judgeStatsArtistik: zengin metrikler (sadece artistik) ────────── */
     const judgeStatsArtistik = useMemo(() => {
         if (!isArtistik) return [];
         const m = {}; // jk → {total, trimmed, absDevs, signedDevs, ilDist, perAlet}
         const init = (jk) => m[jk] = m[jk] || { total: 0, trimmed: 0, absDevs: [], signedDevs: [], ilDist: {}, perAlet: {} };
-        evaluations.forEach(ev => {
+        filteredEvals.forEach(ev => {
             ev.eValues.forEach(({ k, v }) => {
                 const jk = 'E' + k.replace(/[ej]/i, '');
                 init(jk);
@@ -226,14 +250,88 @@ export default function HakemKarnesiPage() {
                 perApparatus, ilDist: s.ilDist,
             };
         }).sort((a, b) => a.judge.localeCompare(b.judge));
-    }, [evaluations, isArtistik]);
+    }, [filteredEvals, isArtistik]);
 
-    // Artistik aletleri (mevcut verideki)
-    const artistikAlets = useMemo(() => {
+    // Artistik aletleri — TÜM veriden (filtre dropdown'u sabit kalmalı)
+    const artistikAletsAll = useMemo(() => {
         const set = new Set();
         evaluations.forEach(ev => set.add(ev.alet));
         return [...set].sort();
     }, [evaluations]);
+    // Görüntülenen aletler — filtreli veriden
+    const artistikAlets = useMemo(() => {
+        const set = new Set();
+        filteredEvals.forEach(ev => set.add(ev.alet));
+        return [...set].sort();
+    }, [filteredEvals]);
+
+    /* ── Hakem Uyum Matrisi: panel içi ikili hakem anlaşması ───────────── */
+    const judgeAgreement = useMemo(() => {
+        if (!isArtistik) return { pairs: {}, judges: [] };
+        const pairs = {};
+        const judgeSet = new Set();
+        filteredEvals.forEach(ev => {
+            const vals = ev.eValues;
+            vals.forEach(v => judgeSet.add(judgeKey(v.k)));
+            for (let i = 0; i < vals.length; i++) {
+                for (let j = i + 1; j < vals.length; j++) {
+                    const a = judgeKey(vals[i].k), b = judgeKey(vals[j].k);
+                    const key = [a, b].sort().join('|');
+                    if (!pairs[key]) pairs[key] = { sum: 0, count: 0 };
+                    pairs[key].sum += Math.abs(vals[i].v - vals[j].v);
+                    pairs[key].count++;
+                }
+            }
+        });
+        return { pairs, judges: [...judgeSet].sort() };
+    }, [filteredEvals, isArtistik]);
+
+    /* ── İl Analizi: hakem × il işaretli sapma ─────────────────────────── */
+    const ilAnalysis = useMemo(() => {
+        if (!isArtistik) return { byJudge: {}, ils: [], matrix: {} };
+        const byJudge = {};
+        const ilSet = new Set();
+        filteredEvals.forEach(ev => {
+            if (!ev.athIl) return;
+            ilSet.add(ev.athIl);
+            ev.eValues.forEach(({ k, v }) => {
+                const jk = judgeKey(k);
+                byJudge[jk] = byJudge[jk] || {};
+                const rec = byJudge[jk][ev.athIl] = byJudge[jk][ev.athIl] || { signed: 0, abs: 0, count: 0 };
+                const d = v - ev.eAvg;
+                rec.signed += d; rec.abs += Math.abs(d); rec.count++;
+            });
+        });
+        const result = {};
+        const matrix = {};
+        Object.entries(byJudge).forEach(([jk, ils]) => {
+            matrix[jk] = {};
+            result[jk] = Object.entries(ils).map(([il, s]) => {
+                const avgSigned = s.signed / s.count;
+                matrix[jk][il] = avgSigned;
+                return { il, count: s.count, avgSigned, avgAbs: s.abs / s.count };
+            }).sort((a, b) => a.avgAbs - b.avgAbs);
+        });
+        return { byJudge: result, ils: [...ilSet].sort((a, b) => a.localeCompare(b, 'tr-TR')), matrix };
+    }, [filteredEvals, isArtistik]);
+
+    /* ── İl Genel: ilin panel ortalaması ───────────────────────────────── */
+    const ilGeneral = useMemo(() => {
+        if (!isArtistik) return [];
+        const m = {};
+        filteredEvals.forEach(ev => {
+            if (!ev.athIl) return;
+            const r = m[ev.athIl] = m[ev.athIl] || { count: 0, eAvgSum: 0, athletes: new Set(), spreadSum: 0 };
+            r.count++; r.eAvgSum += ev.eAvg;
+            r.athletes.add(ev.athId);
+            r.spreadSum += stdDev(ev.eValues.map(x => x.v));
+        });
+        return Object.entries(m).map(([il, s]) => ({
+            il, evalCount: s.count, athleteCount: s.athletes.size,
+            avgEDeduction: s.eAvgSum / s.count,
+            avgPanelSpread: s.spreadSum / s.count,
+        })).sort((a, b) => a.avgEDeduction - b.avgEDeduction);
+    }, [filteredEvals, isArtistik]);
 
     /* ── KPI ──────────────────────────────────────────────────────────── */
     const kpi = useMemo(() => {
@@ -273,7 +371,7 @@ export default function HakemKarnesiPage() {
         if (!selectedJudge) return [];
         const jNum = selectedJudge.replace(/\D/g, '');
         const eKey = 'e' + jNum;
-        return evaluations
+        return filteredEvals
             .map(ev => {
                 const v = ev.ePanel[eKey];
                 if (v == null || isNaN(parseFloat(v))) return null;
@@ -282,18 +380,19 @@ export default function HakemKarnesiPage() {
                     y: +parseFloat(v).toFixed(3),
                     name: ev.athName,
                     alet: aletLabel(ev.alet),
+                    il: ev.athIl,
                     trimmed: ev.eTrimmed.includes(eKey),
                 };
             })
             .filter(Boolean);
-    }, [selectedJudge, evaluations]);
+    }, [selectedJudge, filteredEvals]);
 
     // Sporcu bazlı görünüm
     const athleteRows = useMemo(() =>
-        evaluations
+        filteredEvals
             .filter(e => e.aValues.length > 0 || e.eValues.length > 0)
             .sort((a, b) => a.athName.localeCompare(b.athName, 'tr-TR')),
-    [evaluations]);
+    [filteredEvals]);
 
     const compEntries = Object.entries(competitions).sort((a, b) =>
         new Date(b[1].tarih || b[1].baslangicTarihi || 0) - new Date(a[1].tarih || a[1].baslangicTarihi || 0)
@@ -474,9 +573,9 @@ export default function HakemKarnesiPage() {
                 </div>
             </div>
 
-            {/* Yarışma + sekme */}
+            {/* Yarışma + filtreler + sekme */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1, minWidth: 300 }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
                     <label style={lbl}>YARIŞMA</label>
                     <select value={selectedCompId} onChange={e => setSelectedCompId(e.target.value)}
                         style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', border: '1px solid #cbd5e1' }}>
@@ -486,6 +585,27 @@ export default function HakemKarnesiPage() {
                         ))}
                     </select>
                 </div>
+                {isArtistik && selectedCompId && (
+                    <>
+                        <div style={{ minWidth: 130 }}>
+                            <label style={lbl}>CİNSİYET</label>
+                            <select value={filterCinsiyet} onChange={e => { setFilterCinsiyet(e.target.value); setSelectedJudge(null); }}
+                                style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', border: '1px solid #cbd5e1' }}>
+                                <option value="all">Tümü</option>
+                                <option value="erkek">Erkek</option>
+                                <option value="kadin">Kadın</option>
+                            </select>
+                        </div>
+                        <div style={{ minWidth: 150 }}>
+                            <label style={lbl}>ALET</label>
+                            <select value={filterAlet} onChange={e => { setFilterAlet(e.target.value); setSelectedJudge(null); }}
+                                style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', border: '1px solid #cbd5e1' }}>
+                                <option value="all">Tüm Aletler</option>
+                                {artistikAletsAll.map(a => <option key={a} value={a}>{aletLabel(a)}</option>)}
+                            </select>
+                        </div>
+                    </>
+                )}
                 <div style={{ display: 'flex' }}>
                     {tabs.map(([key, label], i) => (
                         <button key={key} onClick={() => setTab(key)}
@@ -721,6 +841,54 @@ export default function HakemKarnesiPage() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* İl bazlı yakınlık — bu hakem hangi ile yakın/uzak */}
+                                {ilAnalysis.byJudge[selectedJudge]?.length > 0 && (
+                                    <div style={{ marginTop: 14 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                                            İL BAZLI EĞİLİM — yakından uzağa sıralı
+                                        </div>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f1f5f9' }}>
+                                                        <th style={{ ...th, textAlign: 'left' }}>İL</th>
+                                                        <th style={th}>DEĞ.</th>
+                                                        <th style={th}>EĞİLİM (işaretli)</th>
+                                                        <th style={th}>UZAKLIK (mutlak)</th>
+                                                        <th style={{ ...th, textAlign: 'left' }}>YORUM</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {ilAnalysis.byJudge[selectedJudge].map((r, idx, arr) => {
+                                                        const isClosest = idx === 0;
+                                                        const isFarthest = idx === arr.length - 1 && arr.length > 1;
+                                                        const yorum = r.avgSigned > 0.08 ? 'Bu ile SERT'
+                                                            : r.avgSigned < -0.08 ? 'Bu ile YUMUŞAK' : 'Panele yakın';
+                                                        return (
+                                                            <tr key={r.il} style={{
+                                                                borderBottom: '1px solid #f1f5f9',
+                                                                background: isClosest ? 'rgba(34,197,94,0.08)' : isFarthest ? 'rgba(239,68,68,0.08)' : 'transparent',
+                                                            }}>
+                                                                <td style={{ ...td, fontWeight: 700 }}>
+                                                                    {r.il}
+                                                                    {isClosest && <span style={{ marginLeft: 6, color: '#22c55e', fontSize: 10, fontWeight: 800 }}>EN YAKIN</span>}
+                                                                    {isFarthest && <span style={{ marginLeft: 6, color: '#ef4444', fontSize: 10, fontWeight: 800 }}>EN UZAK</span>}
+                                                                </td>
+                                                                <td style={tdCenter}>{r.count}</td>
+                                                                <td style={{ ...tdCenter, color: r.avgSigned > 0 ? '#ef4444' : '#0ea5e9', fontWeight: 700 }}>
+                                                                    {r.avgSigned > 0 ? '+' : ''}{fmt3(r.avgSigned)}
+                                                                </td>
+                                                                <td style={{ ...tdCenter, fontWeight: 700 }}>{fmt3(r.avgAbs)}</td>
+                                                                <td style={td}>{yorum}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         );
                     })()}
@@ -761,6 +929,129 @@ export default function HakemKarnesiPage() {
                         </div>
                         <div style={hintBar}>Koyu kırmızı = yüksek sapma (panelden uzak puanlama). Açık = tutarlı.</div>
                     </div>
+
+                    {/* Hakem Uyum Matrisi — panel içi ikili anlaşma */}
+                    {judgeAgreement.judges.length >= 2 && (
+                        <div style={cardBox}>
+                            <div style={cardTitle}>Hakem Uyum Matrisi <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— iki hakemin aynı sporcuya verdiği not farkı ortalaması</span></div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                            <th style={{ ...th, textAlign: 'left' }}></th>
+                                            {judgeAgreement.judges.map(j => <th key={j} style={th}>{j}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {judgeAgreement.judges.map(rowJ => (
+                                            <tr key={rowJ} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ ...td, fontWeight: 800, background: '#f8fafc' }}>{rowJ}</td>
+                                                {judgeAgreement.judges.map(colJ => {
+                                                    if (rowJ === colJ) return <td key={colJ} style={{ ...tdCenter, background: '#e2e8f0' }}>—</td>;
+                                                    const key = [rowJ, colJ].sort().join('|');
+                                                    const p = judgeAgreement.pairs[key];
+                                                    if (!p || !p.count) return <td key={colJ} style={{ ...tdCenter, color: '#cbd5e1' }}>—</td>;
+                                                    const diff = p.sum / p.count;
+                                                    const intensity = Math.min(diff / 0.6, 1);
+                                                    return (
+                                                        <td key={colJ} style={{
+                                                            ...tdCenter, fontWeight: 700,
+                                                            background: `rgba(239,68,68,${(intensity * 0.5).toFixed(2)})`,
+                                                            color: intensity > 0.6 ? '#fff' : '#0f172a',
+                                                        }}>
+                                                            {fmt3(diff)}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={hintBar}>Düşük (açık) = iki hakem birbirine yakın puanlıyor (uyumlu). Koyu = anlaşmazlık yüksek.</div>
+                        </div>
+                    )}
+
+                    {/* İl × Hakem Sapma Matrisi */}
+                    {ilAnalysis.ils.length > 0 && (
+                        <div style={cardBox}>
+                            <div style={cardTitle}>İl × Hakem Eğilim Matrisi <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— hakemin o ilin sporcularına panel ortalamasına göre eğilimi</span></div>
+                            <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                            <th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: '#f1f5f9' }}>İL</th>
+                                            {judgeStatsArtistik.map(j => <th key={j.judge} style={th}>{j.judge}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ilAnalysis.ils.map(il => (
+                                            <tr key={il} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ ...td, fontWeight: 700, position: 'sticky', left: 0, background: '#fff' }}>{il}</td>
+                                                {judgeStatsArtistik.map(j => {
+                                                    const dev = ilAnalysis.matrix[j.judge]?.[il];
+                                                    if (dev == null) return <td key={j.judge} style={{ ...tdCenter, color: '#cbd5e1' }}>—</td>;
+                                                    const intensity = Math.min(Math.abs(dev) / 0.6, 1);
+                                                    const isHarsh = dev > 0;
+                                                    return (
+                                                        <td key={j.judge} style={{
+                                                            ...tdCenter, fontWeight: 700,
+                                                            background: isHarsh
+                                                                ? `rgba(239,68,68,${(intensity * 0.55).toFixed(2)})`
+                                                                : `rgba(14,165,233,${(intensity * 0.55).toFixed(2)})`,
+                                                            color: intensity > 0.65 ? '#fff' : '#0f172a',
+                                                        }}>
+                                                            {dev > 0 ? '+' : ''}{fmt3(dev)}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={hintBar}>
+                                <span style={{ color: '#ef4444', fontWeight: 700 }}>Kırmızı (+)</span>: hakem o ilin sporcularına panelden daha SERT (çok kesinti).
+                                <span style={{ color: '#0ea5e9', fontWeight: 700 }}> Mavi (−)</span>: daha YUMUŞAK. Açık renk = panele yakın (tarafsız).
+                            </div>
+                        </div>
+                    )}
+
+                    {/* İl Genel Tablosu */}
+                    {ilGeneral.length > 0 && (
+                        <div style={cardBox}>
+                            <div style={cardTitle}>İl Genel Tablosu <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— ilin panel ortalama kesintisi ve panel uyumu</span></div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                                            <th style={{ ...th, textAlign: 'left' }}>İL</th>
+                                            <th style={th}>SPORCU</th>
+                                            <th style={th}>DEĞERLENDİRME</th>
+                                            <th style={th}>ORT. E KESİNTİ</th>
+                                            <th style={th}>PANEL UYUMU (std)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ilGeneral.map(r => (
+                                            <tr key={r.il} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ ...td, fontWeight: 700 }}>{r.il}</td>
+                                                <td style={tdCenter}>{r.athleteCount}</td>
+                                                <td style={tdCenter}>{r.evalCount}</td>
+                                                <td style={{ ...tdCenter, fontWeight: 700 }}>{fmt3(r.avgEDeduction)}</td>
+                                                <td style={{ ...tdCenter, color: r.avgPanelSpread <= 0.2 ? '#22c55e' : r.avgPanelSpread <= 0.4 ? '#f59e0b' : '#ef4444', fontWeight: 700 }}>
+                                                    {fmt3(r.avgPanelSpread)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={hintBar}>
+                                <strong>Ort. E Kesinti</strong>: düşük = ilin sporcuları daha temiz icra. <strong>Panel Uyumu</strong>: düşük = hakemler o ilin sporcularında daha çok hemfikir.
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
