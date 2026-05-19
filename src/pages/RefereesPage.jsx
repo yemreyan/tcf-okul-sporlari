@@ -433,6 +433,15 @@ export default function RefereesPage() {
                 toast(`${data.length} kayıt bulundu. Yükleme başlıyor...`, "info");
                 let successCount = 0;
                 let failCount = 0;
+                let skipCount = 0;
+
+                // Mükerrer kayıt önleme — mevcut hakem isimleri (normalize)
+                const normName = (s) => String(s || '')
+                    .toLocaleUpperCase('tr-TR')
+                    .replace(/İ/g, 'I').replace(/Ş/g, 'S').replace(/Ğ/g, 'G')
+                    .replace(/Ü/g, 'U').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
+                    .toLowerCase().replace(/\s+/g, ' ').trim();
+                const existingNames = new Set(referees.map(r => normName(r.adSoyad)));
 
                 for (let row of data) {
                     const adSoyad = row['Ad Soyad'] || row['Adı Soyadı'] || row['İsim'] || '';
@@ -446,13 +455,24 @@ export default function RefereesPage() {
 
                     const email = row['Email'] || row['E-mail'] || row['E-Posta'] || row['Eposta'] || '';
                     const telefon = row['Telefon'] || row['Tel'] || row['Cep'] || '';
+                    const il = row['İl'] || row['IL'] || row['İL'] || row['Il'] || row['Şehir'] || '';
+                    const brove = row['Brove'] || row['Bröve'] || row['BRÖVE'] || row['Brövesi'] || '';
+                    const disiplinRaw = (row['Disiplin'] || row['Disiplin/Branş'] || '').toString().toLowerCase().trim();
+                    const validDisiplin = ['artistik', 'aerobik', 'ritmik', 'trampolin', 'parkur'];
+                    const disiplin = validDisiplin.includes(disiplinRaw) ? disiplinRaw : disciplineId;
 
                     if (!adSoyad) { failCount++; continue; }
+
+                    // Aynı isim zaten kayıtlıysa atla (mükerrer önleme)
+                    if (existingNames.has(normName(adSoyad))) { skipCount++; continue; }
+                    existingNames.add(normName(adSoyad));
 
                     const newRef = {
                         adSoyad: adSoyad.toString().trim(),
                         brans: isAerobik ? 'Aerobik' : brans,
-                        disiplin: disciplineId,
+                        disiplin,
+                        il: il.toString().trim(),
+                        brove: brove.toString().trim(),
                         email: email.toString().trim(),
                         telefon: telefon.toString().trim(),
                         gorevSayisi: 0,
@@ -462,7 +482,7 @@ export default function RefereesPage() {
                     await push(ref(db, `referees`), newRef);
                     successCount++;
                 }
-                toast(`İşlem tamamlandı. Başarılı: ${successCount}, Başarısız: ${failCount}`, "success");
+                toast(`İşlem tamamlandı. Eklenen: ${successCount}, Atlanan (mükerrer): ${skipCount}, Hatalı: ${failCount}`, "success");
             } catch (err) {
                 if (import.meta.env.DEV) console.error("Excel parse error", err);
                 toast("Hata oluştu.", "error");
