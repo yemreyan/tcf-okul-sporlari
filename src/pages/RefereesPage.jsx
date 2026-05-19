@@ -7,6 +7,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { useDeleteGuard } from '../lib/DeleteGuardContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { AEROBIK_REFEREES_2026 } from '../data/aerobikRefereesSeed';
+import HakemGorevRaporu from './HakemGorevRaporu';
 // XLSX — sadece Excel upload sırasında dynamic import ile yüklenir
 import { logAction } from '../lib/auditLogger';
 import './RefereesPage.css';
@@ -97,6 +98,7 @@ export default function RefereesPage() {
     const [bulkResults, setBulkResults] = useState(null); // [{ adSoyad, username, password }]
 
     const [filterBrove, setFilterBrove] = useState('');
+    const [mainTab, setMainTab] = useState('liste'); // liste | gorev
 
     // Form State for Add/Edit
     const [formData, setFormData] = useState({
@@ -733,6 +735,26 @@ export default function RefereesPage() {
                 </div>
             </header>
 
+            {/* Sekme geçişi: Hakem Listesi (branş) · Görev Raporu (tüm branşlar) */}
+            <div style={{ display: 'flex', gap: 0, padding: '0 1.25rem', marginTop: 12 }}>
+                {[['liste', 'Hakem Listesi'], ['gorev', 'Görev Raporu']].map(([key, lbl], i) => (
+                    <button key={key} onClick={() => setMainTab(key)}
+                        style={{
+                            padding: '0.6rem 1.4rem', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: i === 0 ? '0.5rem 0 0 0.5rem' : '0 0.5rem 0.5rem 0',
+                            borderLeft: i === 0 ? '1px solid #cbd5e1' : 'none',
+                            background: mainTab === key ? '#4F46E5' : '#fff',
+                            color: mainTab === key ? '#fff' : '#475569',
+                        }}>
+                        {lbl}
+                    </button>
+                ))}
+            </div>
+
+            {mainTab === 'gorev' && <HakemGorevRaporu referees={referees} />}
+
+            {mainTab === 'liste' && (
             <main className="premium-main-content">
                 {/* Master View (Left/Center) */}
                 <div className={`master-view ${selectedReferee ? 'panel-open' : ''}`}>
@@ -1013,6 +1035,7 @@ export default function RefereesPage() {
                     )}
                 </aside>
             </main>
+            )}
 
             {/* Premium Centered Modal for Add/Edit */}
             {isAddEditModalOpen && (

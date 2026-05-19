@@ -12,6 +12,7 @@
  *  3) SPORCU BAZLI — sporcu × alet panel notları
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useDiscipline } from '../lib/DisciplineContext';
@@ -187,15 +188,22 @@ export default function HakemKarnesiPage() {
     const isRitmik = disciplineId === 'ritmik';
     const isArtistik = disciplineId === 'artistik';
 
+    // Derin bağlantı parametreleri (Hakem Yönetimi → Karne)
+    const [searchParams] = useSearchParams();
+
     const [competitions, setCompetitions] = useState({});
-    const [selectedCompId, setSelectedCompId] = useState('');
+    const [selectedCompId, setSelectedCompId] = useState(() => searchParams.get('comp') || '');
     const [data, setData] = useState({ scores: {}, athletes: {}, referees: {}, logs: {} });
     const [refereesGlobal, setRefereesGlobal] = useState({});
     const [loading, setLoading] = useState(false);
-    const [tab, setTab] = useState(isArtistik ? 'analiz' : 'judge'); // analiz | judge | athlete
+    const [tab, setTab] = useState(() => {
+        const t = searchParams.get('tab');
+        if (t && isArtistik) return t;
+        return isArtistik ? 'analiz' : 'judge';
+    }); // analiz | fig | compare | season | judge | athlete
     const [selectedJudge, setSelectedJudge] = useState(null); // drill-down
     const [figExpanded, setFigExpanded] = useState({}); // FIG kart key → sporcu tablosu açık
-    const [figSearch, setFigSearch] = useState('');
+    const [figSearch, setFigSearch] = useState(() => searchParams.get('judge') || '');
     const [figVerdictFilter, setFigVerdictFilter] = useState([]); // boş = tümü
     const [cmpA, setCmpA] = useState(''); // karşılaştırma — hakem örnek key
     const [cmpB, setCmpB] = useState('');
