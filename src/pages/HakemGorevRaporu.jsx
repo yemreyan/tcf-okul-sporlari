@@ -102,6 +102,10 @@ export default function HakemGorevRaporu({ referees }) {
     const [mergeModal, setMergeModal] = useState(null); // { items }
     const [deleteModal, setDeleteModal] = useState(null); // { id, name } | { ids: [] }
     const [dupesOnly, setDupesOnly] = useState(false);
+    // Görev ekleme / silme modalları
+    const [addGorevModal, setAddGorevModal] = useState(null); // { ref }
+    const [addForm, setAddForm] = useState({ tarih: '', yarisma: '', brans: 'artistik', rol: '' });
+    const [delGorevConfirm, setDelGorevConfirm] = useState(null); // { refId, ad, entry }
 
     /* ── Tüm branşları tara ──────────────────────────────────────────── */
     const runScan = async () => {
@@ -190,7 +194,7 @@ export default function HakemGorevRaporu({ referees }) {
                     discipline: '', disciplineLabel: 'Elle', routePrefix: '',
                     compId: '', compName: g.compName, date: g.date || '',
                     catId: '', aletId: '', panelId: g.role || '',
-                    refId: r.id, refName: r.adSoyad, manual: true,
+                    refId: r.id, refName: r.adSoyad, manual: true, manualEntry: g,
                 });
                 rec.comps.add(`manual|${normName(g.compName)}|${g.date || i}`);
             });
@@ -390,6 +394,59 @@ export default function HakemGorevRaporu({ referees }) {
             setMsg('Birleştirme sırasında hata oluştu.');
         }
     };
+    // Yeni görev ekle — referee.gecmisYarismalar listesine ekler
+    const openAddGorev = (ref) => {
+        if (!ref?.id) { setMsg('Bu hakem henüz DB\'de değil — önce eklenmesi gerekir.'); return; }
+        setAddForm({ tarih: '', yarisma: '', brans: ref.disiplin || 'artistik', rol: '' });
+        setAddGorevModal({ ref });
+    };
+    const submitAddGorev = async () => {
+        if (!addGorevModal?.ref?.id) return;
+        if (!addForm.yarisma.trim()) { setMsg('Yarışma adı zorunlu.'); return; }
+        const r = (referees || []).find(x => x.id === addGorevModal.ref.id);
+        const gy = r?.gecmisYarismalar;
+        const list = Array.isArray(gy) ? [...gy] : (gy ? Object.values(gy) : []);
+        list.push({
+            compName: addForm.yarisma.trim(),
+            date: addForm.tarih.trim(),
+            role: [addForm.brans, addForm.rol].filter(Boolean).join(' · '),
+            addedAt: new Date().toISOString(),
+            manualAdd: true,
+        });
+        try {
+            await update(ref(db, `referees/${addGorevModal.ref.id}`), {
+                gecmisYarismalar: list,
+                gorevSayisi: list.length,
+            });
+            setMsg(`'${addGorevModal.ref.adSoyad}' kaydına yeni görev eklendi.`);
+            setAddGorevModal(null);
+        } catch (e) { setMsg('Görev eklenirken hata oluştu.'); }
+    };
+
+    // Görev sil — referee.gecmisYarismalar'dan bir kaydı kaldırır
+    const performGorevDelete = async () => {
+        if (!delGorevConfirm) return;
+        const { refId, entry } = delGorevConfirm;
+        const r = (referees || []).find(x => x.id === refId);
+        if (!r) { setDelGorevConfirm(null); return; }
+        const gy = r.gecmisYarismalar;
+        const list = Array.isArray(gy) ? [...gy] : (gy ? Object.values(gy) : []);
+        // İlk eşleşeni (compName + date) kaldır
+        const match = (g) => g && normName(g.compName) === normName(entry.compName)
+            && String(g.date || '') === String(entry.date || '');
+        const idx = list.findIndex(match);
+        if (idx < 0) { setMsg('Görev kaydı bulunamadı.'); setDelGorevConfirm(null); return; }
+        list.splice(idx, 1);
+        try {
+            await update(ref(db, `referees/${refId}`), {
+                gecmisYarismalar: list,
+                gorevSayisi: list.length,
+            });
+            setMsg(`'${r.adSoyad}' kaydından bir görev silindi.`);
+            setDelGorevConfirm(null);
+        } catch (e) { setMsg('Görev silinirken hata oluştu.'); }
+    };
+
     const performDelete = async (ids) => {
         try {
             for (const id of ids) await remove(ref(db, `referees/${id}`));
@@ -598,6 +655,8 @@ export default function HakemGorevRaporu({ referees }) {
                                             onToggleSelect={() => toggleSelect(r.referee?.id)}
                                             isDupe={dupeClusterIds.has(r.key)}
                                             onDelete={() => r.referee?.id && setDeleteModal({ ids: [r.referee.id], name: r.adSoyad })}
+                                            onAddGorev={() => openAddGorev(r.referee)}
+                                            onDeleteGorev={(a) => setDelGorevConfirm({ refId: r.referee?.id, ad: r.adSoyad, entry: a.manualEntry })}
                                         />
                                     ))}
                                 </tbody>
@@ -655,6 +714,82 @@ export default function HakemGorevRaporu({ referees }) {
                 </ModalOverlay>
             )}
 
+            {/* Yeni Görev Ekle modalı */}
+            {addGorevModal && (
+                <ModalOverlay onClose={() => setAddGorevModal(null)}>
+                    <div style={modalCard}>
+                        <div style={modalHead('#22c55e')}>
+                            <i className="material-icons-round">add_circle</i>
+                            Yeni Görev Ekle — {addGorevModal.ref?.adSoyad}
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <Field label="Tarih" hint="dd.mm.yyyy ya da '12 Mart 2026'">
+                                <input value={addForm.tarih} onChange={e => setAddForm({ ...addForm, tarih: e.target.value })}
+                                    placeholder="örn. 12.03.2026"
+                                    style={inp} />
+                            </Field>
+                            <Field label="Yarışma" hint="örn. EDİRNE - AC, Şanlıurfa">
+                                <input value={addForm.yarisma} onChange={e => setAddForm({ ...addForm, yarisma: e.target.value })}
+                                    placeholder="Yarışma adı / yer"
+                                    style={inp} />
+                            </Field>
+                            <Field label="Branş">
+                                <select value={addForm.brans} onChange={e => setAddForm({ ...addForm, brans: e.target.value })}
+                                    style={inp}>
+                                    <option value="artistik">Artistik</option>
+                                    <option value="ritmik">Ritmik</option>
+                                    <option value="aerobik">Aerobik</option>
+                                    <option value="parkur">Parkur</option>
+                                    <option value="trampolin">Trampolin</option>
+                                </select>
+                            </Field>
+                            <Field label="Rol / Açıklama (ops.)">
+                                <input value={addForm.rol} onChange={e => setAddForm({ ...addForm, rol: e.target.value })}
+                                    placeholder="örn. Baş Hakem, Hakem 3"
+                                    style={inp} />
+                            </Field>
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setAddGorevModal(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={submitAddGorev} style={btn('#22c55e', false)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>save</i>
+                                Görevi Kaydet
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* Görev silme onay modalı */}
+            {delGorevConfirm && (
+                <ModalOverlay onClose={() => setDelGorevConfirm(null)}>
+                    <div style={modalCard}>
+                        <div style={modalHead('#ef4444')}>
+                            <i className="material-icons-round">delete</i>
+                            Görev Sil
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem', fontSize: 14, color: '#475569' }}>
+                            <strong>{delGorevConfirm.ad}</strong> hakeminin şu görev kaydı silinecek:
+                            <div style={{ background: '#f1f5f9', borderRadius: 6, padding: '8px 10px', marginTop: 8, fontSize: 13 }}>
+                                <strong>{delGorevConfirm.entry?.compName}</strong>
+                                {delGorevConfirm.entry?.date && <span style={{ color: '#64748b' }}> · {delGorevConfirm.entry.date}</span>}
+                                {delGorevConfirm.entry?.role && <div style={{ fontSize: 11, color: '#94a3b8' }}>{delGorevConfirm.entry.role}</div>}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
+                                Yalnız bu hakemin görev kaydı silinir; yarışma panelleri etkilenmez.
+                            </div>
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setDelGorevConfirm(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={performGorevDelete} style={btn('#ef4444', false)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>delete_forever</i>
+                                Sil
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
             {/* Silme modalı */}
             {deleteModal && (
                 <ModalOverlay onClose={() => setDeleteModal(null)}>
@@ -687,6 +822,16 @@ export default function HakemGorevRaporu({ referees }) {
     );
 }
 
+function Field({ label, hint, children }) {
+    return (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
+            {children}
+            {hint && <span style={{ fontSize: 10.5, color: '#94a3b8' }}>{hint}</span>}
+        </label>
+    );
+}
+
 function ModalOverlay({ onClose, children }) {
     return (
         <div onClick={onClose} style={{
@@ -699,7 +844,7 @@ function ModalOverlay({ onClose, children }) {
 }
 
 /* ── Hakem satırı + açılır görev detayı ──────────────────────────────── */
-function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelected, onToggleSelect, isDupe, onDelete }) {
+function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelected, onToggleSelect, isDupe, onDelete, onAddGorev, onDeleteGorev }) {
     const primaryDis = (r.disciplineIdsArr && r.disciplineIdsArr[0]) || null;
     const stripeColor = primaryDis ? dmeta(primaryDis).color : '#cbd5e1';
     return (
@@ -778,9 +923,24 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
             {expanded && !manageMode && (
                 <tr>
                     <td colSpan={7} style={{ background: '#f8fafc', padding: '14px 18px', borderLeft: `4px solid ${stripeColor}` }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: 0.4, marginBottom: 8, textTransform: 'uppercase' }}>
-                            <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4, color: stripeColor }}>list_alt</i>
-                            Görev Listesi ({r.sortedAssignments.length})
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                                <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4, color: stripeColor }}>list_alt</i>
+                                Görev Listesi ({r.sortedAssignments.length})
+                            </div>
+                            <div style={{ marginLeft: 'auto' }}>
+                                {r.referee?.id && (
+                                    <button onClick={(e) => { e.stopPropagation(); onAddGorev && onAddGorev(); }}
+                                        style={{
+                                            background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6,
+                                            padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                        }}>
+                                        <i className="material-icons-round" style={{ fontSize: 14 }}>add_circle</i>
+                                        Görev Ekle
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -792,6 +952,7 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
                                         <th style={th}>KATEGORİ</th>
                                         <th style={th}>ALET / PANEL</th>
                                         <th style={th}>KARNE</th>
+                                        <th style={th}></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -822,6 +983,17 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
                                                             Karne
                                                         </button>
                                                     ) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                                </td>
+                                                <td style={tdc}>
+                                                    {a.manual ? (
+                                                        <button onClick={(e) => { e.stopPropagation(); onDeleteGorev && onDeleteGorev(a); }}
+                                                            title="Bu görevi sil"
+                                                            style={{ background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
+                                                            <i className="material-icons-round" style={{ fontSize: 14 }}>delete</i>
+                                                        </button>
+                                                    ) : (
+                                                        <span title="Yarışma kaydından geliyor — silmek için ilgili yarışmadan kaldırın" style={{ color: '#cbd5e1', fontSize: 16 }}>🔒</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -881,6 +1053,11 @@ const primaryBtn = (disabled) => ({
     fontWeight: 800, fontSize: 13, cursor: disabled ? 'default' : 'pointer',
     boxShadow: disabled ? 'none' : '0 2px 6px rgba(0,0,0,0.12)',
 });
+// Form input stili
+const inp = {
+    width: '100%', padding: '0.5rem 0.7rem', borderRadius: 8,
+    border: '1px solid #cbd5e1', fontSize: 13, outline: 'none', background: '#fff',
+};
 // Modal stilleri
 const modalCard = {
     background: '#fff', borderRadius: 12, minWidth: 340, maxWidth: 520,
