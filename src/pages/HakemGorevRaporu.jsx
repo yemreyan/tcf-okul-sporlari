@@ -475,6 +475,14 @@ export default function HakemGorevRaporu({ referees }) {
     };
 
     // Görev sil — referee.gecmisYarismalar'dan bir kaydı kaldırır
+    // Tek tuş ile bir hakemin disiplinini değiştir
+    const setRefDiscipline = async (refId, dis) => {
+        if (!refId) return;
+        try {
+            await update(ref(db, `referees/${refId}`), { disiplin: dis });
+        } catch (e) { setMsg('Branş güncellenirken hata oluştu.'); }
+    };
+
     const performGorevDelete = async () => {
         if (!delGorevConfirm) return;
         const { refId, entry } = delGorevConfirm;
@@ -799,6 +807,7 @@ export default function HakemGorevRaporu({ referees }) {
                                             onDelete={() => r.referee?.id && setDeleteModal({ ids: [r.referee.id], name: r.adSoyad })}
                                             onAddGorev={() => openAddGorev(r.referee)}
                                             onDeleteGorev={(a) => setDelGorevConfirm({ refId: r.referee?.id, ad: r.adSoyad, entry: a.manualEntry })}
+                                            onSetDiscipline={(dis) => setRefDiscipline(r.referee?.id, dis)}
                                         />
                                     ))}
                                 </tbody>
@@ -1096,7 +1105,7 @@ function ModalOverlay({ onClose, children }) {
 }
 
 /* ── Hakem satırı + açılır görev detayı ──────────────────────────────── */
-function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelected, onToggleSelect, isDupe, onDelete, onAddGorev, onDeleteGorev }) {
+function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelected, onToggleSelect, isDupe, onDelete, onAddGorev, onDeleteGorev, onSetDiscipline }) {
     const primaryDis = (r.disciplineIdsArr && r.disciplineIdsArr[0]) || null;
     const stripeColor = primaryDis ? dmeta(primaryDis).color : '#cbd5e1';
     return (
@@ -1131,21 +1140,45 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
                     {r.brove ? <span style={{ ...badge('#64748B'), marginLeft: 0 }}>{r.brove}</span> : '—'}
                 </td>
                 <td style={tdc}>
-                    <div style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-                        {(r.disciplineIdsArr || []).map(d => {
-                            const m = dmeta(d);
-                            return (
-                                <span key={d} title={m.label} style={{
-                                    background: m.light, color: m.color, border: `1px solid ${m.color}`,
-                                    padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 800,
-                                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        {r.referee?.id ? (
+                            <select
+                                value={r.referee.disiplin || ''}
+                                onChange={(e) => { e.stopPropagation(); onSetDiscipline && onSetDiscipline(e.target.value); }}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Hakemin DB branşı"
+                                style={{
+                                    padding: '3px 6px', fontSize: 11, fontWeight: 700,
+                                    border: `1.5px solid ${r.referee.disiplin ? dmeta(r.referee.disiplin).color : '#F59E0B'}`,
+                                    color: r.referee.disiplin ? dmeta(r.referee.disiplin).color : '#92400E',
+                                    background: r.referee.disiplin ? dmeta(r.referee.disiplin).light : '#FFFBEB',
+                                    borderRadius: 6, cursor: 'pointer', minWidth: 110,
                                 }}>
-                                    <i className="material-icons-round" style={{ fontSize: 12 }}>{m.icon}</i>
-                                    {m.label}
-                                </span>
-                            );
-                        })}
-                        {(!r.disciplineIdsArr || r.disciplineIdsArr.length === 0) && <span style={{ color: '#cbd5e1' }}>—</span>}
+                                <option value="">— Seçiniz —</option>
+                                <option value="artistik">Artistik</option>
+                                <option value="ritmik">Ritmik</option>
+                                <option value="aerobik">Aerobik</option>
+                                <option value="parkur">Parkur</option>
+                                <option value="trampolin">Trampolin</option>
+                            </select>
+                        ) : <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>(listede yok)</span>}
+                        {r.disciplineIdsArr && r.disciplineIdsArr.length > 0 && (
+                            <div style={{ display: 'inline-flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                {r.disciplineIdsArr.map(d => {
+                                    const m = dmeta(d);
+                                    return (
+                                        <span key={d} title={`Görev aldığı: ${m.label}`} style={{
+                                            background: m.light, color: m.color, border: `1px solid ${m.color}`,
+                                            padding: '1px 6px', borderRadius: 999, fontSize: 9.5, fontWeight: 700,
+                                            display: 'inline-flex', alignItems: 'center', gap: 2,
+                                        }}>
+                                            <i className="material-icons-round" style={{ fontSize: 10 }}>{m.icon}</i>
+                                            {m.label}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </td>
                 <td style={{ ...tdc, fontWeight: 900, fontSize: 15, color: '#0f172a' }}>{r.gorevSayisi}</td>
