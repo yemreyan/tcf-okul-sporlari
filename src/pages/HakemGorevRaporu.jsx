@@ -106,6 +106,7 @@ export default function HakemGorevRaporu({ referees }) {
     const [addGorevModal, setAddGorevModal] = useState(null); // { ref }
     const [addForm, setAddForm] = useState({ tarih: '', yarisma: '', brans: 'artistik', rol: '' });
     const [delGorevConfirm, setDelGorevConfirm] = useState(null); // { refId, ad, entry }
+    const [autoMergeModal, setAutoMergeModal] = useState(null); // { clusters }
 
     /* ── Tüm branşları tara ──────────────────────────────────────────── */
     const runScan = async () => {
@@ -215,6 +216,17 @@ export default function HakemGorevRaporu({ referees }) {
         }).sort((a, b) => b.gorevSayisi - a.gorevSayisi || a.adSoyad.localeCompare(b.adSoyad, 'tr'));
         return rows;
     }, [scan, referees]);
+
+    // Tam mükerrer — normalize edilmiş ismi birebir aynı kayıtlar (otomatik birleştirilebilir)
+    const exactDupeClusters = useMemo(() => {
+        const map = {};
+        report.forEach(r => {
+            if (!r.referee?.id) return; // sadece DB'de olanları birleştirebiliriz
+            const k = normName(r.adSoyad);
+            (map[k] = map[k] || []).push(r);
+        });
+        return Object.values(map).filter(arr => arr.length >= 2);
+    }, [report]);
 
     // Olası mükerrer hakemler — isim lev<=2, aynı soyad-baş-3
     const dupeClusterIds = useMemo(() => {
@@ -447,6 +459,56 @@ export default function HakemGorevRaporu({ referees }) {
         } catch (e) { setMsg('Görev silinirken hata oluştu.'); }
     };
 
+    // Aynı isimli tam mükerrer kayıtları otomatik birleştir
+    const autoMergeExact = async () => {
+        if (!autoMergeModal) return;
+        let mergedClusters = 0, deleted = 0;
+        try {
+            for (const cluster of autoMergeModal.clusters) {
+                // En çok görev geçmişine sahip olanı kazanan seç
+                const score = (r) => {
+                    const gy = r.referee?.gecmisYarismalar;
+                    const len = Array.isArray(gy) ? gy.length : (gy ? Object.keys(gy).length : 0);
+                    return len * 10 + (r.referee?.brove ? 1 : 0) + (r.referee?.il ? 1 : 0);
+                };
+                const sorted = [...cluster].sort((a, b) => score(b) - score(a));
+                const winner = sorted[0];
+                const losers = sorted.slice(1);
+                // gecmisYarismalar birleşimi (compName+date dedupe)
+                const all = []; const seen = new Set();
+                [winner, ...losers].forEach(rec => {
+                    const gy = rec.referee?.gecmisYarismalar;
+                    const list = Array.isArray(gy) ? gy : (gy ? Object.values(gy) : []);
+                    list.forEach(g => {
+                        if (!g || !g.compName) return;
+                        const k = normName(g.compName) + '|' + (g.date || '');
+                        if (seen.has(k)) return;
+                        seen.add(k); all.push(g);
+                    });
+                });
+                const updates = {};
+                updates[`referees/${winner.referee.id}/gecmisYarismalar`] = all;
+                updates[`referees/${winner.referee.id}/gorevSayisi`] = all.length;
+                ['il', 'brove', 'email', 'telefon', 'disiplin', 'brans'].forEach(f => {
+                    if (!winner.referee?.[f]) {
+                        const v = losers.map(l => l.referee?.[f]).find(x => x);
+                        if (v) updates[`referees/${winner.referee.id}/${f}`] = v;
+                    }
+                });
+                await update(ref(db), updates);
+                for (const l of losers) {
+                    await remove(ref(db, `referees/${l.referee.id}`));
+                    deleted++;
+                }
+                mergedClusters++;
+            }
+            setMsg(`${mergedClusters} grup birleştirildi; ${deleted} mükerrer kayıt silindi.`);
+            setAutoMergeModal(null);
+        } catch (e) {
+            setMsg('Otomatik birleştirme sırasında hata oluştu.');
+        }
+    };
+
     const performDelete = async (ids) => {
         try {
             for (const id of ids) await remove(ref(db, `referees/${id}`));
@@ -518,6 +580,13 @@ export default function HakemGorevRaporu({ referees }) {
                         style={btn('#6366f1', selected.size < 2)}>
                         <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
                         Birleştir
+                    </button>
+                    <button onClick={() => setAutoMergeModal({ clusters: exactDupeClusters })}
+                        disabled={exactDupeClusters.length === 0}
+                        style={btn('#0EA5E9', exactDupeClusters.length === 0)}
+                        title="Aynı isimle birden çok kez kayıtlı hakemleri tek tuşla birleştir">
+                        <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>auto_awesome</i>
+                        Aynı İsimleri Birleştir ({exactDupeClusters.length})
                     </button>
                     <button onClick={() => setDeleteModal({ ids: [...selected] })} disabled={selected.size < 1}
                         style={btn('#ef4444', selected.size < 1)}>
@@ -708,6 +777,49 @@ export default function HakemGorevRaporu({ referees }) {
                             <button onClick={() => performMerge(mergeModal.winnerId)} style={btn('#6366f1', false)}>
                                 <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
                                 Birleştir
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* Aynı İsimleri Otomatik Birleştir modalı */}
+            {autoMergeModal && (
+                <ModalOverlay onClose={() => setAutoMergeModal(null)}>
+                    <div style={{ ...modalCard, maxWidth: 620 }}>
+                        <div style={modalHead('#0EA5E9')}>
+                            <i className="material-icons-round">auto_awesome</i>
+                            Aynı İsimleri Otomatik Birleştir
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem' }}>
+                            {autoMergeModal.clusters.length === 0 ? (
+                                <div style={{ color: '#22c55e', fontWeight: 600 }}>Birebir aynı isimli mükerrer kayıt bulunamadı.</div>
+                            ) : (
+                                <>
+                                    <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
+                                        <strong>{autoMergeModal.clusters.length}</strong> grup tek kayda indirilecek
+                                        (en çok görev geçmişine sahip kayıt korunur, diğerleri silinip görev geçmişi taşınır).
+                                    </div>
+                                    <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                                        {autoMergeModal.clusters.map((cl, i) => (
+                                            <div key={i} style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9' }}>
+                                                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{cl[0].adSoyad}</div>
+                                                <div style={{ fontSize: 11, color: '#64748b' }}>
+                                                    {cl.length} kayıt → 1 kayda indirilecek
+                                                    ({cl.reduce((s, r) => s + r.gorevSayisi, 0)} toplam görev)
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setAutoMergeModal(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={autoMergeExact} disabled={autoMergeModal.clusters.length === 0}
+                                style={btn('#0EA5E9', autoMergeModal.clusters.length === 0)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
+                                Hepsini Birleştir
                             </button>
                         </div>
                     </div>
