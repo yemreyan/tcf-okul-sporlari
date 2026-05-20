@@ -149,20 +149,23 @@ export default function HakemGorevRaporu({ referees }) {
 
     /* ── Hakem bazlı rapor ───────────────────────────────────────────── */
     const report = useMemo(() => {
-        // referee index
-        const byId = {}, byName = {};
+        // referee index (id, isim, alias)
+        const byId = {}, byName = {}, byAlias = {};
         (referees || []).forEach(r => {
             byId[r.id] = r;
             byName[normName(r.adSoyad)] = r;
+            const aliases = Array.isArray(r.nameAliases) ? r.nameAliases : (r.nameAliases ? Object.values(r.nameAliases) : []);
+            aliases.forEach(a => { const n = normName(a); if (n) byAlias[n] = r; });
         });
         // hakem → { ref, assignments[], comps Set, disciplines Set }
         const map = {};
+        const lookup = (name, idHint) => (idHint && byId[idHint]) || byName[normName(name)] || byAlias[normName(name)];
         const keyFor = (a) => {
-            const r = (a.refId && byId[a.refId]) || byName[normName(a.refName)];
+            const r = lookup(a.refName, a.refId);
             return r ? `ref:${r.id}` : `name:${normName(a.refName)}`;
         };
         (scan?.assignments || []).forEach(a => {
-            const r = (a.refId && byId[a.refId]) || byName[normName(a.refName)];
+            const r = lookup(a.refName, a.refId);
             const key = keyFor(a);
             const rec = map[key] = map[key] || {
                 key, referee: r || null,
@@ -353,11 +356,11 @@ export default function HakemGorevRaporu({ referees }) {
     };
 
     /* ── Yönetim modu yardımcıları ───────────────────────────────────── */
-    const toggleSelect = (refId) => {
-        if (!refId) return;
+    const toggleSelect = (key) => {
+        if (!key) return;
         setSelected(prev => {
             const s = new Set(prev);
-            s.has(refId) ? s.delete(refId) : s.add(refId);
+            s.has(key) ? s.delete(key) : s.add(key);
             return s;
         });
     };
@@ -365,18 +368,24 @@ export default function HakemGorevRaporu({ referees }) {
     const exitManageMode = () => { setManageMode(false); clearSelection(); };
 
     const openMergeModal = () => {
-        const items = report.filter(r => r.referee?.id && selected.has(r.referee.id));
+        const items = report.filter(r => selected.has(r.key));
         if (items.length < 2) { setMsg('Birleştirmek için en az 2 hakem seçin.'); return; }
-        setMergeModal({ items, winnerId: items[0].referee.id });
+        const dbItems = items.filter(r => r.referee?.id);
+        if (dbItems.length === 0) {
+            setMsg('En az 1 DB-kayıtlı hakem seçmelisiniz (kazanan o olacak; "listede yok" olanlar alias olarak eklenir).');
+            return;
+        }
+        setMergeModal({ items, winnerId: dbItems[0].referee.id });
     };
     const performMerge = async (winnerId) => {
         if (!mergeModal) return;
         try {
-            const winner = mergeModal.items.find(r => r.referee.id === winnerId);
-            const losers = mergeModal.items.filter(r => r.referee.id !== winnerId);
-            // gecmisYarismalar union (compName+date dedupe)
-            const all = [];
-            const seen = new Set();
+            const winner = mergeModal.items.find(r => r.referee?.id === winnerId);
+            if (!winner) return;
+            const losers = mergeModal.items.filter(r => r !== winner);
+            const dbLosers = losers.filter(r => r.referee?.id);
+            // gecmisYarismalar union (compName+date dedupe) — sadece DB kayıtlardan
+            const all = []; const seen = new Set();
             const pushList = (rec) => {
                 const gy = rec.referee?.gecmisYarismalar;
                 const list = Array.isArray(gy) ? gy : (gy ? Object.values(gy) : []);
@@ -387,20 +396,34 @@ export default function HakemGorevRaporu({ referees }) {
                     seen.add(k); all.push(g);
                 });
             };
-            pushList(winner); losers.forEach(pushList);
+            pushList(winner); dbLosers.forEach(pushList);
+            // nameAliases — hem DB hem "listede yok" kaybedenlerin isimlerini ekle
+            const existing = Array.isArray(winner.referee?.nameAliases)
+                ? winner.referee.nameAliases
+                : (winner.referee?.nameAliases ? Object.values(winner.referee.nameAliases) : []);
+            const aliasSet = new Set(existing.map(a => normName(a)));
+            aliasSet.add(normName(winner.adSoyad));
+            const newAliases = [...existing];
+            losers.forEach(l => {
+                const nm = l.adSoyad; if (!nm) return;
+                const k = normName(nm);
+                if (aliasSet.has(k)) return;
+                aliasSet.add(k); newAliases.push(nm);
+            });
             const updates = {};
             updates[`referees/${winnerId}/gecmisYarismalar`] = all;
             updates[`referees/${winnerId}/gorevSayisi`] = all.length;
-            // boş alanları losers'tan doldur
+            if (newAliases.length) updates[`referees/${winnerId}/nameAliases`] = newAliases;
             ['il', 'brove', 'email', 'telefon', 'disiplin', 'brans'].forEach(f => {
                 if (!winner.referee?.[f]) {
-                    const v = losers.map(l => l.referee?.[f]).find(x => x);
+                    const v = dbLosers.map(l => l.referee?.[f]).find(x => x);
                     if (v) updates[`referees/${winnerId}/${f}`] = v;
                 }
             });
             await update(ref(db), updates);
-            for (const l of losers) await remove(ref(db, `referees/${l.referee.id}`));
-            setMsg(`${losers.length + 1} hakem birleştirildi. Kalan: ${winner.adSoyad}.`);
+            for (const l of dbLosers) await remove(ref(db, `referees/${l.referee.id}`));
+            const nonDb = losers.length - dbLosers.length;
+            setMsg(`Birleştirildi → ${winner.adSoyad}. ${dbLosers.length} DB kaydı silindi` + (nonDb ? `, ${nonDb} "listede yok" kayıt alias olarak eklendi.` : '.'));
             setMergeModal(null); clearSelection();
         } catch (e) {
             setMsg('Birleştirme sırasında hata oluştu.');
@@ -588,7 +611,11 @@ export default function HakemGorevRaporu({ referees }) {
                         <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>auto_awesome</i>
                         Aynı İsimleri Birleştir ({exactDupeClusters.length})
                     </button>
-                    <button onClick={() => setDeleteModal({ ids: [...selected] })} disabled={selected.size < 1}
+                    <button onClick={() => {
+                        const ids = report.filter(r => selected.has(r.key) && r.referee?.id).map(r => r.referee.id);
+                        if (ids.length === 0) { setMsg('Silinecek DB-kayıtlı hakem seçilmedi (listede yok kayıtlar silinemez).'); return; }
+                        setDeleteModal({ ids });
+                    }} disabled={selected.size < 1}
                         style={btn('#ef4444', selected.size < 1)}>
                         <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>delete</i>
                         Sil
@@ -720,8 +747,8 @@ export default function HakemGorevRaporu({ referees }) {
                                             onToggle={() => setExpanded(s => ({ ...s, [r.key]: !s[r.key] }))}
                                             navigate={navigate}
                                             manageMode={manageMode}
-                                            isSelected={r.referee?.id ? selected.has(r.referee.id) : false}
-                                            onToggleSelect={() => toggleSelect(r.referee?.id)}
+                                            isSelected={selected.has(r.key)}
+                                            onToggleSelect={() => toggleSelect(r.key)}
                                             isDupe={dupeClusterIds.has(r.key)}
                                             onDelete={() => r.referee?.id && setDeleteModal({ ids: [r.referee.id], name: r.adSoyad })}
                                             onAddGorev={() => openAddGorev(r.referee)}
@@ -754,23 +781,31 @@ export default function HakemGorevRaporu({ referees }) {
                             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
                                 Hangi kayıt <strong>kalsın</strong>? Diğer kayıtların görev geçmişi seçili kayda taşınacak ve diğerleri silinecek.
                             </div>
-                            {mergeModal.items.map(it => (
-                                <label key={it.referee.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
-                                    borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 6,
-                                    cursor: 'pointer',
-                                    background: mergeModal.winnerId === it.referee.id ? '#EEF2FF' : '#fff',
-                                }}>
-                                    <input type="radio" name="winner" checked={mergeModal.winnerId === it.referee.id}
-                                        onChange={() => setMergeModal({ ...mergeModal, winnerId: it.referee.id })} />
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 800 }}>{it.adSoyad}</div>
-                                        <div style={{ fontSize: 11, color: '#64748b' }}>
-                                            il: {it.il || '—'} · brove: {it.brove || '—'} · {it.gorevSayisi} görev · {it.disciplineList || '—'}
+                            {mergeModal.items.map((it, i) => {
+                                const id = it.referee?.id;
+                                const dbReg = !!id;
+                                return (
+                                    <label key={it.key || i} style={{
+                                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                                        borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 6,
+                                        cursor: dbReg ? 'pointer' : 'default',
+                                        background: dbReg && mergeModal.winnerId === id ? '#EEF2FF' : (dbReg ? '#fff' : '#FEF2F2'),
+                                    }}>
+                                        <input type="radio" name="winner" disabled={!dbReg}
+                                            checked={dbReg && mergeModal.winnerId === id}
+                                            onChange={() => dbReg && setMergeModal({ ...mergeModal, winnerId: id })} />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 800 }}>
+                                                {it.adSoyad}
+                                                {!dbReg && <span style={{ ...badge('#ef4444'), marginLeft: 6 }}>listede yok → alias olur</span>}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: '#64748b' }}>
+                                                il: {it.il || '—'} · brove: {it.brove || '—'} · {it.gorevSayisi} görev · {it.disciplineList || '—'}
+                                            </div>
                                         </div>
-                                    </div>
-                                </label>
-                            ))}
+                                    </label>
+                                );
+                            })}
                         </div>
                         <div style={modalFoot}>
                             <button onClick={() => setMergeModal(null)} style={btn('#94a3b8', false)}>İptal</button>
@@ -970,10 +1005,9 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
             }}>
                 {manageMode && (
                     <td style={{ ...tdc, width: 40 }} onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={isSelected} disabled={!r.referee?.id}
-                            onChange={onToggleSelect}
-                            title={r.referee?.id ? '' : 'Bu kayıt veritabanında yok — seçilemez'}
-                            style={{ cursor: r.referee?.id ? 'pointer' : 'not-allowed', width: 16, height: 16 }} />
+                        <input type="checkbox" checked={isSelected} onChange={onToggleSelect}
+                            title={r.referee?.id ? '' : 'Listede yok — birleştirme için seçebilirsiniz; bir DB kaydına alias olarak eklenir'}
+                            style={{ cursor: 'pointer', width: 16, height: 16 }} />
                     </td>
                 )}
                 <td style={{ ...td, fontWeight: 700, paddingLeft: 16, borderLeft: `4px solid ${stripeColor}` }}>
