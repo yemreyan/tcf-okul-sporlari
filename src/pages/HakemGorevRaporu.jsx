@@ -31,6 +31,17 @@ const fmtDate = (d) => {
     return s;
 };
 
+// Branş görsel meta — renk + ikon + kısa etiket
+const DISCIPLINE_META = {
+    artistik:  { color: '#4F46E5', light: '#EEF2FF', icon: 'sports_gymnastics', label: 'Artistik' },
+    ritmik:    { color: '#EC4899', light: '#FDF2F8', icon: 'auto_awesome',      label: 'Ritmik' },
+    aerobik:   { color: '#10B981', light: '#ECFDF5', icon: 'directions_run',    label: 'Aerobik' },
+    parkur:    { color: '#F59E0B', light: '#FFFBEB', icon: 'accessibility_new', label: 'Parkur' },
+    trampolin: { color: '#F97316', light: '#FFF7ED', icon: 'rocket_launch',     label: 'Trampolin' },
+};
+const DM_FALLBACK = { color: '#64748B', light: '#F1F5F9', icon: 'edit_note', label: 'Elle' };
+const dmeta = (id) => DISCIPLINE_META[id] || DM_FALLBACK;
+
 // Bröve sıralaması — sonraki seviye önerisi
 function nextBrove(brove) {
     const b = String(brove || '').toLocaleLowerCase('tr-TR');
@@ -64,6 +75,7 @@ export default function HakemGorevRaporu({ referees }) {
     const [scan, setScan] = useState(null);     // { assignments: [...], scannedAt }
     const [search, setSearch] = useState('');
     const [broveFilter, setBroveFilter] = useState('');
+    const [disFilter, setDisFilter] = useState('all'); // all | artistik | aerobik | ritmik | parkur | trampolin
     const [expanded, setExpanded] = useState({});
     const [importing, setImporting] = useState(false);
     const [msg, setMsg] = useState('');
@@ -129,11 +141,12 @@ export default function HakemGorevRaporu({ referees }) {
                 adSoyad: r?.adSoyad || a.refName,
                 il: r?.il || '', brove: r?.brove || '',
                 matched: !!r,
-                assignments: [], comps: new Set(), disciplines: new Set(),
+                assignments: [], comps: new Set(), disciplines: new Set(), disciplineIds: new Set(),
             };
             rec.assignments.push(a);
             rec.comps.add(`${a.discipline}|${a.compId}`);
             rec.disciplines.add(a.disciplineLabel);
+            if (a.discipline) rec.disciplineIds.add(a.discipline);
             (rec.scannedCompNames = rec.scannedCompNames || new Set()).add(normName(a.compName));
         });
         // elle eklenmiş geçmiş yarışmalar (gecmisYarismalar)
@@ -144,7 +157,7 @@ export default function HakemGorevRaporu({ referees }) {
             const key = `ref:${r.id}`;
             const rec = map[key] = map[key] || {
                 key, referee: r, adSoyad: r.adSoyad, il: r.il || '', brove: r.brove || '',
-                matched: true, assignments: [], comps: new Set(), disciplines: new Set(),
+                matched: true, assignments: [], comps: new Set(), disciplines: new Set(), disciplineIds: new Set(),
             };
             list.forEach((g, i) => {
                 if (!g || !g.compName) return;
@@ -166,6 +179,7 @@ export default function HakemGorevRaporu({ referees }) {
                 ...rec,
                 gorevSayisi,
                 disciplineList: [...rec.disciplines].join(', '),
+                disciplineIdsArr: [...rec.disciplineIds],
                 lastDate: sortedA[0]?.date || '',
                 sortedAssignments: sortedA,
                 breveUygun: gorevSayisi >= 2,
@@ -180,9 +194,19 @@ export default function HakemGorevRaporu({ referees }) {
         return report.filter(r => {
             if (s && !normName(r.adSoyad).includes(s) && !normName(r.il).includes(s)) return false;
             if (broveFilter && String(r.brove).toLocaleUpperCase('tr-TR') !== broveFilter) return false;
+            if (disFilter !== 'all' && !r.disciplineIds.has(disFilter)) return false;
             return true;
         });
-    }, [report, search, broveFilter]);
+    }, [report, search, broveFilter, disFilter]);
+
+    // Branş başına hakem sayısı (filtre çiplerinde sayaç için)
+    const disCounts = useMemo(() => {
+        const m = { all: report.length };
+        Object.keys(DISCIPLINE_META).forEach(k => {
+            m[k] = report.filter(r => r.disciplineIds.has(k)).length;
+        });
+        return m;
+    }, [report]);
 
     const kpi = useMemo(() => ({
         hakem: report.length,
@@ -268,84 +292,158 @@ export default function HakemGorevRaporu({ referees }) {
     };
 
     /* ── Render ──────────────────────────────────────────────────────── */
+    const disChips = [['all', 'Tümü', '#0f172a', '#f1f5f9', 'apps'], ...Object.entries(DISCIPLINE_META).map(([k, m]) => [k, m.label, m.color, m.light, m.icon])];
+
     return (
-        <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Araç çubuğu */}
-            <div style={cardBox}>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <button onClick={runScan} disabled={scanning} style={btn('#6366f1', scanning)}>
-                        <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>
+        <div style={{ padding: '1.25rem 1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Üst banner — başlık + araçlar */}
+            <div style={{
+                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                color: '#fff', borderRadius: 14, padding: '1.1rem 1.3rem',
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16,
+            }}>
+                <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <i className="material-icons-round" style={{ fontSize: 26 }}>insights</i>
+                        <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, letterSpacing: 0.2 }}>Hakem Görev Raporu</h2>
+                    </div>
+                    <div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 4 }}>
+                        Tüm branşların yarışmalarındaki atamalar tek panelde · branş ayrımı · bröve atlama takibi
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={runScan} disabled={scanning} style={primaryBtn(scanning)}>
+                        <i className="material-icons-round" style={{ fontSize: 18 }}>
                             {scanning ? 'hourglass_top' : 'travel_explore'}
                         </i>
                         {scanning ? 'Taranıyor…' : (scan ? 'Yeniden Tara' : 'Tüm Görevleri Tara')}
                     </button>
-                    <button onClick={exportExcel} disabled={!scan} style={btn('#0ea5e9', !scan)}>
-                        <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>file_download</i>
-                        Görevleri Excel'e Aktar
+                    <button onClick={exportExcel} disabled={!scan} style={ghostBtn(!scan)}>
+                        <i className="material-icons-round" style={{ fontSize: 18 }}>file_download</i>
+                        Excel'e Aktar
                     </button>
-                    <label style={{ ...btn('#22c55e', importing), cursor: importing ? 'default' : 'pointer' }}>
-                        <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>file_upload</i>
-                        {importing ? 'Yükleniyor…' : "Excel'den Görev Yükle"}
+                    <label style={{ ...ghostBtn(importing), cursor: importing ? 'default' : 'pointer' }}>
+                        <i className="material-icons-round" style={{ fontSize: 18 }}>file_upload</i>
+                        {importing ? 'Yükleniyor…' : "Excel'den Yükle"}
                         <input type="file" accept=".xlsx,.xls" onChange={importExcel} disabled={importing} style={{ display: 'none' }} />
                     </label>
-                    {msg && <span style={{ fontSize: 13, color: '#475569', fontWeight: 600 }}>{msg}</span>}
-                </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
-                    Tarama tüm branşların tüm yarışmalarındaki hakem atamalarını okur — biraz sürebilir.
-                    "Excel'den Görev Yükle" yalnız hakem görev kayıtlarını günceller, yarışma panellerine dokunmaz.
                 </div>
             </div>
 
+            {/* Bilgi/mesaj satırı */}
+            {msg && (
+                <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#3730A3', padding: '0.6rem 0.9rem', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                    <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 6 }}>info</i>
+                    {msg}
+                </div>
+            )}
+
             {!scan ? (
-                <div style={emptyBox}>Görev raporunu görmek için "Tüm Görevleri Tara" butonuna basın.</div>
+                <div style={{
+                    padding: '3rem 1rem', textAlign: 'center', background: '#fff',
+                    border: '2px dashed #cbd5e1', borderRadius: 12, color: '#64748b',
+                }}>
+                    <i className="material-icons-round" style={{ fontSize: 48, color: '#94a3b8', display: 'block', marginBottom: 8 }}>radar</i>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#475569' }}>Görev raporu için tarama gerekiyor</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>
+                        Üstteki <strong>"Tüm Görevleri Tara"</strong> butonuna basın. Tüm branşların tüm yarışmalarındaki
+                        hakem atamaları taranıp burada raporlanır.
+                    </div>
+                </div>
             ) : (
                 <>
-                    {/* KPI */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 }}>
-                        <Kpi color="#6366f1" label="Görevli Hakem" value={kpi.hakem} />
-                        <Kpi color="#0ea5e9" label="Toplam Görev" value={kpi.gorev} />
-                        <Kpi color="#22c55e" label="Bröve Atlamaya Uygun" value={kpi.uygun} />
-                        <Kpi color="#f59e0b" label="Branş Sayısı" value={kpi.brans} />
+                    {/* KPI şeridi */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10 }}>
+                        <Kpi color="#6366f1" icon="groups" label="Görevli Hakem" value={kpi.hakem} />
+                        <Kpi color="#0ea5e9" icon="event_available" label="Toplam Görev" value={kpi.gorev} />
+                        <Kpi color="#22c55e" icon="upgrade" label="Bröve Atlamaya Uygun" value={kpi.uygun} />
+                        <Kpi color="#f59e0b" icon="category" label="Branş Sayısı" value={kpi.brans} />
                     </div>
 
-                    {/* Filtre */}
-                    <div style={{ ...cardBox, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hakem ara (isim / il)…"
-                            style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.7rem', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }} />
+                    {/* Branş çipleri */}
+                    <div style={{ ...cardBox, padding: '0.7rem 0.9rem' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 6 }}>Branş</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {disChips.map(([key, label, col, bg, icon]) => {
+                                const active = disFilter === key;
+                                const n = disCounts[key] || 0;
+                                return (
+                                    <button key={key} onClick={() => setDisFilter(key)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 6,
+                                            padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+                                            border: `1.5px solid ${col}`,
+                                            background: active ? col : bg,
+                                            color: active ? '#fff' : col,
+                                            fontWeight: 700, fontSize: 12.5,
+                                        }}>
+                                        <i className="material-icons-round" style={{ fontSize: 15 }}>{icon}</i>
+                                        {label}
+                                        <span style={{
+                                            background: active ? 'rgba(255,255,255,0.25)' : '#fff',
+                                            color: active ? '#fff' : col,
+                                            borderRadius: 999, padding: '0 7px', fontSize: 11, fontWeight: 800,
+                                        }}>{n}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Arama + bröve + sonuç sayısı */}
+                    <div style={{ ...cardBox, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '0.7rem 0.9rem' }}>
+                        <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
+                            <i className="material-icons-round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#94a3b8' }}>search</i>
+                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hakem ara (isim / il)…"
+                                style={{ width: '100%', padding: '0.5rem 0.7rem 0.5rem 2.1rem', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, outline: 'none' }} />
+                        </div>
                         <select value={broveFilter} onChange={e => setBroveFilter(e.target.value)}
-                            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+                            style={{ padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, background: '#fff' }}>
                             <option value="">Tüm Bröveler</option>
                             <option value="ULUSLARARASI">Uluslararası</option>
                             <option value="MİLLİ">Milli</option>
                             <option value="BÖLGE">Bölge</option>
                             <option value="ADAY">Aday</option>
                         </select>
-                        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>{filtered.length} / {report.length}</span>
+                        <span style={{
+                            fontSize: 12, color: '#475569', fontWeight: 700, background: '#f1f5f9',
+                            padding: '5px 10px', borderRadius: 999,
+                        }}>
+                            <strong style={{ color: '#0f172a' }}>{filtered.length}</strong> / {report.length} hakem
+                        </span>
                     </div>
 
                     {/* Tablo */}
-                    <div style={{ ...cardBox, overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                                <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                                    <th style={th}>AD SOYAD</th>
-                                    <th style={th}>İL</th>
-                                    <th style={th}>BRÖVE</th>
-                                    <th style={th}>BRANŞ</th>
-                                    <th style={th}>GÖREV</th>
-                                    <th style={th}>BRÖVE DURUMU</th>
-                                    <th style={th}>SON GÖREV</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map(r => (
-                                    <FragmentRow key={r.key} r={r} expanded={!!expanded[r.key]}
-                                        onToggle={() => setExpanded(s => ({ ...s, [r.key]: !s[r.key] }))}
-                                        navigate={navigate} />
-                                ))}
-                            </tbody>
-                        </table>
-                        {filtered.length === 0 && <div style={{ ...emptyBox, marginTop: 8 }}>Eşleşen hakem yok.</div>}
+                    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ ...th, textAlign: 'left', paddingLeft: 16 }}>HAKEM</th>
+                                        <th style={th}>İL</th>
+                                        <th style={th}>BRÖVE</th>
+                                        <th style={th}>BRANŞ(LAR)</th>
+                                        <th style={th}>GÖREV</th>
+                                        <th style={th}>BRÖVE DURUMU</th>
+                                        <th style={th}>SON GÖREV</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((r, idx) => (
+                                        <FragmentRow key={r.key} r={r} idx={idx} expanded={!!expanded[r.key]}
+                                            onToggle={() => setExpanded(s => ({ ...s, [r.key]: !s[r.key] }))}
+                                            navigate={navigate} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {filtered.length === 0 && (
+                            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8' }}>
+                                <i className="material-icons-round" style={{ fontSize: 36, display: 'block', marginBottom: 4 }}>filter_alt_off</i>
+                                <div style={{ fontWeight: 700 }}>Eşleşen hakem yok</div>
+                                <div style={{ fontSize: 12 }}>Branş/bröve filtresini veya aramayı değiştirin.</div>
+                            </div>
+                        )}
                     </div>
                 </>
             )}
@@ -354,28 +452,53 @@ export default function HakemGorevRaporu({ referees }) {
 }
 
 /* ── Hakem satırı + açılır görev detayı ──────────────────────────────── */
-function FragmentRow({ r, expanded, onToggle, navigate }) {
+function FragmentRow({ r, idx, expanded, onToggle, navigate }) {
+    const primaryDis = (r.disciplineIdsArr && r.disciplineIdsArr[0]) || null;
+    const stripeColor = primaryDis ? dmeta(primaryDis).color : '#cbd5e1';
     return (
         <>
-            <tr onClick={onToggle} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
-                <td style={{ ...td, fontWeight: 700 }}>
-                    <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', color: '#94a3b8' }}>
+            <tr onClick={onToggle} style={{
+                borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
+                background: expanded ? '#f8fafc' : (idx % 2 ? '#fafbff' : '#fff'),
+            }}>
+                <td style={{ ...td, fontWeight: 700, paddingLeft: 16, borderLeft: `4px solid ${stripeColor}` }}>
+                    <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', color: '#64748b', marginRight: 4 }}>
                         {expanded ? 'expand_more' : 'chevron_right'}
-                    </i> {r.adSoyad}
+                    </i>
+                    <span>{r.adSoyad}</span>
                     {!r.matched && <span style={badge('#ef4444')}>listede yok</span>}
                 </td>
                 <td style={tdc}>{r.il || '—'}</td>
-                <td style={tdc}>{r.brove || '—'}</td>
-                <td style={tdc}>{r.disciplineList || '—'}</td>
-                <td style={{ ...tdc, fontWeight: 800 }}>{r.gorevSayisi}</td>
+                <td style={tdc}>
+                    {r.brove ? <span style={{ ...badge('#64748B'), marginLeft: 0 }}>{r.brove}</span> : '—'}
+                </td>
+                <td style={tdc}>
+                    <div style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {(r.disciplineIdsArr || []).map(d => {
+                            const m = dmeta(d);
+                            return (
+                                <span key={d} title={m.label} style={{
+                                    background: m.light, color: m.color, border: `1px solid ${m.color}`,
+                                    padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+                                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                                }}>
+                                    <i className="material-icons-round" style={{ fontSize: 12 }}>{m.icon}</i>
+                                    {m.label}
+                                </span>
+                            );
+                        })}
+                        {(!r.disciplineIdsArr || r.disciplineIdsArr.length === 0) && <span style={{ color: '#cbd5e1' }}>—</span>}
+                    </div>
+                </td>
+                <td style={{ ...tdc, fontWeight: 900, fontSize: 15, color: '#0f172a' }}>{r.gorevSayisi}</td>
                 <td style={tdc}>
                     {r.breveUygun ? (
-                        <span style={badge('#22c55e')}>
-                            Bröve atlamaya uygun{r.breveNext ? ` → ${r.breveNext}` : ''}
+                        <span style={{ ...badge('#22c55e'), marginLeft: 0 }}>
+                            ✓ Bröve atlamaya uygun{r.breveNext ? ` → ${r.breveNext}` : ''}
                         </span>
                     ) : (
                         <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                            {2 - r.gorevSayisi} görev daha
+                            {Math.max(0, 2 - r.gorevSayisi)} görev daha
                         </span>
                     )}
                 </td>
@@ -383,38 +506,58 @@ function FragmentRow({ r, expanded, onToggle, navigate }) {
             </tr>
             {expanded && (
                 <tr>
-                    <td colSpan={7} style={{ background: '#f8fafc', padding: '8px 14px' }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
-                            GÖREV LİSTESİ ({r.sortedAssignments.length})
+                    <td colSpan={7} style={{ background: '#f8fafc', padding: '14px 18px', borderLeft: `4px solid ${stripeColor}` }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: 0.4, marginBottom: 8, textTransform: 'uppercase' }}>
+                            <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4, color: stripeColor }}>list_alt</i>
+                            Görev Listesi ({r.sortedAssignments.length})
                         </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                            <thead>
-                                <tr style={{ background: '#fff' }}>
-                                    <th style={th}>TARİH</th><th style={th}>YARIŞMA</th><th style={th}>BRANŞ</th>
-                                    <th style={th}>KATEGORİ</th><th style={th}>ALET / PANEL</th><th style={th}>KARNE</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {r.sortedAssignments.map((a, i) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid #eef2f7' }}>
-                                        <td style={tdc}>{fmtDate(a.date)}</td>
-                                        <td style={{ ...td, fontWeight: 600 }}>{a.compName}</td>
-                                        <td style={tdc}>{a.disciplineLabel}</td>
-                                        <td style={tdc}>{a.catId ? catLabel(a.catId) : '—'}</td>
-                                        <td style={tdc}>{[a.aletId, a.panelId].filter(Boolean).join(' / ') || '—'}</td>
-                                        <td style={tdc}>
-                                            {a.routePrefix && a.compId ? (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`${a.routePrefix}/hakem-karnesi?comp=${a.compId}&tab=fig&judge=${encodeURIComponent(r.adSoyad)}`); }}
-                                                    style={btn('#6366f1', false, true)}>
-                                                    Karne
-                                                </button>
-                                            ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                        </td>
+                        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ background: '#f1f5f9' }}>
+                                        <th style={th}>TARİH</th>
+                                        <th style={{ ...th, textAlign: 'left' }}>YARIŞMA</th>
+                                        <th style={th}>BRANŞ</th>
+                                        <th style={th}>KATEGORİ</th>
+                                        <th style={th}>ALET / PANEL</th>
+                                        <th style={th}>KARNE</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {r.sortedAssignments.map((a, i) => {
+                                        const m = dmeta(a.discipline);
+                                        return (
+                                            <tr key={i} style={{ borderBottom: '1px solid #eef2f7' }}>
+                                                <td style={{ ...tdc, fontWeight: 700 }}>{fmtDate(a.date)}</td>
+                                                <td style={{ ...td, fontWeight: 600 }}>{a.compName}</td>
+                                                <td style={tdc}>
+                                                    <span style={{
+                                                        background: m.light, color: m.color, border: `1px solid ${m.color}`,
+                                                        padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+                                                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                                                    }}>
+                                                        <i className="material-icons-round" style={{ fontSize: 12 }}>{m.icon}</i>
+                                                        {m.label}
+                                                    </span>
+                                                </td>
+                                                <td style={tdc}>{a.catId ? catLabel(a.catId) : '—'}</td>
+                                                <td style={tdc}>{[a.aletId, a.panelId].filter(Boolean).join(' / ') || '—'}</td>
+                                                <td style={tdc}>
+                                                    {a.routePrefix && a.compId ? (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); navigate(`${a.routePrefix}/hakem-karnesi?comp=${a.compId}&tab=fig&judge=${encodeURIComponent(r.adSoyad)}`); }}
+                                                            style={btn(m.color, false, true)}>
+                                                            <i className="material-icons-round" style={{ fontSize: 13, verticalAlign: 'middle', marginRight: 2 }}>open_in_new</i>
+                                                            Karne
+                                                        </button>
+                                                    ) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </td>
                 </tr>
             )}
@@ -422,11 +565,23 @@ function FragmentRow({ r, expanded, onToggle, navigate }) {
     );
 }
 
-function Kpi({ color, label, value }) {
+function Kpi({ color, icon, label, value }) {
     return (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.9rem 1rem', borderLeft: `4px solid ${color}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#0f172a' }}>{value}</div>
+        <div style={{
+            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+            padding: '0.85rem 1rem', borderLeft: `4px solid ${color}`,
+            display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+            <div style={{
+                width: 38, height: 38, borderRadius: 10,
+                background: color + '18', color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <i className="material-icons-round" style={{ fontSize: 22 }}>{icon}</i>
+            </div>
+            <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
+                <div style={{ fontSize: '1.55rem', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>{value}</div>
+            </div>
         </div>
     );
 }
@@ -445,4 +600,21 @@ const btn = (color, disabled, small) => ({
 const badge = (color) => ({
     background: color, color: '#fff', fontSize: 10, fontWeight: 800,
     padding: '2px 8px', borderRadius: 999, marginLeft: 6, whiteSpace: 'nowrap',
+});
+// Banner içi butonlar
+const primaryBtn = (disabled) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '0.55rem 1rem', borderRadius: 8, border: 'none',
+    background: disabled ? 'rgba(255,255,255,0.25)' : '#fff',
+    color: disabled ? 'rgba(255,255,255,0.7)' : '#4F46E5',
+    fontWeight: 800, fontSize: 13, cursor: disabled ? 'default' : 'pointer',
+    boxShadow: disabled ? 'none' : '0 2px 6px rgba(0,0,0,0.12)',
+});
+const ghostBtn = (disabled) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '0.55rem 1rem', borderRadius: 8,
+    border: '1.5px solid rgba(255,255,255,0.5)',
+    background: 'transparent', color: '#fff',
+    fontWeight: 700, fontSize: 13, cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.55 : 1,
 });
