@@ -107,6 +107,7 @@ export default function HakemGorevRaporu({ referees }) {
     const [addForm, setAddForm] = useState({ tarih: '', yarisma: '', brans: 'artistik', rol: '' });
     const [delGorevConfirm, setDelGorevConfirm] = useState(null); // { refId, ad, entry }
     const [autoMergeModal, setAutoMergeModal] = useState(null); // { clusters }
+    const [disFixModal, setDisFixModal] = useState(null); // { items }
 
     /* ── Tüm branşları tara ──────────────────────────────────────────── */
     const runScan = async () => {
@@ -219,6 +220,21 @@ export default function HakemGorevRaporu({ referees }) {
         }).sort((a, b) => b.gorevSayisi - a.gorevSayisi || a.adSoyad.localeCompare(b.adSoyad, 'tr'));
         return rows;
     }, [scan, referees]);
+
+    // DB'de disiplini boş olup görevlerinden çıkarılabilir hakemler
+    const disFixCandidates = useMemo(() => {
+        return report
+            .filter(r => r.referee?.id && !r.referee?.disiplin && r.disciplineIdsArr && r.disciplineIdsArr.length > 0)
+            .map(r => ({
+                refId: r.referee.id,
+                adSoyad: r.adSoyad,
+                il: r.il,
+                brove: r.brove,
+                current: r.referee.disiplin || '',
+                suggested: r.disciplineIdsArr[0], // en sık alınan (memo sıralı)
+                disciplines: r.disciplineIdsArr,
+            }));
+    }, [report]);
 
     // Tam mükerrer — normalize edilmiş ismi birebir aynı kayıtlar (otomatik birleştirilebilir)
     const exactDupeClusters = useMemo(() => {
@@ -482,6 +498,22 @@ export default function HakemGorevRaporu({ referees }) {
         } catch (e) { setMsg('Görev silinirken hata oluştu.'); }
     };
 
+    // DB disiplini boş hakemler → görevlerindeki branşa göre otomatik ata
+    const autoFixDisciplines = async () => {
+        if (!disFixModal) return;
+        let n = 0;
+        try {
+            const updates = {};
+            for (const it of disFixModal.items) {
+                updates[`referees/${it.refId}/disiplin`] = it.suggested;
+                n++;
+            }
+            if (n > 0) await update(ref(db), updates);
+            setMsg(`${n} hakemin disiplini görevlerine göre otomatik atandı.`);
+            setDisFixModal(null);
+        } catch (e) { setMsg('Disiplin atama sırasında hata oluştu.'); }
+    };
+
     // Aynı isimli tam mükerrer kayıtları otomatik birleştir
     const autoMergeExact = async () => {
         if (!autoMergeModal) return;
@@ -698,6 +730,20 @@ export default function HakemGorevRaporu({ referees }) {
                             <option value="BÖLGE">Bölge</option>
                             <option value="ADAY">Aday</option>
                         </select>
+                        {disFixCandidates.length > 0 && (
+                            <button onClick={() => setDisFixModal({ items: disFixCandidates })}
+                                title="DB'de branşı boş hakemleri görevlerine göre otomatik ata"
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                                    border: '1.5px solid #F59E0B', background: '#FFFBEB',
+                                    color: '#92400E', fontWeight: 700, fontSize: 12,
+                                }}>
+                                <i className="material-icons-round" style={{ fontSize: 14 }}>auto_fix_high</i>
+                                Branş Atanmamış
+                                <span style={{ background: '#F59E0B', color: '#fff', borderRadius: 999, padding: '0 7px', fontSize: 11, fontWeight: 800 }}>{disFixCandidates.length}</span>
+                            </button>
+                        )}
                         <button onClick={() => setDupesOnly(v => !v)}
                             title="Olası mükerrer hakemleri göster"
                             style={{
@@ -812,6 +858,65 @@ export default function HakemGorevRaporu({ referees }) {
                             <button onClick={() => performMerge(mergeModal.winnerId)} style={btn('#6366f1', false)}>
                                 <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
                                 Birleştir
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* Branş Atanmamış Düzelt modalı */}
+            {disFixModal && (
+                <ModalOverlay onClose={() => setDisFixModal(null)}>
+                    <div style={{ ...modalCard, maxWidth: 720 }}>
+                        <div style={modalHead('#F59E0B')}>
+                            <i className="material-icons-round">auto_fix_high</i>
+                            Branş Atanmamış Hakemleri Otomatik Düzelt
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem' }}>
+                            <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
+                                Aşağıdaki <strong>{disFixModal.items.length}</strong> hakemin <code>disiplin</code> alanı boş.
+                                Görev geçmişlerindeki <strong>birincil branş</strong> kullanılarak otomatik atanacak.
+                            </div>
+                            <div style={{ maxHeight: 380, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8fafc' }}>
+                                            <th style={{ ...th, textAlign: 'left', paddingLeft: 12 }}>HAKEM</th>
+                                            <th style={th}>İL</th>
+                                            <th style={th}>BRÖVE</th>
+                                            <th style={th}>ATANACAK BRANŞ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {disFixModal.items.map(it => {
+                                            const m = dmeta(it.suggested);
+                                            return (
+                                                <tr key={it.refId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ ...td, fontWeight: 700, paddingLeft: 12 }}>{it.adSoyad}</td>
+                                                    <td style={tdc}>{it.il || '—'}</td>
+                                                    <td style={tdc}>{it.brove || '—'}</td>
+                                                    <td style={tdc}>
+                                                        <span style={{
+                                                            background: m.light, color: m.color, border: `1px solid ${m.color}`,
+                                                            padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                        }}>
+                                                            <i className="material-icons-round" style={{ fontSize: 12 }}>{m.icon}</i>
+                                                            {m.label}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setDisFixModal(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={autoFixDisciplines} style={btn('#F59E0B', false)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>auto_fix_high</i>
+                                Hepsini Otomatik Ata
                             </button>
                         </div>
                     </div>
@@ -1018,6 +1123,7 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelec
                     )}
                     <span>{r.adSoyad}</span>
                     {!r.matched && <span style={badge('#ef4444')}>listede yok</span>}
+                    {r.matched && r.referee && !r.referee.disiplin && <span style={badge('#F59E0B')}>branş atanmamış</span>}
                     {isDupe && <span style={{ ...badge('#F59E0B'), marginLeft: 6 }}>⚠ olası mükerrer</span>}
                 </td>
                 <td style={tdc}>{r.il || '—'}</td>
