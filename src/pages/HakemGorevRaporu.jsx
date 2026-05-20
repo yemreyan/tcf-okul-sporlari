@@ -7,7 +7,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, remove } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { DISCIPLINE_CONFIG } from '../lib/DisciplineContext';
 
@@ -17,6 +17,23 @@ const normName = (s) => String(s || '')
     .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
     .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Levenshtein — fuzzy dupe için
+function lev(a, b) {
+    if (a === b) return 0;
+    if (!a || !b) return (a || b).length;
+    const m = b.length;
+    let prev = new Array(m + 1);
+    for (let j = 0; j <= m; j++) prev[j] = j;
+    for (let i = 0; i < a.length; i++) {
+        let cur = [i + 1];
+        for (let j = 0; j < m; j++) {
+            cur.push(Math.min(prev[j + 1] + 1, cur[j] + 1, prev[j] + (a[i] === b[j] ? 0 : 1)));
+        }
+        prev = cur;
+    }
+    return prev[m];
+}
 
 const catLabel = (catId) => String(catId || '')
     .split('_')
@@ -79,6 +96,12 @@ export default function HakemGorevRaporu({ referees }) {
     const [expanded, setExpanded] = useState({});
     const [importing, setImporting] = useState(false);
     const [msg, setMsg] = useState('');
+    // Yönetim modu (birleştirme/silme)
+    const [manageMode, setManageMode] = useState(false);
+    const [selected, setSelected] = useState(() => new Set());
+    const [mergeModal, setMergeModal] = useState(null); // { items }
+    const [deleteModal, setDeleteModal] = useState(null); // { id, name } | { ids: [] }
+    const [dupesOnly, setDupesOnly] = useState(false);
 
     /* ── Tüm branşları tara ──────────────────────────────────────────── */
     const runScan = async () => {
@@ -189,15 +212,37 @@ export default function HakemGorevRaporu({ referees }) {
         return rows;
     }, [scan, referees]);
 
+    // Olası mükerrer hakemler — isim lev<=2, aynı soyad-baş-3
+    const dupeClusterIds = useMemo(() => {
+        const names = report.map(r => normName(r.adSoyad));
+        const parent = names.map((_, i) => i);
+        const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+        for (let i = 0; i < names.length; i++) {
+            for (let j = i + 1; j < names.length; j++) {
+                const a = names[i], b = names[j];
+                if (Math.abs(a.length - b.length) > 2) continue;
+                const sa = a.split(' ').slice(-1)[0], sb = b.split(' ').slice(-1)[0];
+                if (sa.slice(0, 3) !== sb.slice(0, 3)) continue;
+                if (lev(a, b) <= 2) parent[find(i)] = find(j);
+            }
+        }
+        const buckets = {};
+        report.forEach((_, i) => { const root = find(i); (buckets[root] = buckets[root] || []).push(i); });
+        const dupKeys = new Set();
+        Object.values(buckets).forEach(arr => { if (arr.length >= 2) arr.forEach(i => dupKeys.add(report[i].key)); });
+        return dupKeys;
+    }, [report]);
+
     const filtered = useMemo(() => {
         const s = normName(search);
         return report.filter(r => {
             if (s && !normName(r.adSoyad).includes(s) && !normName(r.il).includes(s)) return false;
             if (broveFilter && String(r.brove).toLocaleUpperCase('tr-TR') !== broveFilter) return false;
             if (disFilter !== 'all' && !r.disciplineIds.has(disFilter)) return false;
+            if (dupesOnly && !dupeClusterIds.has(r.key)) return false;
             return true;
         });
-    }, [report, search, broveFilter, disFilter]);
+    }, [report, search, broveFilter, disFilter, dupesOnly, dupeClusterIds]);
 
     // Branş başına hakem sayısı (filtre çiplerinde sayaç için)
     const disCounts = useMemo(() => {
@@ -291,6 +336,70 @@ export default function HakemGorevRaporu({ referees }) {
         reader.readAsBinaryString(file);
     };
 
+    /* ── Yönetim modu yardımcıları ───────────────────────────────────── */
+    const toggleSelect = (refId) => {
+        if (!refId) return;
+        setSelected(prev => {
+            const s = new Set(prev);
+            s.has(refId) ? s.delete(refId) : s.add(refId);
+            return s;
+        });
+    };
+    const clearSelection = () => setSelected(new Set());
+    const exitManageMode = () => { setManageMode(false); clearSelection(); };
+
+    const openMergeModal = () => {
+        const items = report.filter(r => r.referee?.id && selected.has(r.referee.id));
+        if (items.length < 2) { setMsg('Birleştirmek için en az 2 hakem seçin.'); return; }
+        setMergeModal({ items, winnerId: items[0].referee.id });
+    };
+    const performMerge = async (winnerId) => {
+        if (!mergeModal) return;
+        try {
+            const winner = mergeModal.items.find(r => r.referee.id === winnerId);
+            const losers = mergeModal.items.filter(r => r.referee.id !== winnerId);
+            // gecmisYarismalar union (compName+date dedupe)
+            const all = [];
+            const seen = new Set();
+            const pushList = (rec) => {
+                const gy = rec.referee?.gecmisYarismalar;
+                const list = Array.isArray(gy) ? gy : (gy ? Object.values(gy) : []);
+                list.forEach(g => {
+                    if (!g || !g.compName) return;
+                    const k = normName(g.compName) + '|' + (g.date || '');
+                    if (seen.has(k)) return;
+                    seen.add(k); all.push(g);
+                });
+            };
+            pushList(winner); losers.forEach(pushList);
+            const updates = {};
+            updates[`referees/${winnerId}/gecmisYarismalar`] = all;
+            updates[`referees/${winnerId}/gorevSayisi`] = all.length;
+            // boş alanları losers'tan doldur
+            ['il', 'brove', 'email', 'telefon', 'disiplin', 'brans'].forEach(f => {
+                if (!winner.referee?.[f]) {
+                    const v = losers.map(l => l.referee?.[f]).find(x => x);
+                    if (v) updates[`referees/${winnerId}/${f}`] = v;
+                }
+            });
+            await update(ref(db), updates);
+            for (const l of losers) await remove(ref(db, `referees/${l.referee.id}`));
+            setMsg(`${losers.length + 1} hakem birleştirildi. Kalan: ${winner.adSoyad}.`);
+            setMergeModal(null); clearSelection();
+        } catch (e) {
+            setMsg('Birleştirme sırasında hata oluştu.');
+        }
+    };
+    const performDelete = async (ids) => {
+        try {
+            for (const id of ids) await remove(ref(db, `referees/${id}`));
+            setMsg(`${ids.length} hakem silindi.`);
+            setDeleteModal(null); clearSelection();
+        } catch (e) {
+            setMsg('Silme sırasında hata oluştu.');
+        }
+    };
+
     /* ── Render ──────────────────────────────────────────────────────── */
     const disChips = [['all', 'Tümü', '#0f172a', '#f1f5f9', 'apps'], ...Object.entries(DISCIPLINE_META).map(([k, m]) => [k, m.label, m.color, m.light, m.icon])];
 
@@ -327,8 +436,39 @@ export default function HakemGorevRaporu({ referees }) {
                         {importing ? 'Yükleniyor…' : "Excel'den Yükle"}
                         <input type="file" accept=".xlsx,.xls" onChange={importExcel} disabled={importing} style={{ display: 'none' }} />
                     </label>
+                    <button onClick={() => manageMode ? exitManageMode() : setManageMode(true)}
+                        style={{ ...ghostBtn(false), background: manageMode ? '#fff' : 'transparent', color: manageMode ? '#4F46E5' : '#fff', borderColor: manageMode ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+                        <i className="material-icons-round" style={{ fontSize: 18 }}>{manageMode ? 'close' : 'rule'}</i>
+                        {manageMode ? 'Modu Kapat' : 'Yönetim Modu'}
+                    </button>
                 </div>
             </div>
+
+            {/* Yönetim modu aksiyon çubuğu */}
+            {manageMode && (
+                <div style={{
+                    background: '#FEF3C7', border: '1px solid #FCD34D', color: '#78350F',
+                    borderRadius: 10, padding: '0.7rem 0.9rem', display: 'flex',
+                    gap: 10, flexWrap: 'wrap', alignItems: 'center',
+                }}>
+                    <i className="material-icons-round" style={{ fontSize: 20 }}>rule</i>
+                    <strong style={{ fontSize: 13 }}>Yönetim Modu</strong>
+                    <span style={{ fontSize: 12 }}>Satırlardan hakem seçin; birleştirme veya silme yapın.</span>
+                    <span style={{ marginLeft: 'auto', background: '#fff', padding: '3px 10px', borderRadius: 999, fontWeight: 700, fontSize: 12 }}>
+                        Seçili: {selected.size}
+                    </span>
+                    <button onClick={openMergeModal} disabled={selected.size < 2}
+                        style={btn('#6366f1', selected.size < 2)}>
+                        <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
+                        Birleştir
+                    </button>
+                    <button onClick={() => setDeleteModal({ ids: [...selected] })} disabled={selected.size < 1}
+                        style={btn('#ef4444', selected.size < 1)}>
+                        <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>delete</i>
+                        Sil
+                    </button>
+                </div>
+            )}
 
             {/* Bilgi/mesaj satırı */}
             {msg && (
@@ -405,6 +545,24 @@ export default function HakemGorevRaporu({ referees }) {
                             <option value="BÖLGE">Bölge</option>
                             <option value="ADAY">Aday</option>
                         </select>
+                        <button onClick={() => setDupesOnly(v => !v)}
+                            title="Olası mükerrer hakemleri göster"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                                border: `1.5px solid ${dupesOnly ? '#EF4444' : '#FCA5A5'}`,
+                                background: dupesOnly ? '#EF4444' : '#FEF2F2',
+                                color: dupesOnly ? '#fff' : '#B91C1C',
+                                fontWeight: 700, fontSize: 12,
+                            }}>
+                            <i className="material-icons-round" style={{ fontSize: 14 }}>warning</i>
+                            Olası Mükerrer
+                            <span style={{
+                                background: dupesOnly ? 'rgba(255,255,255,0.25)' : '#fff',
+                                color: dupesOnly ? '#fff' : '#B91C1C',
+                                borderRadius: 999, padding: '0 7px', fontSize: 11, fontWeight: 800,
+                            }}>{dupeClusterIds.size}</span>
+                        </button>
                         <span style={{
                             fontSize: 12, color: '#475569', fontWeight: 700, background: '#f1f5f9',
                             padding: '5px 10px', borderRadius: 999,
@@ -419,6 +577,7 @@ export default function HakemGorevRaporu({ referees }) {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
                                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                        {manageMode && <th style={th}></th>}
                                         <th style={{ ...th, textAlign: 'left', paddingLeft: 16 }}>HAKEM</th>
                                         <th style={th}>İL</th>
                                         <th style={th}>BRÖVE</th>
@@ -426,13 +585,20 @@ export default function HakemGorevRaporu({ referees }) {
                                         <th style={th}>GÖREV</th>
                                         <th style={th}>BRÖVE DURUMU</th>
                                         <th style={th}>SON GÖREV</th>
+                                        {manageMode && <th style={th}></th>}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filtered.map((r, idx) => (
                                         <FragmentRow key={r.key} r={r} idx={idx} expanded={!!expanded[r.key]}
                                             onToggle={() => setExpanded(s => ({ ...s, [r.key]: !s[r.key] }))}
-                                            navigate={navigate} />
+                                            navigate={navigate}
+                                            manageMode={manageMode}
+                                            isSelected={r.referee?.id ? selected.has(r.referee.id) : false}
+                                            onToggleSelect={() => toggleSelect(r.referee?.id)}
+                                            isDupe={dupeClusterIds.has(r.key)}
+                                            onDelete={() => r.referee?.id && setDeleteModal({ ids: [r.referee.id], name: r.adSoyad })}
+                                        />
                                     ))}
                                 </tbody>
                             </table>
@@ -447,26 +613,121 @@ export default function HakemGorevRaporu({ referees }) {
                     </div>
                 </>
             )}
+
+            {/* Birleştirme modalı */}
+            {mergeModal && (
+                <ModalOverlay onClose={() => setMergeModal(null)}>
+                    <div style={modalCard}>
+                        <div style={modalHead('#6366f1')}>
+                            <i className="material-icons-round">merge_type</i>
+                            Hakemleri Birleştir ({mergeModal.items.length} kayıt)
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem' }}>
+                            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+                                Hangi kayıt <strong>kalsın</strong>? Diğer kayıtların görev geçmişi seçili kayda taşınacak ve diğerleri silinecek.
+                            </div>
+                            {mergeModal.items.map(it => (
+                                <label key={it.referee.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                                    borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 6,
+                                    cursor: 'pointer',
+                                    background: mergeModal.winnerId === it.referee.id ? '#EEF2FF' : '#fff',
+                                }}>
+                                    <input type="radio" name="winner" checked={mergeModal.winnerId === it.referee.id}
+                                        onChange={() => setMergeModal({ ...mergeModal, winnerId: it.referee.id })} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 800 }}>{it.adSoyad}</div>
+                                        <div style={{ fontSize: 11, color: '#64748b' }}>
+                                            il: {it.il || '—'} · brove: {it.brove || '—'} · {it.gorevSayisi} görev · {it.disciplineList || '—'}
+                                        </div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setMergeModal(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={() => performMerge(mergeModal.winnerId)} style={btn('#6366f1', false)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>merge_type</i>
+                                Birleştir
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* Silme modalı */}
+            {deleteModal && (
+                <ModalOverlay onClose={() => setDeleteModal(null)}>
+                    <div style={modalCard}>
+                        <div style={modalHead('#ef4444')}>
+                            <i className="material-icons-round">delete</i>
+                            Hakemi Sil
+                        </div>
+                        <div style={{ padding: '1rem 1.2rem', fontSize: 14, color: '#475569' }}>
+                            {deleteModal.name ? (
+                                <span><strong>{deleteModal.name}</strong> kalıcı olarak silinecek. Onaylıyor musunuz?</span>
+                            ) : (
+                                <span>Seçili <strong>{deleteModal.ids.length}</strong> hakem kalıcı olarak silinecek. Onaylıyor musunuz?</span>
+                            )}
+                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
+                                Yarışmalardaki hakem atamaları etkilenmez; yalnız hakem ana kaydı silinir.
+                            </div>
+                        </div>
+                        <div style={modalFoot}>
+                            <button onClick={() => setDeleteModal(null)} style={btn('#94a3b8', false)}>İptal</button>
+                            <button onClick={() => performDelete(deleteModal.ids)} style={btn('#ef4444', false)}>
+                                <i className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>delete_forever</i>
+                                Sil
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+        </div>
+    );
+}
+
+function ModalOverlay({ onClose, children }) {
+    return (
+        <div onClick={onClose} style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16,
+        }}>
+            <div onClick={(e) => e.stopPropagation()}>{children}</div>
         </div>
     );
 }
 
 /* ── Hakem satırı + açılır görev detayı ──────────────────────────────── */
-function FragmentRow({ r, idx, expanded, onToggle, navigate }) {
+function FragmentRow({ r, idx, expanded, onToggle, navigate, manageMode, isSelected, onToggleSelect, isDupe, onDelete }) {
     const primaryDis = (r.disciplineIdsArr && r.disciplineIdsArr[0]) || null;
     const stripeColor = primaryDis ? dmeta(primaryDis).color : '#cbd5e1';
     return (
         <>
-            <tr onClick={onToggle} style={{
+            <tr onClick={(e) => {
+                if (manageMode) { e.stopPropagation(); onToggleSelect(); return; }
+                onToggle();
+            }} style={{
                 borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
-                background: expanded ? '#f8fafc' : (idx % 2 ? '#fafbff' : '#fff'),
+                background: isSelected ? '#EEF2FF' : (expanded ? '#f8fafc' : (idx % 2 ? '#fafbff' : '#fff')),
             }}>
+                {manageMode && (
+                    <td style={{ ...tdc, width: 40 }} onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={isSelected} disabled={!r.referee?.id}
+                            onChange={onToggleSelect}
+                            title={r.referee?.id ? '' : 'Bu kayıt veritabanında yok — seçilemez'}
+                            style={{ cursor: r.referee?.id ? 'pointer' : 'not-allowed', width: 16, height: 16 }} />
+                    </td>
+                )}
                 <td style={{ ...td, fontWeight: 700, paddingLeft: 16, borderLeft: `4px solid ${stripeColor}` }}>
-                    <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', color: '#64748b', marginRight: 4 }}>
-                        {expanded ? 'expand_more' : 'chevron_right'}
-                    </i>
+                    {!manageMode && (
+                        <i className="material-icons-round" style={{ fontSize: 18, verticalAlign: 'middle', color: '#64748b', marginRight: 4 }}>
+                            {expanded ? 'expand_more' : 'chevron_right'}
+                        </i>
+                    )}
                     <span>{r.adSoyad}</span>
                     {!r.matched && <span style={badge('#ef4444')}>listede yok</span>}
+                    {isDupe && <span style={{ ...badge('#F59E0B'), marginLeft: 6 }}>⚠ olası mükerrer</span>}
                 </td>
                 <td style={tdc}>{r.il || '—'}</td>
                 <td style={tdc}>
@@ -503,8 +764,18 @@ function FragmentRow({ r, idx, expanded, onToggle, navigate }) {
                     )}
                 </td>
                 <td style={tdc}>{fmtDate(r.lastDate)}</td>
+                {manageMode && (
+                    <td style={{ ...tdc, width: 50 }} onClick={(e) => e.stopPropagation()}>
+                        {r.referee?.id && (
+                            <button onClick={onDelete} title="Bu hakemi sil"
+                                style={{ background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}>
+                                <i className="material-icons-round" style={{ fontSize: 14 }}>delete</i>
+                            </button>
+                        )}
+                    </td>
+                )}
             </tr>
-            {expanded && (
+            {expanded && !manageMode && (
                 <tr>
                     <td colSpan={7} style={{ background: '#f8fafc', padding: '14px 18px', borderLeft: `4px solid ${stripeColor}` }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: 0.4, marginBottom: 8, textTransform: 'uppercase' }}>
@@ -610,6 +881,19 @@ const primaryBtn = (disabled) => ({
     fontWeight: 800, fontSize: 13, cursor: disabled ? 'default' : 'pointer',
     boxShadow: disabled ? 'none' : '0 2px 6px rgba(0,0,0,0.12)',
 });
+// Modal stilleri
+const modalCard = {
+    background: '#fff', borderRadius: 12, minWidth: 340, maxWidth: 520,
+    boxShadow: '0 18px 48px rgba(0,0,0,0.25)', overflow: 'hidden',
+};
+const modalHead = (color) => ({
+    background: color, color: '#fff', padding: '0.9rem 1.2rem',
+    display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15,
+});
+const modalFoot = {
+    display: 'flex', justifyContent: 'flex-end', gap: 8,
+    padding: '0.8rem 1.2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0',
+};
 const ghostBtn = (disabled) => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '0.55rem 1rem', borderRadius: 8,
