@@ -298,26 +298,70 @@ export default function HakemGorevRaporu({ referees }) {
     /* ── Excel dışa aktarma ──────────────────────────────────────────── */
     const exportExcel = async () => {
         const XLSX = await import('xlsx');
-        const rows = [];
+        const disLabel = (id) => dmeta(id).label;
+
+        // 1. SAYFA — Hakemler (özet): bir hakem = bir satır
+        const summary = report.map((r, idx) => {
+            // DB-kayıtlı ise canonical (adSoyad) kullan; değilse rapordaki ad
+            const ad = r.referee?.adSoyad || r.adSoyad;
+            return {
+                'Sıra': idx + 1,
+                'Hakem ID': r.referee?.id || '',
+                'Ad Soyad': ad,
+                'İl': r.il || '',
+                'Bröve': r.brove || '',
+                'Disiplin (DB)': r.referee?.disiplin ? disLabel(r.referee.disiplin) : '',
+                'Görev Sayısı': r.gorevSayisi,
+                'Görev Aldığı Branş(lar)': (r.disciplineIdsArr || []).map(disLabel).join(', '),
+                'Son Görev Tarihi': fmtDate(r.lastDate),
+                'Bröve Durumu': r.breveUygun
+                    ? `Bröve atlamaya uygun${r.breveNext ? ' → ' + r.breveNext : ''}`
+                    : `${Math.max(0, 2 - r.gorevSayisi)} görev daha gerekli`,
+                'Durum': r.referee?.id ? 'DB Kayıtlı' : 'Listede yok',
+            };
+        });
+
+        // 2. SAYFA — Görev Detayları (her görev = bir satır)
+        const details = [];
         report.forEach(r => {
+            const ad = r.referee?.adSoyad || r.adSoyad;
             r.sortedAssignments.forEach(a => {
-                rows.push({
+                details.push({
                     'Hakem ID': r.referee?.id || '',
-                    'Ad Soyad': r.adSoyad,
-                    'İl': r.il,
-                    'Brove': r.brove,
-                    'Branş': a.disciplineLabel,
+                    'Ad Soyad': ad,
+                    'İl': r.il || '',
+                    'Bröve': r.brove || '',
+                    'Branş (görev)': a.disciplineLabel || disLabel(a.discipline),
                     'Tarih': fmtDate(a.date),
-                    'Yarışma': a.compName,
+                    'Yarışma': a.compName || '',
                     'Kategori': a.catId ? catLabel(a.catId) : '',
-                    'Rol/Açıklama': [a.aletId, a.panelId].filter(Boolean).join(' / '),
+                    'Rol / Panel': [a.aletId, a.panelId].filter(Boolean).join(' / '),
+                    'Kaynak': a.manual ? 'Elle' : 'Yarışma Kaydı',
                 });
             });
         });
+
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Hakem ID': '', 'Ad Soyad': '', 'İl': '', 'Brove': '', 'Branş': '', 'Tarih': '', 'Yarışma': '', 'Kategori': '', 'Rol/Açıklama': '' }]);
-        ws['!cols'] = [{ wch: 22 }, { wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 18 }, { wch: 22 }];
-        XLSX.utils.book_append_sheet(wb, ws, 'Görevler');
+
+        const wsSum = XLSX.utils.json_to_sheet(summary.length ? summary : [{
+            'Sıra': '', 'Hakem ID': '', 'Ad Soyad': '', 'İl': '', 'Bröve': '',
+            'Disiplin (DB)': '', 'Görev Sayısı': '', 'Görev Aldığı Branş(lar)': '',
+            'Son Görev Tarihi': '', 'Bröve Durumu': '', 'Durum': '',
+        }]);
+        wsSum['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 28 }, { wch: 14 }, { wch: 14 },
+                          { wch: 14 }, { wch: 12 }, { wch: 26 }, { wch: 16 }, { wch: 34 }, { wch: 14 }];
+        wsSum['!freeze'] = { xSplit: 0, ySplit: 1 };
+        XLSX.utils.book_append_sheet(wb, wsSum, 'Hakemler');
+
+        const wsDet = XLSX.utils.json_to_sheet(details.length ? details : [{
+            'Hakem ID': '', 'Ad Soyad': '', 'İl': '', 'Bröve': '', 'Branş (görev)': '',
+            'Tarih': '', 'Yarışma': '', 'Kategori': '', 'Rol / Panel': '', 'Kaynak': '',
+        }]);
+        wsDet['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+                          { wch: 12 }, { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 16 }];
+        wsDet['!freeze'] = { xSplit: 0, ySplit: 1 };
+        XLSX.utils.book_append_sheet(wb, wsDet, 'Görev Detayları');
+
         XLSX.writeFile(wb, `Hakem_Gorev_Raporu_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.xlsx`);
     };
 
