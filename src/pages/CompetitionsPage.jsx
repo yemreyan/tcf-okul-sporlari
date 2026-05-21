@@ -288,6 +288,7 @@ export default function CompetitionsPage() {
         const generateKategoriler = (currentKategoriler = {}) => {
             const nextKategoriler = { ...currentKategoriler };
             formData.selectedCats.forEach(catKey => {
+                const catConfig = disciplineCategoryMap[catKey] || {};
                 // Artistik: alet listesini criteria'dan al; Ritmik: catConfig.aletler; Aerobik/Trampolin/Parkur: alet yok
                 let activeAletler = [];
                 if (disciplineId === 'artistik') {
@@ -297,7 +298,6 @@ export default function CompetitionsPage() {
                     // Ritmik ve diğer branşlarda kategori konfigürasyonundaki alet listesini kullan
                     activeAletler = catConfig.aletler;
                 }
-                const catConfig = disciplineCategoryMap[catKey] || {};
                 if (!nextKategoriler[catKey]) {
                     nextKategoriler[catKey] = {
                         name: catConfig.label || getCategoryLabel(catKey),
