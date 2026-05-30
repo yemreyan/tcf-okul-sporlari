@@ -295,28 +295,77 @@ export default function CompetitionSchedulePage() {
     };
 
     /* ── Akıllı yardım: kategorileri günün başlangıcından itibaren otomatik dizmek ── */
+    // Aynı günde sırayla diz — gün penceresi dolarsa sonraki güne otomatik geçer
     const autoStaggerStartTimes = () => {
+        const gap = 10; // dk
         setPlanConfig(prev => {
             const next = { ...prev, catSettings: { ...prev.catSettings } };
-            const byDay = {};
-            prev.selectedCats.forEach(cat => {
-                const s = prev.catSettings[cat] || { gunIndex: 0 };
-                const gi = s.gunIndex ?? 0;
-                (byDay[gi] = byDay[gi] || []).push(cat);
-            });
-            Object.entries(byDay).forEach(([gi, arr]) => {
-                const dayStart = prev.daySettings[gi]?.baslangic || '09:00';
-                let cursor = hmToMin(dayStart);
-                arr.forEach(cat => {
-                    const est = estimateDuration(cat, prev.catSettings[cat]);
-                    if (!est) return;
-                    next.catSettings[cat] = { ...next.catSettings[cat], baslangic: minToHm(cursor) };
-                    cursor += est.total + 10; // 10 dk ara
-                });
-            });
+            const dayStart = (d) => prev.daySettings[d]?.baslangic || '09:00';
+            const dayEnd = (d) => prev.daySettings[d]?.bitis || '17:00';
+
+            // Mevcut kullanıcı seçimine saygılı: önce kullanıcının atadığı güne yerleştirmeyi dene,
+            // o güne sığmazsa sonraki güne taşı. Sırayı korumak için selectedCats sırasını kullan.
+            const cursorByDay = {}; // gunIndex -> dakika
+            let lastDayIdx = 0;
+
+            for (const cat of prev.selectedCats) {
+                const est = estimateDuration(cat, prev.catSettings[cat]);
+                if (!est) continue;
+                // Başlangıç olarak istenen gün (varsa)
+                let dayIdx = prev.catSettings[cat]?.gunIndex ?? lastDayIdx;
+                if (dayIdx >= days.length) dayIdx = days.length - 1;
+
+                // O güne başla — günün üstüne (sayfada başka kategori eklenmediyse) dayStart
+                if (cursorByDay[dayIdx] == null) cursorByDay[dayIdx] = hmToMin(dayStart(dayIdx));
+
+                // Sığmıyorsa sonraki güne kaydır
+                while (cursorByDay[dayIdx] + est.total > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
+                    dayIdx++;
+                    if (cursorByDay[dayIdx] == null) cursorByDay[dayIdx] = hmToMin(dayStart(dayIdx));
+                }
+
+                next.catSettings[cat] = {
+                    ...next.catSettings[cat],
+                    gunIndex: dayIdx,
+                    baslangic: minToHm(cursorByDay[dayIdx]),
+                };
+                cursorByDay[dayIdx] += est.total + gap;
+                lastDayIdx = dayIdx;
+            }
             return next;
         });
-        toast('Başlangıç saatleri otomatik düzenlendi.', 'success');
+        toast('Kategoriler güne sığmazsa sonraki güne taşınarak otomatik dizildi.', 'success');
+    };
+
+    // Sıfırdan otomatik dağıtım: günleri başlangıçtan itibaren peş peşe doldurur
+    const autoDistributeAllDays = () => {
+        const gap = 10;
+        setPlanConfig(prev => {
+            const next = { ...prev, catSettings: { ...prev.catSettings } };
+            const dayStart = (d) => prev.daySettings[d]?.baslangic || '09:00';
+            const dayEnd = (d) => prev.daySettings[d]?.bitis || '17:00';
+
+            let dayIdx = 0;
+            let cursor = hmToMin(dayStart(0));
+
+            for (const cat of prev.selectedCats) {
+                const est = estimateDuration(cat, prev.catSettings[cat]);
+                if (!est) continue;
+                // Sığmıyorsa sonraki güne geç
+                while (cursor + est.total > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
+                    dayIdx++;
+                    cursor = hmToMin(dayStart(dayIdx));
+                }
+                next.catSettings[cat] = {
+                    ...next.catSettings[cat],
+                    gunIndex: dayIdx,
+                    baslangic: minToHm(cursor),
+                };
+                cursor += est.total + gap;
+            }
+            return next;
+        });
+        toast('Tüm kategoriler günlere otomatik dağıtıldı.', 'success');
     };
 
     /* ── Planı oluştur — program node'una yaz ── */
@@ -479,9 +528,17 @@ export default function CompetitionSchedulePage() {
                             <span className="csv3-step-no">2</span>
                             Hangi gün ve kaçta başlasın?
                             {planConfig.selectedCats.length > 0 && (
-                                <button className="csv3-mini-btn" onClick={autoStaggerStartTimes} title="Aynı gündeki kategorileri sırayla diz">
-                                    <i className="material-icons-round">schedule</i> Otomatik Sırala
-                                </button>
+                                <>
+                                    <button className="csv3-mini-btn" onClick={autoStaggerStartTimes}
+                                        title="Kategorileri sırayla diz; sığmazsa sonraki güne taşır">
+                                        <i className="material-icons-round">schedule</i> Otomatik Sırala
+                                    </button>
+                                    <button className="csv3-mini-btn" onClick={autoDistributeAllDays}
+                                        title="Sıfırdan: tüm kategorileri günlere otomatik dağıtır"
+                                        style={{ background: '#dcfce7', color: '#15803d', borderColor: '#86efac' }}>
+                                        <i className="material-icons-round">auto_awesome</i> Günlere Dağıt
+                                    </button>
+                                </>
                             )}
                         </div>
                         {planConfig.selectedCats.length === 0 ? (
