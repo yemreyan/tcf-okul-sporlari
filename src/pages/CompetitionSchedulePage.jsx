@@ -19,6 +19,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
+import { generateSchedulePDFv2 } from '../utils/schedulePDFv2';
 import './CompetitionSchedulePage.css';
 
 /* ── Sabitler & Yardımcılar ───────────────────────────────────────────── */
@@ -131,6 +132,34 @@ export default function CompetitionSchedulePage() {
     const [activeDay, setActiveDay] = useState(0);
     const [expanded, setExpanded] = useState(new Set());
     const [generating, setGenerating] = useState(false);
+    const [pdfBusy, setPdfBusy] = useState(false);
+
+    const exportPdf = async () => {
+        if (!Object.keys(sessions).length) {
+            toast('Önce planı oluşturun.', 'warning');
+            return;
+        }
+        setPdfBusy(true);
+        try {
+            const athleteCounts = {};
+            Object.keys(comp?.kategoriler || {}).forEach(k => {
+                athleteCounts[k] = Object.keys(comp?.sporcular?.[k] || {}).length;
+            });
+            await generateSchedulePDFv2({
+                comp,
+                days,
+                sessions,
+                daySettings: planConfig.daySettings,
+                kategoriler: comp?.kategoriler || {},
+                athleteCounts,
+            });
+            toast('PDF indirildi.', 'success');
+        } catch (e) {
+            toast('PDF üretirken hata oluştu.', 'error');
+        } finally {
+            setPdfBusy(false);
+        }
+    };
 
     /* ── Yarışmalar ── */
     useEffect(() => {
@@ -1129,6 +1158,12 @@ export default function CompetitionSchedulePage() {
                             <div className="csv3-step-head">
                                 <span className="csv3-step-no done">✓</span>
                                 Oluşturulmuş Plan ({Object.keys(sessions).length} seans)
+                                <button onClick={exportPdf} disabled={pdfBusy}
+                                    style={{ marginLeft: 'auto' }}
+                                    className="csv3-btn-primary">
+                                    <i className="material-icons-round">{pdfBusy ? 'hourglass_top' : 'picture_as_pdf'}</i>
+                                    {pdfBusy ? 'PDF hazırlanıyor…' : 'TCF Resmi PDF'}
+                                </button>
                             </div>
                             <div className="csv2-day-tabs">
                                 {days.map((d, i) => (
