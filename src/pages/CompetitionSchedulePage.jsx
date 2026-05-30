@@ -219,27 +219,28 @@ export default function CompetitionSchedulePage() {
         });
         // Çoğunluğu (>=%50) gruplanmışsa o gruplamayı kullan
         if (withGrup >= N * 0.5) {
-            const groups = Object.entries(byGrup)
-                .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0))
-                .map(([, list]) => list);
-            // Gruplanmamış olanları son gruba ekle
+            const sortedEntries = Object.entries(byGrup)
+                .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0));
+            const groups = sortedEntries.map(([, list]) => list);
+            const groupLabels = sortedEntries.map(([k]) => String(k));
             const grouped = new Set(groups.flat());
             const orphans = ids.filter(id => !grouped.has(id));
             if (orphans.length && groups.length) groups[groups.length - 1].push(...orphans);
-            else if (orphans.length) groups.push(orphans);
+            else if (orphans.length) { groups.push(orphans); groupLabels.push('?'); }
             const groupCount = groups.length;
             const groupSize = Math.max(...groups.map(g => g.length));
-            return { N, groups, groupCount, groupSize, source: 'precomputed' };
+            return { N, groups, groupLabels, groupCount, groupSize, source: 'precomputed' };
         }
         // Otomatik: targetSize'a göre
         const K = (kategoriler[catKey]?.aletler || []).length;
-        if (K === 0) return { N, groups: [ids], groupCount: 1, groupSize: N, source: 'auto' };
+        if (K === 0) return { N, groups: [ids], groupLabels: ['1'], groupCount: 1, groupSize: N, source: 'auto' };
         const targetSize = Math.max(1, planConfig.grupBuyukluğu || 6);
         let groupCount = calcGroupCount(N, K, targetSize);
         if (groupCount === 0) groupCount = K;
         const groupSize = Math.ceil(N / groupCount);
         const groups = splitIntoGroups(ids, groupCount);
-        return { N, groups, groupCount, groupSize, source: 'auto' };
+        const groupLabels = groups.map((_, i) => String(i + 1));
+        return { N, groups, groupLabels, groupCount, groupSize, source: 'auto' };
     }, [comp, kategoriler, planConfig.grupBuyukluğu]);
 
     const getCatAthletes = useCallback(async (catKey) => {
@@ -410,9 +411,16 @@ export default function CompetitionSchedulePage() {
                 const bStart = cursor;
                 cursor += blockMin;
                 const bEnd = cursor;
-                if (!perDay[dayIdx]) perDay[dayIdx] = { baslangic: minToHm(bStart), bitis: minToHm(bEnd), bloklar: [] };
+                // Bu blokta hangi gruplar var: K, K+1, ...
+                const blockGroups = [];
+                for (let g = 0; g < K; g++) {
+                    const gIdx = b * K + g;
+                    blockGroups.push(gIdx); // indeks; etiket için groupLabels kullanılacak
+                }
+                if (!perDay[dayIdx]) perDay[dayIdx] = { baslangic: minToHm(bStart), bitis: minToHm(bEnd), bloklar: [], gruplar: [] };
                 perDay[dayIdx].bitis = minToHm(bEnd);
-                perDay[dayIdx].bloklar.push({ bIdx: b, baslangic: minToHm(bStart), bitis: minToHm(bEnd) });
+                perDay[dayIdx].bloklar.push({ bIdx: b, baslangic: minToHm(bStart), bitis: minToHm(bEnd), gruplar: blockGroups });
+                perDay[dayIdx].gruplar.push(...blockGroups);
                 placedBlocks++;
             }
             cursor += odul; // ödül sonraki kategoriden önce
@@ -490,22 +498,32 @@ export default function CompetitionSchedulePage() {
     const previews = useMemo(() => {
         return computeBlockPlacements().map(r => {
             if (r.error) return { cat: r.cat, error: r.error, placements: [] };
+            const info = catGroupInfo(r.cat);
+            const labels = info.groupLabels || [];
             const placements = Object.entries(r.perDay)
-                .map(([gi, d]) => ({ gunIndex: +gi, baslangic: d.baslangic, bitis: d.bitis, bloklar: d.bloklar }))
+                .map(([gi, d]) => ({
+                    gunIndex: +gi,
+                    baslangic: d.baslangic,
+                    bitis: d.bitis,
+                    bloklar: d.bloklar,
+                    gruplar: d.gruplar, // indeksler
+                    grupEtiketleri: (d.gruplar || []).map(gi => labels[gi] || String(gi + 1)),
+                }))
                 .sort((a, b) => a.gunIndex - b.gunIndex);
             const first = placements[0] || {};
             const last = placements[placements.length - 1] || {};
             return {
                 cat: r.cat, est: r.est, placements, overflow: r.overflow, totalBlocks: r.totalBlocks,
+                groupLabels: labels,
                 gunIndex: first.gunIndex,
                 baslangic: first.baslangic,
                 bitis: last.bitis,
                 lastGun: last.gunIndex,
                 spansMultipleDays: placements.length > 1,
-                isinma: 0, odul: 0, // (already counted)
+                isinma: 0, odul: 0,
             };
         });
-    }, [computeBlockPlacements]);
+    }, [computeBlockPlacements, catGroupInfo]);
 
     /* ── Uyarılar (çakışma / gün penceresi taşma) ── */
     const warnings = useMemo(() => {
@@ -713,6 +731,9 @@ export default function CompetitionSchedulePage() {
                 const gruplar = info.groups && info.groups.length === groupCount
                     ? info.groups
                     : splitIntoGroups(Object.keys(comp?.sporcular?.[cat] || {}), groupCount);
+                const grupEtiketleri = info.groupLabels && info.groupLabels.length === gruplar.length
+                    ? info.groupLabels
+                    : gruplar.map((_, i) => String(i + 1));
                 const dayKeys = Object.keys(pl.perDay).map(Number).sort((a, b) => a - b);
                 if (dayKeys.length > 1) spannedCount++;
                 for (const gi of dayKeys) {
@@ -728,6 +749,7 @@ export default function CompetitionSchedulePage() {
                         aletDk: aletler.reduce((acc, a) => { acc[a] = planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2; return acc; }, {}),
                         sporcuSayisi: info.N,
                         gruplar,
+                        grupEtiketleri,
                         grupSayisi: groupCount,
                         blokSayisi: blockCount,
                         grupBuyukluğu: pl.est?.actualSize || 0,
@@ -919,13 +941,21 @@ export default function CompetitionSchedulePage() {
                                                         <span className="csv3-overflow-badge" title="Tüm günlere de sığmıyor">⚠ taşma</span>
                                                     )}
                                                     <div className="csv3-plan-line">
-                                                        {(preview?.placements || []).map((p, pi) => (
-                                                            <div key={pi} className="csv3-plan-day-line">
-                                                                <span className="csv3-day-tag">{p.gunIndex + 1}. gün</span>
-                                                                <strong className="csv3-bitis">{p.baslangic} → {p.bitis}</strong>
-                                                                <span className="csv3-dur">({p.bloklar.length} blok)</span>
-                                                            </div>
-                                                        ))}
+                                                        {(preview?.placements || []).map((p, pi) => {
+                                                            const labels = p.grupEtiketleri || [];
+                                                            const grupRange = labels.length
+                                                                ? (labels.length > 4
+                                                                    ? `Grup ${labels[0]} – ${labels[labels.length - 1]}`
+                                                                    : `Grup ${labels.join(', ')}`)
+                                                                : '';
+                                                            return (
+                                                                <div key={pi} className="csv3-plan-day-line">
+                                                                    <span className="csv3-day-tag">{p.gunIndex + 1}. gün</span>
+                                                                    <strong className="csv3-bitis">{p.baslangic} → {p.bitis}</strong>
+                                                                    <span className="csv3-dur">({p.bloklar.length} blok · {grupRange})</span>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                     {preview?.est && (
                                                         <div className="csv3-block-line">
@@ -1192,6 +1222,8 @@ function RotationGrid({ session, comp }) {
     const aletler = session.aletler || [];
     const K = aletler.length;
     const gruplar = session.gruplar || [];
+    const grupEtiketleri = session.grupEtiketleri || gruplar.map((_, i) => String(i + 1));
+    const grupAdi = (idx) => `Grup ${grupEtiketleri[idx] ?? (idx + 1)}`;
     if (K === 0) return <div className="csv2-empty small"><p>Bu seansta alet yok.</p></div>;
     const sporcular = comp?.sporcular?.[session.kategori] || {};
     const fullName = (id) => {
@@ -1241,7 +1273,7 @@ function RotationGrid({ session, comp }) {
                     <div className="csv2-rotgrid-block-head">
                         <strong>Blok {blk.bIdx + 1}</strong>
                         {blk.baslangic && <span style={{ color: '#4F46E5', fontWeight: 700 }}>{blk.baslangic} → {blk.bitis}</span>}
-                        <span>Gruplar: {blk.groups.map((_, i) => GROUP_LETTER(blk.startIdx + i)).join(', ')}</span>
+                        <span>Gruplar: {blk.groups.map((_, i) => grupAdi(blk.startIdx + i)).join(', ')}</span>
                         {idx > 0 && transDk > 0 && (
                             <span className="csv2-rotgrid-trans">↻ {transDk} dk geçiş</span>
                         )}
@@ -1264,7 +1296,7 @@ function RotationGrid({ session, comp }) {
                                         const grupIds = blk.groups[localG] || [];
                                         return (
                                             <td key={r} className="csv2-rotgrid-cell" style={{ borderLeft: `4px solid ${color}` }}>
-                                                <div className="csv2-rotgrid-grup" style={{ color }}>Grup {GROUP_LETTER(globalG)}</div>
+                                                <div className="csv2-rotgrid-grup" style={{ color }}>{grupAdi(globalG)}</div>
                                                 <div className="csv2-rotgrid-count">{grupIds.length} sporcu</div>
                                             </td>
                                         );
@@ -1280,7 +1312,7 @@ function RotationGrid({ session, comp }) {
                 {gruplar.map((ids, i) => (
                     <div key={i} className="csv2-rotgrid-grup-card" style={{ borderTop: `3px solid ${GROUP_COLOR[i % GROUP_COLOR.length]}` }}>
                         <div className="csv2-rotgrid-grup-head">
-                            <span style={{ color: GROUP_COLOR[i % GROUP_COLOR.length] }}>Grup {GROUP_LETTER(i)}</span>
+                            <span style={{ color: GROUP_COLOR[i % GROUP_COLOR.length] }}>{grupAdi(i)}</span>
                             <span className="csv2-rotgrid-grup-count">{ids.length} sporcu · Blok {Math.floor(i / K) + 1}</span>
                         </div>
                         <ul>
