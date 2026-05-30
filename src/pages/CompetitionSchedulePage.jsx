@@ -200,6 +200,48 @@ export default function CompetitionSchedulePage() {
         return Object.keys(sp).length;
     }, [comp]);
 
+    /* ── Önceden gruplanmış mı? — sporcuların rotasyonGrubu alanına bakılır ── */
+    const catGroupInfo = useCallback((catKey) => {
+        const sp = comp?.sporcular?.[catKey] || {};
+        const ids = Object.keys(sp);
+        const N = ids.length;
+        if (N === 0) return { N: 0, groups: [], groupCount: 0, groupSize: 0, source: 'empty' };
+        // rotasyonGrubu varsa önceden gruplanmış demektir
+        const byGrup = {};
+        let withGrup = 0;
+        ids.forEach(id => {
+            const g = sp[id]?.rotasyonGrubu;
+            if (g != null && g !== '') {
+                const gk = String(g);
+                (byGrup[gk] = byGrup[gk] || []).push(id);
+                withGrup++;
+            }
+        });
+        // Çoğunluğu (>=%50) gruplanmışsa o gruplamayı kullan
+        if (withGrup >= N * 0.5) {
+            const groups = Object.entries(byGrup)
+                .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0))
+                .map(([, list]) => list);
+            // Gruplanmamış olanları son gruba ekle
+            const grouped = new Set(groups.flat());
+            const orphans = ids.filter(id => !grouped.has(id));
+            if (orphans.length && groups.length) groups[groups.length - 1].push(...orphans);
+            else if (orphans.length) groups.push(orphans);
+            const groupCount = groups.length;
+            const groupSize = Math.max(...groups.map(g => g.length));
+            return { N, groups, groupCount, groupSize, source: 'precomputed' };
+        }
+        // Otomatik: targetSize'a göre
+        const K = (kategoriler[catKey]?.aletler || []).length;
+        if (K === 0) return { N, groups: [ids], groupCount: 1, groupSize: N, source: 'auto' };
+        const targetSize = Math.max(1, planConfig.grupBuyukluğu || 6);
+        let groupCount = calcGroupCount(N, K, targetSize);
+        if (groupCount === 0) groupCount = K;
+        const groupSize = Math.ceil(N / groupCount);
+        const groups = splitIntoGroups(ids, groupCount);
+        return { N, groups, groupCount, groupSize, source: 'auto' };
+    }, [comp, kategoriler, planConfig.grupBuyukluğu]);
+
     const getCatAthletes = useCallback(async (catKey) => {
         const sira = siralama?.[catKey];
         if (sira && typeof sira === 'object') {
@@ -228,12 +270,11 @@ export default function CompetitionSchedulePage() {
         if (aletler.length === 0) return null;
         const sira = olimpikSira(catKey, aletler);
         const K = sira.length;
-        const N = catAthleteCount(catKey);
-        const targetSize = Math.max(1, planConfig.grupBuyukluğu || 6);
-
-        const groupCount = Math.max(K, calcGroupCount(N, K, targetSize));
-        const blockCount = groupCount / K;
-        const actualSize = N > 0 ? Math.ceil(N / groupCount) : 0;
+        const info = catGroupInfo(catKey);
+        const N = info.N;
+        const groupCount = Math.max(K, info.groupCount || K);
+        const blockCount = Math.ceil(groupCount / K);
+        const actualSize = info.groupSize || (N > 0 ? Math.ceil(N / groupCount) : 0);
 
         // Bir rotasyonda K grup paralel çalışır; rotasyon süresi en uzun alete bağlı
         const maxAletDk = Math.max(...sira.map(a => planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2));
@@ -252,8 +293,9 @@ export default function CompetitionSchedulePage() {
             rotationMin: Math.round(rotationMin),
             blockMin: Math.round(blockMin),
             total,
+            source: info.source, // 'precomputed' | 'auto' | 'empty'
         };
-    }, [kategoriler, planConfig.aletDk, planConfig.grupBuyukluğu, planConfig.bloklarArasiDk, catAthleteCount]);
+    }, [kategoriler, planConfig.aletDk, planConfig.bloklarArasiDk, catGroupInfo]);
 
     /* ── FİZİBİLİTE: bir blok günün penceresine sığıyor mu? ─────────────── */
     const feasibility = useMemo(() => {
@@ -662,11 +704,14 @@ export default function CompetitionSchedulePage() {
                 const kc = kategoriler[cat];
                 if (!kc || !(kc.aletler || []).length) continue;
                 const aletler = olimpikSira(cat, kc.aletler);
-                const athleteIds = await getCatAthletes(cat);
+                const info = catGroupInfo(cat);
                 const K = aletler.length;
-                const groupCount = pl.est?.groupCount || Math.max(K, calcGroupCount(athleteIds.length, K, planConfig.grupBuyukluğu || 6));
-                const blockCount = groupCount / K;
-                const gruplar = splitIntoGroups(athleteIds, groupCount);
+                const groupCount = pl.est?.groupCount || Math.max(K, info.groupCount || K);
+                const blockCount = Math.ceil(groupCount / K);
+                // ÖNCE pre-grouped (rotasyonGrubu) varsa o gruplamayı kullan
+                const gruplar = info.groups && info.groups.length === groupCount
+                    ? info.groups
+                    : splitIntoGroups(Object.keys(comp?.sporcular?.[cat] || {}), groupCount);
                 const dayKeys = Object.keys(pl.perDay).map(Number).sort((a, b) => a - b);
                 if (dayKeys.length > 1) spannedCount++;
                 for (const gi of dayKeys) {
@@ -680,7 +725,7 @@ export default function CompetitionSchedulePage() {
                         kategori: cat,
                         aletler,
                         aletDk: aletler.reduce((acc, a) => { acc[a] = planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2; return acc; }, {}),
-                        sporcuSayisi: athleteIds.length,
+                        sporcuSayisi: info.N,
                         gruplar,
                         grupSayisi: groupCount,
                         blokSayisi: blockCount,
@@ -884,6 +929,11 @@ export default function CompetitionSchedulePage() {
                                                     {preview?.est && (
                                                         <div className="csv3-block-line">
                                                             Toplam: {preview.est.groupCount} grup ({preview.est.actualSize}/grup) · {preview.est.blockCount} blok · {preview.est.total} dk
+                                                            {preview.est.source === 'precomputed' && (
+                                                                <span style={{ marginLeft: 6, background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>
+                                                                    ✓ önceden gruplandı
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </td>
