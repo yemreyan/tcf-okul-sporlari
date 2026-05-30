@@ -394,9 +394,8 @@ export default function CompetitionSchedulePage() {
         toast('Kategoriler güne sığmazsa sonraki güne taşınarak otomatik dizildi.', 'success');
     };
 
-    // Sıfırdan otomatik dağıtım: günleri başlangıçtan itibaren peş peşe doldurur.
-    // Kullanıcının önceden seçtiği gün ve saat tercihlerini SIFIRLAR — tamamen yeni
-    // dağıtım yapar. Sığmayan kategoriler sonraki güne taşınır.
+    // Sıfırdan EŞİT dağıtım: cats / days kadar her güne yerleştirir.
+    // Kapasite aşılırsa kalanlar sonraki güne taşar; gün yoksa son güne sığar.
     const autoDistributeAllDays = () => {
         if (planConfig.selectedCats.length === 0) {
             toast('Önce kategori seçin.', 'warning'); return;
@@ -416,32 +415,45 @@ export default function CompetitionSchedulePage() {
                 return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00';
             };
 
+            // Eşit dağıtım: her güne ≈ N/D kategori
+            const N = prev.selectedCats.length;
+            const D = days.length;
+            const perDay = Math.ceil(N / D);
+
             let dayIdx = 0;
             let cursor = hmToMin(dayStart(0));
-            let shiftedCount = 0;
-            // Kategorileri selectedCats sırasında dağıt
-            for (const cat of prev.selectedCats) {
+            let countOnDay = 0;
+
+            for (let idx = 0; idx < prev.selectedCats.length; idx++) {
+                const cat = prev.selectedCats[idx];
                 const settings = prev.catSettings[cat] || {};
                 const est = estimateDuration(cat, settings);
                 const dur = Math.max(1, est?.total || 25);
-                // Sığmıyorsa sonraki güne kaydır
-                let shifted = false;
+
+                // Eşit-dağıtım: o güne kotaya ulaşıldıysa sonraki güne geç
+                if (countOnDay >= perDay && dayIdx + 1 < days.length) {
+                    dayIdx++;
+                    cursor = hmToMin(dayStart(dayIdx));
+                    countOnDay = 0;
+                }
+                // Kapasite-koruması: sığmıyorsa yine sonraki güne kaydır
                 while (cursor + dur > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
                     dayIdx++;
                     cursor = hmToMin(dayStart(dayIdx));
-                    shifted = true;
+                    countOnDay = 0;
                 }
-                if (shifted) shiftedCount++;
+
                 next.catSettings[cat] = {
                     ...settings,
                     gunIndex: dayIdx,
                     baslangic: minToHm(cursor),
                 };
                 cursor += dur + gap;
+                countOnDay++;
             }
             return next;
         });
-        toast('Tüm kategoriler günlere otomatik dağıtıldı.', 'success');
+        toast(`Kategoriler ${days.length} güne eşit dağıtıldı.`, 'success');
     };
 
     /* ── Planı oluştur — program node'una yaz ── */
@@ -615,9 +627,9 @@ export default function CompetitionSchedulePage() {
                                         <i className="material-icons-round">schedule</i> Otomatik Sırala
                                     </button>
                                     <button className="csv3-mini-btn" onClick={autoDistributeAllDays}
-                                        title="Sıfırdan: tüm kategorileri günlere otomatik dağıtır"
+                                        title={`Tüm kategorileri ${days.length} güne eşit dağıt (≈ ${Math.ceil(planConfig.selectedCats.length / Math.max(1, days.length))} kat/gün)`}
                                         style={{ background: '#dcfce7', color: '#15803d', borderColor: '#86efac' }}>
-                                        <i className="material-icons-round">auto_awesome</i> Günlere Dağıt
+                                        <i className="material-icons-round">auto_awesome</i> Eşit Günlere Dağıt
                                     </button>
                                 </>
                             )}
