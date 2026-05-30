@@ -255,6 +255,42 @@ export default function CompetitionSchedulePage() {
         };
     }, [kategoriler, planConfig.aletDk, planConfig.grupBuyukluğu, planConfig.bloklarArasiDk, catAthleteCount]);
 
+    /* ── FİZİBİLİTE: bir blok günün penceresine sığıyor mu? ─────────────── */
+    const feasibility = useMemo(() => {
+        if (planConfig.selectedCats.length === 0 || days.length === 0) return null;
+        const minDayWindow = Math.min(...days.map((_, i) => {
+            const ds = planConfig.daySettings?.[i] || {};
+            const s = (ds.baslangic && /^\d{1,2}:\d{2}/.test(ds.baslangic)) ? ds.baslangic : '09:00';
+            const e = (ds.bitis && /^\d{1,2}:\d{2}/.test(ds.bitis)) ? ds.bitis : '17:00';
+            return Math.max(0, hmToMin(e) - hmToMin(s));
+        }));
+        let worst = null;
+        for (const cat of planConfig.selectedCats) {
+            const est = estimateDuration(cat, planConfig.catSettings[cat] || {});
+            if (est && est.blockMin > 0) {
+                if (!worst || est.blockMin > worst.blockMin) worst = { cat, blockMin: est.blockMin, est };
+            }
+        }
+        if (!worst) return null;
+        const fits = worst.blockMin <= minDayWindow;
+        return {
+            fits,
+            worstCat: worst.cat,
+            blockMin: worst.blockMin,
+            minDayWindow,
+            // Sığması için önerilen grup büyüklüğü
+            suggestedGroupSize: (() => {
+                if (fits) return null;
+                const aletler = (kategoriler[worst.cat]?.aletler || []);
+                const K = aletler.length;
+                const maxAletDk = Math.max(...aletler.map(a => planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2));
+                // block_dk = K × groupSize × maxAletDk ≤ minDayWindow
+                // groupSize ≤ minDayWindow / (K × maxAletDk)
+                return Math.max(1, Math.floor(minDayWindow / (K * maxAletDk)));
+            })(),
+        };
+    }, [planConfig, days, kategoriler, estimateDuration]);
+
     /* ── BLOK BAZLI ZAMAN YÜRÜYÜCÜ ──
      * Bloklar atomik birimler; bir blok ister mevcut günde, ister sonraki
      * günde başlasın. Gün penceresi dolduğunda bir sonraki günün başlangıcına
@@ -313,6 +349,7 @@ export default function CompetitionSchedulePage() {
 
             const perDay = {};
             let overflow = false;
+            let placedBlocks = 0;
             for (let b = 0; b < blockCount; b++) {
                 if (b > 0) {
                     // Bloklar arası geçiş; sığmazsa sonraki güne atla (geçişsiz)
@@ -328,17 +365,25 @@ export default function CompetitionSchedulePage() {
                     dayIdx++;
                     cursor = dayStartM(dayIdx);
                 }
-                if (cursor + blockMin > dayEndM(dayIdx)) overflow = true;
-
+                // Eğer tek blok herhangi bir güne SIĞMIYORSA (blockMin > dayWindow)
+                // YA DA son güne bile sığmıyorsa, durur ve overflow işaretler.
+                if (cursor + blockMin > dayEndM(dayIdx)) {
+                    overflow = true;
+                    break; // sonraki blokları yerleştirmeye çalışma
+                }
                 const bStart = cursor;
                 cursor += blockMin;
                 const bEnd = cursor;
                 if (!perDay[dayIdx]) perDay[dayIdx] = { baslangic: minToHm(bStart), bitis: minToHm(bEnd), bloklar: [] };
                 perDay[dayIdx].bitis = minToHm(bEnd);
                 perDay[dayIdx].bloklar.push({ bIdx: b, baslangic: minToHm(bStart), bitis: minToHm(bEnd) });
+                placedBlocks++;
             }
             cursor += odul; // ödül sonraki kategoriden önce
-            results.push({ cat, est, perDay, overflow, totalBlocks: blockCount });
+            results.push({
+                cat, est, perDay, overflow, totalBlocks: blockCount, placedBlocks,
+                unplacedBlocks: blockCount - placedBlocks,
+            });
         }
         return results;
     }, [planConfig, estimateDuration, days]);
@@ -916,10 +961,15 @@ export default function CompetitionSchedulePage() {
 
                         <div className="csv3-grid-2" style={{ marginBottom: 12 }}>
                             <label className="csv3-alet-card">
-                                <span style={{ flex: 1 }}>Grup başına hedef sporcu sayısı</span>
-                                <input type="number" min="1" max="50"
+                                <span style={{ flex: 1 }}>
+                                    Grup başına hedef sporcu sayısı
+                                    <span style={{ display: 'block', fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>
+                                        Genelde 5-8 önerilir
+                                    </span>
+                                </span>
+                                <input type="number" min="1" max="20"
                                     value={planConfig.grupBuyukluğu ?? 6}
-                                    onChange={e => setPlanConfig(p => ({ ...p, grupBuyukluğu: Math.max(1, +e.target.value || 6) }))} />
+                                    onChange={e => setPlanConfig(p => ({ ...p, grupBuyukluğu: Math.max(1, Math.min(50, +e.target.value || 6)) }))} />
                                 <span className="csv3-alet-unit">sporcu</span>
                             </label>
                             <label className="csv3-alet-card">
@@ -958,6 +1008,20 @@ export default function CompetitionSchedulePage() {
                     {/* ── Adım 5: Uyarılar + Oluştur ── */}
                     <section className="csv3-step csv3-step-final">
                         <div className="csv3-step-head"><span className="csv3-step-no">5</span> Önizleme & Oluştur</div>
+                        {feasibility && !feasibility.fits && (
+                            <div className="csv3-fatal">
+                                <strong>⛔ Plan imkânsız — bir blok günün penceresinden uzun</strong>
+                                <p>
+                                    En uzun blok: <strong>{feasibility.blockMin} dk</strong> (<em>{catLabel(feasibility.worstCat)}</em>),
+                                    en kısa gün penceresi: <strong>{feasibility.minDayWindow} dk</strong>.
+                                </p>
+                                <p>
+                                    <strong>Çözüm:</strong> Adım 4'ten <em>Grup başına hedef sporcu</em> değerini düşürün
+                                    {feasibility.suggestedGroupSize && <> (önerilen: <strong>≤ {feasibility.suggestedGroupSize}</strong>)</>}
+                                    , veya alet dakikalarını azaltın, ya da Adım 3'te günü uzatın.
+                                </p>
+                            </div>
+                        )}
                         {warnings.length > 0 && (
                             <div className="csv3-warnings">
                                 <strong>Uyarılar:</strong>
@@ -966,12 +1030,12 @@ export default function CompetitionSchedulePage() {
                         )}
                         <div className="csv3-summary">
                             <div><strong>Seçili kategori:</strong> {planConfig.selectedCats.length}</div>
-                            <div><strong>Toplam seans:</strong> {previews.filter(p => !p.error).length}</div>
+                            <div><strong>Toplam seans:</strong> {previews.filter(p => !p.error && !p.overflow).length}</div>
                             <div><strong>Toplam süre:</strong> {previews.reduce((s, p) => s + (p.est?.total || 0), 0)} dk</div>
                         </div>
                         <div className="csv3-actions">
                             <button className="csv3-btn-primary" onClick={buildAndSavePlan}
-                                disabled={generating || planConfig.selectedCats.length === 0}>
+                                disabled={generating || planConfig.selectedCats.length === 0 || (feasibility && !feasibility.fits)}>
                                 <i className="material-icons-round">{generating ? 'hourglass_top' : 'auto_awesome'}</i>
                                 {generating ? 'Oluşturuluyor…' : 'Planı Oluştur'}
                             </button>

@@ -196,6 +196,13 @@
 }
 
 /* Step 5: uyarılar & oluştur */
+.csv3-fatal {
+    background: #fee2e2; border: 2px solid #ef4444;
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;
+    color: #991b1b;
+}
+.csv3-fatal strong { font-size: 14px; display: block; margin-bottom: 6px; }
+.csv3-fatal p { margin: 4px 0; font-size: 13px; }
 .csv3-warnings {
     background: #fef3c7; border: 1px solid #fcd34d;
     border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
