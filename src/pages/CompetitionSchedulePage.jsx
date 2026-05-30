@@ -394,31 +394,50 @@ export default function CompetitionSchedulePage() {
         toast('Kategoriler güne sığmazsa sonraki güne taşınarak otomatik dizildi.', 'success');
     };
 
-    // Sıfırdan otomatik dağıtım: günleri başlangıçtan itibaren peş peşe doldurur
+    // Sıfırdan otomatik dağıtım: günleri başlangıçtan itibaren peş peşe doldurur.
+    // Kullanıcının önceden seçtiği gün ve saat tercihlerini SIFIRLAR — tamamen yeni
+    // dağıtım yapar. Sığmayan kategoriler sonraki güne taşınır.
     const autoDistributeAllDays = () => {
+        if (planConfig.selectedCats.length === 0) {
+            toast('Önce kategori seçin.', 'warning'); return;
+        }
+        if (days.length === 0) {
+            toast('Yarışmaya tarih atayın.', 'warning'); return;
+        }
         const gap = 10;
         setPlanConfig(prev => {
             const next = { ...prev, catSettings: { ...prev.catSettings } };
-            const dayStart = (d) => prev.daySettings[d]?.baslangic || '09:00';
-            const dayEnd = (d) => prev.daySettings[d]?.bitis || '17:00';
+            const dayStart = (d) => {
+                const v = prev.daySettings?.[d]?.baslangic;
+                return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '09:00';
+            };
+            const dayEnd = (d) => {
+                const v = prev.daySettings?.[d]?.bitis;
+                return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00';
+            };
 
             let dayIdx = 0;
             let cursor = hmToMin(dayStart(0));
-
+            let shiftedCount = 0;
+            // Kategorileri selectedCats sırasında dağıt
             for (const cat of prev.selectedCats) {
-                const est = estimateDuration(cat, prev.catSettings[cat]);
-                if (!est) continue;
-                // Sığmıyorsa sonraki güne geç
-                while (cursor + est.total > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
+                const settings = prev.catSettings[cat] || {};
+                const est = estimateDuration(cat, settings);
+                const dur = Math.max(1, est?.total || 25);
+                // Sığmıyorsa sonraki güne kaydır
+                let shifted = false;
+                while (cursor + dur > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
                     dayIdx++;
                     cursor = hmToMin(dayStart(dayIdx));
+                    shifted = true;
                 }
+                if (shifted) shiftedCount++;
                 next.catSettings[cat] = {
-                    ...next.catSettings[cat],
+                    ...settings,
                     gunIndex: dayIdx,
                     baslangic: minToHm(cursor),
                 };
-                cursor += est.total + gap;
+                cursor += dur + gap;
             }
             return next;
         });
