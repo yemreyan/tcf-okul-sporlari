@@ -255,11 +255,95 @@ export default function CompetitionSchedulePage() {
         };
     }, [kategoriler, planConfig.aletDk, planConfig.grupBuyukluğu, planConfig.bloklarArasiDk, catAthleteCount]);
 
-    /* ── AKILLI YERLEŞTİRİCİ: gün penceresine sığmazsa sonraki güne taşır ──
-     * Kullanıcının seçtiği gün/saat tercih olarak kullanılır; sığmazsa
-     * otomatik sonraki güne kayar ve o günün başlangıcından (veya o gündeki
-     * son yerleşimin bitişinden) devam eder.
+    /* ── BLOK BAZLI ZAMAN YÜRÜYÜCÜ ──
+     * Bloklar atomik birimler; bir blok ister mevcut günde, ister sonraki
+     * günde başlasın. Gün penceresi dolduğunda bir sonraki günün başlangıcına
+     * atlanır ve oradan devam edilir. Bir kategori birden çok güne yayılabilir.
+     *
+     * Dönüş: her kategori için { perDay: { gunIndex: { baslangic, bitis,
+     *        bloklar: [{bIdx, baslangic, bitis}], }}, overflow, est, ... }
      */
+    const computeBlockPlacements = useCallback(() => {
+        const results = [];
+        const dayStartM = (d) => {
+            const v = planConfig.daySettings?.[d]?.baslangic;
+            return hmToMin((v && /^\d{1,2}:\d{2}/.test(v)) ? v : '09:00');
+        };
+        const dayEndM = (d) => {
+            const v = planConfig.daySettings?.[d]?.bitis;
+            return hmToMin((v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00');
+        };
+
+        // Sıralama: gunIndex+baslangic
+        const orderedCats = [...planConfig.selectedCats].sort((A, B) => {
+            const a = planConfig.catSettings[A] || {};
+            const b = planConfig.catSettings[B] || {};
+            const dA = a.gunIndex ?? 0, dB = b.gunIndex ?? 0;
+            if (dA !== dB) return dA - dB;
+            return hmToMin(a.baslangic || '09:00') - hmToMin(b.baslangic || '09:00');
+        });
+
+        let dayIdx = 0;
+        let cursor = dayStartM(0);
+
+        for (const cat of orderedCats) {
+            const s = planConfig.catSettings[cat] || {};
+            const est = estimateDuration(cat, s);
+            if (!est) { results.push({ cat, error: 'Alet yok.', perDay: {} }); continue; }
+            const { K, blockCount, blockMin } = est;
+            const isinma = s.isinmaDk ?? 15;
+            const odul = s.odulDk ?? 10;
+            const blokArasi = planConfig.bloklarArasiDk ?? 5;
+
+            // Kullanıcının istediği güne atla (geride değilse)
+            const userDay = Math.min(Math.max(0, s.gunIndex ?? 0), Math.max(0, days.length - 1));
+            if (userDay > dayIdx) {
+                dayIdx = userDay;
+                cursor = dayStartM(dayIdx);
+            }
+            const userStart = hmToMin(s.baslangic || '');
+            if (userStart && userStart > cursor) cursor = userStart;
+
+            // Isınma için yer aç; ısınma + ilk blok sığmıyorsa sonraki güne atla
+            while (cursor + isinma + blockMin > dayEndM(dayIdx) && dayIdx + 1 < days.length) {
+                dayIdx++;
+                cursor = dayStartM(dayIdx);
+            }
+            cursor += isinma;
+
+            const perDay = {};
+            let overflow = false;
+            for (let b = 0; b < blockCount; b++) {
+                if (b > 0) {
+                    // Bloklar arası geçiş; sığmazsa sonraki güne atla (geçişsiz)
+                    if (cursor + blokArasi + blockMin > dayEndM(dayIdx) && dayIdx + 1 < days.length) {
+                        dayIdx++;
+                        cursor = dayStartM(dayIdx);
+                    } else {
+                        cursor += blokArasi;
+                    }
+                }
+                // Tek blok hâlâ sığmıyorsa sonraki güne
+                while (cursor + blockMin > dayEndM(dayIdx) && dayIdx + 1 < days.length) {
+                    dayIdx++;
+                    cursor = dayStartM(dayIdx);
+                }
+                if (cursor + blockMin > dayEndM(dayIdx)) overflow = true;
+
+                const bStart = cursor;
+                cursor += blockMin;
+                const bEnd = cursor;
+                if (!perDay[dayIdx]) perDay[dayIdx] = { baslangic: minToHm(bStart), bitis: minToHm(bEnd), bloklar: [] };
+                perDay[dayIdx].bitis = minToHm(bEnd);
+                perDay[dayIdx].bloklar.push({ bIdx: b, baslangic: minToHm(bStart), bitis: minToHm(bEnd) });
+            }
+            cursor += odul; // ödül sonraki kategoriden önce
+            results.push({ cat, est, perDay, overflow, totalBlocks: blockCount });
+        }
+        return results;
+    }, [planConfig, estimateDuration, days]);
+
+    /* ── ESKİ computePlacements (geriye dönük; bazı yerlerde hâlâ kullanılabilir) ── */
     const computePlacements = useCallback(() => {
         const gap = 10;
         const placements = [];
@@ -321,37 +405,58 @@ export default function CompetitionSchedulePage() {
         return placements;
     }, [planConfig, estimateDuration, days]);
 
-    /* ── Ön izleme: akıllı yerleştirici ile gerçek tahmin ── */
-    const previews = useMemo(() => computePlacements(), [computePlacements]);
+    /* ── Ön izleme: BLOK BAZLI çoklu-gün yerleştirme ── */
+    const previews = useMemo(() => {
+        return computeBlockPlacements().map(r => {
+            if (r.error) return { cat: r.cat, error: r.error, placements: [] };
+            const placements = Object.entries(r.perDay)
+                .map(([gi, d]) => ({ gunIndex: +gi, baslangic: d.baslangic, bitis: d.bitis, bloklar: d.bloklar }))
+                .sort((a, b) => a.gunIndex - b.gunIndex);
+            const first = placements[0] || {};
+            const last = placements[placements.length - 1] || {};
+            return {
+                cat: r.cat, est: r.est, placements, overflow: r.overflow, totalBlocks: r.totalBlocks,
+                gunIndex: first.gunIndex,
+                baslangic: first.baslangic,
+                bitis: last.bitis,
+                lastGun: last.gunIndex,
+                spansMultipleDays: placements.length > 1,
+                isinma: 0, odul: 0, // (already counted)
+            };
+        });
+    }, [computeBlockPlacements]);
 
     /* ── Uyarılar (çakışma / gün penceresi taşma) ── */
     const warnings = useMemo(() => {
         const w = [];
-        // Gün bazlı çakışma
+        // Gün bazlı çakışma — her cat placements'ı dolaşır
         const byDay = {};
         previews.forEach(p => {
-            if (p.error || p.gunIndex == null) return;
-            (byDay[p.gunIndex] = byDay[p.gunIndex] || []).push(p);
+            if (p.error || !p.placements) return;
+            p.placements.forEach(pp => {
+                (byDay[pp.gunIndex] = byDay[pp.gunIndex] || []).push({ cat: p.cat, baslangic: pp.baslangic, bitis: pp.bitis });
+            });
         });
         Object.entries(byDay).forEach(([gi, arr]) => {
             arr.sort((a, b) => hmToMin(a.baslangic) - hmToMin(b.baslangic));
             for (let i = 0; i < arr.length; i++) {
                 for (let j = i + 1; j < arr.length; j++) {
                     const a = arr[i], b = arr[j];
-                    if (hmToMin(a.bitis) > hmToMin(b.baslangic) && hmToMin(b.bitis) > hmToMin(a.baslangic)) {
+                    if (hmToMin(a.bitis) > hmToMin(b.baslangic) && hmToMin(b.bitis) > hmToMin(a.baslangic) && a.cat !== b.cat) {
                         w.push({ kind: 'cakisma', text: `${days[gi] ? fmtDate(days[gi]) : (+gi + 1) + '. Gün'}: ${catLabel(a.cat)} ile ${catLabel(b.cat)} çakışıyor.` });
                     }
                 }
             }
         });
-        // Hiçbir güne sığmayanlar (last-day overflow)
+        // Çoklu güne yayılan + tamamen taşan kategoriler
         previews.forEach(p => {
             if (p.error) return;
             if (p.overflow) {
-                w.push({ kind: 'overflow', text: `${catLabel(p.cat)} hiçbir güne sığmıyor — gün penceresini genişletin veya alet sürelerini azaltın.` });
+                w.push({ kind: 'overflow', text: `${catLabel(p.cat)} son güne bile sığmıyor — gün penceresini genişletin veya alet sürelerini azaltın.` });
             }
-            if (p.shifted) {
-                w.push({ kind: 'shift', text: `${catLabel(p.cat)} gün dolduğu için ${p.gunIndex + 1}. güne otomatik taşındı.` });
+            if (p.spansMultipleDays) {
+                const gunler = p.placements.map(pp => pp.gunIndex + 1).join(', ');
+                w.push({ kind: 'shift', text: `${catLabel(p.cat)} kategorisi ${p.placements.length} güne yayıldı (Gün: ${gunler}).` });
             }
         });
         // Sporcu yoksa
@@ -502,10 +607,11 @@ export default function CompetitionSchedulePage() {
             // Eski programı sil ve yeniden yaz — placement'lardan otomatik gün-yerleştirmesiyle
             await remove(ref(db, `${firebasePath}/${selectedCompId}/program`));
 
-            const placements = computePlacements();
+            // YENİ: blok-bazlı çoklu-gün placements
+            const blockPlacements = computeBlockPlacements();
             const newProgram = {};
-            let shiftedCount = 0;
-            for (const pl of placements) {
+            let spannedCount = 0;
+            for (const pl of blockPlacements) {
                 if (pl.error) continue;
                 const cat = pl.cat;
                 const kc = kategoriler[cat];
@@ -515,39 +621,43 @@ export default function CompetitionSchedulePage() {
                 const K = aletler.length;
                 const groupCount = pl.est?.groupCount || Math.max(K, calcGroupCount(athleteIds.length, K, planConfig.grupBuyukluğu || 6));
                 const blockCount = groupCount / K;
-                // Sporcuları groupCount adet gruba sıralı dağıt (Grup A, B, C, ...)
                 const gruplar = splitIntoGroups(athleteIds, groupCount);
-                const total = pl.est?.total;
-                const gunIndex = pl.gunIndex;
-                const baslangic = pl.baslangic;
-                const bitis = pl.bitis;
-                if (pl.shifted) shiftedCount++;
-                const tarih = days[gunIndex] || '';
-                const key = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
-                newProgram[key] = {
-                    tarih, gunIndex,
-                    baslangic, saat: baslangic,
-                    bitis, bitisSaat: bitis,
-                    kategori: cat,
-                    aletler,
-                    aletDk: aletler.reduce((acc, a) => { acc[a] = planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2; return acc; }, {}),
-                    sporcuSayisi: athleteIds.length,
-                    gruplar,
-                    grupSayisi: groupCount,
-                    blokSayisi: blockCount,
-                    grupBuyukluğu: pl.est?.actualSize || 0,
-                    isinmaDk: pl.isinma,
-                    odulDk: pl.odul,
-                    rotasyonDk: pl.est?.rotationMin || 0,
-                    blokDk: pl.est?.blockMin || 0,
-                    bloklarArasiDk: planConfig.bloklarArasiDk ?? 5,
-                    toplamDk: total,
-                    durum: 'bekliyor',
-                };
+                const dayKeys = Object.keys(pl.perDay).map(Number).sort((a, b) => a - b);
+                if (dayKeys.length > 1) spannedCount++;
+                for (const gi of dayKeys) {
+                    const d = pl.perDay[gi];
+                    const tarih = days[gi] || '';
+                    const key = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
+                    newProgram[key] = {
+                        tarih, gunIndex: gi,
+                        baslangic: d.baslangic, saat: d.baslangic,
+                        bitis: d.bitis, bitisSaat: d.bitis,
+                        kategori: cat,
+                        aletler,
+                        aletDk: aletler.reduce((acc, a) => { acc[a] = planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2; return acc; }, {}),
+                        sporcuSayisi: athleteIds.length,
+                        gruplar,
+                        grupSayisi: groupCount,
+                        blokSayisi: blockCount,
+                        grupBuyukluğu: pl.est?.actualSize || 0,
+                        bugünBloklar: d.bloklar, // bu gündeki bloklar [{bIdx, baslangic, bitis}]
+                        toplamBlok: blockCount,
+                        çokGünlü: dayKeys.length > 1,
+                        günSira: dayKeys.indexOf(gi) + 1, // bu kategorinin kaçıncı günü
+                        günToplam: dayKeys.length,
+                        isinmaDk: dayKeys.indexOf(gi) === 0 ? ((planConfig.catSettings[cat]?.isinmaDk) ?? 15) : 0,
+                        odulDk: dayKeys.indexOf(gi) === dayKeys.length - 1 ? ((planConfig.catSettings[cat]?.odulDk) ?? 10) : 0,
+                        rotasyonDk: pl.est?.rotationMin || 0,
+                        blokDk: pl.est?.blockMin || 0,
+                        bloklarArasiDk: planConfig.bloklarArasiDk ?? 5,
+                        toplamDk: Math.max(0, hmToMin(d.bitis) - hmToMin(d.baslangic)),
+                        durum: 'bekliyor',
+                    };
+                }
             }
             await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newProgram);
-            if (shiftedCount > 0) {
-                toast(`${shiftedCount} kategori gün penceresi dolduğu için sonraki güne taşındı.`, 'info');
+            if (spannedCount > 0) {
+                toast(`${spannedCount} kategori birden çok güne yayıldı (günler dolduğu için bloklar ertesi günde devam ediyor).`, 'info');
             }
             logAction('schedule_generate', `Plan oluşturuldu (${Object.keys(newProgram).length} seans)`, { user: currentUser?.kullaniciAdi, competitionId: selectedCompId });
             toast(`${Object.keys(newProgram).length} seans oluşturuldu.`, 'success');
@@ -709,21 +819,26 @@ export default function CompetitionSchedulePage() {
                                                         onChange={e => updateCatSetting(cat, 'odulDk', +e.target.value)} />
                                                 </td>
                                                 <td>
-                                                    {preview?.shifted && (
-                                                        <span className="csv3-shifted-badge" title="Gün penceresi dolduğu için sonraki güne taşındı">
-                                                            → {preview.gunIndex + 1}. güne taşındı
+                                                    {preview?.spansMultipleDays && (
+                                                        <span className="csv3-shifted-badge" title="Bloklar birden çok güne yayıldı">
+                                                            ⏭ {preview.placements.length} güne yayıldı
                                                         </span>
                                                     )}
                                                     {preview?.overflow && (
                                                         <span className="csv3-overflow-badge" title="Tüm günlere de sığmıyor">⚠ taşma</span>
                                                     )}
                                                     <div className="csv3-plan-line">
-                                                        <strong className="csv3-bitis">{preview?.baslangic || '—'} → {preview?.bitis || '—'}</strong>
-                                                        <span className="csv3-dur">({preview?.est?.total || 0} dk)</span>
+                                                        {(preview?.placements || []).map((p, pi) => (
+                                                            <div key={pi} className="csv3-plan-day-line">
+                                                                <span className="csv3-day-tag">{p.gunIndex + 1}. gün</span>
+                                                                <strong className="csv3-bitis">{p.baslangic} → {p.bitis}</strong>
+                                                                <span className="csv3-dur">({p.bloklar.length} blok)</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                     {preview?.est && (
                                                         <div className="csv3-block-line">
-                                                            {preview.est.groupCount} grup ({preview.est.actualSize}/grup) · {preview.est.blockCount} blok
+                                                            Toplam: {preview.est.groupCount} grup ({preview.est.actualSize}/grup) · {preview.est.blockCount} blok · {preview.est.total} dk
                                                         </div>
                                                     )}
                                                 </td>
@@ -971,14 +1086,25 @@ function RotationGrid({ session, comp }) {
         return (ad || soyad) ? `${ad} ${soyad}`.trim() : id;
     };
 
-    // Blokları kur: gruplar K'lı parçalara ayrılır; her blokta K grup K rotasyon yapar
-    const blockCount = Math.max(1, Math.ceil(gruplar.length / K));
+    // Bu güne düşen bloklar — bugünBloklar varsa onları, yoksa tüm blokları göster
+    const bugün = session.bugünBloklar || null;
+    const allBlockCount = Math.max(1, Math.ceil(gruplar.length / K));
     const blocks = [];
-    for (let b = 0; b < blockCount; b++) {
-        blocks.push({
-            startIdx: b * K,
-            groups: gruplar.slice(b * K, (b + 1) * K),
-        });
+    if (bugün && bugün.length) {
+        for (const bug of bugün) {
+            const bIdx = bug.bIdx;
+            blocks.push({
+                bIdx,
+                startIdx: bIdx * K,
+                baslangic: bug.baslangic,
+                bitis: bug.bitis,
+                groups: gruplar.slice(bIdx * K, (bIdx + 1) * K),
+            });
+        }
+    } else {
+        for (let b = 0; b < allBlockCount; b++) {
+            blocks.push({ bIdx: b, startIdx: b * K, groups: gruplar.slice(b * K, (b + 1) * K) });
+        }
     }
     const blokDk = session.blokDk || 0;
     const transDk = session.bloklarArasiDk || 0;
@@ -989,16 +1115,19 @@ function RotationGrid({ session, comp }) {
                 Rotasyon Planı — {catLabel(session.kategori)}
             </div>
             <div className="csv2-rotgrid-hint">
-                {gruplar.length} grup · {blockCount} blok · her blokta {K} alet × {K} rotasyon
+                {gruplar.length} grup · {allBlockCount} blok toplam
+                {bugün ? ` · bu gün ${blocks.length} blok` : ''}
                 {blokDk ? ` · blok süresi ≈ ${blokDk} dk` : ''}
+                {session.çokGünlü ? ` · ${session.günSira}/${session.günToplam}. gün` : ''}
             </div>
 
-            {blocks.map((blk, blockIdx) => (
-                <div key={blockIdx} className="csv2-rotgrid-block">
+            {blocks.map((blk, idx) => (
+                <div key={blk.bIdx} className="csv2-rotgrid-block">
                     <div className="csv2-rotgrid-block-head">
-                        <strong>Blok {blockIdx + 1}</strong>
+                        <strong>Blok {blk.bIdx + 1}</strong>
+                        {blk.baslangic && <span style={{ color: '#4F46E5', fontWeight: 700 }}>{blk.baslangic} → {blk.bitis}</span>}
                         <span>Gruplar: {blk.groups.map((_, i) => GROUP_LETTER(blk.startIdx + i)).join(', ')}</span>
-                        {blockIdx > 0 && transDk > 0 && (
+                        {idx > 0 && transDk > 0 && (
                             <span className="csv2-rotgrid-trans">↻ {transDk} dk geçiş</span>
                         )}
                     </div>

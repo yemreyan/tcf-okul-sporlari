@@ -125,6 +125,15 @@
 .csv3-block-line {
     font-size: 11px; color: #6366f1; font-weight: 700; margin-top: 2px;
 }
+.csv3-plan-day-line {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 2px 0;
+}
+.csv3-day-tag {
+    background: #eef2ff; color: #4F46E5;
+    padding: 1px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 800;
+}
 
 /* Rotasyon Izgarası — blok başlıkları */
 .csv2-rotgrid-block {
