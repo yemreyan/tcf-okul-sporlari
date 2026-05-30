@@ -1,5 +1,205 @@
 /* ============================
-   COMPETITION SCHEDULE PAGE — v2 (Sade)
+   COMPETITION SCHEDULE PAGE — v3 (Adım Adım Sihirbaz)
+   ============================ */
+
+.schedule-v3 {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem 3rem;
+    color: #0f172a;
+}
+
+.csv3-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 18px;
+}
+.csv3-header h1 {
+    margin: 0; font-size: 1.45rem; font-weight: 900; color: #0f172a;
+}
+.csv3-header p {
+    margin: 2px 0 0; font-size: 13px; color: #64748b;
+}
+.csv3-back {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #eef2ff; color: #4f46e5; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+}
+.csv3-back:hover { background: #e0e7ff; }
+
+.csv3-comp-pick {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.csv3-comp-pick label {
+    font-size: 11px; font-weight: 800; color: #475569;
+    letter-spacing: 0.5px;
+}
+.csv3-comp-pick select {
+    flex: 1; min-width: 280px; padding: 0.55rem 0.8rem;
+    border: 1px solid #cbd5e1; border-radius: 8px;
+    font-size: 14px; background: #fff;
+}
+
+.csv3-step {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    margin-bottom: 18px; padding: 18px 22px;
+}
+.csv3-step-head {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.05rem; font-weight: 800; color: #0f172a;
+    margin-bottom: 14px;
+}
+.csv3-step-no {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 999px;
+    background: linear-gradient(135deg, #4F46E5, #6366F1);
+    color: #fff; font-weight: 900; font-size: 14px;
+}
+.csv3-step-no.done {
+    background: linear-gradient(135deg, #10B981, #16A34A);
+    font-size: 16px;
+}
+.csv3-step-final {
+    background: linear-gradient(135deg, #fffbeb, #fff);
+    border-color: #fcd34d;
+}
+.csv3-result {
+    background: linear-gradient(135deg, #f0fdf4, #fff);
+    border-color: #86efac;
+}
+
+.csv3-mini-btn {
+    margin-left: auto;
+    background: #eef2ff; color: #4F46E5; border: 1px solid #c7d2fe;
+    border-radius: 8px; padding: 4px 10px;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.csv3-mini-btn i { font-size: 14px !important; }
+.csv3-mini-btn:hover { background: #e0e7ff; }
+
+/* Step 1: kategori grid */
+.csv3-cat-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+.csv3-cat-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    border: 2px solid #e2e8f0; background: #fff;
+    border-radius: 10px; padding: 10px 12px;
+    cursor: pointer; transition: all 0.15s;
+}
+.csv3-cat-card:hover { border-color: #94a3b8; background: #f8fafc; }
+.csv3-cat-card.on { border-color: #4F46E5; background: linear-gradient(135deg, #eef2ff, #fff); }
+.csv3-cat-card input { margin-top: 3px; width: 16px; height: 16px; cursor: pointer; }
+.csv3-cat-card strong { display: block; font-weight: 800; color: #0f172a; font-size: 13px; }
+.csv3-cat-meta { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+/* Step 2/3: tablolar */
+.csv3-cat-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.csv3-cat-table thead th {
+    background: #f8fafc; color: #475569; font-weight: 800;
+    font-size: 11px; letter-spacing: 0.5px;
+    padding: 9px 12px; text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+}
+.csv3-cat-table .ta-c { text-align: center; }
+.csv3-cat-table tbody td {
+    padding: 8px 12px; border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+.csv3-cat-table input, .csv3-cat-table select {
+    padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
+    font-size: 13px; background: #fff; max-width: 100%;
+}
+.csv3-cat-table input[type="number"] { width: 70px; text-align: center; }
+.csv3-cat-table input[type="time"] { width: 100px; }
+
+.csv3-bitis { color: #0EA5E9; font-weight: 800; }
+.csv3-dur { font-size: 11px; color: #94a3b8; margin-left: 4px; }
+
+/* Step 4: alet grid */
+.csv3-alet-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px; margin-bottom: 8px;
+}
+.csv3-alet-card {
+    display: flex; align-items: center; gap: 8px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 8px 12px;
+}
+.csv3-alet-card > span:first-child {
+    flex: 1; font-weight: 700; color: #0f172a; font-size: 13px;
+}
+.csv3-alet-card input {
+    width: 64px; padding: 5px 8px;
+    border: 1px solid #cbd5e1; border-radius: 6px;
+    font-size: 13px; text-align: center;
+}
+.csv3-alet-unit { font-size: 11px; color: #64748b; }
+
+.csv3-hint {
+    font-size: 12px; color: #64748b; font-style: italic;
+    padding: 6px 0;
+}
+
+/* Step 5: uyarılar & oluştur */
+.csv3-warnings {
+    background: #fef3c7; border: 1px solid #fcd34d;
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+    color: #92400e; font-size: 13px;
+}
+.csv3-warnings ul { margin: 6px 0 0; padding-left: 20px; }
+.csv3-warnings li { padding: 2px 0; }
+
+.csv3-summary {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    padding: 12px 16px; background: #f8fafc;
+    border-radius: 8px; margin-bottom: 12px;
+    font-size: 13px; color: #475569;
+}
+.csv3-summary strong { color: #0f172a; font-weight: 800; margin-right: 4px; }
+
+.csv3-actions {
+    display: flex; justify-content: flex-end;
+}
+.csv3-btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0.65rem 1.4rem; border-radius: 10px;
+    background: linear-gradient(135deg, #4F46E5, #6366F1);
+    color: #fff; border: none; cursor: pointer;
+    font-weight: 800; font-size: 14px;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    transition: all 0.15s;
+}
+.csv3-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+}
+.csv3-btn-primary:disabled {
+    background: #cbd5e1; cursor: default; box-shadow: none;
+}
+
+/* Empty */
+.csv3-empty {
+    background: #fff; border: 1px dashed #cbd5e1; border-radius: 12px;
+    padding: 50px 20px; text-align: center; color: #64748b;
+}
+.csv3-empty i { font-size: 56px !important; color: #cbd5e1; display: block; margin: 0 auto 8px; }
+.csv3-empty h2 { margin: 6px 0 4px; color: #475569; }
+.csv3-empty p { margin: 0; font-size: 13px; color: #94a3b8; }
+
+@media (max-width: 720px) {
+    .schedule-v3 { padding: 1rem; }
+    .csv3-cat-grid, .csv3-alet-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ============================
+   COMPETITION SCHEDULE PAGE — v2 (Sade) — sonuç tablosu için
    ============================ */
 
 .schedule-v2 {
