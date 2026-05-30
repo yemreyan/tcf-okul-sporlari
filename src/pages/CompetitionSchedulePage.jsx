@@ -80,6 +80,27 @@ function distributeGroups(athleteIds, k) {
     athleteIds.forEach((a, i) => groups[i % k].push(a));
     return groups;
 }
+
+// Yeni: N sporcuyu groupCount kadar gruba böl (sıralı blok-bölme)
+function splitIntoGroups(athleteIds, groupCount) {
+    if (groupCount <= 0) return [];
+    const groups = Array.from({ length: groupCount }, () => []);
+    if (athleteIds.length === 0) return groups;
+    const size = Math.ceil(athleteIds.length / groupCount);
+    athleteIds.forEach((id, i) => {
+        const gi = Math.min(groupCount - 1, Math.floor(i / size));
+        groups[gi].push(id);
+    });
+    return groups;
+}
+
+// Toplam grup sayısını hesapla: K'nın katları olacak şekilde, hedef grup büyüklüğüne göre.
+// targetSize ~ kullanıcının istediği (default 6) sporcu/grup.
+function calcGroupCount(N, K, targetSize) {
+    if (K === 0) return 0;
+    let g = Math.max(K, Math.ceil((N || 0) / Math.max(1, targetSize)));
+    return Math.ceil(g / K) * K; // K'nın katı
+}
 const groupAt = (alet_i, rotation_r, K) => ((alet_i - rotation_r) % K + K) % K;
 const GROUP_LETTER = (i) => String.fromCharCode(65 + i);
 const GROUP_COLOR = ['#6366F1', '#F59E0B', '#10B981', '#EC4899', '#0EA5E9', '#A855F7', '#EF4444', '#84CC16'];
@@ -103,6 +124,8 @@ export default function CompetitionSchedulePage() {
         catSettings: {},   // {catKey: {gunIndex, baslangic, isinmaDk, odulDk}}
         daySettings: {},   // {gunIndex: {baslangic, bitis}}
         aletDk: {},        // {alet: dk}
+        grupBuyukluğu: 6,  // hedef sporcu/grup
+        bloklarArasiDk: 5, // bloklar arası geçiş
     });
 
     const [activeDay, setActiveDay] = useState(0);
@@ -135,6 +158,8 @@ export default function CompetitionSchedulePage() {
                     catSettings: cfg.catSettings || {},
                     daySettings: cfg.daySettings || {},
                     aletDk: cfg.aletDk || {},
+                    grupBuyukluğu: cfg.grupBuyukluğu ?? 6,
+                    bloklarArasiDk: cfg.bloklarArasiDk ?? 5,
                 });
             }
         });
@@ -193,20 +218,42 @@ export default function CompetitionSchedulePage() {
         return Object.keys(snap.val() || {});
     }, [firebasePath, selectedCompId, siralama]);
 
-    /* ── Tahmini süre hesabı (parallel rotation; max alet süresi belirler) ── */
+    /* ── Tahmini süre hesabı (blok modeli) ──
+     * K alet → K grup aynı anda dönüp K rotasyonda bitirir (= 1 BLOK).
+     * Sporcu sayısı / hedef grup büyüklüğüne göre toplam grup sayısı belirlenir;
+     * her blok K grup içerir. Sonraki blok bekler, geçiş süresi eklenir.
+     */
     const estimateDuration = useCallback((catKey, settings) => {
         const aletler = (kategoriler[catKey]?.aletler || []).slice();
         if (aletler.length === 0) return null;
         const sira = olimpikSira(catKey, aletler);
         const K = sira.length;
         const N = catAthleteCount(catKey);
-        const groupSize = Math.ceil(N / K) || 0;
-        const rotationMin = groupSize * Math.max(...sira.map(a => planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2));
+        const targetSize = Math.max(1, planConfig.grupBuyukluğu || 6);
+
+        const groupCount = Math.max(K, calcGroupCount(N, K, targetSize));
+        const blockCount = groupCount / K;
+        const actualSize = N > 0 ? Math.ceil(N / groupCount) : 0;
+
+        // Bir rotasyonda K grup paralel çalışır; rotasyon süresi en uzun alete bağlı
+        const maxAletDk = Math.max(...sira.map(a => planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2));
+        const rotationMin = actualSize * maxAletDk;
+        const blockMin = K * rotationMin;
+        const transitionDk = Math.max(0, planConfig.bloklarArasiDk ?? 5);
+
         const isinma = settings?.isinmaDk ?? 15;
         const odul = settings?.odulDk ?? 10;
-        const total = Math.max(1, Math.round(rotationMin * K + isinma + odul));
-        return { K, N, groupSize, aletler: sira, rotationMin: Math.round(rotationMin), total };
-    }, [kategoriler, planConfig.aletDk, catAthleteCount]);
+        const total = Math.max(1, Math.round(
+            blockCount * blockMin + Math.max(0, blockCount - 1) * transitionDk + isinma + odul
+        ));
+        return {
+            K, N, groupCount, blockCount, actualSize,
+            aletler: sira,
+            rotationMin: Math.round(rotationMin),
+            blockMin: Math.round(blockMin),
+            total,
+        };
+    }, [kategoriler, planConfig.aletDk, planConfig.grupBuyukluğu, planConfig.bloklarArasiDk, catAthleteCount]);
 
     /* ── AKILLI YERLEŞTİRİCİ: gün penceresine sığmazsa sonraki güne taşır ──
      * Kullanıcının seçtiği gün/saat tercih olarak kullanılır; sığmazsa
@@ -465,17 +512,17 @@ export default function CompetitionSchedulePage() {
                 if (!kc || !(kc.aletler || []).length) continue;
                 const aletler = olimpikSira(cat, kc.aletler);
                 const athleteIds = await getCatAthletes(cat);
-                const N = athleteIds.length;
                 const K = aletler.length;
-                const groupSize = Math.ceil(N / K) || 0;
-                const rotationMin = groupSize * Math.max(...aletler.map(a => planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2));
-                const total = pl.est?.total ?? Math.max(1, Math.round(rotationMin * K + pl.isinma + pl.odul));
+                const groupCount = pl.est?.groupCount || Math.max(K, calcGroupCount(athleteIds.length, K, planConfig.grupBuyukluğu || 6));
+                const blockCount = groupCount / K;
+                // Sporcuları groupCount adet gruba sıralı dağıt (Grup A, B, C, ...)
+                const gruplar = splitIntoGroups(athleteIds, groupCount);
+                const total = pl.est?.total;
                 const gunIndex = pl.gunIndex;
                 const baslangic = pl.baslangic;
                 const bitis = pl.bitis;
                 if (pl.shifted) shiftedCount++;
                 const tarih = days[gunIndex] || '';
-                const gruplar = distributeGroups(athleteIds, K);
                 const key = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
                 newProgram[key] = {
                     tarih, gunIndex,
@@ -484,11 +531,16 @@ export default function CompetitionSchedulePage() {
                     kategori: cat,
                     aletler,
                     aletDk: aletler.reduce((acc, a) => { acc[a] = planConfig.aletDk[a] || DEFAULT_ALET_DK[a] || 2; return acc; }, {}),
-                    sporcuSayisi: N,
+                    sporcuSayisi: athleteIds.length,
                     gruplar,
+                    grupSayisi: groupCount,
+                    blokSayisi: blockCount,
+                    grupBuyukluğu: pl.est?.actualSize || 0,
                     isinmaDk: pl.isinma,
                     odulDk: pl.odul,
-                    rotasyonDk: Math.round(rotationMin),
+                    rotasyonDk: pl.est?.rotationMin || 0,
+                    blokDk: pl.est?.blockMin || 0,
+                    bloklarArasiDk: planConfig.bloklarArasiDk ?? 5,
                     toplamDk: total,
                     durum: 'bekliyor',
                 };
@@ -669,6 +721,11 @@ export default function CompetitionSchedulePage() {
                                                         <strong className="csv3-bitis">{preview?.baslangic || '—'} → {preview?.bitis || '—'}</strong>
                                                         <span className="csv3-dur">({preview?.est?.total || 0} dk)</span>
                                                     </div>
+                                                    {preview?.est && (
+                                                        <div className="csv3-block-line">
+                                                            {preview.est.groupCount} grup ({preview.est.actualSize}/grup) · {preview.est.blockCount} blok
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -738,9 +795,31 @@ export default function CompetitionSchedulePage() {
                         </table>
                     </section>
 
-                    {/* ── Adım 4: Alet bazlı dk/sporcu ── */}
+                    {/* ── Adım 4: Grup büyüklüğü + Alet bazlı dk/sporcu ── */}
                     <section className="csv3-step">
-                        <div className="csv3-step-head"><span className="csv3-step-no">4</span> Sporcu başına dakika (alet bazında)</div>
+                        <div className="csv3-step-head"><span className="csv3-step-no">4</span> Grup büyüklüğü ve alet süreleri</div>
+
+                        <div className="csv3-grid-2" style={{ marginBottom: 12 }}>
+                            <label className="csv3-alet-card">
+                                <span style={{ flex: 1 }}>Grup başına hedef sporcu sayısı</span>
+                                <input type="number" min="1" max="50"
+                                    value={planConfig.grupBuyukluğu ?? 6}
+                                    onChange={e => setPlanConfig(p => ({ ...p, grupBuyukluğu: Math.max(1, +e.target.value || 6) }))} />
+                                <span className="csv3-alet-unit">sporcu</span>
+                            </label>
+                            <label className="csv3-alet-card">
+                                <span style={{ flex: 1 }}>Bloklar arası geçiş</span>
+                                <input type="number" min="0" max="60"
+                                    value={planConfig.bloklarArasiDk ?? 5}
+                                    onChange={e => setPlanConfig(p => ({ ...p, bloklarArasiDk: Math.max(0, +e.target.value || 0) }))} />
+                                <span className="csv3-alet-unit">dakika</span>
+                            </label>
+                        </div>
+
+                        <div className="csv3-step-head" style={{ fontSize: '0.95rem', marginTop: 8 }}>
+                            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginRight: 6 }}>4b)</span>
+                            Sporcu başına dakika — alet bazında
+                        </div>
                         {aletlerUsed.length === 0 ? (
                             <div className="csv3-hint">Önce kategori seçin.</div>
                         ) : (
@@ -756,7 +835,9 @@ export default function CompetitionSchedulePage() {
                                 ))}
                             </div>
                         )}
-                        <p className="csv3-hint">Klasik rotasyonda gruplar paralel çalışır; rotasyon süresi en uzun aletin sporcu sayısı × dk'sıdır.</p>
+                        <p className="csv3-hint">
+                            K alet → K grup paralel çalışır = <strong>1 blok</strong>. Sporcu sayısı &gt; grup×K ise birden çok blok olur, blok aralarına geçiş süresi eklenir.
+                        </p>
                     </section>
 
                     {/* ── Adım 5: Uyarılar + Oluştur ── */}
@@ -890,40 +971,73 @@ function RotationGrid({ session, comp }) {
         return (ad || soyad) ? `${ad} ${soyad}`.trim() : id;
     };
 
+    // Blokları kur: gruplar K'lı parçalara ayrılır; her blokta K grup K rotasyon yapar
+    const blockCount = Math.max(1, Math.ceil(gruplar.length / K));
+    const blocks = [];
+    for (let b = 0; b < blockCount; b++) {
+        blocks.push({
+            startIdx: b * K,
+            groups: gruplar.slice(b * K, (b + 1) * K),
+        });
+    }
+    const blokDk = session.blokDk || 0;
+    const transDk = session.bloklarArasiDk || 0;
+
     return (
         <div className="csv2-rotgrid">
-            <div className="csv2-rotgrid-title">Rotasyon Planı — {catLabel(session.kategori)}</div>
-            <table className="csv2-rotgrid-table">
-                <thead>
-                    <tr>
-                        <th>ALET</th>
-                        {Array.from({ length: K }, (_, r) => <th key={r}>Rotasyon {r + 1}</th>)}
-                    </tr>
-                </thead>
-                <tbody>
-                    {aletler.map((al, i) => (
-                        <tr key={al}>
-                            <td className="csv2-rotgrid-alet">{aletLabel(al)}</td>
-                            {Array.from({ length: K }, (_, r) => {
-                                const gIdx = groupAt(i, r, K);
-                                const color = GROUP_COLOR[gIdx % GROUP_COLOR.length];
-                                return (
-                                    <td key={r} className="csv2-rotgrid-cell" style={{ borderLeft: `4px solid ${color}` }}>
-                                        <div className="csv2-rotgrid-grup" style={{ color }}>Grup {GROUP_LETTER(gIdx)}</div>
-                                        <div className="csv2-rotgrid-count">{(gruplar[gIdx] || []).length} sporcu</div>
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <div className="csv2-rotgrid-title">
+                Rotasyon Planı — {catLabel(session.kategori)}
+            </div>
+            <div className="csv2-rotgrid-hint">
+                {gruplar.length} grup · {blockCount} blok · her blokta {K} alet × {K} rotasyon
+                {blokDk ? ` · blok süresi ≈ ${blokDk} dk` : ''}
+            </div>
+
+            {blocks.map((blk, blockIdx) => (
+                <div key={blockIdx} className="csv2-rotgrid-block">
+                    <div className="csv2-rotgrid-block-head">
+                        <strong>Blok {blockIdx + 1}</strong>
+                        <span>Gruplar: {blk.groups.map((_, i) => GROUP_LETTER(blk.startIdx + i)).join(', ')}</span>
+                        {blockIdx > 0 && transDk > 0 && (
+                            <span className="csv2-rotgrid-trans">↻ {transDk} dk geçiş</span>
+                        )}
+                    </div>
+                    <table className="csv2-rotgrid-table">
+                        <thead>
+                            <tr>
+                                <th>ALET</th>
+                                {Array.from({ length: K }, (_, r) => <th key={r}>Rotasyon {r + 1}</th>)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {aletler.map((al, i) => (
+                                <tr key={al}>
+                                    <td className="csv2-rotgrid-alet">{aletLabel(al)}</td>
+                                    {Array.from({ length: K }, (_, r) => {
+                                        const localG = groupAt(i, r, K);
+                                        const globalG = blk.startIdx + localG;
+                                        const color = GROUP_COLOR[globalG % GROUP_COLOR.length];
+                                        const grupIds = blk.groups[localG] || [];
+                                        return (
+                                            <td key={r} className="csv2-rotgrid-cell" style={{ borderLeft: `4px solid ${color}` }}>
+                                                <div className="csv2-rotgrid-grup" style={{ color }}>Grup {GROUP_LETTER(globalG)}</div>
+                                                <div className="csv2-rotgrid-count">{grupIds.length} sporcu</div>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ))}
+
             <div className="csv2-rotgrid-groups">
                 {gruplar.map((ids, i) => (
                     <div key={i} className="csv2-rotgrid-grup-card" style={{ borderTop: `3px solid ${GROUP_COLOR[i % GROUP_COLOR.length]}` }}>
                         <div className="csv2-rotgrid-grup-head">
                             <span style={{ color: GROUP_COLOR[i % GROUP_COLOR.length] }}>Grup {GROUP_LETTER(i)}</span>
-                            <span className="csv2-rotgrid-grup-count">{ids.length} sporcu</span>
+                            <span className="csv2-rotgrid-grup-count">{ids.length} sporcu · Blok {Math.floor(i / K) + 1}</span>
                         </div>
                         <ul>
                             {ids.slice(0, 6).map(id => <li key={id}>{fullName(id)}</li>)}
@@ -931,9 +1045,6 @@ function RotationGrid({ session, comp }) {
                         </ul>
                     </div>
                 ))}
-            </div>
-            <div className="csv2-rotgrid-hint">
-                Klasik olimpik rotasyon: her rotasyonda gruplar bir alet ileri kayar. Toplam {K} rotasyon.
             </div>
         </div>
     );
