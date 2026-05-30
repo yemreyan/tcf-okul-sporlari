@@ -361,9 +361,6 @@ export default function CompetitionSchedulePage() {
             return hmToMin(a.baslangic || '09:00') - hmToMin(b.baslangic || '09:00');
         });
 
-        let dayIdx = 0;
-        let cursor = dayStartM(0);
-
         for (const cat of orderedCats) {
             const s = planConfig.catSettings[cat] || {};
             const est = estimateDuration(cat, s);
@@ -373,12 +370,9 @@ export default function CompetitionSchedulePage() {
             const odul = s.odulDk ?? 10;
             const blokArasi = planConfig.bloklarArasiDk ?? 5;
 
-            // Kullanıcının istediği güne atla (geride değilse)
-            const userDay = Math.min(Math.max(0, s.gunIndex ?? 0), Math.max(0, days.length - 1));
-            if (userDay > dayIdx) {
-                dayIdx = userDay;
-                cursor = dayStartM(dayIdx);
-            }
+            // HER KATEGORİ BAĞIMSIZ — paralel salon/platform
+            let dayIdx = Math.min(Math.max(0, s.gunIndex ?? 0), Math.max(0, days.length - 1));
+            let cursor = dayStartM(dayIdx);
             const userStart = hmToMin(s.baslangic || '');
             if (userStart && userStart > cursor) cursor = userStart;
 
@@ -516,7 +510,7 @@ export default function CompetitionSchedulePage() {
     /* ── Uyarılar (çakışma / gün penceresi taşma) ── */
     const warnings = useMemo(() => {
         const w = [];
-        // Gün bazlı çakışma — her cat placements'ı dolaşır
+        // Bilgi: paralel kategori sayısı (farklı platformlar varsayılır)
         const byDay = {};
         previews.forEach(p => {
             if (p.error || !p.placements) return;
@@ -526,13 +520,20 @@ export default function CompetitionSchedulePage() {
         });
         Object.entries(byDay).forEach(([gi, arr]) => {
             arr.sort((a, b) => hmToMin(a.baslangic) - hmToMin(b.baslangic));
+            const parallels = new Set();
             for (let i = 0; i < arr.length; i++) {
                 for (let j = i + 1; j < arr.length; j++) {
                     const a = arr[i], b = arr[j];
                     if (hmToMin(a.bitis) > hmToMin(b.baslangic) && hmToMin(b.bitis) > hmToMin(a.baslangic) && a.cat !== b.cat) {
-                        w.push({ kind: 'cakisma', text: `${days[gi] ? fmtDate(days[gi]) : (+gi + 1) + '. Gün'}: ${catLabel(a.cat)} ile ${catLabel(b.cat)} çakışıyor.` });
+                        parallels.add(`${catLabel(a.cat)} ↔ ${catLabel(b.cat)}`);
                     }
                 }
+            }
+            if (parallels.size > 0) {
+                w.push({
+                    kind: 'parallel',
+                    text: `${days[gi] ? fmtDate(days[gi]) : (+gi + 1) + '. Gün'}: paralel platformlarda eş zamanlı kategoriler — ${[...parallels].join(', ')}`,
+                });
             }
         });
         // Çoklu güne yayılan + tamamen taşan kategoriler
