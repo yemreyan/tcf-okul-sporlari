@@ -217,26 +217,40 @@ export default function CompetitionSchedulePage() {
         const gap = 10;
         const placements = [];
         const cursorByDay = {};
-        const dayStart = (d) => planConfig.daySettings[d]?.baslangic || '09:00';
-        const dayEnd = (d) => planConfig.daySettings[d]?.bitis || '17:00';
+        // Gün başı/bitiş — undefined / null / boş string güvenli
+        const dayStart = (d) => {
+            const v = planConfig.daySettings?.[d]?.baslangic;
+            return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '09:00';
+        };
+        const dayEnd = (d) => {
+            const v = planConfig.daySettings?.[d]?.bitis;
+            return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00';
+        };
 
-        for (const cat of planConfig.selectedCats) {
+        // Kategorileri kullanıcının tercih ettiği (gün, başlangıç) sırasına göre yerleştir
+        const orderedCats = [...planConfig.selectedCats].sort((A, B) => {
+            const a = planConfig.catSettings[A] || {};
+            const b = planConfig.catSettings[B] || {};
+            const dA = a.gunIndex ?? 0, dB = b.gunIndex ?? 0;
+            if (dA !== dB) return dA - dB;
+            return hmToMin(a.baslangic || '09:00') - hmToMin(b.baslangic || '09:00');
+        });
+
+        for (const cat of orderedCats) {
             const s = planConfig.catSettings[cat] || {};
             const est = estimateDuration(cat, s);
             if (!est) { placements.push({ cat, error: 'Bu kategoride alet yok.' }); continue; }
 
-            // Kullanıcının istediği gün — hint olarak
+            // Kullanıcının istediği gün
             let dayIdx = Math.min(Math.max(0, s.gunIndex ?? 0), Math.max(0, days.length - 1));
-            // Bu güne ilk yerleşim mi?
-            if (cursorByDay[dayIdx] == null) {
-                cursorByDay[dayIdx] = hmToMin(dayStart(dayIdx));
-            }
-            // Kullanıcının baslangici varsa ve cursor'dan ileride ise saygı göster
+            if (cursorByDay[dayIdx] == null) cursorByDay[dayIdx] = hmToMin(dayStart(dayIdx));
+
+            // Başlangıç: cursor ile kullanıcının baslangici'nin max'ı
             let startMin = cursorByDay[dayIdx];
             const userStart = hmToMin(s.baslangic || '');
             if (userStart && userStart > startMin) startMin = userStart;
 
-            // Sığıyor mu? Sığmazsa sonraki güne kaydır
+            // Sığmıyorsa sonraki güne kaydır
             let shifted = false;
             const requestedDay = dayIdx;
             while (startMin + est.total > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
@@ -253,7 +267,7 @@ export default function CompetitionSchedulePage() {
                 bitis,
                 isinma: s.isinmaDk ?? 15, odul: s.odulDk ?? 10,
                 shifted, requestedDay,
-                overflow: (startMin + est.total > hmToMin(dayEnd(dayIdx))), // son güne de sığmadıysa
+                overflow: (startMin + est.total > hmToMin(dayEnd(dayIdx))),
             });
             cursorByDay[dayIdx] = startMin + est.total + gap;
         }
@@ -653,19 +667,30 @@ export default function CompetitionSchedulePage() {
                     {/* ── Adım 3: Gün pencereleri ── */}
                     <section className="csv3-step">
                         <div className="csv3-step-head"><span className="csv3-step-no">3</span> Günlerin başlangıç ve bitiş hedefi</div>
+                        {days.length === 1 && (
+                            <div className="csv3-hint" style={{ color: '#b91c1c', fontWeight: 700 }}>
+                                ⚠ Yarışma tek günlük — sığmayan kategoriler için ek gün yok. Yarışma tarihini uzatın veya alet sürelerini azaltın.
+                            </div>
+                        )}
                         <table className="csv3-cat-table">
                             <thead>
                                 <tr>
                                     <th>GÜN</th>
                                     <th>BAŞLANGIÇ</th>
                                     <th>HEDEF BİTİŞ</th>
-                                    <th>O GÜN PLANLI</th>
+                                    <th className="ta-c">PENCERE</th>
+                                    <th>PLANLI</th>
+                                    <th>KAPASİTE KULLANIMI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {days.map((d, i) => {
                                     const ds = planConfig.daySettings[i] || {};
-                                    const inDay = previews.filter(p => p.gunIndex === i);
+                                    const inDay = previews.filter(p => p.gunIndex === i && !p.error);
+                                    const usedMin = inDay.reduce((s, p) => s + (p.est?.total || 0), 0);
+                                    const windowMin = Math.max(0, hmToMin(ds.bitis || '17:00') - hmToMin(ds.baslangic || '09:00'));
+                                    const pct = windowMin ? Math.min(100, Math.round(usedMin * 100 / windowMin)) : 0;
+                                    const overUse = usedMin > windowMin;
                                     return (
                                         <tr key={d}>
                                             <td><strong>{i + 1}. Gün</strong> · {fmtDate(d)}</td>
@@ -677,7 +702,21 @@ export default function CompetitionSchedulePage() {
                                                 <input type="time" value={ds.bitis || '17:00'}
                                                     onChange={e => updateDaySetting(i, 'bitis', e.target.value)} />
                                             </td>
-                                            <td>{inDay.length} kategori</td>
+                                            <td className="ta-c">
+                                                <strong>{windowMin}</strong> dk
+                                            </td>
+                                            <td>
+                                                {inDay.length} kategori · <strong>{usedMin}</strong> dk
+                                            </td>
+                                            <td>
+                                                <div className="csv3-cap-bar">
+                                                    <div className="csv3-cap-fill" style={{
+                                                        width: `${Math.min(100, pct)}%`,
+                                                        background: overUse ? '#ef4444' : pct > 85 ? '#f59e0b' : '#22c55e',
+                                                    }} />
+                                                </div>
+                                                <span className="csv3-cap-pct">{pct}%{overUse && ' ⚠'}</span>
+                                            </td>
                                         </tr>
                                     );
                                 })}
