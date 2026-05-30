@@ -71,14 +71,17 @@ function txt(doc, text, x, y, opts = {}) {
     doc.text(tr(String(text)), x, y, o);
 }
 
-// athlete name lookup helper
-function athleteName(comp, catKey, id) {
+// athlete lookup helper
+function athleteInfo(comp, catKey, id) {
     const a = comp?.sporcular?.[catKey]?.[id];
-    if (!a) return '';
+    if (!a) return { name: '', okul: '', tur: '', missing: true };
     const ad = String(a.ad || '').trim();
     const soyad = String(a.soyad || '').trim();
-    const full = `${ad} ${soyad}`.trim();
-    return full || '';
+    const name = `${ad} ${soyad}`.trim();
+    const okul = String(a.okul || a.kulup || '').trim();
+    const tur = String(a.yarismaTuru || a.tip || '').trim().toLowerCase();
+    const turLabel = tur === 'takim' ? 'Takim' : (tur === 'ferdi' ? 'Ferdi' : '');
+    return { name, okul, tur: turLabel, missing: !name };
 }
 
 /* ── ANA EXPORT ─────────────────────────────────────────────────────── */
@@ -283,32 +286,74 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
             ensureSpace(14);
             hLine(doc, ML, y, CW, C.border, 0.3);
             y += 4;
+            const totalAth = info.gruplar.reduce((a, ids) => a + ids.length, 0);
+            const missingCount = info.gruplar.reduce((acc, ids) => acc + ids.filter(id => athleteInfo(comp, ck, id).missing).length, 0);
             txt(doc, catL(ck).toUpperCase(), ML, y, { size: 9.5, color: C.ink, bold: true });
-            txt(doc, `${info.gruplar.length} grup`, W - MR, y, { size: 8, color: C.muted, align: 'right' });
+            const rightInfo = `${info.gruplar.length} grup · ${totalAth} sporcu` + (missingCount ? `  ·  ${missingCount} EKSIK` : '');
+            txt(doc, rightInfo, W - MR, y, { size: 8, color: missingCount ? [180, 70, 70] : C.muted, align: 'right' });
             y += 4;
 
-            const rows = info.gruplar.map((ids, i) => {
-                const label = info.grupEtiketleri[i] ?? (i + 1);
-                const names = ids.map(id => athleteName(comp, ck, id)).filter(Boolean);
-                const preview = names.length
-                    ? names.slice(0, 3).join(', ') + (names.length > 3 ? `, +${names.length - 3}` : '')
-                    : `${ids.length} sporcu`;
-                return [`Grup ${label}`, String(ids.length), preview];
+            // Düz tablo: her sporcu bir satır
+            const rows = [];
+            info.gruplar.forEach((ids, gi) => {
+                const label = info.grupEtiketleri[gi] ?? (gi + 1);
+                if (!ids || !ids.length) {
+                    rows.push([`Grup ${label}`, '—', '— (bos)', '', '']);
+                    return;
+                }
+                ids.forEach((id, ai) => {
+                    const inf = athleteInfo(comp, ck, id);
+                    rows.push([
+                        ai === 0 ? `Grup ${label}` : '',
+                        String(ai + 1),
+                        inf.name || `(eksik: ${String(id).slice(-6)})`,
+                        inf.okul,
+                        inf.tur,
+                    ]);
+                });
             });
+
             autoTable(doc, {
                 startY: y,
-                head: [['GRUP', 'SPORCU', 'SPORCULAR'].map(tr)],
+                head: [['GRUP', '#', 'AD SOYAD', 'OKUL', 'TUR'].map(tr)],
                 body: rows.map(r => r.map(tr)),
                 margin: { left: ML, right: MR },
-                styles: { font: 'helvetica', fontSize: 8, cellPadding: [1.8, 3, 1.8, 3], lineColor: C.border, lineWidth: 0.15, textColor: C.body },
+                styles: { font: 'helvetica', fontSize: 7.8, cellPadding: [1.4, 2.5, 1.4, 2.5], lineColor: C.border, lineWidth: 0.12, textColor: C.body, overflow: 'linebreak' },
                 theme: 'plain',
                 headStyles: { fillColor: C.white, textColor: C.muted, fontStyle: 'bold', fontSize: 7, lineColor: C.border, lineWidth: 0.3 },
                 columnStyles: {
-                    0: { fontStyle: 'bold', textColor: C.ink, cellWidth: 26 },
-                    1: { halign: 'center', cellWidth: 20 },
+                    0: { fontStyle: 'bold', textColor: C.ink, cellWidth: 22 },
+                    1: { halign: 'center', cellWidth: 8, textColor: C.muted },
+                    2: { cellWidth: 60, textColor: C.ink },
+                    3: { cellWidth: 'auto' },
+                    4: { halign: 'center', cellWidth: 16, textColor: C.muted },
+                },
+                didParseCell: (data) => {
+                    // grup ayraçları: yeni grup başlangıcında üst çizgi
+                    if (data.section === 'body' && data.column.index === 0 && data.cell.raw && String(data.cell.raw).startsWith('Grup ')) {
+                        if (data.row.index > 0) data.cell.styles.lineWidth = 0.0;
+                    }
+                    if (data.section === 'body' && data.row.index > 0 && data.column.index === 0 && data.cell.raw && String(data.cell.raw).startsWith('Grup ')) {
+                        // ince üst ayraç
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                    // eksik sporcu vurgusu
+                    if (data.section === 'body' && data.column.index === 2 && typeof data.cell.raw === 'string' && data.cell.raw.startsWith('(eksik')) {
+                        data.cell.styles.textColor = [180, 70, 70];
+                        data.cell.styles.fontStyle = 'italic';
+                    }
+                },
+                didDrawCell: (data) => {
+                    // Yeni grup üstüne ince ayırıcı çizgi
+                    if (data.section === 'body' && data.column.index === 0 && data.row.index > 0 &&
+                        data.cell.raw && String(data.cell.raw).startsWith('Grup ')) {
+                        doc.setDrawColor(...C.gold);
+                        doc.setLineWidth(0.25);
+                        doc.line(data.cell.x, data.cell.y, data.cell.x + CW, data.cell.y);
+                    }
                 },
             });
-            y = (doc.lastAutoTable?.finalY ?? y) + 5;
+            y = (doc.lastAutoTable?.finalY ?? y) + 6;
         }
         drawFooter();
     }
