@@ -1,23 +1,26 @@
 /**
  * TCF Resmi Yarışma Programı PDF — v2 (Blok bazlı planlama)
- * Yeni planlama mantığına uygun: kategoriler paralel platformlarda,
- * her kategori K alet × K rotasyon = 1 blok; bloklar günlere yayılabilir.
+ * Sade, doğal renk paleti. Beyaz zemin + tek koyu vurgu rengi.
  */
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const W = 210, H = 297;
-const ML = 14, MR = 14, MT = 14, MB = 16;
+const ML = 16, MR = 16, MT = 14, MB = 16;
 const CW = W - ML - MR;
 
+// Sade ve doğal palet: beyaz zemin, koyu lacivert metin, tek altın vurgu
 const C = {
-    ink: [15, 23, 42], body: [51, 65, 85], muted: [100, 116, 139],
-    faint: [148, 163, 184], border: [226, 232, 240], surface: [248, 250, 252],
-    indigo: [79, 70, 229], indigoBg: [238, 237, 254],
-    indigoDk: [49, 46, 129], white: [255, 255, 255],
-    gold: [212, 175, 55],
-    teal: [13, 148, 136], tealBg: [240, 253, 250],
-    amber: [180, 100, 5], amberBg: [255, 251, 235],
+    ink: [30, 41, 59],        // koyu lacivert metin
+    body: [71, 85, 105],      // gövde metin
+    muted: [100, 116, 139],   // ikincil
+    faint: [148, 163, 184],   // çok soluk
+    border: [226, 232, 240],  // ince çizgi
+    softBg: [248, 250, 252],  // çok soluk gri
+    accent: [120, 95, 50],    // koyu altın/bronz — tek vurgu
+    accentSoft: [250, 245, 230], // krem
+    gold: [180, 142, 70],
+    white: [255, 255, 255],
 };
 
 const TR_MAP = { 304: 'I', 305: 'i', 286: 'G', 287: 'g', 350: 'S', 351: 's', 214: 'O', 246: 'o', 220: 'U', 252: 'u', 199: 'C', 231: 'c' };
@@ -54,10 +57,10 @@ async function loadLogo() {
 function fillRect(doc, x, y, w, h, color) {
     doc.setFillColor(...color); doc.rect(x, y, w, h, 'F');
 }
-function strokeRect(doc, x, y, w, h, color, lw = 0.3) {
+function strokeRect(doc, x, y, w, h, color, lw = 0.2) {
     doc.setDrawColor(...color); doc.setLineWidth(lw); doc.rect(x, y, w, h, 'S');
 }
-function hLine(doc, x, y, w, color, lw = 0.3) {
+function hLine(doc, x, y, w, color, lw = 0.2) {
     doc.setDrawColor(...color); doc.setLineWidth(lw); doc.line(x, y, x + w, y);
 }
 function txt(doc, text, x, y, opts = {}) {
@@ -68,6 +71,16 @@ function txt(doc, text, x, y, opts = {}) {
     doc.text(tr(String(text)), x, y, o);
 }
 
+// athlete name lookup helper
+function athleteName(comp, catKey, id) {
+    const a = comp?.sporcular?.[catKey]?.[id];
+    if (!a) return '';
+    const ad = String(a.ad || '').trim();
+    const soyad = String(a.soyad || '').trim();
+    const full = `${ad} ${soyad}`.trim();
+    return full || '';
+}
+
 /* ── ANA EXPORT ─────────────────────────────────────────────────────── */
 export async function generateSchedulePDFv2({ comp, days, sessions, daySettings, kategoriler, athleteCounts }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -76,50 +89,46 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
     let y = MT;
 
     const drawFooter = () => {
-        hLine(doc, 0, H - MB, W, C.border, 0.3);
-        fillRect(doc, 0, H - MB + 0.3, W, MB - 0.3, C.surface);
-        fillRect(doc, 0, H - MB, ML, 0.8, C.gold);
-        txt(doc, 'Turkiye Cimnastik Federasyonu', ML, H - 4, { size: 6.5, color: C.faint });
-        txt(doc, `Sayfa ${pageNum}`, W / 2, H - 4, { size: 6.5, color: C.muted, align: 'center' });
-        txt(doc, new Date().toLocaleDateString('tr-TR'), W - MR, H - 4, { size: 6.5, color: C.faint, align: 'right' });
+        hLine(doc, ML, H - MB, CW, C.border, 0.2);
+        txt(doc, 'Turkiye Cimnastik Federasyonu', ML, H - 8, { size: 6.5, color: C.faint });
+        txt(doc, `Sayfa ${pageNum}`, W / 2, H - 8, { size: 6.5, color: C.muted, align: 'center' });
+        txt(doc, new Date().toLocaleDateString('tr-TR'), W - MR, H - 8, { size: 6.5, color: C.faint, align: 'right' });
     };
     const drawMiniHeader = () => {
-        fillRect(doc, 0, 0, W, 11, C.indigo);
-        fillRect(doc, 0, 0, 4, 11, C.indigoDk);
-        fillRect(doc, 4, 10.5, W - 4, 0.5, C.gold);
-        if (logo) doc.addImage(logo, 'PNG', ML, 1.5, 7.5, 7.5);
-        txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 10, 5, { size: 6, color: [180, 180, 230] });
-        txt(doc, tr((comp?.isim || '').toUpperCase()), W - MR, 7, {
-            size: 7.5, color: C.white, bold: true, align: 'right', maxWidth: 130,
+        if (logo) doc.addImage(logo, 'PNG', ML, MT - 2, 7, 7);
+        txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + (logo ? 9 : 0), MT + 1, { size: 6.5, color: C.muted, bold: true });
+        txt(doc, tr((comp?.isim || '').toUpperCase()), W - MR, MT + 1, {
+            size: 7.5, color: C.ink, bold: true, align: 'right', maxWidth: 130,
         });
-        y = 15;
+        hLine(doc, ML, MT + 4, CW, C.border, 0.2);
+        // tek altın vurgu çubuğu
+        fillRect(doc, ML, MT + 4, 16, 0.6, C.gold);
+        y = MT + 11;
     };
     const ensureSpace = (n) => {
-        if (y + n > H - MB - 12) {
+        if (y + n > H - MB - 8) {
             drawFooter(); doc.addPage(); pageNum++; drawMiniHeader();
         }
     };
 
-    /* ── KAPAK ── */
-    fillRect(doc, 0, 0, W, 60, C.indigo);
-    fillRect(doc, 0, 0, 5, 60, C.indigoDk);
-    fillRect(doc, 0, 60, W, 0.8, C.gold);
-    if (logo) doc.addImage(logo, 'PNG', ML + 2, 8, 36, 36);
+    /* ── KAPAK ── (sade, beyaz zemin) */
+    if (logo) doc.addImage(logo, 'PNG', ML, 30, 22, 22);
     else {
-        doc.setDrawColor(...C.gold); doc.setLineWidth(1.2);
-        doc.circle(ML + 20, 26, 14, 'S');
-        txt(doc, 'TCF', ML + 20, 29, { size: 12, color: C.gold, bold: true, align: 'center' });
+        doc.setDrawColor(...C.gold); doc.setLineWidth(0.8);
+        doc.circle(ML + 11, 41, 11, 'S');
+        txt(doc, 'TCF', ML + 11, 44, { size: 11, color: C.gold, bold: true, align: 'center' });
     }
-    txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 46, 18, { size: 9.5, color: [190, 185, 240], bold: true });
-    txt(doc, 'Resmi Yarisma Programi', ML + 46, 25, { size: 7.5, color: [160, 155, 210] });
-    txt(doc, tr((comp?.isim || '').toUpperCase()), ML + 46, 38, {
-        size: 14, color: C.white, bold: true, maxWidth: W - ML - 46 - MR,
+    txt(doc, 'TURKIYE CIMNASTIK FEDERASYONU', ML + 28, 35, { size: 9, color: C.muted, bold: true });
+    txt(doc, 'Resmi Yarisma Programi', ML + 28, 41, { size: 7.5, color: C.faint });
+    fillRect(doc, ML, 55, 40, 0.8, C.gold);
+    txt(doc, tr((comp?.isim || '').toUpperCase()), ML, 65, {
+        size: 17, color: C.ink, bold: true, maxWidth: CW,
     });
-    if (comp?.il) txt(doc, tr(comp.il), ML + 46, 47, { size: 9.5, color: [200, 200, 240] });
+    if (comp?.il) txt(doc, tr(comp.il), ML, 73, { size: 11, color: C.body });
     const dateRangeText = days.length ? `${fmtDayLong(days[0])} — ${fmtDayLong(days[days.length - 1])}` : '';
-    txt(doc, dateRangeText, ML + 46, 53, { size: 8.5, color: [200, 200, 240] });
+    txt(doc, dateRangeText, ML, 79, { size: 9, color: C.muted });
 
-    y = 70;
+    y = 92;
 
     /* ── ÖZET ── */
     const totalSessions = Object.keys(sessions || {}).length;
@@ -131,26 +140,25 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
         catBlockCounts[s.kategori] = Math.max(catBlockCounts[s.kategori] || 0, s.toplamBlok || 0);
     });
 
-    fillRect(doc, ML, y, CW, 22, C.surface);
-    strokeRect(doc, ML, y, CW, 22, C.border);
-    fillRect(doc, ML, y, 3, 22, C.indigo);
-    const cw = (CW - 3) / 4;
-    const cellY = y + 8;
-    txt(doc, 'KATEGORI', ML + 6, y + 5, { size: 6.5, color: C.muted, bold: true });
-    txt(doc, String(cats.size), ML + 6, cellY + 6, { size: 18, color: C.indigo, bold: true });
-    txt(doc, 'GUN', ML + 6 + cw, y + 5, { size: 6.5, color: C.muted, bold: true });
-    txt(doc, String(days.length), ML + 6 + cw, cellY + 6, { size: 18, color: C.indigo, bold: true });
-    txt(doc, 'OTURUM', ML + 6 + cw * 2, y + 5, { size: 6.5, color: C.muted, bold: true });
-    txt(doc, String(totalSessions), ML + 6 + cw * 2, cellY + 6, { size: 18, color: C.indigo, bold: true });
-    txt(doc, 'TOPLAM BLOK', ML + 6 + cw * 3, y + 5, { size: 6.5, color: C.muted, bold: true });
-    txt(doc, String(Object.values(catBlockCounts).reduce((a, b) => a + b, 0)), ML + 6 + cw * 3, cellY + 6, { size: 18, color: C.indigo, bold: true });
-    y += 28;
+    const stats = [
+        ['KATEGORI', String(cats.size)],
+        ['GUN', String(days.length)],
+        ['OTURUM', String(totalSessions)],
+        ['TOPLAM BLOK', String(Object.values(catBlockCounts).reduce((a, b) => a + b, 0))],
+    ];
+    const sw = CW / stats.length;
+    stats.forEach(([lab, val], i) => {
+        const sx = ML + sw * i;
+        txt(doc, lab, sx, y, { size: 6.5, color: C.muted, bold: true });
+        txt(doc, val, sx, y + 9, { size: 16, color: C.ink, bold: true });
+    });
+    y += 16;
+    hLine(doc, ML, y, CW, C.border, 0.2);
+    y += 6;
 
     /* ── KATEGORİ LİSTESİ ── */
     if (cats.size > 0) {
-        txt(doc, 'KATEGORILER', ML, y, { size: 8.5, color: C.indigo, bold: true });
-        y += 4;
-        hLine(doc, ML, y, CW, C.indigo, 0.4);
+        txt(doc, 'KATEGORILER', ML, y, { size: 7.5, color: C.muted, bold: true });
         y += 3;
         const catBody = Array.from(cats).map(ck => {
             const aletler = (kategoriler?.[ck]?.aletler || []).map(aletL).join(', ');
@@ -161,17 +169,16 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
             head: [['KATEGORI', 'SPORCU', 'BLOK', 'ALETLER'].map(tr)],
             body: catBody.map(r => r.map(tr)),
             margin: { left: ML, right: MR },
-            styles: { font: 'helvetica', fontSize: 8, cellPadding: [2.2, 3.5, 2.2, 3.5], lineColor: C.border, lineWidth: 0.2 },
-            theme: 'grid',
-            headStyles: { fillColor: C.indigo, textColor: C.white, fontStyle: 'bold', fontSize: 7.5 },
+            styles: { font: 'helvetica', fontSize: 8.5, cellPadding: [2.4, 3.5, 2.4, 3.5], lineColor: C.border, lineWidth: 0.15, textColor: C.body },
+            theme: 'plain',
+            headStyles: { fillColor: C.white, textColor: C.muted, fontStyle: 'bold', fontSize: 7, lineColor: C.border, lineWidth: 0.3 },
             columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 50 },
+                0: { fontStyle: 'bold', textColor: C.ink, cellWidth: 52 },
                 1: { halign: 'center', cellWidth: 22 },
                 2: { halign: 'center', cellWidth: 22 },
             },
-            alternateRowStyles: { fillColor: C.surface },
         });
-        y = (doc.lastAutoTable?.finalY ?? y) + 6;
+        y = (doc.lastAutoTable?.finalY ?? y) + 4;
     }
     drawFooter();
 
@@ -189,38 +196,37 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
         const dayLabel = fmtDayLong(dateStr);
         const window = (ds.baslangic && ds.bitis) ? `${ds.baslangic} - ${ds.bitis}` : '';
 
-        fillRect(doc, ML, y, CW, 12, C.indigo);
-        fillRect(doc, ML, y, 4, 12, C.indigoDk);
-        txt(doc, `${gunIdx + 1}. GUN`, ML + 8, y + 5.5, { size: 7, color: [200, 200, 230], bold: true });
-        txt(doc, dayLabel.toUpperCase(), ML + 8, y + 10, { size: 10, color: C.white, bold: true });
-        txt(doc, window, W - MR, y + 6, { size: 8, color: [200, 200, 240], align: 'right' });
-        txt(doc, `${daySessions.length} oturum`, W - MR, y + 10.5, { size: 7.5, color: [180, 180, 220], align: 'right' });
-        y += 16;
+        // Sade gün başlığı — beyaz, alta ince altın çizgi
+        txt(doc, `${gunIdx + 1}. GUN`, ML, y, { size: 7, color: C.gold, bold: true });
+        txt(doc, dayLabel, ML, y + 7, { size: 12, color: C.ink, bold: true });
+        if (window) txt(doc, window, W - MR, y + 2, { size: 8.5, color: C.body, align: 'right' });
+        txt(doc, `${daySessions.length} oturum`, W - MR, y + 7, { size: 8, color: C.muted, align: 'right' });
+        y += 11;
+        fillRect(doc, ML, y, 24, 0.6, C.gold);
+        hLine(doc, ML + 24, y + 0.3, CW - 24, C.border, 0.2);
+        y += 5;
 
-        // Her kategori ayrı bir kart
+        // Her kategori ayrı kart
         for (const sess of daySessions) {
             const blocks = sess.bugünBloklar || [];
             const aletler = (sess.aletler || []).map(aletL).join(' / ');
             const grupEtiketleri = sess.grupEtiketleri || (sess.gruplar || []).map((_, i) => String(i + 1));
             const K = (sess.aletler || []).length;
 
-            ensureSpace(18 + Math.min(blocks.length, 12) * 6);
+            ensureSpace(20 + Math.min(blocks.length, 12) * 6);
 
-            // Kategori başlığı
-            fillRect(doc, ML, y, CW, 9, C.indigoBg);
-            strokeRect(doc, ML, y, CW, 9, C.indigo, 0.4);
-            fillRect(doc, ML, y, 3, 9, C.indigo);
-            txt(doc, catL(sess.kategori).toUpperCase(), ML + 6, y + 5.5, { size: 10, color: C.indigoDk, bold: true });
+            // Kategori başlığı — beyaz zemin, ince üst çizgi
+            hLine(doc, ML, y, CW, C.ink, 0.4);
+            y += 4;
+            txt(doc, catL(sess.kategori).toUpperCase(), ML, y, { size: 11, color: C.ink, bold: true });
             const headerR = [];
             headerR.push(`${sess.baslangic || sess.saat || ''} - ${sess.bitis || sess.bitisSaat || ''}`);
             headerR.push(`${sess.sporcuSayisi ?? '?'} sporcu`);
             if (sess.çokGünlü) headerR.push(`${sess.günSira}/${sess.günToplam}. gun`);
-            txt(doc, headerR.join('  ·  '), W - MR, y + 5.5, { size: 7.5, color: C.indigo, align: 'right' });
-            y += 11;
-
-            // Alet bilgisi
+            txt(doc, headerR.join('  ·  '), W - MR, y, { size: 8, color: C.body, align: 'right' });
+            y += 4;
             txt(doc, `Aletler: ${aletler}`, ML, y, { size: 7.5, color: C.muted });
-            y += 5;
+            y += 4;
 
             // Blok tablosu
             const blockRows = blocks.map((b, i) => {
@@ -240,27 +246,25 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
                 head: [['BLOK', 'SAAT', 'GRUPLAR (PARALEL)'].map(tr)],
                 body: blockRows.map(r => r.map(tr)),
                 margin: { left: ML, right: MR },
-                styles: { font: 'helvetica', fontSize: 8.5, cellPadding: [2, 3, 2, 3], lineColor: C.border, lineWidth: 0.2 },
-                theme: 'grid',
-                headStyles: { fillColor: C.indigo, textColor: C.white, fontStyle: 'bold', fontSize: 7.5 },
+                styles: { font: 'helvetica', fontSize: 8.5, cellPadding: [2.2, 3, 2.2, 3], lineColor: C.border, lineWidth: 0.15, textColor: C.body },
+                theme: 'plain',
+                headStyles: { fillColor: C.white, textColor: C.muted, fontStyle: 'bold', fontSize: 7, lineColor: C.border, lineWidth: 0.3 },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 22, halign: 'center' },
-                    1: { cellWidth: 32, halign: 'center', fontStyle: 'bold' },
+                    0: { fontStyle: 'bold', textColor: C.ink, cellWidth: 22, halign: 'center' },
+                    1: { cellWidth: 32, halign: 'center', fontStyle: 'bold', textColor: C.ink },
                 },
-                alternateRowStyles: { fillColor: C.surface },
-                didDrawPage: () => { /* no-op */ },
             });
-            y = (doc.lastAutoTable?.finalY ?? y) + 4;
+            y = (doc.lastAutoTable?.finalY ?? y) + 5;
             ensureSpace(6);
         }
         drawFooter();
     });
 
-    /* ── TÜM GRUPLAR (kategorilere göre) ── */
+    /* ── TÜM GRUPLAR (kategorilere göre, gerçek isimlerle) ── */
     const groupsByCat = {};
     Object.values(sessions || {}).forEach(s => {
         if (!s) return;
-        if (groupsByCat[s.kategori]) return; // her cat 1 kez
+        if (groupsByCat[s.kategori]) return;
         if (Array.isArray(s.gruplar) && s.gruplar.length) {
             groupsByCat[s.kategori] = {
                 gruplar: s.gruplar,
@@ -270,32 +274,41 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
     });
     if (Object.keys(groupsByCat).length) {
         doc.addPage(); pageNum++; drawMiniHeader();
-        fillRect(doc, ML, y, CW, 10, C.indigo);
-        txt(doc, 'TUM GRUPLAR', ML + 5, y + 7, { size: 11, color: C.white, bold: true });
-        y += 14;
+        txt(doc, 'TUM GRUPLAR', ML, y, { size: 12, color: C.ink, bold: true });
+        y += 4;
+        fillRect(doc, ML, y, 24, 0.6, C.gold);
+        y += 6;
 
         for (const [ck, info] of Object.entries(groupsByCat)) {
             ensureSpace(14);
-            fillRect(doc, ML, y, CW, 7, C.indigoBg);
-            txt(doc, catL(ck).toUpperCase(), ML + 4, y + 5, { size: 8.5, color: C.indigoDk, bold: true });
-            txt(doc, `${info.gruplar.length} grup`, W - MR, y + 5, { size: 7.5, color: C.indigo, align: 'right' });
-            y += 9;
+            hLine(doc, ML, y, CW, C.border, 0.3);
+            y += 4;
+            txt(doc, catL(ck).toUpperCase(), ML, y, { size: 9.5, color: C.ink, bold: true });
+            txt(doc, `${info.gruplar.length} grup`, W - MR, y, { size: 8, color: C.muted, align: 'right' });
+            y += 4;
+
             const rows = info.gruplar.map((ids, i) => {
                 const label = info.grupEtiketleri[i] ?? (i + 1);
-                return [`Grup ${label}`, String(ids.length), ids.slice(0, 3).map(id => '#' + String(id).slice(-4)).join(', ') + (ids.length > 3 ? `, +${ids.length - 3}` : '')];
+                const names = ids.map(id => athleteName(comp, ck, id)).filter(Boolean);
+                const preview = names.length
+                    ? names.slice(0, 3).join(', ') + (names.length > 3 ? `, +${names.length - 3}` : '')
+                    : `${ids.length} sporcu`;
+                return [`Grup ${label}`, String(ids.length), preview];
             });
             autoTable(doc, {
                 startY: y,
-                head: [['GRUP', 'SPORCU', 'ORNEK'].map(tr)],
+                head: [['GRUP', 'SPORCU', 'SPORCULAR'].map(tr)],
                 body: rows.map(r => r.map(tr)),
                 margin: { left: ML, right: MR },
-                styles: { font: 'helvetica', fontSize: 7.5, cellPadding: [1.5, 3, 1.5, 3], lineColor: C.border, lineWidth: 0.2 },
-                theme: 'grid',
-                headStyles: { fillColor: C.indigo, textColor: C.white, fontSize: 7 },
-                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 28 }, 1: { halign: 'center', cellWidth: 22 } },
-                alternateRowStyles: { fillColor: C.surface },
+                styles: { font: 'helvetica', fontSize: 8, cellPadding: [1.8, 3, 1.8, 3], lineColor: C.border, lineWidth: 0.15, textColor: C.body },
+                theme: 'plain',
+                headStyles: { fillColor: C.white, textColor: C.muted, fontStyle: 'bold', fontSize: 7, lineColor: C.border, lineWidth: 0.3 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', textColor: C.ink, cellWidth: 26 },
+                    1: { halign: 'center', cellWidth: 20 },
+                },
             });
-            y = (doc.lastAutoTable?.finalY ?? y) + 4;
+            y = (doc.lastAutoTable?.finalY ?? y) + 5;
         }
         drawFooter();
     }
