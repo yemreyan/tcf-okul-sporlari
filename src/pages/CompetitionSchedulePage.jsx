@@ -394,8 +394,9 @@ export default function CompetitionSchedulePage() {
         toast('Kategoriler güne sığmazsa sonraki güne taşınarak otomatik dizildi.', 'success');
     };
 
-    // Sıfırdan EŞİT dağıtım: cats / days kadar her güne yerleştirir.
-    // Kapasite aşılırsa kalanlar sonraki güne taşar; gün yoksa son güne sığar.
+    // ROUND-ROBIN dağıtım: cat1→gün1, cat2→gün2, cat3→gün1, cat4→gün2…
+    // Kapasiteden bağımsız olarak günlere serpiştirir. Her gün içinde
+    // kategoriler sıralı olarak başlangıç saatleriyle yerleşir.
     const autoDistributeAllDays = () => {
         if (planConfig.selectedCats.length === 0) {
             toast('Önce kategori seçin.', 'warning'); return;
@@ -410,50 +411,32 @@ export default function CompetitionSchedulePage() {
                 const v = prev.daySettings?.[d]?.baslangic;
                 return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '09:00';
             };
-            const dayEnd = (d) => {
-                const v = prev.daySettings?.[d]?.bitis;
-                return (v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00';
-            };
 
-            // Eşit dağıtım: her güne ≈ N/D kategori
-            const N = prev.selectedCats.length;
-            const D = days.length;
-            const perDay = Math.ceil(N / D);
+            // 1) Kategorileri round-robin günlere böl
+            const catsByDay = days.map(() => []);
+            prev.selectedCats.forEach((cat, idx) => {
+                const dayIdx = idx % days.length;
+                catsByDay[dayIdx].push(cat);
+            });
 
-            let dayIdx = 0;
-            let cursor = hmToMin(dayStart(0));
-            let countOnDay = 0;
-
-            for (let idx = 0; idx < prev.selectedCats.length; idx++) {
-                const cat = prev.selectedCats[idx];
-                const settings = prev.catSettings[cat] || {};
-                const est = estimateDuration(cat, settings);
-                const dur = Math.max(1, est?.total || 25);
-
-                // Eşit-dağıtım: o güne kotaya ulaşıldıysa sonraki güne geç
-                if (countOnDay >= perDay && dayIdx + 1 < days.length) {
-                    dayIdx++;
-                    cursor = hmToMin(dayStart(dayIdx));
-                    countOnDay = 0;
-                }
-                // Kapasite-koruması: sığmıyorsa yine sonraki güne kaydır
-                while (cursor + dur > hmToMin(dayEnd(dayIdx)) && dayIdx + 1 < days.length) {
-                    dayIdx++;
-                    cursor = hmToMin(dayStart(dayIdx));
-                    countOnDay = 0;
-                }
-
-                next.catSettings[cat] = {
-                    ...settings,
-                    gunIndex: dayIdx,
-                    baslangic: minToHm(cursor),
-                };
-                cursor += dur + gap;
-                countOnDay++;
-            }
+            // 2) Her gün için sıralı yerleştir (cursor günün başlangıcından)
+            catsByDay.forEach((catsOfDay, dayIdx) => {
+                let cursor = hmToMin(dayStart(dayIdx));
+                catsOfDay.forEach(cat => {
+                    const settings = prev.catSettings[cat] || {};
+                    const est = estimateDuration(cat, settings);
+                    const dur = Math.max(1, est?.total || 25);
+                    next.catSettings[cat] = {
+                        ...settings,
+                        gunIndex: dayIdx,
+                        baslangic: minToHm(cursor),
+                    };
+                    cursor += dur + gap;
+                });
+            });
             return next;
         });
-        toast(`Kategoriler ${days.length} güne eşit dağıtıldı.`, 'success');
+        toast(`Kategoriler ${days.length} güne dağıtıldı (round-robin).`, 'success');
     };
 
     /* ── Planı oluştur — program node'una yaz ── */
