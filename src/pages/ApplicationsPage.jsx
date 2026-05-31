@@ -100,14 +100,22 @@ const TEAM_RULES = {
     yildiz: { min: 2, max: 3 },  // Yıldızlar
     genc:   { min: 2, max: 3 },  // Gençler
 };
+// Ritmik kategorileri için ayrı kurallar (TCF Okul Sporları)
+const RITMIK_TEAM_RULES = {
+    minik:  { min: 2, max: 4 },  // Minik A & B
+    kucuk:  { min: 2, max: 4 },  // Küçükler
+    yildiz: { min: 2, max: 4 },  // Yıldızlar
+    genc:   { min: 2, max: 3 },  // Gençler
+};
 
 // Kategori adından takım kuralını belirle → { min, max } veya null
-function getTeamRules(catName) {
+function getTeamRules(catName, fbPath) {
     const nameLower = (catName || "").toLocaleLowerCase('tr-TR');
-    if (nameLower.includes('minik'))                                        return TEAM_RULES.minik;
-    if (nameLower.includes('küçük') || nameLower.includes('kucuk'))         return TEAM_RULES.kucuk;
-    if (nameLower.includes('yıldız') || nameLower.includes('yildiz'))       return TEAM_RULES.yildiz;
-    if (nameLower.includes('genç')  || nameLower.includes('genc'))          return TEAM_RULES.genc;
+    const table = (fbPath || "").includes('ritmik') ? RITMIK_TEAM_RULES : TEAM_RULES;
+    if (nameLower.includes('minik'))                                        return table.minik;
+    if (nameLower.includes('küçük') || nameLower.includes('kucuk'))         return table.kucuk;
+    if (nameLower.includes('yıldız') || nameLower.includes('yildiz'))       return table.yildiz;
+    if (nameLower.includes('genç')  || nameLower.includes('genc'))          return table.genc;
     return null; // Bu kategori için takım kuralı tanımlı değil
 }
 
@@ -177,7 +185,7 @@ async function getSchoolAthleteCount(compId, catId, schoolName, district, fireba
 async function syncTeamStatus(compId, catId, catName, schoolName, district, firebasePath) {
     if (!compId || !catId || !schoolName) return;
 
-    const rules = getTeamRules(catName);
+    const rules = getTeamRules(catName, firebasePath);
     if (!rules) return; // Bu kategori için takım kuralı yok
 
     try {
@@ -367,7 +375,7 @@ export default function ApplicationsPage() {
                 }
 
                 // 0b. Max sporcu kontrolü — onaylanırsa toplam max'ı aşar mı?
-                const rules = getTeamRules(app.categoryName);
+                const rules = getTeamRules(app.categoryName, firebasePath);
                 if (rules) {
                     const currentCount = await getSchoolAthleteCount(compId, catId, app.schoolName, app.district, appFirebasePath);
                     const afterCount = currentCount + app.athleteCount;
@@ -1018,7 +1026,7 @@ export default function ApplicationsPage() {
                                                             <span className="meta-badge"><i className="material-icons-round">place</i> {app.city} {app.district ? `/ ${app.district}` : ''}</span>
                                                             <span className="meta-badge"><i className="material-icons-round">groups</i> {app.athleteCount} Sporcu</span>
                                                             {(() => {
-                                                                const rules = getTeamRules(app.categoryName);
+                                                                const rules = getTeamRules(app.categoryName, firebasePath);
                                                                 if (!rules) return null;
                                                                 return (
                                                                     <span className="meta-badge meta-badge--rule" title={`Takım kuralı: min ${rules.min}, max ${rules.max}`}>

@@ -88,13 +88,22 @@ const TEAM_RULES = {
     yildiz: { min: 2, max: 3 },
     genc:   { min: 2, max: 3 },
 };
+// Ritmik kategorileri için ayrı kurallar
+// (Minik A & B → 2-4, Küçük/Yıldız → 2-4, Genç → 2-3)
+const RITMIK_TEAM_RULES = {
+    minik:  { min: 2, max: 4 },
+    kucuk:  { min: 2, max: 4 },
+    yildiz: { min: 2, max: 4 },
+    genc:   { min: 2, max: 3 },
+};
 
-function getTeamRules(catName) {
+function getTeamRules(catName, fbPath) {
     const n = (catName || '').toLocaleLowerCase('tr-TR');
-    if (n.includes('minik'))                                   return TEAM_RULES.minik;
-    if (n.includes('küçük') || n.includes('kucuk'))            return TEAM_RULES.kucuk;
-    if (n.includes('yıldız') || n.includes('yildiz'))          return TEAM_RULES.yildiz;
-    if (n.includes('genç')  || n.includes('genc'))             return TEAM_RULES.genc;
+    const table = (fbPath || '').includes('ritmik') ? RITMIK_TEAM_RULES : TEAM_RULES;
+    if (n.includes('minik'))                                   return table.minik;
+    if (n.includes('küçük') || n.includes('kucuk'))            return table.kucuk;
+    if (n.includes('yıldız') || n.includes('yildiz'))          return table.yildiz;
+    if (n.includes('genç')  || n.includes('genc'))             return table.genc;
     return null;
 }
 
@@ -329,7 +338,7 @@ export default function AthletesPage() {
         for (const catId of uniqueCats) {
             const catObj = catNames[catId] || {};
             const catName = catObj.isim || catObj.name || catObj.ad || catId;
-            const rules = getTeamRules(catName);
+            const rules = getTeamRules(catName, firebasePath);
             if (!rules) continue;
 
             const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${catId}`));
@@ -902,7 +911,7 @@ export default function AthletesPage() {
 
         return catsToShow.map(catId => {
             const catName = competitions[selectedCompId]?.kategoriler?.[catId]?.name || catId;
-            const rules = getTeamRules(catName || catId);
+            const rules = getTeamRules(catName || catId, firebasePath);
             if (!rules) return null;
             const catAthletes = athletes.filter(a => a.categoryId === catId);
             const schoolMap = {};
@@ -1615,7 +1624,7 @@ export default function AthletesPage() {
         Object.entries(groups).forEach(([key, grpAthletes]) => {
             const [catId] = key.split('___');
             const catName = catNames[catId]?.name || catId;
-            const rules = getTeamRules(catName);
+            const rules = getTeamRules(catName, firebasePath);
 
             let newTur;
             if (!rules) {
