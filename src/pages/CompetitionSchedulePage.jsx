@@ -290,7 +290,12 @@ export default function CompetitionSchedulePage() {
             const sortedEntries = Object.entries(byGrup)
                 .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0));
             const groups = sortedEntries.map(([, list]) => list);
-            const groupLabels = sortedEntries.map(([k]) => String(k));
+            // Çıkış Sırası 0-tabanlı rotasyonGrubu yazar (0,1,2,...); kullanıcıya
+            // 1-tabanlı göstermek için sayısal etiketler +1 ile gösterilir.
+            const groupLabels = sortedEntries.map(([k]) => {
+                const n = Number(k);
+                return Number.isFinite(n) && k !== '' ? String(n + 1) : String(k);
+            });
             const grouped = new Set(groups.flat());
             const orphans = ids.filter(id => !grouped.has(id));
             if (orphans.length && groups.length) groups[groups.length - 1].push(...orphans);
