@@ -151,7 +151,7 @@ export default function CompetitionSchedulePage() {
                 days,
                 sessions,
                 daySettings: planConfig.daySettings,
-                kategoriler: comp?.kategoriler || {},
+                kategoriler,
                 athleteCounts,
             });
             toast('PDF indirildi.', 'success');
@@ -197,7 +197,23 @@ export default function CompetitionSchedulePage() {
     }, [firebasePath, selectedCompId]);
 
     const comp = competitions[selectedCompId];
-    const kategoriler = useMemo(() => comp?.kategoriler || {}, [comp]);
+    // Ritmik için kategoriler tablosunu in-memory olarak defaults ile override et —
+    // DB'deki aletler henüz güncellenmemiş olsa bile planlama doğru K=1 ile çalışsın.
+    const kategoriler = useMemo(() => {
+        const raw = comp?.kategoriler || {};
+        const isRitmik = firebasePath === 'ritmik_yarismalar' || (firebasePath || '').includes('ritmik');
+        if (!isRitmik) return raw;
+        const overridden = {};
+        Object.entries(raw).forEach(([catKey, catData]) => {
+            const defaults = RITMIK_CATEGORIES[catKey];
+            if (defaults && Array.isArray(defaults.aletler) && defaults.aletler.length > 0) {
+                overridden[catKey] = { ...catData, aletler: defaults.aletler };
+            } else {
+                overridden[catKey] = catData;
+            }
+        });
+        return overridden;
+    }, [comp, firebasePath]);
 
     /* ── Ritmik: kategorilerin aletlerini defaults ile otomatik senkronla ── */
     // (Defaults dosyası değişince mevcut yarışmaya otomatik yansıması için.)
