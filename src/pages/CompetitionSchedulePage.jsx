@@ -20,6 +20,7 @@ import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { logAction } from '../lib/auditLogger';
 import { generateSchedulePDFv2 } from '../utils/schedulePDFv2';
+import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults';
 import './CompetitionSchedulePage.css';
 
 /* ── Sabitler & Yardımcılar ───────────────────────────────────────────── */
@@ -197,6 +198,28 @@ export default function CompetitionSchedulePage() {
 
     const comp = competitions[selectedCompId];
     const kategoriler = useMemo(() => comp?.kategoriler || {}, [comp]);
+
+    /* ── Ritmik: kategorilerin aletlerini defaults ile otomatik senkronla ── */
+    // (Defaults dosyası değişince mevcut yarışmaya otomatik yansıması için.)
+    useEffect(() => {
+        if (!selectedCompId || !comp?.kategoriler) return;
+        const isRitmik = firebasePath === 'ritmik_yarismalar' || firebasePath?.includes('ritmik');
+        if (!isRitmik) return;
+        const updates = {};
+        Object.entries(comp.kategoriler).forEach(([catKey, catData]) => {
+            const defaults = RITMIK_CATEGORIES[catKey];
+            if (!defaults || !Array.isArray(defaults.aletler)) return;
+            const cur = Array.isArray(catData.aletler) ? catData.aletler : [];
+            const same = cur.length === defaults.aletler.length && cur.every((a, i) => a === defaults.aletler[i]);
+            if (!same) {
+                updates[`${firebasePath}/${selectedCompId}/kategoriler/${catKey}/aletler`] = defaults.aletler;
+            }
+        });
+        if (Object.keys(updates).length > 0) {
+            update(ref(db), updates).catch(() => {});
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCompId, comp?.kategoriler]);
     const days = useMemo(() => dateRange(comp?.baslangicTarihi || comp?.tarih, comp?.bitisTarihi), [comp]);
 
     // İlk yüklemede / yarışma değişince default değerleri doldur

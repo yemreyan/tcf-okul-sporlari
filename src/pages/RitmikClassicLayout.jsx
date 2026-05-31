@@ -61,6 +61,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         transferToOtherAlet,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
+        availableAletler,
     } = s;
 
     // ── Per-field unlock: skor kilitliyken bile "X SİL" ile sadece o alan açılır ──
@@ -174,10 +175,13 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                 </div>
             </div>
 
-            {/* ── Alet Sekmeleri ── */}
+            {/* ── Alet Sekmeleri — sadece bu kategorinin aletleri ── */}
             {selectedAthlete && (
                 <div className="cl-alet-bar">
-                    {Object.values(RITMIK_ALETLER).map(alet => {
+                    {(availableAletler || Object.keys(RITMIK_ALETLER))
+                        .map(k => RITMIK_ALETLER[k])
+                        .filter(Boolean)
+                        .map(alet => {
                         const st = aletStatus(alet.key);
                         return (
                             <button

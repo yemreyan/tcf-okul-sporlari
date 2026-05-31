@@ -332,6 +332,20 @@ export function useRitmikScoring() {
     const catConfig  = RITMIK_CATEGORIES[selectedCategory] || {};
     const judgeCount = catConfig.judgeCount || 4;
     const scoreLocked = existingScores[selectedAthlete?.id]?.[selectedAlet]?.kilitli === true;
+    // Bu kategoride yarışılan aletler (defaults; yarışma DB'sinde override edilebilir
+    // ama görsel olarak defaults yetkilidir — kullanıcı düzeltme istedi)
+    const availableAletler = Array.isArray(catConfig.aletler) && catConfig.aletler.length > 0
+        ? catConfig.aletler
+        : Object.keys(RITMIK_ALETLER);
+
+    // Kategori değişince geçerli alet artık o kategoride yoksa ilkine geç
+    useEffect(() => {
+        if (!selectedCategory) return;
+        if (!availableAletler.includes(selectedAlet)) {
+            setSelectedAlet(availableAletler[0] || 'top');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCategory]);
 
     const availableCities = [...new Set(
         Object.values(competitions)
@@ -480,8 +494,9 @@ export function useRitmikScoring() {
         setSelectedAthlete(athlete);
         setIsAthleteCalled(false);
         setScoringFieldsTouched(false);
-        setSelectedAlet('top');
-        const sc = existingScores[athlete.id]?.['top'];
+        const firstAlet = (availableAletler && availableAletler[0]) || 'top';
+        setSelectedAlet(firstAlet);
+        const sc = existingScores[athlete.id]?.[firstAlet];
         if (sc) {
             setAPanelLocal(sc.aPanel || {});
             setEPanelLocal(sc.ePanel || {});
@@ -959,5 +974,6 @@ export function useRitmikScoring() {
         getAthleteStatus, getAletStatus,
         // Constants
         RITMIK_CATEGORIES, RITMIK_ALETLER,
+        availableAletler,
     };
 }

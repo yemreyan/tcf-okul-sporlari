@@ -49,6 +49,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
         writeFieldOverride,
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
+        availableAletler,
     } = s;
 
     const { toast } = { toast: () => {} }; // Notification context layout içinden erişilemez, parent'ta
@@ -208,9 +209,12 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                             </div>
                         </div>
 
-                        {/* Alet Sekmeleri */}
+                        {/* Alet Sekmeleri — sadece bu kategorinin aletleri */}
                         <div className="rtm-alet-tabs">
-                            {Object.values(RITMIK_ALETLER).map(alet => {
+                            {(availableAletler || Object.keys(RITMIK_ALETLER))
+                                .map(k => RITMIK_ALETLER[k])
+                                .filter(Boolean)
+                                .map(alet => {
                                 const st = getAletStatus(selectedAthlete, alet.key);
                                 const isActive = selectedAlet === alet.key;
                                 return (
