@@ -1,11 +1,15 @@
 /**
  * Ritmik Cimnastik — Kriter Sabitleri
  * TCF Okul Sporları Talinamesi'ne göre hazırlanmıştır.
- * 2025-2026 sezonu: tüm kategorilerde Top ve Kurdele aletleriyle yarışılır.
+ * 2025-2026 sezonu:
+ *   Minik B Kız → Serbest (aletsiz)
+ *   Minik A Kız → Top
+ *   Küçük / Yıldız / Genç → Top + Kurdele
  */
 
 // ─── Aletler ─────────────────────────────────────────────────────────────────
 export const RITMIK_ALETLER = {
+    serbest: { key: 'serbest', label: 'Serbest', icon: 'self_improvement' },
     top: { key: 'top', label: 'Top', icon: 'sports_handball' },
     kurdele: { key: 'kurdele', label: 'Kurdele', icon: 'gesture' },
 };
@@ -24,7 +28,7 @@ export const RITMIK_CATEGORIES = {
         yarismaSeviye: 'Mahalli',
         dobYears: [2017, 2018, 2019],
         judgeCount: 4,
-        aletler: ['top', 'kurdele'],
+        aletler: ['serbest'],
         hasDA: true,
         // Takım kadrosu
         minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
@@ -37,7 +41,7 @@ export const RITMIK_CATEGORIES = {
         yarismaSeviye: 'Mahalli',
         dobYears: [2014, 2015, 2016],
         judgeCount: 4,
-        aletler: ['top', 'kurdele'],
+        aletler: ['top'],
         hasDA: true,
         minTeam: 2, maxTeam: 4, asiSayisi: 2, yedekSayisi: 2,
     },
