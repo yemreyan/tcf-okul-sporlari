@@ -283,8 +283,9 @@ export default function AthletesPage() {
                 const groupCats = getAerobikGroupCats(catId);
 
                 // Gruptaki tüm kategorilerdeki sporcuları yükle
-                // GRUPLAMA ANAHTARI: okul + il (aynı isimli okul farklı illerde olabilir)
-                const schoolGroups = {}; // "okul|il" → [{ id, catId, ...ath }]
+                // GRUPLAMA ANAHTARI: okul + il + ilçe
+                // (aynı ildeki aynı isimli farklı ilçe okulları birbirine karışmasın)
+                const schoolGroups = {}; // "okul|il|ilce" → [{ id, catId, ...ath }]
                 for (const gCatId of groupCats) {
                     const snap = await get(ref(db, `${firebasePath}/${compId}/sporcular/${gCatId}`));
                     if (!snap.exists()) continue;
@@ -292,7 +293,8 @@ export default function AthletesPage() {
                         const okul = (ath.okul || ath.kulup || '').trim().toLocaleUpperCase('tr-TR');
                         if (!okul) return;
                         const il = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
-                        const groupKey = `${okul}|${il}`;
+                        const ilce = (ath.ilce || '').trim().toLocaleUpperCase('tr-TR');
+                        const groupKey = `${okul}|${il}|${ilce}`;
                         if (!schoolGroups[groupKey]) schoolGroups[groupKey] = [];
                         schoolGroups[groupKey].push({ id, catId: gCatId, ...ath });
                     });
@@ -333,13 +335,15 @@ export default function AthletesPage() {
             if (!snap.exists()) continue;
 
             const allAthletes = snap.val();
-            // GRUPLAMA ANAHTARI: okul + il (aynı isimli okul farklı illerde olabilir)
+            // GRUPLAMA ANAHTARI: okul + il + ilçe
+            // (aynı ildeki aynı isimli farklı ilçe okulları birbirine karışmasın)
             const schoolGroups = {};
             Object.entries(allAthletes).forEach(([id, ath]) => {
                 const okul = (ath.okul || ath.kulup || '').trim().toLocaleUpperCase('tr-TR');
                 if (!okul) return;
                 const il = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
-                const groupKey = `${okul}|${il}`;
+                const ilce = (ath.ilce || '').trim().toLocaleUpperCase('tr-TR');
+                const groupKey = `${okul}|${il}|${ilce}`;
                 if (!schoolGroups[groupKey]) schoolGroups[groupKey] = [];
                 schoolGroups[groupKey].push({ id, ...ath });
             });
@@ -901,8 +905,10 @@ export default function AthletesPage() {
             catAthletes.forEach(a => {
                 const okul = (a.okul || a.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
                 const il = (a.il || '').toLocaleUpperCase('tr-TR');
-                const key = `${il}___${okul}`;
-                if (!schoolMap[key]) schoolMap[key] = { count: 0, il, okul, athletes: [] };
+                const ilce = (a.ilce || '').toLocaleUpperCase('tr-TR');
+                // Anahtar: il + ilçe + okul (aynı isimli okul farklı ilçede ayrı sayılır)
+                const key = `${il}___${ilce}___${okul}`;
+                if (!schoolMap[key]) schoolMap[key] = { count: 0, il, ilce, okul, athletes: [] };
                 schoolMap[key].count++;
                 schoolMap[key].athletes.push(a);
             });
@@ -1583,12 +1589,15 @@ export default function AthletesPage() {
         // Kategori adlarını al
         const catNames = competitions[selectedCompId]?.kategoriler || {};
 
-        // Grup: { catId_okul: [athlete, ...] }
+        // Grup: { catId_okul_il_ilce: [athlete, ...] }
+        // (aynı isimli okul farklı il/ilçede olabilir — karıştırma)
         const groups = {};
         athletes.forEach(ath => {
-            const okul = (ath.okul || ath.kulup || '').trim();
+            const okul = (ath.okul || ath.kulup || '').trim().toLocaleUpperCase('tr-TR');
             if (!okul) return;
-            const key = `${ath.categoryId}___${okul}`;
+            const il = (ath.il || '').trim().toLocaleUpperCase('tr-TR');
+            const ilce = (ath.ilce || '').trim().toLocaleUpperCase('tr-TR');
+            const key = `${ath.categoryId}___${okul}___${il}___${ilce}`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(ath);
         });
@@ -1890,13 +1899,19 @@ export default function AthletesPage() {
                             </div>
                         ) : viewMode === 'grouped' ? (() => {
                             const catNames = competitions[selectedCompId]?.kategoriler || {};
+                            // İl bazında, sonra (okul + ilçe) bileşik anahtarı:
+                            // aynı isimli okul farklı ilçede ise ayrı kart olarak görünür.
                             const byCitySchool = {};
+                            const schoolMeta = {}; // schoolKey -> { okul, ilce }
                             filteredAthletes.forEach(ath => {
                                 const il = (ath.il || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
                                 const okul = (ath.okul || ath.kulup || 'Belirtilmemiş').toLocaleUpperCase('tr-TR');
+                                const ilce = (ath.ilce || '').toLocaleUpperCase('tr-TR');
+                                const schoolKey = ilce ? `${okul} — ${ilce}` : okul;
                                 if (!byCitySchool[il]) byCitySchool[il] = {};
-                                if (!byCitySchool[il][okul]) byCitySchool[il][okul] = [];
-                                byCitySchool[il][okul].push(ath);
+                                if (!byCitySchool[il][schoolKey]) byCitySchool[il][schoolKey] = [];
+                                byCitySchool[il][schoolKey].push(ath);
+                                schoolMeta[`${il}::${schoolKey}`] = { okul, ilce };
                             });
                             const sortedIls = Object.keys(byCitySchool).sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
@@ -2090,7 +2105,7 @@ export default function AthletesPage() {
                                     <div key={catId} className="quota-category">
                                         {!filterCategory && <div className="quota-category__title">{catName || catId}</div>}
                                         <div className="quota-schools">
-                                            {Object.entries(schoolMap).sort((a, b) => b[1].count - a[1].count).map(([schoolKey2, { count, il, okul, athletes: schoolAthletes }]) => {
+                                            {Object.entries(schoolMap).sort((a, b) => b[1].count - a[1].count).map(([schoolKey2, { count, il, ilce, okul, athletes: schoolAthletes }]) => {
                                                     const pct = Math.min((count / rules.max) * 100, 100);
                                                     const remaining = rules.max - count;
                                                     const isTeam = count >= rules.min;
@@ -2103,7 +2118,7 @@ export default function AthletesPage() {
                                                             <div className="quota-school-row__info" onClick={() => setExpandedSchool(isOpen ? '' : schoolKey)} style={{ cursor: 'pointer' }}>
                                                                 <span className="quota-school-name">
                                                                     <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 3, color: isOpen ? '#4F46E5' : '#9CA3AF', transition: 'transform .2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>chevron_right</i>
-                                                                    {okul}{il ? <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>({il})</span> : null}
+                                                                    {okul}{(il || ilce) ? <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>({[ilce, il].filter(Boolean).join(' / ')})</span> : null}
                                                                 </span>
                                                                 <span className="quota-school-badges">
                                                                     <span className="quota-count" style={{ color: barColor }}>{count}/{rules.max}</span>
