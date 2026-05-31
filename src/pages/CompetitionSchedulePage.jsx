@@ -289,7 +289,21 @@ export default function CompetitionSchedulePage() {
         if (withGrup >= N * 0.5) {
             const sortedEntries = Object.entries(byGrup)
                 .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0));
-            const groups = sortedEntries.map(([, list]) => list);
+            // Her grup içinde sporcuları çıkış sırasına göre sırala
+            // (Çıkış Sırası 'sirasi' alanını grup-içi 1-tabanlı yazar;
+            //  yedek olarak 'cikisSirasi' global sıra, sonra ad/soyad alfabetik)
+            const sortByOrder = (a, b) => {
+                const sa = Number(sp[a]?.sirasi);
+                const sb = Number(sp[b]?.sirasi);
+                if (Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) return sa - sb;
+                const ca = Number(sp[a]?.cikisSirasi);
+                const cb = Number(sp[b]?.cikisSirasi);
+                if (Number.isFinite(ca) && Number.isFinite(cb) && ca !== cb) return ca - cb;
+                const na = `${sp[a]?.ad || ''} ${sp[a]?.soyad || ''}`;
+                const nb = `${sp[b]?.ad || ''} ${sp[b]?.soyad || ''}`;
+                return na.localeCompare(nb, 'tr-TR');
+            };
+            const groups = sortedEntries.map(([, list]) => [...list].sort(sortByOrder));
             // Çıkış Sırası 0-tabanlı rotasyonGrubu yazar (0,1,2,...); kullanıcıya
             // 1-tabanlı göstermek için sayısal etiketler +1 ile gösterilir.
             const groupLabels = sortedEntries.map(([k]) => {
