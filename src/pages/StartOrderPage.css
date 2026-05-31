@@ -1605,3 +1605,27 @@
         padding: 5px 6px !important;
     }
 }
+
+/* Kişi Bazlı Gruplama — toplam grup başlığı */
+.grouping-modal__top {
+    padding: 8px 16px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 8px;
+}
+.grouping-modal__top-label {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 13px;
+}
+.grouping-modal__row select.grouping-modal__input {
+    height: 30px;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+.grouping-modal__input:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}

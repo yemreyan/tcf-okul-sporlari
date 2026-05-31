@@ -111,14 +111,22 @@ export default function StartOrderPage() {
 
     // Kişi bazlı modal için Promise döndüren yardımcı
     const showPersonGroupModal = useCallback((trainers) => {
+        // Toplam grup için makul tahmin: tüm sporcuları MAX_PER_ROTATION'a böl
+        const total = trainers.reduce((s, t) => s + t.athletes.length, 0);
+        const suggested = Math.max(1, Math.ceil(total / MAX_PER_ROTATION));
         return new Promise((resolve) => {
             setPersonGroupModal({
-                trainers: trainers.map(t => ({ ...t, groupSize: Math.min(MAX_PER_ROTATION, t.athletes.length) })),
-                onConfirm: (result) => { setPersonGroupModal(null); resolve(result); },
+                trainers: trainers.map(t => ({
+                    ...t,
+                    groupSize: Math.min(MAX_PER_ROTATION, t.athletes.length),
+                    targetGroup: '', // boş = otomatik; sayı = hedef grup # (1-tabanlı)
+                })),
+                totalGroups: suggested,
+                onConfirm: (result, totalGroups) => { setPersonGroupModal(null); resolve({ trainers: result, totalGroups }); },
                 onCancel: () => { setPersonGroupModal(null); resolve(null); }
             });
         });
-    }, []);
+    }, [MAX_PER_ROTATION]);
 
     // İlçe bazlı modal için Promise döndüren yardımcı
     const showDistrictPriorityModal = useCallback((districts) => {
@@ -606,9 +614,11 @@ export default function StartOrderPage() {
                 t.athletes.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`, 'tr-TR'));
             });
 
-            // Modal'ı göster ve kullanıcının grup boyutlarını belirlemesini bekle
+            // Modal'ı göster ve kullanıcının grup boyutlarını / hedef gruplarını belirlemesini bekle
             const modalResult = await showPersonGroupModal(trainerList);
             if (modalResult === null) return; // İptal
+            const totalGroups = Math.max(1, Number(modalResult.totalGroups) || 1);
+            const trainerResults = modalResult.trainers;
 
             // Phase 1: Takım grupları (rastgele sıra)
             const teamsList = Object.values(teamsMap).map(members =>
@@ -625,13 +635,40 @@ export default function StartOrderPage() {
             };
             teamsList.forEach(members => { const ti = findBestTG(members.length); teamGroups[ti].push(...members); });
 
-            // Phase 2: Ferdi grupları — modal'dan gelen grup boyutları ile
-            const individualGroups = [];
+            // Phase 2: Ferdi grupları
+            // (a) Önce sabit boyutlu N adet hedef grup oluştur (modal'dan gelen totalGroups)
+            // (b) Hedef grup atanmış antrenörlerin sporcularını ilgili gruba yerleştir
+            // (c) Hedef grubu olmayan antrenörlerin sporcularını groupSize'a göre böl ve
+            //     mevcut hedef gruplar dolarsa yeni gruplar açarak ekle
+            const individualGroups = Array.from({ length: totalGroups }, () => []);
 
-            modalResult.forEach(({ athletes, groupSize }) => {
+            // (b) Sabit atamalar — hedef grup belirlenmiş antrenörler
+            const fixed = trainerResults.filter(t => t.targetGroup !== '' && t.targetGroup != null);
+            const flexible = trainerResults.filter(t => t.targetGroup === '' || t.targetGroup == null);
+
+            fixed.forEach(({ athletes, targetGroup }) => {
+                const gi = Math.max(0, Math.min(totalGroups - 1, Number(targetGroup) - 1));
+                individualGroups[gi].push(...athletes);
+            });
+
+            // (c) Esnek antrenörler — groupSize'a böl, en boş hedef gruba yerleştir,
+            //     hiçbiri sığmıyorsa yeni grup ekle
+            const findBestFlexGroup = (n) => {
+                let bi = -1, bc = Infinity;
+                for (let i = 0; i < individualGroups.length; i++) {
+                    if (individualGroups[i].length + n <= MAX_PER_ROTATION && individualGroups[i].length < bc) {
+                        bc = individualGroups[i].length; bi = i;
+                    }
+                }
+                if (bi === -1) { individualGroups.push([]); bi = individualGroups.length - 1; }
+                return bi;
+            };
+            flexible.forEach(({ athletes, groupSize }) => {
                 const size = Math.max(1, Math.min(MAX_PER_ROTATION, groupSize));
                 for (let k = 0; k < athletes.length; k += size) {
-                    individualGroups.push(athletes.slice(k, k + size));
+                    const chunk = athletes.slice(k, k + size);
+                    const gi = findBestFlexGroup(chunk.length);
+                    individualGroups[gi].push(...chunk);
                 }
             });
 
@@ -2514,16 +2551,37 @@ export default function StartOrderPage() {
                             <i className="material-icons-round">sort_by_alpha</i>
                             <h2>Kişi Bazlı Gruplama</h2>
                         </div>
-                        <p className="grouping-modal__desc">Her antrenör/öğretmen için grup boyutunu belirleyin. Sporcular o boyutta gruplara bölünecektir.</p>
+                        <p className="grouping-modal__desc">
+                            Toplam grup sayısını belirleyin. İstediğiniz antrenörler için "Hedef Grup" sütununa
+                            sayı yazarak sporcularını o gruba sabitleyin. Boş bırakılan antrenörler grup
+                            boyutuna göre boş gruplara otomatik dağıtılır.
+                        </p>
+                        <div className="grouping-modal__top">
+                            <label className="grouping-modal__top-label">
+                                <i className="material-icons-round" style={{ fontSize: 16, marginRight: 4 }}>grid_view</i>
+                                Toplam grup sayısı:
+                                <input
+                                    type="number" min="1" max="200"
+                                    className="grouping-modal__input"
+                                    style={{ marginLeft: 8, width: 80 }}
+                                    value={personGroupModal.totalGroups}
+                                    onChange={e => {
+                                        const val = Math.max(1, Math.min(200, parseInt(e.target.value) || 1));
+                                        setPersonGroupModal(prev => ({ ...prev, totalGroups: val }));
+                                    }}
+                                />
+                            </label>
+                        </div>
                         <div className="grouping-modal__table">
-                            <div className="grouping-modal__thead">
+                            <div className="grouping-modal__thead" style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1fr 1fr' }}>
                                 <span>Antrenör / Öğretmen</span>
                                 <span>Tür</span>
                                 <span>Sporcu</span>
                                 <span>Grup Boyutu</span>
+                                <span>Hedef Grup</span>
                             </div>
                             {personGroupModal.trainers.map((trainer, idx) => (
-                                <div key={trainer.name} className="grouping-modal__row">
+                                <div key={trainer.name} className="grouping-modal__row" style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1fr 1fr' }}>
                                     <span className="grouping-modal__name">{trainer.name}</span>
                                     <span className={`grouping-modal__type grouping-modal__type--${trainer.type === 'antrenör' ? 'coach' : 'teacher'}`}>{trainer.type}</span>
                                     <span className="grouping-modal__count">{trainer.athletes.length}</span>
@@ -2533,6 +2591,8 @@ export default function StartOrderPage() {
                                         min="1"
                                         max={MAX_PER_ROTATION}
                                         value={trainer.groupSize}
+                                        disabled={trainer.targetGroup !== '' && trainer.targetGroup != null}
+                                        title={trainer.targetGroup !== '' && trainer.targetGroup != null ? 'Hedef grup belirlenince devre dışı' : ''}
                                         onChange={e => {
                                             const val = Math.max(1, Math.min(MAX_PER_ROTATION, parseInt(e.target.value) || 1));
                                             setPersonGroupModal(prev => ({
@@ -2541,6 +2601,22 @@ export default function StartOrderPage() {
                                             }));
                                         }}
                                     />
+                                    <select
+                                        className="grouping-modal__input"
+                                        value={trainer.targetGroup ?? ''}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setPersonGroupModal(prev => ({
+                                                ...prev,
+                                                trainers: prev.trainers.map((t, i) => i === idx ? { ...t, targetGroup: val } : t)
+                                            }));
+                                        }}
+                                    >
+                                        <option value="">Otomatik</option>
+                                        {Array.from({ length: personGroupModal.totalGroups }, (_, i) => (
+                                            <option key={i + 1} value={i + 1}>Grup {i + 1}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             ))}
                         </div>
@@ -2548,7 +2624,7 @@ export default function StartOrderPage() {
                             <button className="confirm-btn confirm-btn--cancel" onClick={personGroupModal.onCancel}>
                                 İptal
                             </button>
-                            <button className="confirm-btn confirm-btn--ok" onClick={() => personGroupModal.onConfirm(personGroupModal.trainers)}>
+                            <button className="confirm-btn confirm-btn--ok" onClick={() => personGroupModal.onConfirm(personGroupModal.trainers, personGroupModal.totalGroups)}>
                                 Gruplamayı Başlat
                             </button>
                         </div>
