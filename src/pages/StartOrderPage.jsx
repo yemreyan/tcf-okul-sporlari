@@ -23,7 +23,7 @@ export default function StartOrderPage() {
     const [maxPerRotation, setMaxPerRotation] = useState(() => {
         try {
             const saved = parseInt(localStorage.getItem('startOrder_maxPerRotation'), 10);
-            return (saved >= 1 && saved <= 20) ? saved : DEFAULT_MAX_PER_ROTATION;
+            return (saved >= 1 && saved <= 100) ? saved : DEFAULT_MAX_PER_ROTATION;
         } catch { return DEFAULT_MAX_PER_ROTATION; }
     });
     const MAX_PER_ROTATION = maxPerRotation; // Backward compat — tüm referansları etkiler
@@ -2098,11 +2098,11 @@ export default function StartOrderPage() {
                                 <input
                                     type="number"
                                     min="1"
-                                    max="20"
+                                    max="100"
                                     value={maxPerRotation}
                                     onChange={e => {
                                         const v = parseInt(e.target.value, 10);
-                                        if (v >= 1 && v <= 20) setMaxPerRotation(v);
+                                        if (v >= 1 && v <= 100) setMaxPerRotation(v);
                                     }}
                                     style={{
                                         width: '60px', padding: '0.35rem 0.5rem',
