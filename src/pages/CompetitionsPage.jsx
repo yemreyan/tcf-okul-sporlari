@@ -225,6 +225,65 @@ export default function CompetitionsPage() {
         );
     };
 
+    // Aletleri varsayılan kategori konfigürasyonundan yeniden yükle
+    // (kategori defaults dosyası güncellendiğinde mevcut yarışmaya yansıtmak için)
+    const handleResyncAletler = async (comp) => {
+        if (!comp?.kategoriler) return;
+        const updates = {};
+        let changed = 0;
+        let changedDetails = [];
+
+        // Artistik: criteria'dan çek
+        let liveCriteriaData = {};
+        if (disciplineId === 'artistik') {
+            try {
+                const activeYearSnap = await get(ref(db, 'criteria/activeYear'));
+                const activeYear = activeYearSnap.val() || new Date().getFullYear();
+                const criteriaSnap = await get(ref(db, `criteria/${activeYear}`));
+                liveCriteriaData = criteriaSnap.val() || DEFAULT_CRITERIA;
+            } catch { liveCriteriaData = DEFAULT_CRITERIA; }
+        }
+
+        Object.entries(comp.kategoriler).forEach(([catKey, catData]) => {
+            const catConfig = disciplineCategoryMap[catKey] || {};
+            let newAletler = [];
+            if (disciplineId === 'artistik') {
+                const sourceData = liveCriteriaData[catKey] || DEFAULT_CRITERIA[catKey];
+                newAletler = Object.keys(sourceData || {}).filter(k => k !== 'metadata' && sourceData[k].isActive !== false);
+            } else if (catConfig.aletler && catConfig.aletler.length > 0) {
+                newAletler = catConfig.aletler;
+            } else {
+                return; // alet bilgisi yok, atla
+            }
+            const oldAletler = Array.isArray(catData.aletler) ? catData.aletler : [];
+            const same = oldAletler.length === newAletler.length && oldAletler.every((a, i) => a === newAletler[i]);
+            if (!same) {
+                updates[`${firebasePath}/${comp.id}/kategoriler/${catKey}/aletler`] = newAletler;
+                changed++;
+                changedDetails.push(`${catData.name || catKey}: [${oldAletler.join(', ')}] → [${newAletler.join(', ')}]`);
+            }
+        });
+
+        if (changed === 0) {
+            toast('Tüm kategoriler zaten güncel — değişiklik yapılmadı.', 'info');
+            return;
+        }
+
+        const ok = await confirm(
+            `${changed} kategoride alet listesi güncellenecek:\n\n${changedDetails.slice(0, 6).join('\n')}${changedDetails.length > 6 ? `\n... ve ${changedDetails.length - 6} kategori daha` : ''}\n\nDevam edilsin mi?`
+        );
+        if (!ok) return;
+
+        try {
+            await update(ref(db), updates);
+            toast(`${changed} kategori alet listesi güncellendi.`, 'success');
+            logAction('competition_update', `Aletler yenilendi: ${comp.name} (${changed} kategori)`, { user: currentUser?.kullaniciAdi || 'admin', competitionId: comp.id });
+        } catch (err) {
+            if (import.meta.env.DEV) console.error('Resync failed', err);
+            toast('Güncelleme başarısız oldu.', 'error');
+        }
+    };
+
     const handleToggleBasvuru = async (comp) => {
         const newVal = !comp.basvuruKapaliMi;
         try {
@@ -527,6 +586,9 @@ export default function CompetitionsPage() {
                             >
                                 <i className="material-icons-round">{comp.basvuruKapaliMi ? 'lock_open' : 'lock'}</i>
                             </button>
+                        )}
+                        {hasPermission('competitions', 'duzenle') && (
+                            <button className="icon-btn" onClick={() => handleResyncAletler(comp)} title="Aletleri varsayılandan yenile"><i className="material-icons-round">refresh</i></button>
                         )}
                         {hasPermission('competitions', 'duzenle') && (
                             <button className="icon-btn" onClick={() => openModal(comp)} title="Düzenle"><i className="material-icons-round">edit</i></button>
