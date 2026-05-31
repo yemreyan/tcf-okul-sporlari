@@ -1077,7 +1077,7 @@ export default function CompetitionSchedulePage() {
                                         Genelde 5-8 önerilir
                                     </span>
                                 </span>
-                                <input type="number" min="1" max="20"
+                                <input type="number" min="1" max="50"
                                     value={planConfig.grupBuyukluğu ?? 6}
                                     onChange={e => setPlanConfig(p => ({ ...p, grupBuyukluğu: Math.max(1, Math.min(50, +e.target.value || 6)) }))} />
                                 <span className="csv3-alet-unit">sporcu</span>
