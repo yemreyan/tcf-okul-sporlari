@@ -187,6 +187,7 @@ export default function AthletesPage() {
         okul: '',
         kulup: '',   // okul ile her zaman senkron tutulur
         il: '',
+        ilce: '',
         categoryId: '',
         yarismaTuru: 'ferdi'
     });
@@ -566,6 +567,7 @@ export default function AthletesPage() {
                 okul: athlete.okul || athlete.kulup || '',
                 kulup: athlete.okul || athlete.kulup || '',   // okul ile senkron
                 il: athlete.il || '',
+                ilce: athlete.ilce || '',
                 categoryId: athlete.categoryId || '',
                 yarismaTuru: athlete.yarismaTuru || 'ferdi'
             });
@@ -579,6 +581,7 @@ export default function AthletesPage() {
                 dob: '',
                 okul: '',
                 il: '',
+                ilce: '',
                 categoryId: filterCategory || '',
                 yarismaTuru: 'ferdi'
             });
@@ -759,13 +762,14 @@ export default function AthletesPage() {
                     const dob = row['DogumTarihi'] || row['D.Tarihi'] || row['Doğum Tarihi'] || '';
                     const okul = row['Okul'] || row['OKUL'] || '';
                     const il = row['Il'] || row['İL'] || row['İl'] || '';
+                    const ilce = row['Ilce'] || row['İLÇE'] || row['İlçe'] || row['Ilçe'] || '';
                     const categoryId = row['Kategori'] || row['KATEGORİ'] || '';
                     const yarismaTuru = (row['Tur'] || row['TÜR'] || row['Tür'] || 'ferdi').toLowerCase();
 
                     if (ad && soyad && categoryId) {
                         const newKey = push(ref(db, `${firebasePath}/${selectedCompId}/sporcular/${categoryId}`)).key;
                         updates[`${firebasePath}/${selectedCompId}/sporcular/${categoryId}/${newKey}`] = {
-                            ad, soyad, tckn, lisans, dob, okul, il, yarismaTuru,
+                            ad, soyad, tckn, lisans, dob, okul, kulup: okul, il, ilce, yarismaTuru,
                             sirasi: 999,
                             appId: "excel_import"
                         };
@@ -2050,7 +2054,7 @@ export default function AthletesPage() {
                                             </div>
                                             <div className="detail-row">
                                                 <i className="material-icons-round">place</i>
-                                                <span>{ath.il || '-'} • Tür: {ath.yarismaTuru === 'takim' ? 'TAKIM' : 'FERDİ'}</span>
+                                                <span>{[ath.ilce, ath.il].filter(Boolean).join(' / ') || '-'} • Tür: {ath.yarismaTuru === 'takim' ? 'TAKIM' : 'FERDİ'}</span>
                                             </div>
                                             <button
                                                 className="athlete-profile-link"
@@ -2143,7 +2147,7 @@ export default function AthletesPage() {
                                                                                         <td className="quota-athlete-table__tckn">{maskTckn(ath.tckn)}</td>
                                                                                         <td className="quota-athlete-table__dob">{ath.dogumTarihi || ath.dob || '—'}</td>
                                                                                         <td><span className={`quota-tur-badge quota-tur-badge--${(ath.yarismaTuru || 'ferdi').toLowerCase()}`}>{ath.yarismaTuru === 'takim' ? 'Takım' : 'Ferdi'}</span></td>
-                                                                                        <td>{hasPermission('athletes', 'duzenle') && <button className="quota-edit-btn" onClick={() => { setEditingAthlete(ath); setFormData({ ad: ath.ad || '', soyad: ath.soyad || '', tckn: ath.tckn || '', lisans: ath.lisansNo || ath.lisans || '', dob: ath.dogumTarihi || ath.dob || '', okul: ath.okul || ath.kulup || '', il: ath.il || '', categoryId: ath.categoryId || '', yarismaTuru: ath.yarismaTuru || 'ferdi' }); setIsModalOpen(true); }} title="Düzenle"><i className="material-icons-round">edit</i></button>}</td>
+                                                                                        <td>{hasPermission('athletes', 'duzenle') && <button className="quota-edit-btn" onClick={() => { setEditingAthlete(ath); setFormData({ ad: ath.ad || '', soyad: ath.soyad || '', tckn: ath.tckn || '', lisans: ath.lisansNo || ath.lisans || '', dob: ath.dogumTarihi || ath.dob || '', okul: ath.okul || ath.kulup || '', kulup: ath.okul || ath.kulup || '', il: ath.il || '', ilce: ath.ilce || '', categoryId: ath.categoryId || '', yarismaTuru: ath.yarismaTuru || 'ferdi' }); setIsModalOpen(true); }} title="Düzenle"><i className="material-icons-round">edit</i></button>}</td>
                                                                                     </tr>
                                                                                 ))}
                                                                             </tbody>
@@ -2308,6 +2312,10 @@ export default function AthletesPage() {
                             <div className="form-group">
                                 <label>İl</label>
                                 <input type="text" value={formData.il} onChange={e => setFormData({ ...formData, il: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>İlçe</label>
+                                <input type="text" value={formData.ilce} onChange={e => setFormData({ ...formData, ilce: e.target.value })} placeholder="Örn: Kadıköy" />
                             </div>
 
                             <div className="form-group form-group--full">
