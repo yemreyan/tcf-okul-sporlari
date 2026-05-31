@@ -123,7 +123,7 @@ export default function CompetitionSchedulePage() {
     const [planConfig, setPlanConfig] = useState({
         selectedCats: [],
         catSettings: {},   // {catKey: {gunIndex, baslangic, isinmaDk, odulDk}}
-        daySettings: {},   // {gunIndex: {baslangic, bitis}}
+        daySettings: {},   // {gunIndex: {baslangic, bitis, araBaslangic, araBitis, odulSuresi}}
         aletDk: {},        // {alet: dk}
         grupBuyukluğu: 6,  // hedef sporcu/grup
         bloklarArasiDk: 5, // bloklar arası geçiş
@@ -379,7 +379,28 @@ export default function CompetitionSchedulePage() {
         };
         const dayEndM = (d) => {
             const v = planConfig.daySettings?.[d]?.bitis;
-            return hmToMin((v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00');
+            const end = hmToMin((v && /^\d{1,2}:\d{2}/.test(v)) ? v : '17:00');
+            // Ödül töreni günün sonundan ayrılır — efektif bitiş daha erken
+            const odulS = Number(planConfig.daySettings?.[d]?.odulSuresi) || 0;
+            return end - odulS;
+        };
+        // Öğle arası penceresi [araStart, araEnd]; ikisi de varsa cursor bu pencereyi atlar
+        const lunchWindow = (d) => {
+            const a = planConfig.daySettings?.[d]?.araBaslangic;
+            const b = planConfig.daySettings?.[d]?.araBitis;
+            if (!a || !b || !/^\d{1,2}:\d{2}/.test(a) || !/^\d{1,2}:\d{2}/.test(b)) return null;
+            const ms = hmToMin(a), me = hmToMin(b);
+            return me > ms ? { ms, me } : null;
+        };
+        // cursor + duration aralığı öğle arası ile çakışırsa cursor'u öğle sonrasına ittir
+        const skipLunch = (d, c, duration) => {
+            const lw = lunchWindow(d);
+            if (!lw) return c;
+            // [c, c+duration] ile [ms, me] çakışıyor mu?
+            if (c < lw.me && c + duration > lw.ms) {
+                return lw.me; // öğle bitişine atla
+            }
+            return c;
         };
 
         // Sıralama: gunIndex+baslangic
@@ -411,6 +432,8 @@ export default function CompetitionSchedulePage() {
                 dayIdx++;
                 cursor = dayStartM(dayIdx);
             }
+            // Isınma öğle arasıyla çakışıyorsa öğle sonrasına atla
+            cursor = skipLunch(dayIdx, cursor, isinma);
             cursor += isinma;
 
             const perDay = {};
@@ -426,10 +449,13 @@ export default function CompetitionSchedulePage() {
                         cursor += blokArasi;
                     }
                 }
+                // Blok öğle arasıyla çakışıyorsa öğle sonrasına atla
+                cursor = skipLunch(dayIdx, cursor, blockMin);
                 // Tek blok hâlâ sığmıyorsa sonraki güne
                 while (cursor + blockMin > dayEndM(dayIdx) && dayIdx + 1 < days.length) {
                     dayIdx++;
                     cursor = dayStartM(dayIdx);
+                    cursor = skipLunch(dayIdx, cursor, blockMin);
                 }
                 // Eğer tek blok herhangi bir güne SIĞMIYORSA (blockMin > dayWindow)
                 // YA DA son güne bile sığmıyorsa, durur ve overflow işaretler.
@@ -797,6 +823,37 @@ export default function CompetitionSchedulePage() {
                     };
                 }
             }
+            // ─── Öğle arası + Ödül töreni özel seansları ───
+            days.forEach((tarih, gi) => {
+                const ds = planConfig.daySettings?.[gi] || {};
+                // Öğle arası
+                if (ds.araBaslangic && ds.araBitis && /^\d{1,2}:\d{2}/.test(ds.araBaslangic) && /^\d{1,2}:\d{2}/.test(ds.araBitis)) {
+                    const k = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
+                    newProgram[k] = {
+                        tip: 'ogle_arasi', tarih, gunIndex: gi,
+                        baslangic: ds.araBaslangic, saat: ds.araBaslangic,
+                        bitis: ds.araBitis, bitisSaat: ds.araBitis,
+                        kategori: '__ogle__', aletler: [],
+                        sporcuSayisi: 0, durum: 'bekliyor',
+                        baslik: 'Öğle Arası',
+                    };
+                }
+                // Ödül töreni — günün sonundan odulSuresi kadar
+                const odulS = Number(ds.odulSuresi) || 0;
+                if (odulS > 0 && ds.bitis && /^\d{1,2}:\d{2}/.test(ds.bitis)) {
+                    const endM = hmToMin(ds.bitis);
+                    const startM = Math.max(0, endM - odulS);
+                    const k = push(ref(db, `${firebasePath}/${selectedCompId}/program`)).key;
+                    newProgram[k] = {
+                        tip: 'odul_toreni', tarih, gunIndex: gi,
+                        baslangic: minToHm(startM), saat: minToHm(startM),
+                        bitis: minToHm(endM), bitisSaat: minToHm(endM),
+                        kategori: '__odul__', aletler: [],
+                        sporcuSayisi: 0, durum: 'bekliyor',
+                        baslik: 'Ödül Töreni',
+                    };
+                }
+            });
             await set(ref(db, `${firebasePath}/${selectedCompId}/program`), newProgram);
             if (spannedCount > 0) {
                 toast(`${spannedCount} kategori birden çok güne yayıldı (günler dolduğu için bloklar ertesi günde devam ediyor).`, 'info');
@@ -1019,6 +1076,8 @@ export default function CompetitionSchedulePage() {
                                     <th>GÜN</th>
                                     <th>BAŞLANGIÇ</th>
                                     <th>HEDEF BİTİŞ</th>
+                                    <th className="ta-c" title="Öğle arası penceresi (boş = yok)">ÖĞLE ARASI</th>
+                                    <th className="ta-c" title="Günün sonunda ödül töreni için ayrılacak dakika">ÖDÜL (dk)</th>
                                     <th className="ta-c">PENCERE</th>
                                     <th>PLANLI</th>
                                     <th>KAPASİTE KULLANIMI</th>
@@ -1029,7 +1088,11 @@ export default function CompetitionSchedulePage() {
                                     const ds = planConfig.daySettings[i] || {};
                                     const inDay = previews.filter(p => p.gunIndex === i && !p.error);
                                     const usedMin = inDay.reduce((s, p) => s + (p.est?.total || 0), 0);
-                                    const windowMin = Math.max(0, hmToMin(ds.bitis || '17:00') - hmToMin(ds.baslangic || '09:00'));
+                                    const odulS = Number(ds.odulSuresi) || 0;
+                                    const araDk = (ds.araBaslangic && ds.araBitis)
+                                        ? Math.max(0, hmToMin(ds.araBitis) - hmToMin(ds.araBaslangic))
+                                        : 0;
+                                    const windowMin = Math.max(0, hmToMin(ds.bitis || '17:00') - hmToMin(ds.baslangic || '09:00') - araDk - odulS);
                                     const pct = windowMin ? Math.min(100, Math.round(usedMin * 100 / windowMin)) : 0;
                                     const overUse = usedMin > windowMin;
                                     return (
@@ -1042,6 +1105,18 @@ export default function CompetitionSchedulePage() {
                                             <td>
                                                 <input type="time" value={ds.bitis || '17:00'}
                                                     onChange={e => updateDaySetting(i, 'bitis', e.target.value)} />
+                                            </td>
+                                            <td className="ta-c" style={{ whiteSpace: 'nowrap' }}>
+                                                <input type="time" value={ds.araBaslangic || ''} style={{ width: 88 }}
+                                                    onChange={e => updateDaySetting(i, 'araBaslangic', e.target.value)} />
+                                                <span style={{ margin: '0 4px', color: '#94a3b8' }}>→</span>
+                                                <input type="time" value={ds.araBitis || ''} style={{ width: 88 }}
+                                                    onChange={e => updateDaySetting(i, 'araBitis', e.target.value)} />
+                                            </td>
+                                            <td className="ta-c">
+                                                <input type="number" min="0" max="120" step="5"
+                                                    value={ds.odulSuresi ?? 0} style={{ width: 64 }}
+                                                    onChange={e => updateDaySetting(i, 'odulSuresi', Math.max(0, +e.target.value || 0))} />
                                             </td>
                                             <td className="ta-c">
                                                 <strong>{windowMin}</strong> dk
@@ -1195,15 +1270,17 @@ export default function CompetitionSchedulePage() {
                                                 const dur = Math.max(0, hmToMin(bitis) - hmToMin(baslangic));
                                                 return (
                                                     <FragmentRow key={s.id}>
-                                                        <tr className={`csv2-row ${isOpen ? 'open' : ''}`}
-                                                            onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(s.id) ? n.delete(s.id) : n.add(s.id); return n; })}>
+                                                        <tr className={`csv2-row ${isOpen ? 'open' : ''} ${s.tip === 'ogle_arasi' ? 'csv2-row--ara' : s.tip === 'odul_toreni' ? 'csv2-row--odul' : ''}`}
+                                                            onClick={() => s.tip ? null : setExpanded(prev => { const n = new Set(prev); n.has(s.id) ? n.delete(s.id) : n.add(s.id); return n; })}>
                                                             <td className="csv2-time">{baslangic}</td>
                                                             <td className="csv2-cat">
-                                                                <i className="material-icons-round csv2-chev">{isOpen ? 'expand_more' : 'chevron_right'}</i>
-                                                                <strong>{catLabel(s.kategori)}</strong>
+                                                                {!s.tip && <i className="material-icons-round csv2-chev">{isOpen ? 'expand_more' : 'chevron_right'}</i>}
+                                                                {s.tip === 'ogle_arasi' && <i className="material-icons-round" style={{ color: '#f59e0b', marginRight: 6 }}>restaurant</i>}
+                                                                {s.tip === 'odul_toreni' && <i className="material-icons-round" style={{ color: '#d4af37', marginRight: 6 }}>emoji_events</i>}
+                                                                <strong>{s.tip ? s.baslik : catLabel(s.kategori)}</strong>
                                                             </td>
-                                                            <td className="ta-c">{s.sporcuSayisi ?? '—'}</td>
-                                                            <td className="ta-c">{(s.aletler || []).length}</td>
+                                                            <td className="ta-c">{s.tip ? '—' : (s.sporcuSayisi ?? '—')}</td>
+                                                            <td className="ta-c">{s.tip ? '—' : (s.aletler || []).length}</td>
                                                             <td className="ta-c">{dur} dk</td>
                                                             <td className="csv2-time">{bitis}</td>
                                                             <td>
@@ -1223,7 +1300,7 @@ export default function CompetitionSchedulePage() {
                                                                 </button>
                                                             </td>
                                                         </tr>
-                                                        {isOpen && (
+                                                        {isOpen && !s.tip && (
                                                             <tr className="csv2-detail-row">
                                                                 <td colSpan={8}><RotationGrid session={s} comp={comp} /></td>
                                                             </tr>

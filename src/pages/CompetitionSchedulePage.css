@@ -552,3 +552,21 @@
     .csv2-table thead th, .csv2-table tbody td { padding: 8px 10px; }
     .csv2-grid-2, .csv2-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* Öğle Arası ve Ödül Töreni satırları */
+.csv2-table tbody tr.csv2-row--ara {
+    background: #fff7e6 !important;
+    cursor: default !important;
+}
+.csv2-table tbody tr.csv2-row--ara td {
+    color: #b45309;
+    font-weight: 600;
+}
+.csv2-table tbody tr.csv2-row--odul {
+    background: #fefce8 !important;
+    cursor: default !important;
+}
+.csv2-table tbody tr.csv2-row--odul td {
+    color: #a16207;
+    font-weight: 600;
+}

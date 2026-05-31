@@ -211,6 +211,19 @@ export async function generateSchedulePDFv2({ comp, days, sessions, daySettings,
 
         // Her kategori ayrı kart
         for (const sess of daySessions) {
+            // Özel seanslar: Öğle Arası / Ödül Töreni — tek satır şerit
+            if (sess.tip === 'ogle_arasi' || sess.tip === 'odul_toreni') {
+                ensureSpace(10);
+                const bg = sess.tip === 'ogle_arasi' ? [255, 247, 230] : [250, 245, 220];
+                const bar = sess.tip === 'ogle_arasi' ? [245, 158, 11] : C.gold;
+                fillRect(doc, ML, y, CW, 7.5, bg);
+                fillRect(doc, ML, y, 2.5, 7.5, bar);
+                const title = sess.baslik || (sess.tip === 'ogle_arasi' ? 'Öğle Arası' : 'Ödül Töreni');
+                txt(doc, tr(title), ML + 6, y + 5, { size: 9.5, color: C.ink, bold: true });
+                txt(doc, `${sess.baslangic || ''} - ${sess.bitis || ''}`, W - MR, y + 5, { size: 9, color: C.body, bold: true, align: 'right' });
+                y += 10;
+                continue;
+            }
             const blocks = sess.bugünBloklar || [];
             const aletler = (sess.aletler || []).map(aletL).join(' / ');
             const grupEtiketleri = sess.grupEtiketleri || (sess.gruplar || []).map((_, i) => String(i + 1));
