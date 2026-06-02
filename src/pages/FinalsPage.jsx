@@ -49,7 +49,35 @@ const APPARATUS_INFO = {
 // Ritmik Cimnastik kategorisi tespiti (alet listesine bakarak)
 // Ritmik'te puanlar athlete-first yapıda saklanır: puanlar[catId][athleteId][aletKey]
 // Artistik/diğerlerinde apparatus-first: puanlar[catId][aletKey][athleteId]
-const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'kurdele');
+const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'kurdele' || k === 'serbest');
+
+// İstanbul Anadolu / Avrupa yakası ilçe listeleri
+const ISTANBUL_ANADOLU = new Set([
+    'ADALAR', 'ATAŞEHIR', 'ATASEHIR', 'BEYKOZ', 'ÇEKMEKÖY', 'CEKMEKOY',
+    'KADIKÖY', 'KADIKOY', 'KARTAL', 'MALTEPE', 'PENDIK', 'PENDİK',
+    'SANCAKTEPE', 'SULTANBEYLİ', 'SULTANBEYLI', 'ŞİLE', 'SILE',
+    'TUZLA', 'ÜMRANIYE', 'UMRANIYE', 'ÜSKÜDAR', 'USKUDAR',
+]);
+const ISTANBUL_AVRUPA = new Set([
+    'ARNAVUTKÖY', 'ARNAVUTKOY', 'AVCILAR', 'BAĞCILAR', 'BAGCILAR',
+    'BAHÇELİEVLER', 'BAHCELIEVLER', 'BAKIRKÖY', 'BAKIRKOY',
+    'BAŞAKŞEHIR', 'BASAKSEHIR', 'BAYRAMPAŞA', 'BAYRAMPASA',
+    'BEŞIKTAŞ', 'BESIKTAS', 'BEYLİKDÜZÜ', 'BEYLIKDUZU', 'BEYOĞLU', 'BEYOGLU',
+    'BÜYÜKÇEKMECE', 'BUYUKCEKMECE', 'ÇATALCA', 'CATALCA',
+    'ESENLER', 'ESENYURT', 'EYÜPSULTAN', 'EYUPSULTAN', 'EYÜP', 'EYUP',
+    'FATIH', 'FATİH', 'GAZİOSMANPAŞA', 'GAZIOSMANPASA',
+    'GÜNGÖREN', 'GUNGOREN', 'KAĞITHANE', 'KAGITHANE',
+    'KÜÇÜKÇEKMECE', 'KUCUKCEKMECE', 'SARIYER', 'SİLİVRİ', 'SILIVRI',
+    'SULTANGAZI', 'SULTANGAZİ', 'ŞIŞLI', 'SISLI', 'ZEYTİNBURNU', 'ZEYTINBURNU',
+]);
+// İlçe adından yakayı belirle ('anadolu' | 'avrupa' | null)
+function istanbulSideOf(ilce) {
+    if (!ilce) return null;
+    const u = String(ilce).trim().toLocaleUpperCase('tr-TR');
+    if (ISTANBUL_ANADOLU.has(u)) return 'anadolu';
+    if (ISTANBUL_AVRUPA.has(u)) return 'avrupa';
+    return null;
+}
 
 export default function FinalsPage() {
     const navigate = useNavigate();
@@ -63,7 +91,19 @@ export default function FinalsPage() {
     const [selectedCompId, setSelectedCompId] = useState("");
     const [competitionData, setCompetitionData] = useState(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
-    const [categoryAthletes, setCategoryAthletes] = useState({});
+    const [rawCategoryAthletes, setRawCategoryAthletes] = useState({});
+    const [istanbulSide, setIstanbulSide] = useState(''); // '' | 'anadolu' | 'avrupa'
+    // İstanbul yakası filtresi: il ISTANBUL ise sporcuları ilçeye göre Anadolu/Avrupa olarak süz
+    const isIstanbulSelected = selectedCity && /İSTANBUL|ISTANBUL/.test(selectedCity);
+    const categoryAthletes = useMemo(() => {
+        if (!isIstanbulSelected || !istanbulSide) return rawCategoryAthletes;
+        const out = {};
+        Object.entries(rawCategoryAthletes || {}).forEach(([id, ath]) => {
+            const side = istanbulSideOf(ath?.ilce);
+            if (side === istanbulSide) out[id] = ath;
+        });
+        return out;
+    }, [rawCategoryAthletes, isIstanbulSelected, istanbulSide]);
     const [categoryScores, setCategoryScores] = useState({});
     const [globalAthletes, setGlobalAthletes] = useState({});
 
@@ -143,7 +183,7 @@ export default function FinalsPage() {
     // 3. Load Athletes and Scores
     useEffect(() => {
         if (!selectedCompId || !selectedCategoryId) {
-            setCategoryAthletes({});
+            setRawCategoryAthletes({});
             setCategoryScores({});
             return;
         }
@@ -151,7 +191,7 @@ export default function FinalsPage() {
         const athletesRef = ref(db, `${firebasePath}/${selectedCompId}/sporcular/${selectedCategoryId}`);
         const scoresRef = ref(db, `${firebasePath}/${selectedCompId}/puanlar/${selectedCategoryId}`);
 
-        const unsubAthletes = onValue(athletesRef, snap => setCategoryAthletes(snap.val() || {}));
+        const unsubAthletes = onValue(athletesRef, snap => setRawCategoryAthletes(snap.val() || {}));
         const unsubScores = onValue(scoresRef, snap => setCategoryScores(snap.val() || {}));
 
         return () => {
@@ -1500,6 +1540,7 @@ export default function FinalsPage() {
                                 setSelectedCity(e.target.value);
                                 setSelectedCompId('');
                                 setSelectedCategoryId('');
+                                setIstanbulSide('');
                             }}
                             className="classic-select"
                         >
@@ -1508,6 +1549,19 @@ export default function FinalsPage() {
                                 <option key={city} value={city}>{city}</option>
                             ))}
                         </select>
+                        {isIstanbulSelected && (
+                            <select
+                                value={istanbulSide}
+                                onChange={(e) => setIstanbulSide(e.target.value)}
+                                className="classic-select"
+                                style={{ marginLeft: '12px' }}
+                                title="İlçeye göre yakaya süz (boş bırakılırsa tümü)"
+                            >
+                                <option value="">Tüm İstanbul</option>
+                                <option value="anadolu">İstanbul Anadolu</option>
+                                <option value="avrupa">İstanbul Avrupa</option>
+                            </select>
+                        )}
                         <select
                             value={selectedCompId}
                             onChange={(e) => {
