@@ -807,14 +807,20 @@ export default function ApplicationsPage() {
         if (filterCity && app.city !== filterCity) return false;
         if (filterComp && app.compId !== filterComp) return false;
 
-        // ── Arama: sporcu adı veya okul adı ─────────────────────────────────
+        // ── Arama: sporcu adı, okul adı, antrenör/öğretmen adı ──────────────
         if (searchQuery) {
             const q = searchQuery.toLocaleUpperCase('tr-TR').trim();
             const inSchool = (app.schoolName || '').includes(q);
             const inAthletes = (app.athletes || []).some(a =>
                 (a.name || a.adSoyad || '').toLocaleUpperCase('tr-TR').includes(q)
             );
-            if (!inSchool && !inAthletes) return false;
+            const inCoaches = (app.coaches || []).some(c =>
+                (c?.name || c?.adSoyad || '').toLocaleUpperCase('tr-TR').includes(q)
+            );
+            const inTeachers = (app.teachers || []).some(t =>
+                (t?.name || t?.adSoyad || '').toLocaleUpperCase('tr-TR').includes(q)
+            );
+            if (!inSchool && !inAthletes && !inCoaches && !inTeachers) return false;
         }
 
         if (filterStatus === 'all') return true;
@@ -898,7 +904,7 @@ export default function ApplicationsPage() {
                             <input
                                 type="text"
                                 className="search-input"
-                                placeholder="Sporcu adı veya okul adı ara..."
+                                placeholder="Sporcu, okul, antrenör veya öğretmen adı ara..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
