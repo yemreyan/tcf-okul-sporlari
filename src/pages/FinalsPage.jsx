@@ -51,31 +51,55 @@ const APPARATUS_INFO = {
 // Artistik/diğerlerinde apparatus-first: puanlar[catId][aletKey][athleteId]
 const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'kurdele' || k === 'serbest');
 
-// İstanbul Anadolu / Avrupa yakası ilçe listeleri
+// İstanbul Anadolu / Avrupa yakası ilçe listeleri — ASCII-normalize edilmiş
+function normalizeIlceKey(s) {
+    return String(s || '')
+        .trim()
+        .toLocaleUpperCase('tr-TR')
+        .replace(/İ/g, 'I').replace(/I/g, 'I')
+        .replace(/Ş/g, 'S').replace(/Ğ/g, 'G')
+        .replace(/Ü/g, 'U').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
+        .replace(/[^A-Z]/g, ''); // sadece harf
+}
 const ISTANBUL_ANADOLU = new Set([
-    'ADALAR', 'ATAŞEHIR', 'ATASEHIR', 'BEYKOZ', 'ÇEKMEKÖY', 'CEKMEKOY',
-    'KADIKÖY', 'KADIKOY', 'KARTAL', 'MALTEPE', 'PENDIK', 'PENDİK',
-    'SANCAKTEPE', 'SULTANBEYLİ', 'SULTANBEYLI', 'ŞİLE', 'SILE',
-    'TUZLA', 'ÜMRANIYE', 'UMRANIYE', 'ÜSKÜDAR', 'USKUDAR',
-]);
+    'ADALAR', 'ATASEHIR', 'BEYKOZ', 'CEKMEKOY',
+    'KADIKOY', 'KARTAL', 'MALTEPE', 'PENDIK',
+    'SANCAKTEPE', 'SULTANBEYLI', 'SILE',
+    'TUZLA', 'UMRANIYE', 'USKUDAR',
+].map(normalizeIlceKey));
 const ISTANBUL_AVRUPA = new Set([
-    'ARNAVUTKÖY', 'ARNAVUTKOY', 'AVCILAR', 'BAĞCILAR', 'BAGCILAR',
-    'BAHÇELİEVLER', 'BAHCELIEVLER', 'BAKIRKÖY', 'BAKIRKOY',
-    'BAŞAKŞEHIR', 'BASAKSEHIR', 'BAYRAMPAŞA', 'BAYRAMPASA',
-    'BEŞIKTAŞ', 'BESIKTAS', 'BEYLİKDÜZÜ', 'BEYLIKDUZU', 'BEYOĞLU', 'BEYOGLU',
-    'BÜYÜKÇEKMECE', 'BUYUKCEKMECE', 'ÇATALCA', 'CATALCA',
-    'ESENLER', 'ESENYURT', 'EYÜPSULTAN', 'EYUPSULTAN', 'EYÜP', 'EYUP',
-    'FATIH', 'FATİH', 'GAZİOSMANPAŞA', 'GAZIOSMANPASA',
-    'GÜNGÖREN', 'GUNGOREN', 'KAĞITHANE', 'KAGITHANE',
-    'KÜÇÜKÇEKMECE', 'KUCUKCEKMECE', 'SARIYER', 'SİLİVRİ', 'SILIVRI',
-    'SULTANGAZI', 'SULTANGAZİ', 'ŞIŞLI', 'SISLI', 'ZEYTİNBURNU', 'ZEYTINBURNU',
-]);
+    'ARNAVUTKOY', 'AVCILAR', 'BAGCILAR',
+    'BAHCELIEVLER', 'BAKIRKOY',
+    'BASAKSEHIR', 'BAYRAMPASA',
+    'BESIKTAS', 'BEYLIKDUZU', 'BEYOGLU',
+    'BUYUKCEKMECE', 'CATALCA',
+    'ESENLER', 'ESENYURT', 'EYUPSULTAN', 'EYUP',
+    'FATIH', 'GAZIOSMANPASA',
+    'GUNGOREN', 'KAGITHANE',
+    'KUCUKCEKMECE', 'SARIYER', 'SILIVRI',
+    'SULTANGAZI', 'SISLI', 'ZEYTINBURNU',
+].map(normalizeIlceKey));
+
 // İlçe adından yakayı belirle ('anadolu' | 'avrupa' | null)
-function istanbulSideOf(ilce) {
-    if (!ilce) return null;
-    const u = String(ilce).trim().toLocaleUpperCase('tr-TR');
-    if (ISTANBUL_ANADOLU.has(u)) return 'anadolu';
-    if (ISTANBUL_AVRUPA.has(u)) return 'avrupa';
+// Sporcunun ilce alanı boşsa okul/il alanlarındaki ilçe ipuçlarını da arar.
+function istanbulSideOf(ilce, fallbackText) {
+    const tryMatch = (raw) => {
+        const k = normalizeIlceKey(raw);
+        if (!k) return null;
+        if (ISTANBUL_ANADOLU.has(k)) return 'anadolu';
+        if (ISTANBUL_AVRUPA.has(k)) return 'avrupa';
+        // İçerik araması: ilçe adı stringin içinde geçiyor mu?
+        for (const il of ISTANBUL_ANADOLU) if (k.includes(il)) return 'anadolu';
+        for (const il of ISTANBUL_AVRUPA) if (k.includes(il)) return 'avrupa';
+        return null;
+    };
+    const direct = tryMatch(ilce);
+    if (direct) return direct;
+    // ilce boş veya bilinmiyorsa okul adında ilçe geçiyor mu diye bak
+    if (fallbackText) {
+        const fb = tryMatch(fallbackText);
+        if (fb) return fb;
+    }
     return null;
 }
 
@@ -99,8 +123,21 @@ export default function FinalsPage() {
         if (!isIstanbulSelected || !istanbulSide) return rawCategoryAthletes;
         const out = {};
         Object.entries(rawCategoryAthletes || {}).forEach(([id, ath]) => {
-            const side = istanbulSideOf(ath?.ilce);
+            // ilce öncelikli; boşsa okul/kulup adında ilçe geçiyor mu diye bak
+            const fallback = `${ath?.okul || ath?.kulup || ''} ${ath?.adres || ''}`;
+            const side = istanbulSideOf(ath?.ilce, fallback);
             if (side === istanbulSide) out[id] = ath;
+        });
+        return out;
+    }, [rawCategoryAthletes, isIstanbulSelected, istanbulSide]);
+    // Yaka filtresi aktif iken atlanan sporcular (ilce eşleşmedi)
+    const istanbulUnclassified = useMemo(() => {
+        if (!isIstanbulSelected || !istanbulSide) return [];
+        const out = [];
+        Object.entries(rawCategoryAthletes || {}).forEach(([id, ath]) => {
+            const fallback = `${ath?.okul || ath?.kulup || ''} ${ath?.adres || ''}`;
+            const side = istanbulSideOf(ath?.ilce, fallback);
+            if (!side) out.push({ id, ...ath });
         });
         return out;
     }, [rawCategoryAthletes, isIstanbulSelected, istanbulSide]);
@@ -1561,6 +1598,19 @@ export default function FinalsPage() {
                                 <option value="anadolu">İstanbul Anadolu</option>
                                 <option value="avrupa">İstanbul Avrupa</option>
                             </select>
+                        )}
+                        {isIstanbulSelected && istanbulSide && istanbulUnclassified.length > 0 && (
+                            <div style={{
+                                marginTop: 8, padding: '8px 12px',
+                                background: '#fef3c7', border: '1px solid #fcd34d',
+                                borderRadius: 6, fontSize: 12, color: '#92400e',
+                                width: '100%',
+                            }} title={istanbulUnclassified.map(a => `${a.ad || ''} ${a.soyad || ''} (ilçe: ${a.ilce || 'boş'})`).join('\n')}>
+                                <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>info</i>
+                                <strong>{istanbulUnclassified.length} sporcu</strong> ilçesi belirsiz olduğu için yaka filtresinde görünmüyor.
+                                Sporcu sayfasından ilçe alanlarını doldurmanız önerilir.
+                                {' '}<span style={{ opacity: 0.75 }}>(üzerine gel: listeyi gör)</span>
+                            </div>
                         )}
                         <select
                             value={selectedCompId}
