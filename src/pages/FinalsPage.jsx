@@ -130,6 +130,12 @@ export default function FinalsPage() {
         });
         return out;
     }, [rawCategoryAthletes, isIstanbulSelected, istanbulSide]);
+    // İstanbul seçiliyken sporcunun ilçesinin tanımlı/eşleşmiş olup olmadığını döner
+    const isIlceMissing = (athleteOrRes) => {
+        if (!isIstanbulSelected) return false;
+        const fallback = `${athleteOrRes?.okul || athleteOrRes?.kulup || ''}`;
+        return !istanbulSideOf(athleteOrRes?.ilce, fallback);
+    };
     // Yaka filtresi aktif iken atlanan sporcular (ilce eşleşmedi)
     const istanbulUnclassified = useMemo(() => {
         if (!isIstanbulSelected || !istanbulSide) return [];
@@ -1599,6 +1605,35 @@ export default function FinalsPage() {
                                 <option value="avrupa">İstanbul Avrupa</option>
                             </select>
                         )}
+                        {isIstanbulSelected && !istanbulSide && (() => {
+                            // Tüm İstanbul seçiliyken yaka filtresi yok ama ilçesi
+                            // belirsiz olanları sayalım — kullanıcı kontrol edebilsin
+                            const missing = Object.values(rawCategoryAthletes || {}).filter(a => {
+                                const fb = `${a?.okul || a?.kulup || ''}`;
+                                return !istanbulSideOf(a?.ilce, fb);
+                            });
+                            const total = Object.keys(rawCategoryAthletes || {}).length;
+                            if (!total) return null;
+                            if (missing.length === 0) return (
+                                <div style={{ marginTop: 8, padding: '6px 10px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 6, fontSize: 12, color: '#166534', width: '100%' }}>
+                                    <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>check_circle</i>
+                                    Tüm {total} sporcunun ilçesi Anadolu/Avrupa yakasına başarıyla atandı.
+                                </div>
+                            );
+                            return (
+                                <div style={{
+                                    marginTop: 8, padding: '8px 12px',
+                                    background: '#fee2e2', border: '1px solid #fca5a5',
+                                    borderRadius: 6, fontSize: 12, color: '#991b1b',
+                                    width: '100%',
+                                }} title={missing.slice(0, 50).map(a => `${a.ad || ''} ${a.soyad || ''} — ilçe: "${a.ilce || 'boş'}" — okul: ${a.okul || '-'}`).join('\n')}>
+                                    <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>warning</i>
+                                    <strong>{missing.length}/{total} sporcu</strong> İstanbul ilçesine atanamadı.
+                                    Aşağıdaki tabloda <span style={{ background:'#fee2e2', border:'1px solid #fecaca', padding:'1px 4px', borderRadius:4 }}>kırmızı</span> isimler bunlardır.
+                                    Sporcu sayfasından ilçe alanını doldur (üzerine gel: liste).
+                                </div>
+                            );
+                        })()}
                         {isIstanbulSelected && istanbulSide && istanbulUnclassified.length > 0 && (
                             <div style={{
                                 marginTop: 8, padding: '8px 12px',
@@ -1727,7 +1762,10 @@ export default function FinalsPage() {
                                                             <span className="rank-badge">{rank ?? '—'}</span>
                                                         </td>
                                                         <td>
-                                                            <div className="athlete-name">{res.soyad}, {res.ad}</div>
+                                                            <div className="athlete-name" style={isIlceMissing(res) ? { color: '#dc2626', fontWeight: 700 } : undefined} title={isIlceMissing(res) ? `İlçesi belirsiz veya bilinmiyor (DB: "${res.ilce || 'boş'}")` : undefined}>
+                                                                {res.soyad}, {res.ad}
+                                                                {isIlceMissing(res) && <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 4, color: '#991b1b' }}>ilçe?</span>}
+                                                            </div>
                                                         </td>
                                                         <td className="team-col">{res.okul || '-'}</td>
                                                         {apparatusKeys.map(key => {
@@ -1826,7 +1864,7 @@ export default function FinalsPage() {
                                                             return (
                                                                 <tr key={item.id} className={getMedalClass(rank)}>
                                                                     <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
-                                                                    <td><div className="athlete-name-small">{item.soyad}, {item.ad}</div><div className="team-col-small">{item.okul}</div></td>
+                                                                    <td><div className="athlete-name-small" style={isIlceMissing(item) ? { color: '#dc2626', fontWeight: 700 } : undefined} title={isIlceMissing(item) ? `İlçesi belirsiz (DB: "${item.ilce || 'boş'}")` : undefined}>{item.soyad}, {item.ad}{isIlceMissing(item) && ' ⚠'}</div><div className="team-col-small">{item.okul}</div></td>
                                                                     <td className="td-center">{formatScore(item.D)}</td>
                                                                     <td className="td-center">{formatScore(item.E)}</td>
                                                                     <td className="td-center penalty-text">{item.TotalPenalty > 0 ? `-${formatScore(item.TotalPenalty)}` : '0.000'}</td>
