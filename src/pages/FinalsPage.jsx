@@ -55,8 +55,10 @@ const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'ku
 function normalizeIlceKey(s) {
     return String(s || '')
         .trim()
+        .normalize('NFD')                  // â → a + ̂ (combining mark ayrılır)
+        .replace(/[̀-ͯ]/g, '')   // tüm combining diacritic'leri at
         .toLocaleUpperCase('tr-TR')
-        .replace(/İ/g, 'I').replace(/I/g, 'I')
+        .replace(/İ/g, 'I')
         .replace(/Ş/g, 'S').replace(/Ğ/g, 'G')
         .replace(/Ü/g, 'U').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
         .replace(/[^A-Z]/g, ''); // sadece harf
@@ -1606,31 +1608,66 @@ export default function FinalsPage() {
                             </select>
                         )}
                         {isIstanbulSelected && !istanbulSide && (() => {
-                            // Tüm İstanbul seçiliyken yaka filtresi yok ama ilçesi
-                            // belirsiz olanları sayalım — kullanıcı kontrol edebilsin
-                            const missing = Object.values(rawCategoryAthletes || {}).filter(a => {
+                            // Tüm İstanbul seçiliyken ilçe dağılımını analiz et — kullanıcı kontrol edebilsin
+                            const missing = [];
+                            const byIlce = {};
+                            let anadolu = 0, avrupa = 0;
+                            Object.entries(rawCategoryAthletes || {}).forEach(([id, a]) => {
                                 const fb = `${a?.okul || a?.kulup || ''}`;
-                                return !istanbulSideOf(a?.ilce, fb);
+                                const side = istanbulSideOf(a?.ilce, fb);
+                                if (side === 'anadolu') anadolu++;
+                                else if (side === 'avrupa') avrupa++;
+                                else missing.push({ id, ...a });
+                                const k = (a?.ilce || '(boş)').trim() || '(boş)';
+                                byIlce[k] = (byIlce[k] || 0) + 1;
                             });
                             const total = Object.keys(rawCategoryAthletes || {}).length;
                             if (!total) return null;
-                            if (missing.length === 0) return (
-                                <div style={{ marginTop: 8, padding: '6px 10px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 6, fontSize: 12, color: '#166534', width: '100%' }}>
-                                    <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>check_circle</i>
-                                    Tüm {total} sporcunun ilçesi Anadolu/Avrupa yakasına başarıyla atandı.
-                                </div>
-                            );
                             return (
-                                <div style={{
-                                    marginTop: 8, padding: '8px 12px',
-                                    background: '#fee2e2', border: '1px solid #fca5a5',
-                                    borderRadius: 6, fontSize: 12, color: '#991b1b',
-                                    width: '100%',
-                                }} title={missing.slice(0, 50).map(a => `${a.ad || ''} ${a.soyad || ''} — ilçe: "${a.ilce || 'boş'}" — okul: ${a.okul || '-'}`).join('\n')}>
-                                    <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>warning</i>
-                                    <strong>{missing.length}/{total} sporcu</strong> İstanbul ilçesine atanamadı.
-                                    Aşağıdaki tabloda <span style={{ background:'#fee2e2', border:'1px solid #fecaca', padding:'1px 4px', borderRadius:4 }}>kırmızı</span> isimler bunlardır.
-                                    Sporcu sayfasından ilçe alanını doldur (üzerine gel: liste).
+                                <div style={{ marginTop: 8, width: '100%' }}>
+                                    <div style={{ display: 'flex', gap: 12, fontSize: 12, marginBottom: 6 }}>
+                                        <span style={{ padding: '3px 8px', background: '#dbeafe', border: '1px solid #93c5fd', borderRadius: 12, color: '#1e3a8a' }}>
+                                            <strong>Anadolu:</strong> {anadolu}
+                                        </span>
+                                        <span style={{ padding: '3px 8px', background: '#fce7f3', border: '1px solid #f9a8d4', borderRadius: 12, color: '#831843' }}>
+                                            <strong>Avrupa:</strong> {avrupa}
+                                        </span>
+                                        <span style={{ padding: '3px 8px', background: missing.length > 0 ? '#fee2e2' : '#dcfce7', border: '1px solid ' + (missing.length > 0 ? '#fca5a5' : '#86efac'), borderRadius: 12, color: missing.length > 0 ? '#991b1b' : '#166534' }}>
+                                            <strong>Belirsiz:</strong> {missing.length}
+                                        </span>
+                                        <span style={{ padding: '3px 8px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 12, color: '#374151' }}>
+                                            <strong>Toplam:</strong> {total} ({anadolu + avrupa + missing.length === total ? '✓' : '⚠ uyumsuz'})
+                                        </span>
+                                    </div>
+                                    {missing.length > 0 && (
+                                        <details style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, padding: '6px 10px', color: '#991b1b', fontSize: 12 }}>
+                                            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                                                <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>warning</i>
+                                                {missing.length}/{total} sporcunun ilçesi Anadolu/Avrupa'ya atanamadı — listeyi gör
+                                            </summary>
+                                            <div style={{ maxHeight: 220, overflowY: 'auto', marginTop: 6, background: '#fff', border: '1px solid #fecaca', borderRadius: 4 }}>
+                                                <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                                                    <thead><tr style={{ background: '#fef2f2', textAlign: 'left' }}>
+                                                        <th style={{ padding: '4px 8px', borderBottom: '1px solid #fecaca' }}>Ad Soyad</th>
+                                                        <th style={{ padding: '4px 8px', borderBottom: '1px solid #fecaca' }}>Okul</th>
+                                                        <th style={{ padding: '4px 8px', borderBottom: '1px solid #fecaca' }}>DB'deki ilçe</th>
+                                                    </tr></thead>
+                                                    <tbody>
+                                                        {missing.map(a => (
+                                                            <tr key={a.id} style={{ borderBottom: '1px solid #fee2e2' }}>
+                                                                <td style={{ padding: '3px 8px' }}>{a.ad || ''} {a.soyad || ''}</td>
+                                                                <td style={{ padding: '3px 8px', color: '#6b7280' }}>{a.okul || a.kulup || '—'}</td>
+                                                                <td style={{ padding: '3px 8px', color: '#991b1b', fontStyle: a.ilce ? 'normal' : 'italic' }}>{a.ilce || '(boş)'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div style={{ marginTop: 4, fontSize: 11, opacity: 0.85 }}>
+                                                Düzeltmek için: Sporcular sayfası → ilgili sporcu → düzenle → İlçe alanını doldur.
+                                            </div>
+                                        </details>
+                                    )}
                                 </div>
                             );
                         })()}
