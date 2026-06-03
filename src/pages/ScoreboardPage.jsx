@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
+import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults';
 import './ScoreboardPage.css';
 
 /* ================================================================
@@ -14,10 +15,13 @@ import './ScoreboardPage.css';
 
 const PAGE_SIZE = 8;
 
-// Ritmik apparatus list
-const RITMIK_ALET_LIST = [
+// Ritmik aletleri etiketleri (kategori bazında değişebilir; serbest dahil)
+const RITMIK_ALET_LABEL = { top: 'Top', kurdele: 'Kurdele', serbest: 'Serbest' };
+// Tüm ritmik aletleri (yedek liste — kategori aletler tanımlı değilse)
+const RITMIK_ALET_LIST_ALL = [
     { id: 'top', name: 'Top' },
     { id: 'kurdele', name: 'Kurdele' },
+    { id: 'serbest', name: 'Serbest' },
 ];
 
 // Apparatus abbreviations
@@ -407,7 +411,17 @@ export default function ScoreboardPage() {
     // Apparatus list for current view's category
     const apparatusList = useMemo(() => {
         if (!isLive || !currentView) return [];
-        if (isRitmik) return RITMIK_ALET_LIST;
+        if (isRitmik) {
+            // Önce RITMIK_CATEGORIES defaults'tan al (defaults dosyası
+            // yetkilidir — DB eski olabilir), yoksa DB'den oku, yoksa hepsini göster
+            const catKey = currentView.catId;
+            const defaults = RITMIK_CATEGORIES[catKey]?.aletler;
+            const source = (defaults && defaults.length > 0)
+                ? defaults
+                : (getApparatusListForCategory(catKey).map(a => a.id || a));
+            const list = (source && source.length > 0) ? source : ['top', 'kurdele', 'serbest'];
+            return list.map(id => ({ id, name: RITMIK_ALET_LABEL[id] || id }));
+        }
         return getApparatusListForCategory(currentView.catId);
     }, [isLive, currentView, isRitmik, getApparatusListForCategory]);
 
