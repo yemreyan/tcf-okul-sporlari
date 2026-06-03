@@ -651,6 +651,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                     {/* Sağ: Sporcu Listesi — kategori seçili olduğu sürece her zaman görünür */}
                     <div className="cl-athlete-panel">
                         <div className="cl-athlete-panel-title">SPORCU LİSTESİ</div>
+                        <div className="cl-athlete-table-wrap">
                         <table className="cl-athlete-table">
                             <thead>
                                 <tr>
@@ -704,6 +705,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                 )}
                             </tbody>
                         </table>
+                        </div>{/* /cl-athlete-table-wrap */}
                     </div>
                 </div>{/* /cl-scoring-area */}
 

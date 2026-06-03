@@ -721,3 +721,58 @@
 @media (max-width: 600px) {
     .cl-d-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Sayfa Sabit Yükseklik (≥ 901px) ── 
+   İstek: ekran kaymıyor, sadece sporcu listesi kayıyor.
+   Üst kısımlar (topbar/alet bar/sporcu bar/özet kart) sabit yüksekliklerini korur,
+   scoring alanı kalan alanı doldurur ve içinde sporcu listesi dikey scroll'lar. */
+@media (min-width: 901px) {
+    .cl-page {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .cl-topbar,
+    .cl-alet-bar,
+    .cl-athlete-bar,
+    .cl-sil-bar,
+    .cl-summary-card,
+    .cl-total-bar,
+    .cl-sil-bar {
+        flex: 0 0 auto;
+    }
+    .cl-scoring-area {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+    /* Sol panel kolonu artık sticky değil; alanı doldurur, taşmaz */
+    .cl-panels-col {
+        position: static;
+        max-height: none;
+        height: 100%;
+        overflow: hidden; /* puan ekranı oynamasın */
+    }
+    /* Sağ sporcu listesi paneli: tek scroll burada */
+    .cl-athlete-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .cl-athlete-panel-title { flex: 0 0 auto; }
+    .cl-athlete-panel .cl-athlete-table-wrap,
+    .cl-athlete-panel > div:not(.cl-athlete-panel-title) {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    /* Tablo head sticky kalsın (kaydırırken başlık görünür dursun) */
+    .cl-athlete-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+}
