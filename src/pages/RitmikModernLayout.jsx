@@ -50,6 +50,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
         availableAletler,
+        hasDA,
     } = s;
 
     const { toast } = { toast: () => {} }; // Notification context layout içinden erişilemez, parent'ta
@@ -239,7 +240,8 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                             </div>
                         )}
 
-                        {/* DA */}
+                        {/* DA — serbest seride yok (Minik B Kız) */}
+                        {hasDA && (
                         <div className="rtm-card">
                             <div className="rtm-card-header">
                                 <span className="rtm-card-label rtm-card-label--d">DA</span>
@@ -285,6 +287,7 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                                 )}
                             </div>
                         </div>
+                        )}
 
                         {/* DB */}
                         <div className="rtm-card">
@@ -450,8 +453,10 @@ export default function RitmikModernLayout({ s, onSwitchLayout }) {
                         {/* Final Bar */}
                         <div className="rtm-final-bar">
                             <div className="rtm-final-breakdown">
-                                <span>DA <strong>{daScoreNum.toFixed(3)}</strong></span>
-                                <span>+</span>
+                                {hasDA && <>
+                                    <span>DA <strong>{daScoreNum.toFixed(3)}</strong></span>
+                                    <span>+</span>
+                                </>}
                                 <span>DB <strong>{dbScore.toFixed(3)}</strong></span>
                                 <span>+</span>
                                 <span>A <strong>{aScore.toFixed(3)}</strong></span>

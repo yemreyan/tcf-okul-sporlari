@@ -62,6 +62,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
         getAthleteStatus, getAletStatus,
         RITMIK_CATEGORIES, RITMIK_ALETLER,
         availableAletler,
+        hasDA,
     } = s;
 
     // ── Per-field unlock: skor kilitliyken bile "X SİL" ile sadece o alan açılır ──
@@ -100,12 +101,14 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
     const fmt = (v, def = '0.000') => v != null && v !== '' && !isNaN(parseFloat(v))
         ? parseFloat(v).toFixed(3) : def;
 
-    // SİL satırı verisi
+    // SİL satırı verisi — serbest seride DA satırları yok
     const silRowD = [
-        { label: 'DA SİL (Kesin)',  val: fmt(classicDA.da),    action: () => { silDA(); } },
-        { label: 'DA1 SİL (Bilgi)', val: fmt(classicDA.da1),   action: silDA1 },
-        { label: 'DA2 SİL (Bilgi)', val: fmt(classicDA.da2),   action: silDA2 },
-        { label: 'SJDA SİL (Bilgi)',val: fmt(classicDA.sjda),  action: silSJDA },
+        ...(hasDA ? [
+            { label: 'DA SİL (Kesin)',  val: fmt(classicDA.da),    action: () => { silDA(); } },
+            { label: 'DA1 SİL (Bilgi)', val: fmt(classicDA.da1),   action: silDA1 },
+            { label: 'DA2 SİL (Bilgi)', val: fmt(classicDA.da2),   action: silDA2 },
+            { label: 'SJDA SİL (Bilgi)',val: fmt(classicDA.sjda),  action: silSJDA },
+        ] : []),
         { label: 'DB SİL (Kesin)',  val: fmt(classicDB.db),    action: () => { silDB(); } },
         { label: 'DB1 SİL (Bilgi)', val: fmt(classicDB.db1),   action: silDB1 },
         { label: 'DB2 SİL (Bilgi)', val: fmt(classicDB.db2),   action: silDB2 },
@@ -289,10 +292,12 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                         </div>
                     </div>
                     <div className="cl-summary-grid">
+                        {hasDA && (
                         <div className="cl-summary-cell cl-summary-cell--da">
                             <label>DA KESİN</label>
                             <span>{fmt(classicDaScore)}</span>
                         </div>
+                        )}
                         <div className="cl-summary-cell cl-summary-cell--db">
                             <label>DB KESİN</label>
                             <span>{fmt(classicDbScore)}</span>
@@ -363,7 +368,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                     <div className="cl-panel-title">D PANELİ</div>
                                     <div className="cl-panel-body">
 
-                                        {/* ── DA tarafı ── */}
+                                        {/* ── DA tarafı — serbest seride (Minik B Kız) yok ── */}
+                                        {hasDA && (<>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                             <span style={{ fontSize: 10, fontWeight: 700, color: '#555', minWidth: 32 }}>DA</span>
                                             <span style={{ fontSize: 9, color: '#888', fontStyle: 'italic' }}>(DA1 hakemi kesin skor)</span>
@@ -413,6 +419,7 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                                         </div>
 
                                         <div className="cl-d-separator" />
+                                        </>)}
 
                                         {/* ── DB tarafı ── */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 4 }}>
@@ -715,8 +722,8 @@ export default function RitmikClassicLayout({ s, onSwitchLayout }) {
                         <span className="cl-total-label">TOPLAM PUAN</span>
                         <span className="cl-total-score">{classicFinalScore}</span>
                         <div className="cl-total-breakdown">
-                            <span>DA <strong>{classicDaScore.toFixed(3)}</strong></span>
-                            <span>+ DB <strong>{classicDbScore.toFixed(3)}</strong></span>
+                            {hasDA && <span>DA <strong>{classicDaScore.toFixed(3)}</strong></span>}
+                            <span>{hasDA ? '+ ' : ''}DB <strong>{classicDbScore.toFixed(3)}</strong></span>
                             <span>+ A <strong>{classicAResult.score.toFixed(3)}</strong></span>
                             <span>+ E <strong>{classicEResult.score.toFixed(3)}</strong></span>
                             <span>− Ceza <strong>{classicTotalPenalty.toFixed(3)}</strong></span>

@@ -337,6 +337,8 @@ export function useRitmikScoring() {
     const availableAletler = Array.isArray(catConfig.aletler) && catConfig.aletler.length > 0
         ? catConfig.aletler
         : Object.keys(RITMIK_ALETLER);
+    // Serbest seri (aletsiz) için DA (Alet Zorluğu) yoktur. Yalnız DB + A + E hesaplanır.
+    const hasDA = selectedAlet !== 'serbest';
 
     // Kategori değişince geçerli alet artık o kategoride yoksa ilkine geç
     useEffect(() => {
@@ -388,7 +390,8 @@ export function useRitmikScoring() {
     const aScore         = calcPanelScore(aPanelLocal, judgeCount);
     const eScore         = calcPanelScore(ePanelLocal, judgeCount);
     const dbScore        = parseFloat(dbScoreInput) || 0;
-    const daScoreNum     = parseFloat(daScoreInput)  || 0;
+    // Serbest seri için DA = 0 (alet zorluğu yok)
+    const daScoreNum     = hasDA ? (parseFloat(daScoreInput) || 0) : 0;
     const totalPenalties = parseFloat(penaltyInput)   || 0;
     const modernFinalScore = Math.max(0,
         daScoreNum + dbScore + aScore + eScore - totalPenalties
@@ -408,8 +411,8 @@ export function useRitmikScoring() {
         ? Math.abs(daNum - sjdaNum) : 0;
     const daGapLevel = getGapLevel(daGap);
     const daGapOk    = daGapLevel === 'ok';
-    // Kesin skor = classicDA.da alanından
-    const classicDaScore = classicDA.da !== '' ? parseFloat((daNum).toFixed(3)) : 0;
+    // Kesin skor = classicDA.da alanından (serbest seride DA yok → 0)
+    const classicDaScore = !hasDA ? 0 : (classicDA.da !== '' ? parseFloat((daNum).toFixed(3)) : 0);
 
     const dbNum   = parseFloat(classicDB.db)   || 0;
     const db1Num  = parseFloat(classicDB.db1)  || 0;
@@ -694,7 +697,8 @@ export function useRitmikScoring() {
         if (filledE.length === 0) return toast('E (İcra) puanı girilmeden kayıt yapılamaz.', 'warning');
         if (dbScoreInput === '' || isNaN(parseFloat(dbScoreInput)))
             return toast('DB (Vücut Zorluğu) puanı girilmeden kayıt yapılamaz.', 'warning');
-        if (daScoreInput === '' || isNaN(parseFloat(daScoreInput)))
+        // Serbest seride DA yok — kontrol atlanır
+        if (hasDA && (daScoreInput === '' || isNaN(parseFloat(daScoreInput))))
             return toast('DA (Alet Zorluğu) puanı girilmeden kayıt yapılamaz.', 'warning');
 
         const aletLabel = RITMIK_ALETLER[selectedAlet]?.label || selectedAlet;
@@ -739,8 +743,8 @@ export function useRitmikScoring() {
     const handleClassicSubmit = useCallback(() => {
         if (!selectedAthlete) return toast('Lütfen bir sporcu seçin.', 'warning');
         if (scoreLocked)       return toast('Bu aletin puanı kilitli.', 'warning');
-        // DA ve DB kesin skorları zorunlu
-        if (classicDA.da === '' || isNaN(parseFloat(classicDA.da)))
+        // DA ve DB kesin skorları zorunlu (serbest seride DA yok)
+        if (hasDA && (classicDA.da === '' || isNaN(parseFloat(classicDA.da))))
             return toast('DA skoru (DA1 hakeminin notu) girilmeden kayıt yapılamaz.', 'warning');
         if (classicDB.db === '' || isNaN(parseFloat(classicDB.db)))
             return toast('DB skoru (DB1 hakeminin notu) girilmeden kayıt yapılamaz.', 'warning');
@@ -975,5 +979,6 @@ export function useRitmikScoring() {
         // Constants
         RITMIK_CATEGORIES, RITMIK_ALETLER,
         availableAletler,
+        hasDA,
     };
 }
