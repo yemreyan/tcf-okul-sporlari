@@ -1091,7 +1091,7 @@ export default function ScoreboardPage() {
 
                 <div className="sb-topbar-right">
                     <a
-                        href="https://gymss.com"
+                        href="https://www.gymss.com.tr"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="sb-sponsor-link"
@@ -1479,7 +1479,7 @@ export default function ScoreboardPage() {
                 {flashData && (
                     <div className="sb-flash-card">
                         <a
-                            href="https://gymss.com"
+                            href="https://www.gymss.com.tr"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="sf-sponsor-link"

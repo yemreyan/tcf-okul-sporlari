@@ -936,7 +936,7 @@ export default function ScoringPage() {
                         </div>
                     )}
                     <a
-                        href="https://gymss.com"
+                        href="https://www.gymss.com.tr"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="sh-sponsor-link"
