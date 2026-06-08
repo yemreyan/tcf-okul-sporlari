@@ -1077,6 +1077,7 @@ export default function ScoreboardPage() {
             {/* TOP BAR */}
             <div className="sb-topbar">
                 <div className="sb-topbar-left">
+                    <img src="/logo.png" alt="TCF" className="sb-logo" />
                     <div className="sb-live-badge">
                         <span className="sb-live-dot" />
                         LIVE
@@ -1463,6 +1464,7 @@ export default function ScoreboardPage() {
             >
                 {flashData && (
                     <div className="sb-flash-card">
+                        <img src="/logo.png" alt="TCF" className="sf-logo" />
                         <div className="sf-header">
                             <div className="sf-new-score-tag">
                                 <i className="material-icons-round">notifications_active</i>
