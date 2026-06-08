@@ -2390,3 +2390,30 @@
         min-width: 38px;
     }
 }
+
+/* ── Sponsor Logo (GYMSS) — puanlama sayfası header ── */
+.sh-sponsor-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-right: 8px;
+    transition: transform .15s, box-shadow .15s;
+    text-decoration: none;
+}
+.sh-sponsor-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.10);
+}
+.sh-sponsor {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+@media (max-width: 768px) {
+    .sh-sponsor { height: 28px; }
+}

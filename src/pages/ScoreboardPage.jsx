@@ -1077,7 +1077,6 @@ export default function ScoreboardPage() {
             {/* TOP BAR */}
             <div className="sb-topbar">
                 <div className="sb-topbar-left">
-                    <img src="/logo.png" alt="TCF" className="sb-logo" />
                     <div className="sb-live-badge">
                         <span className="sb-live-dot" />
                         LIVE
@@ -1091,6 +1090,21 @@ export default function ScoreboardPage() {
                 </div>
 
                 <div className="sb-topbar-right">
+                    <a
+                        href="https://gymss.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="sb-sponsor-link"
+                        title="Resmi Sponsor: GYMSS"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    >
+                        <img
+                            src="/sponsor.png"
+                            alt="GYMSS — Resmi Sponsor"
+                            className="sb-sponsor"
+                            onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                        />
+                    </a>
                     <div className="sb-stats-pill">
                         <span>{scoredCount}/{athleteCount}</span>
                         <i className="material-icons-round" style={{ fontSize: 16 }}>person</i>
@@ -1464,7 +1478,20 @@ export default function ScoreboardPage() {
             >
                 {flashData && (
                     <div className="sb-flash-card">
-                        <img src="/logo.png" alt="TCF" className="sf-logo" />
+                        <a
+                            href="https://gymss.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="sf-sponsor-link"
+                            title="Resmi Sponsor: GYMSS"
+                        >
+                            <img
+                                src="/sponsor.png"
+                                alt="GYMSS — Resmi Sponsor"
+                                className="sf-sponsor"
+                                onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                            />
+                        </a>
                         <div className="sf-header">
                             <div className="sf-new-score-tag">
                                 <i className="material-icons-round">notifications_active</i>

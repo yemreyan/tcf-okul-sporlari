@@ -935,6 +935,20 @@ export default function ScoringPage() {
                             <span>CANLI PUANLAMA</span>
                         </div>
                     )}
+                    <a
+                        href="https://gymss.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="sh-sponsor-link"
+                        title="Resmi Sponsor: GYMSS"
+                    >
+                        <img
+                            src="/sponsor.png"
+                            alt="GYMSS — Resmi Sponsor"
+                            className="sh-sponsor"
+                            onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                        />
+                    </a>
                     <button className="btn-toggle-sidebar" onClick={() => setSidebarOpen(prev => !prev)}>
                         <i className="material-icons-round">{sidebarOpen ? 'menu_open' : 'menu'}</i>
                     </button>
