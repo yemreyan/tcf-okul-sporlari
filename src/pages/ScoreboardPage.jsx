@@ -705,8 +705,19 @@ export default function ScoreboardPage() {
 
     // Full ranking for current view (used for pagination)
     const fullRanking = ['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? teamRanking : individualRanking;
-    const totalPages = Math.max(1, Math.ceil(fullRanking.length / PAGE_SIZE));
-    const pagedRanking = fullRanking.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
+    // Arama: case-insensitive, ad/soyad VEYA okul üzerinde substring eşleşme
+    const normalizedQuery = (searchQuery || '').trim().toLocaleLowerCase('tr-TR');
+    const displayedRanking = useMemo(() => {
+        if (!normalizedQuery) return fullRanking;
+        return fullRanking.filter(item => {
+            const name = (item.ad ? `${item.ad} ${item.soyad || ''}` : item.name || '').toLocaleLowerCase('tr-TR');
+            const club = (item.okul || item.kulup || '').toLocaleLowerCase('tr-TR');
+            return name.includes(normalizedQuery) || club.includes(normalizedQuery);
+        });
+    }, [fullRanking, normalizedQuery]);
+    const totalPages = Math.max(1, Math.ceil(displayedRanking.length / PAGE_SIZE));
+    const pagedRanking = displayedRanking.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
+    const matchCount = displayedRanking.length;
 
     // Cycle Timer — handles view cycling and pagination
     useEffect(() => {
@@ -726,7 +737,7 @@ export default function ScoreboardPage() {
             setViewTransition(true);
             setTimeout(() => {
                 setPageIndex(prevPage => {
-                    const currentTotalPages = Math.max(1, Math.ceil(fullRanking.length / PAGE_SIZE));
+                    const currentTotalPages = Math.max(1, Math.ceil(displayedRanking.length / PAGE_SIZE));
                     if (prevPage + 1 < currentTotalPages) {
                         // More pages in this view
                         setViewTransition(false);
@@ -749,23 +760,15 @@ export default function ScoreboardPage() {
             clearInterval(cycleTimerRef.current);
             clearInterval(progressTimerRef.current);
         };
-    }, [isLive, isFlashing, views, viewIndex, fullRanking.length, paused]);
+    }, [isLive, isFlashing, views, viewIndex, displayedRanking.length, paused]);
 
-    // Arama: query varsa otomatik akışı durdur + eşleşen ilk sporcuya jump
+    // Arama: query varsa otomatik akışı durdur ve ilk sayfaya dön
+    // (Listede yalnız eşleşenler görünür — displayedRanking üzerinden)
     useEffect(() => {
-        if (!searchQuery || !searchQuery.trim()) return;
+        if (!normalizedQuery) return;
         setPaused(true);  // arama yaparken otomatik geçişi durdur
-        const q = searchQuery.toLocaleLowerCase('tr-TR');
-        const matchIdx = fullRanking.findIndex(item => {
-            const name = (item.ad ? `${item.ad} ${item.soyad || ''}` : item.name || '').toLocaleLowerCase('tr-TR');
-            const club = (item.okul || item.kulup || '').toLocaleLowerCase('tr-TR');
-            return name.includes(q) || club.includes(q);
-        });
-        if (matchIdx >= 0) {
-            const targetPage = Math.floor(matchIdx / PAGE_SIZE);
-            setPageIndex(targetPage);
-        }
-    }, [searchQuery, fullRanking]);
+        setPageIndex(0); // her arama değişikliğinde ilk sayfayı göster
+    }, [normalizedQuery]);
 
     // Reset pageIndex when viewIndex changes
     useEffect(() => {
@@ -1158,8 +1161,10 @@ export default function ScoreboardPage() {
             <div className={`sb-tbody ${viewTransition ? 'sb-fade-out' : 'sb-fade-in'}`}>
                 {pagedRanking.length === 0 ? (
                     <div className="sb-empty-state">
-                        <i className="material-icons-round">hourglass_empty</i>
-                        <span>{['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? 'Takim Puani Henuz Olusturulmadi' : 'Henuz Puan Girilmedi'}</span>
+                        <i className="material-icons-round">{normalizedQuery ? 'search_off' : 'hourglass_empty'}</i>
+                        <span>{normalizedQuery
+                            ? `"${searchQuery}" için eşleşen sporcu veya okul bulunamadı`
+                            : (['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? 'Takim Puani Henuz Olusturulmadi' : 'Henuz Puan Girilmedi')}</span>
                     </div>
                 ) : (
                     ['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? (
@@ -1383,7 +1388,7 @@ export default function ScoreboardPage() {
             {/* Public mod kontrol çubuğu — sadece urlPublicMode'da görünür */}
             {urlPublicMode && (
                 <div className="sb-public-controls">
-                    {/* Arama */}
+                    {/* Arama — büyük/küçük harf farketmeksizin sporcu adı veya okulda eşleşir */}
                     <div className="sb-pc-search">
                         <i className="material-icons-round">search</i>
                         <input
@@ -1392,6 +1397,26 @@ export default function ScoreboardPage() {
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
+                        {normalizedQuery && (
+                            <span
+                                className="sb-pc-search-count"
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: 10,
+                                    background: matchCount > 0 ? '#dcfce7' : '#fee2e2',
+                                    color: matchCount > 0 ? '#166534' : '#991b1b',
+                                    marginRight: 4,
+                                    whiteSpace: 'nowrap',
+                                }}
+                                title={matchCount > 0 ? `${matchCount} eşleşme bulundu` : 'Eşleşme yok'}
+                            >
+                                {matchCount > 0
+                                    ? `${matchCount} eşleşme`
+                                    : 'Eşleşme yok'}
+                            </span>
+                        )}
                         {searchQuery && (
                             <button className="sb-pc-search-clear" onClick={() => setSearchQuery('')} title="Aramayı temizle">
                                 <i className="material-icons-round">close</i>
