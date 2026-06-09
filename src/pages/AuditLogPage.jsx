@@ -93,7 +93,8 @@ export default function AuditLogPage() {
     const [filterType, setFilterType] = useState('all');
     const [filterUser, setFilterUser] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [limit, setLimit] = useState(200);
+    const [limit, setLimit] = useState(500);
+    const ALL_LIMIT = 100000; // pratik olarak tümü
 
     useEffect(() => {
         setLoading(true);
@@ -284,11 +285,26 @@ export default function AuditLogPage() {
                             </div>
                         ))}
 
-                        {logs.length >= limit && (
-                            <button className="audit-load-more" onClick={() => setLimit(l => l + 200)}>
-                                <i className="material-icons-round">expand_more</i>
-                                Daha Fazla Yükle
-                            </button>
+                        {logs.length >= limit && limit < ALL_LIMIT && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
+                                <button className="audit-load-more" onClick={() => setLimit(l => l + 500)}>
+                                    <i className="material-icons-round">expand_more</i>
+                                    +500 Daha
+                                </button>
+                                <button className="audit-load-more" onClick={() => setLimit(l => l + 2000)}>
+                                    <i className="material-icons-round">expand_more</i>
+                                    +2000 Daha
+                                </button>
+                                <button className="audit-load-more" style={{ background: '#dc2626', color: '#fff' }} onClick={() => setLimit(ALL_LIMIT)}>
+                                    <i className="material-icons-round">all_inclusive</i>
+                                    Tüm Logları Yükle
+                                </button>
+                            </div>
+                        )}
+                        {limit >= ALL_LIMIT && (
+                            <div style={{ textAlign: 'center', marginTop: 12, color: '#64748b', fontSize: 12 }}>
+                                Tüm loglar yüklendi ({logs.length.toLocaleString('tr-TR')} kayıt)
+                            </div>
                         )}
                     </div>
                 )}
