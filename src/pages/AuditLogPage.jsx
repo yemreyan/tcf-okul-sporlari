@@ -94,11 +94,17 @@ export default function AuditLogPage() {
     const [filterUser, setFilterUser] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [limit, setLimit] = useState(500);
+    const [dateFrom, setDateFrom] = useState(''); // YYYY-MM-DD
+    const [dateTo, setDateTo] = useState('');
     const ALL_LIMIT = 100000; // pratik olarak tümü
+
+    // Arama veya tarih filtresi aktifse otomatik olarak TÜM logları çek
+    // (kullanıcı eski kayıtları arıyorsa 500 yetmez)
+    const effectiveLimit = (searchTerm.trim() || dateFrom || dateTo) ? ALL_LIMIT : limit;
 
     useEffect(() => {
         setLoading(true);
-        const q = query(ref(db, 'logs'), orderByChild('timestamp'), limitToLast(limit));
+        const q = query(ref(db, 'logs'), orderByChild('timestamp'), limitToLast(effectiveLimit));
         const unsub = onValue(q, s => {
             const data = s.val() || {};
             const arr = Object.entries(data)
@@ -108,7 +114,7 @@ export default function AuditLogPage() {
             setLoading(false);
         });
         return () => unsub();
-    }, [limit]);
+    }, [effectiveLimit]);
 
     // Benzersiz kullanıcılar
     const uniqueUsers = useMemo(() => {
@@ -126,18 +132,29 @@ export default function AuditLogPage() {
 
     // Filtrele
     const filteredLogs = useMemo(() => {
+        // Tarih aralığı: YYYY-MM-DD → timestamp ms
+        const fromMs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
+        const toMs   = dateTo   ? new Date(dateTo   + 'T23:59:59').getTime() : null;
+        const s = searchTerm.trim().toLocaleLowerCase('tr-TR');
         return logs.filter(log => {
             if (filterType !== 'all' && log.type !== filterType) return false;
             if (filterUser !== 'all' && log.user !== filterUser) return false;
-            if (searchTerm) {
-                const s = searchTerm.toLowerCase();
-                const msg = (log.message || '').toLowerCase();
-                const user = (log.user || '').toLowerCase();
-                if (!msg.includes(s) && !user.includes(s)) return false;
+            if (fromMs && (log.timestamp || 0) < fromMs) return false;
+            if (toMs   && (log.timestamp || 0) > toMs)   return false;
+            if (s) {
+                // Hepsinde case-insensitive substring ara: mesaj, kullanıcı,
+                // sporcu adı, kategori, alet, yarışma ID, sonra ek data alanı
+                const haystacks = [
+                    log.message, log.mesaj, log.user, log.athleteName,
+                    log.category, log.alet, log.competitionId, log.type,
+                    log.data,
+                ];
+                const hit = haystacks.some(v => v && String(v).toLocaleLowerCase('tr-TR').includes(s));
+                if (!hit) return false;
             }
             return true;
         });
-    }, [logs, filterType, filterUser, searchTerm]);
+    }, [logs, filterType, filterUser, searchTerm, dateFrom, dateTo]);
 
     // Tarihe göre grupla
     const groupedLogs = useMemo(() => {
@@ -206,10 +223,23 @@ export default function AuditLogPage() {
                         <i className="material-icons-round">search</i>
                         <input
                             type="text"
-                            placeholder="Mesaj veya kullanıcı ara..."
+                            placeholder="Sporcu adı, mesaj, kullanıcı, kategori, alet..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
+                        {searchTerm && (
+                            <button
+                                className="audit-search-clear"
+                                onClick={() => setSearchTerm('')}
+                                title="Aramayı temizle"
+                                style={{
+                                    background: 'transparent', border: 'none', cursor: 'pointer',
+                                    color: '#64748b', display: 'flex', alignItems: 'center', padding: 4
+                                }}
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 18 }}>close</i>
+                            </button>
+                        )}
                     </div>
                     <select
                         className="audit-filter-select"
@@ -231,7 +261,41 @@ export default function AuditLogPage() {
                             <option key={u} value={u}>{u}</option>
                         ))}
                     </select>
+                    <input
+                        type="date"
+                        className="audit-filter-select"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                        title="Başlangıç tarihi"
+                        style={{ minWidth: 140 }}
+                    />
+                    <input
+                        type="date"
+                        className="audit-filter-select"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        title="Bitiş tarihi"
+                        style={{ minWidth: 140 }}
+                    />
+                    {(dateFrom || dateTo) && (
+                        <button
+                            onClick={() => { setDateFrom(''); setDateTo(''); }}
+                            style={{
+                                background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5',
+                                borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+                            }}
+                            title="Tarih filtresini temizle"
+                        >
+                            Tarihi sıfırla
+                        </button>
+                    )}
                 </div>
+                {(searchTerm.trim() || dateFrom || dateTo) && (
+                    <div style={{ fontSize: 12, color: '#0369a1', background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '6px 12px', borderRadius: 6, marginBottom: 8 }}>
+                        <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>info</i>
+                        Arama/tarih filtresi aktif — TÜM loglar arasından arıyoruz ({logs.length.toLocaleString('tr-TR')} kayıt yüklü)
+                    </div>
+                )}
 
                 {/* Log listesi */}
                 {filteredLogs.length === 0 ? (
