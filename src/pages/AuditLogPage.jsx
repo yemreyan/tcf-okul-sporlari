@@ -90,6 +90,7 @@ export default function AuditLogPage() {
     const { isSuperAdmin } = useAuth();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refetching, setRefetching] = useState(false);  // sonraki yüklemelerde sayfa kaybolmasın
     const [filterType, setFilterType] = useState('all');
     const [filterUser, setFilterUser] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +104,9 @@ export default function AuditLogPage() {
     const effectiveLimit = (searchTerm.trim() || dateFrom || dateTo) ? ALL_LIMIT : limit;
 
     useEffect(() => {
-        setLoading(true);
+        // İlk yüklemede tam-ekran spinner, sonraki yüklemelerde inline rozet
+        // (input focus'u kaybolmasın diye sayfa yapısı değişmemeli)
+        setRefetching(true);
         const q = query(ref(db, 'logs'), orderByChild('timestamp'), limitToLast(effectiveLimit));
         const unsub = onValue(q, s => {
             const data = s.val() || {};
@@ -112,6 +115,7 @@ export default function AuditLogPage() {
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             setLogs(arr);
             setLoading(false);
+            setRefetching(false);
         });
         return () => unsub();
     }, [effectiveLimit]);
@@ -180,7 +184,9 @@ export default function AuditLogPage() {
         return logs.filter(l => l.timestamp && l.timestamp >= today.getTime()).length;
     }, [logs]);
 
-    if (loading) {
+    // İlk yüklemede henüz veri yok → tam-ekran spinner
+    // Aksi takdirde sayfa görünür kalır, içerideki refetching durumu rozetle gösterilir
+    if (loading && logs.length === 0) {
         return (
             <div className="audit-page">
                 <div className="audit-loading">
@@ -291,9 +297,15 @@ export default function AuditLogPage() {
                     )}
                 </div>
                 {(searchTerm.trim() || dateFrom || dateTo) && (
-                    <div style={{ fontSize: 12, color: '#0369a1', background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '6px 12px', borderRadius: 6, marginBottom: 8 }}>
-                        <i className="material-icons-round" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>info</i>
-                        Arama/tarih filtresi aktif — TÜM loglar arasından arıyoruz ({logs.length.toLocaleString('tr-TR')} kayıt yüklü)
+                    <div style={{ fontSize: 12, color: '#0369a1', background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '6px 12px', borderRadius: 6, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <i className="material-icons-round" style={{ fontSize: 14 }}>info</i>
+                        <span>Arama/tarih filtresi aktif — TÜM loglar arasından arıyoruz ({logs.length.toLocaleString('tr-TR')} kayıt yüklü)</span>
+                        {refetching && (
+                            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0c4a6e' }}>
+                                <i className="material-icons-round" style={{ fontSize: 14, animation: 'spin 1s linear infinite' }}>refresh</i>
+                                Yükleniyor...
+                            </span>
+                        )}
                     </div>
                 )}
 

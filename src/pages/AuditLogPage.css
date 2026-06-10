@@ -377,3 +377,9 @@
         top: 60px;
     }
 }
+
+/* Spinner için keyframe (refetching rozetinde kullanılır) */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
