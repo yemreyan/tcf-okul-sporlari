@@ -881,6 +881,11 @@ export default function ScoringPage() {
             logAction('score_create', `${savedAthlete.ad} ${savedAthlete.soyad} — ${apparatusOptions.find(a => a.id === selectedApparatus)?.name || selectedApparatus}: ${finalScore}`, {
                 user: currentUser?.kullaniciAdi || 'admin',
                 competitionId: selectedCompId,
+                athleteId: savedAthlete.id,
+                athleteName: `${savedAthlete.ad || ''} ${savedAthlete.soyad || ''}`.trim(),
+                category: selectedCategory,
+                alet: selectedApparatus,
+                finalScore,
             });
 
             // Kayıt tamamlandı — form state'ini temizle (bir sonraki sporcu için temiz başlangıç)

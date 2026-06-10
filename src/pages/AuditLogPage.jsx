@@ -134,26 +134,33 @@ export default function AuditLogPage() {
         return [...types].sort();
     }, [logs]);
 
+    // Türkçe / diakritik-bağımsız normalize (Buğçe ↔ BUGCE ↔ buğçe hepsi eşleşsin)
+    const normSearch = (s) => String(s || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toLocaleLowerCase('tr-TR')
+        .replace(/İ/g, 'i').replace(/I/g, 'i').replace(/ı/g, 'i')
+        .replace(/ş/g, 's').replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+
     // Filtrele
     const filteredLogs = useMemo(() => {
         // Tarih aralığı: YYYY-MM-DD → timestamp ms
         const fromMs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
         const toMs   = dateTo   ? new Date(dateTo   + 'T23:59:59').getTime() : null;
-        const s = searchTerm.trim().toLocaleLowerCase('tr-TR');
+        const s = normSearch(searchTerm.trim());
         return logs.filter(log => {
             if (filterType !== 'all' && log.type !== filterType) return false;
             if (filterUser !== 'all' && log.user !== filterUser) return false;
             if (fromMs && (log.timestamp || 0) < fromMs) return false;
             if (toMs   && (log.timestamp || 0) > toMs)   return false;
             if (s) {
-                // Hepsinde case-insensitive substring ara: mesaj, kullanıcı,
-                // sporcu adı, kategori, alet, yarışma ID, sonra ek data alanı
+                // Tüm metin alanlarında diakritik-bağımsız substring ara
                 const haystacks = [
                     log.message, log.mesaj, log.user, log.athleteName,
                     log.category, log.alet, log.competitionId, log.type,
                     log.data,
                 ];
-                const hit = haystacks.some(v => v && String(v).toLocaleLowerCase('tr-TR').includes(s));
+                const hit = haystacks.some(v => v && normSearch(v).includes(s));
                 if (!hit) return false;
             }
             return true;
