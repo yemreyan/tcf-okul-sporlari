@@ -8,6 +8,7 @@ import { useNotification } from '../lib/NotificationContext';
 import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsArrayByUser } from '../lib/useFilteredCompetitions';
 import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
+import { istanbulSideOf } from '../lib/istanbulSide';
 import "./FinalsPage.css";
 
 const OLIMPIK_SIRA_KIZ = ['atlama', 'asimetrik', 'denge', 'serbest'];
@@ -51,59 +52,7 @@ const APPARATUS_INFO = {
 // Artistik/diğerlerinde apparatus-first: puanlar[catId][aletKey][athleteId]
 const isRitmikCategory = (appKeys) => appKeys.some(k => k === 'top' || k === 'kurdele' || k === 'serbest');
 
-// İstanbul Anadolu / Avrupa yakası ilçe listeleri — ASCII-normalize edilmiş
-function normalizeIlceKey(s) {
-    return String(s || '')
-        .trim()
-        .normalize('NFD')                  // â → a + ̂ (combining mark ayrılır)
-        .replace(/[̀-ͯ]/g, '')   // tüm combining diacritic'leri at
-        .toLocaleUpperCase('tr-TR')
-        .replace(/İ/g, 'I')
-        .replace(/Ş/g, 'S').replace(/Ğ/g, 'G')
-        .replace(/Ü/g, 'U').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
-        .replace(/[^A-Z]/g, ''); // sadece harf
-}
-const ISTANBUL_ANADOLU = new Set([
-    'ADALAR', 'ATASEHIR', 'BEYKOZ', 'CEKMEKOY',
-    'KADIKOY', 'KARTAL', 'MALTEPE', 'PENDIK',
-    'SANCAKTEPE', 'SULTANBEYLI', 'SILE',
-    'TUZLA', 'UMRANIYE', 'USKUDAR',
-].map(normalizeIlceKey));
-const ISTANBUL_AVRUPA = new Set([
-    'ARNAVUTKOY', 'AVCILAR', 'BAGCILAR',
-    'BAHCELIEVLER', 'BAKIRKOY',
-    'BASAKSEHIR', 'BAYRAMPASA',
-    'BESIKTAS', 'BEYLIKDUZU', 'BEYOGLU',
-    'BUYUKCEKMECE', 'CATALCA',
-    'ESENLER', 'ESENYURT', 'EYUPSULTAN', 'EYUP',
-    'FATIH', 'GAZIOSMANPASA',
-    'GUNGOREN', 'KAGITHANE',
-    'KUCUKCEKMECE', 'SARIYER', 'SILIVRI',
-    'SULTANGAZI', 'SISLI', 'ZEYTINBURNU',
-].map(normalizeIlceKey));
-
-// İlçe adından yakayı belirle ('anadolu' | 'avrupa' | null)
-// Sporcunun ilce alanı boşsa okul/il alanlarındaki ilçe ipuçlarını da arar.
-function istanbulSideOf(ilce, fallbackText) {
-    const tryMatch = (raw) => {
-        const k = normalizeIlceKey(raw);
-        if (!k) return null;
-        if (ISTANBUL_ANADOLU.has(k)) return 'anadolu';
-        if (ISTANBUL_AVRUPA.has(k)) return 'avrupa';
-        // İçerik araması: ilçe adı stringin içinde geçiyor mu?
-        for (const il of ISTANBUL_ANADOLU) if (k.includes(il)) return 'anadolu';
-        for (const il of ISTANBUL_AVRUPA) if (k.includes(il)) return 'avrupa';
-        return null;
-    };
-    const direct = tryMatch(ilce);
-    if (direct) return direct;
-    // ilce boş veya bilinmiyorsa okul adında ilçe geçiyor mu diye bak
-    if (fallbackText) {
-        const fb = tryMatch(fallbackText);
-        if (fb) return fb;
-    }
-    return null;
-}
+// İstanbul yaka tespiti src/lib/istanbulSide.js'e taşındı
 
 export default function FinalsPage() {
     const navigate = useNavigate();

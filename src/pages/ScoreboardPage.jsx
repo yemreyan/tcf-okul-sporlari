@@ -7,6 +7,7 @@ import { useDiscipline } from '../lib/DisciplineContext';
 import { filterCompetitionsByUser } from '../lib/useFilteredCompetitions';
 import { AEROBIK_CATEGORIES } from '../data/aerobikCriteriaDefaults';
 import { RITMIK_CATEGORIES } from '../data/ritmikCriteriaDefaults';
+import { istanbulSideOf } from '../lib/istanbulSide';
 import './ScoreboardPage.css';
 
 /* ================================================================
@@ -99,6 +100,14 @@ export default function ScoreboardPage() {
     // Public mod kontrolleri: auto-cycle durdur, sporcu arama, manuel ilerletme
     const [paused, setPaused] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [istanbulSide, setIstanbulSide] = useState(() => {
+        // URL'den ön-ayar oku: ?side=anadolu|avrupa
+        try {
+            const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+            const s = (sp.get('side') || '').toLowerCase();
+            return (s === 'anadolu' || s === 'avrupa') ? s : '';
+        } catch { return ''; }
+    }); // '' | 'anadolu' | 'avrupa'
 
     // Pagination within each view
     const [pageIndex, setPageIndex] = useState(0);
@@ -707,17 +716,34 @@ export default function ScoreboardPage() {
     const fullRanking = ['team', 'aerobik_team', 'step_team'].includes(currentView?.type) ? teamRanking : individualRanking;
     // Arama: case-insensitive, ad/soyad VEYA okul üzerinde substring eşleşme
     const normalizedQuery = (searchQuery || '').trim().toLocaleLowerCase('tr-TR');
+    // İstanbul yaka filtresi (yarışma İstanbul ise + yaka seçildiyse uygulanır)
+    const compIstanbul = /İSTANBUL|ISTANBUL/.test((competitions[selectedCompId]?.il || competitions[selectedCompId]?.city || '').toLocaleUpperCase('tr-TR'));
     const displayedRanking = useMemo(() => {
-        if (!normalizedQuery) return fullRanking;
-        return fullRanking.filter(item => {
-            const name = (item.ad ? `${item.ad} ${item.soyad || ''}` : item.name || '').toLocaleLowerCase('tr-TR');
-            const club = (item.okul || item.kulup || '').toLocaleLowerCase('tr-TR');
-            return name.includes(normalizedQuery) || club.includes(normalizedQuery);
-        });
-    }, [fullRanking, normalizedQuery]);
+        let list = fullRanking;
+        // 1) İstanbul yaka filtresi
+        if (compIstanbul && istanbulSide) {
+            list = list.filter(item => {
+                const fb = `${item.okul || item.kulup || ''}`;
+                const side = istanbulSideOf(item.ilce, fb);
+                return side === istanbulSide;
+            });
+        }
+        // 2) Arama filtresi
+        if (normalizedQuery) {
+            list = list.filter(item => {
+                const name = (item.ad ? `${item.ad} ${item.soyad || ''}` : item.name || '').toLocaleLowerCase('tr-TR');
+                const club = (item.okul || item.kulup || '').toLocaleLowerCase('tr-TR');
+                return name.includes(normalizedQuery) || club.includes(normalizedQuery);
+            });
+        }
+        return list;
+    }, [fullRanking, normalizedQuery, compIstanbul, istanbulSide]);
     const totalPages = Math.max(1, Math.ceil(displayedRanking.length / PAGE_SIZE));
     const pagedRanking = displayedRanking.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE);
     const matchCount = displayedRanking.length;
+
+    // Yaka değişince ilk sayfaya ve takım sıralamasını yeniden hesapla
+    useEffect(() => { setPageIndex(0); }, [istanbulSide]);
 
     // Cycle Timer — handles view cycling and pagination
     useEffect(() => {
@@ -1073,6 +1099,8 @@ export default function ScoreboardPage() {
     const currentCatName = currentView
         ? (currentView.subtitle || competitions[selectedCompId]?.kategoriler?.[currentView.catId]?.name || '')
         : '';
+    // İstanbul yarışması mı? (yaka filtresi yalnız İstanbul için anlamlı) — compIstanbul alias
+    const isIstanbulComp = compIstanbul;
 
     return (
         <div className="sb-live">
@@ -1088,7 +1116,24 @@ export default function ScoreboardPage() {
                 </div>
 
                 <div className="sb-topbar-center">
-                    <div className="sb-comp-name">{compOptions?.isim}</div>
+                    <div className="sb-comp-name">
+                        {compOptions?.isim}
+                        {isIstanbulComp && istanbulSide && (
+                            <span style={{
+                                marginLeft: 8,
+                                fontSize: '0.7em',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                                background: istanbulSide === 'anadolu' ? '#dbeafe' : '#fce7f3',
+                                color: istanbulSide === 'anadolu' ? '#1e3a8a' : '#831843',
+                                verticalAlign: 'middle',
+                                letterSpacing: '0.04em',
+                            }}>
+                                {istanbulSide === 'anadolu' ? 'ANADOLU' : 'AVRUPA'}
+                            </span>
+                        )}
+                    </div>
                     <div className="sb-cat-label">{currentCatName}</div>
                 </div>
 
@@ -1423,6 +1468,36 @@ export default function ScoreboardPage() {
                             </button>
                         )}
                     </div>
+
+                    {/* İstanbul yaka filtresi — yalnız İstanbul yarışmasında görünür */}
+                    {isIstanbulComp && (
+                        <div className="sb-pc-side-group" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                            <button
+                                className={`sb-pc-btn ${istanbulSide === '' ? 'sb-pc-btn--paused' : ''}`}
+                                onClick={() => setIstanbulSide('')}
+                                title="Tüm İstanbul"
+                            >
+                                <i className="material-icons-round" style={{ fontSize: 16 }}>public</i>
+                                <span className="sb-pc-btn-label">TÜMÜ</span>
+                            </button>
+                            <button
+                                className={`sb-pc-btn ${istanbulSide === 'anadolu' ? 'sb-pc-btn--paused' : ''}`}
+                                onClick={() => setIstanbulSide('anadolu')}
+                                title="İstanbul Anadolu"
+                                style={istanbulSide === 'anadolu' ? { background: '#dbeafe', color: '#1e3a8a' } : undefined}
+                            >
+                                <span className="sb-pc-btn-label">ANADOLU</span>
+                            </button>
+                            <button
+                                className={`sb-pc-btn ${istanbulSide === 'avrupa' ? 'sb-pc-btn--paused' : ''}`}
+                                onClick={() => setIstanbulSide('avrupa')}
+                                title="İstanbul Avrupa"
+                                style={istanbulSide === 'avrupa' ? { background: '#fce7f3', color: '#831843' } : undefined}
+                            >
+                                <span className="sb-pc-btn-label">AVRUPA</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Önceki sayfa */}
                     <button
