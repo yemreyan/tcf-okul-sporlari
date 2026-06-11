@@ -512,19 +512,20 @@ export default function FinalsPage() {
 
         if (isRitmikTeam) {
             // ── Ritmik takım hesabı: max 4 (genç: 3) sporcu, alet başına top 2 puan ──
-            // GRUPLAMA: okul + il (aynı isimli okul farklı illerde olabilir)
+            // GRUPLAMA: okul + il + ilçe (aynı isimli okul farklı il/ilçede olabilir)
             const maxSize = getRitmikMaxTeamSize(catKey);
-            const clubMembers = {}; // {"OKUL|IL": {athId: {...}}}
-            const clubMeta = {};    // {"OKUL|IL": {name, il}}
+            const clubMembers = {}; // {"OKUL|IL|ILCE": {athId: {...}}}
+            const clubMeta = {};    // {"OKUL|IL|ILCE": {name, il, ilce}}
 
             filteredResults.forEach(res => {
                 if (!res.okul) return;
                 const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
                 const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-                const teamKey = `${okulKey}|${ilKey}`;
+                const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+                const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
                 if (!clubMembers[teamKey]) {
                     clubMembers[teamKey] = {};
-                    clubMeta[teamKey] = { name: res.okul, il: res.il || '' };
+                    clubMeta[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '' };
                 }
                 const total = apparatusKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
                 clubMembers[teamKey][res.id] = {
@@ -540,15 +541,18 @@ export default function FinalsPage() {
                     return scoredCount >= 2;
                 })
                 .map(([teamKey, members]) => {
-                    const meta = clubMeta[teamKey] || { name: teamKey, il: '' };
+                    const meta = clubMeta[teamKey] || { name: teamKey, il: '', ilce: '' };
                     const apparatusTotals = calcRitmikTeamApparatusTotals(members, apparatusKeys, maxSize);
                     const totalScore = Object.values(apparatusTotals).reduce((s, v) => s + v, 0);
+                    // Ceza eşleşmesi: aynı isimli okullar farklı ilçede ise de ayrı kalsın
                     const deductionTotal = Object.values(teamDeductions)
-                        .filter(d => d.teamName === meta.name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                        .filter(d => d.teamName === meta.name
+                            && (!d.ilce || (d.ilce || '').trim().toLocaleUpperCase('tr-TR') === (meta.ilce || '').trim().toLocaleUpperCase('tr-TR'))
+                            && (!d.categoryId || d.categoryId === selectedCategoryId))
                         .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                     const finalScore = totalScore - deductionTotal;
                     const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
-                    return { name: meta.name, il: meta.il, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
+                    return { name: meta.name, il: meta.il, ilce: meta.ilce, apparatusTotals, totalScore, deduction: deductionTotal, finalScore, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -561,18 +565,20 @@ export default function FinalsPage() {
         }
 
         // ── Standart (artistik vs.) takım hesabı ──
-        // GRUPLAMA: okul + il birleşik anahtar
+        // GRUPLAMA: okul + il + ilçe (aynı isimli okul farklı il/ilçede ayrı sayılır)
         const clubScores = {};
         filteredResults.forEach(res => {
             if (!res.okul) return;
             const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
             const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-            const teamKey = `${okulKey}|${ilKey}`;
+            const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+            const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
             if (!clubScores[teamKey]) {
-                clubScores[teamKey] = { name: res.okul, il: res.il || '', scores: {} };
+                clubScores[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '', scores: {} };
                 apparatusKeys.forEach(key => clubScores[teamKey].scores[key] = []);
             }
             if (!clubScores[teamKey].il && res.il) clubScores[teamKey].il = res.il;
+            if (!clubScores[teamKey].ilce && res.ilce) clubScores[teamKey].ilce = res.ilce;
             apparatusKeys.forEach(key => clubScores[teamKey].scores[key].push(res.scores[key]));
         });
 
@@ -590,11 +596,14 @@ export default function FinalsPage() {
                     apparatusTotals[key] = appTotal;
                     totalScore += appTotal;
                 });
+                // Ceza eşleşmesi: ilçe varsa ilçe de eşleşmeli
                 const deductionTotal = Object.values(teamDeductions)
-                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                    .filter(d => d.teamName === team.name
+                        && (!d.ilce || (d.ilce || '').trim().toLocaleUpperCase('tr-TR') === (team.ilce || '').trim().toLocaleUpperCase('tr-TR'))
+                        && (!d.categoryId || d.categoryId === selectedCategoryId))
                     .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 const finalScore = totalScore - deductionTotal;
-                return { name: team.name, il: team.il || '', apparatusTotals, totalScore, deduction: deductionTotal, finalScore };
+                return { name: team.name, il: team.il || '', ilce: team.ilce || '', apparatusTotals, totalScore, deduction: deductionTotal, finalScore };
             }).sort((a, b) => b.finalScore - a.finalScore);
 
         let lastTS = -1;
@@ -656,7 +665,7 @@ export default function FinalsPage() {
         Object.entries(categoryAthletes).forEach(([id, athlete]) => {
             if (!athlete) return;
             const score = parseFloat(categoryScores[id]?.sonuc || 0);
-            if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', score });
+            if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', ilce: athlete.ilce || '', score });
         });
 
         // Kardeş kategoriler
@@ -664,19 +673,22 @@ export default function FinalsPage() {
             Object.entries(catD.athletes || {}).forEach(([id, athlete]) => {
                 if (!athlete) return;
                 const score = parseFloat(catD.scores?.[id]?.sonuc || 0);
-                if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', score });
+                if (score > 0) allEntries.push({ id, okul: athlete.okul || '', il: athlete.il || '', ilce: athlete.ilce || '', score });
             });
         });
 
         if (allEntries.length === 0) return [];
 
-        // Okul bazında havuzla
+        // Okul + il + ilçe bileşik anahtarıyla havuzla
+        // (aynı isimli okul farklı il/ilçede ise birbirine karışmasın)
         const schoolMap = {};
-        allEntries.forEach(({ okul, il, score }) => {
+        allEntries.forEach(({ okul, il, ilce, score }) => {
             if (!okul) return;
-            if (!schoolMap[okul]) schoolMap[okul] = { name: okul, il: il || '', scores: [] };
-            if (!schoolMap[okul].il && il) schoolMap[okul].il = il;
-            schoolMap[okul].scores.push(score);
+            const key = `${okul}|${(il || '').trim()}|${(ilce || '').trim()}`;
+            if (!schoolMap[key]) schoolMap[key] = { name: okul, il: il || '', ilce: ilce || '', scores: [] };
+            if (!schoolMap[key].il && il) schoolMap[key].il = il;
+            if (!schoolMap[key].ilce && ilce) schoolMap[key].ilce = ilce;
+            schoolMap[key].scores.push(score);
         });
 
         // En yüksek 2 puan = takım puanı (min 2 sporcu)
@@ -687,11 +699,14 @@ export default function FinalsPage() {
                 if (top2.length < 2) return null;
                 const totalScore = top2.reduce((sum, s) => sum + s, 0);
                 const deductionTotal = Object.values(teamDeductions)
-                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === selectedCategoryId))
+                    .filter(d => d.teamName === team.name
+                        && (!d.ilce || (d.ilce || '').trim().toLocaleUpperCase('tr-TR') === (team.ilce || '').trim().toLocaleUpperCase('tr-TR'))
+                        && (!d.categoryId || d.categoryId === selectedCategoryId))
                     .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 return {
                     name: team.name,
                     il: team.il || '',
+                    ilce: team.ilce || '',
                     top2Scores: top2,
                     totalScore,
                     deduction: deductionTotal,
@@ -711,7 +726,16 @@ export default function FinalsPage() {
         });
     };
 
-    const uniqueTeams = [...new Set(fullResults.map(r => r.okul).filter(Boolean))].sort();
+    // Takım dropdown'u — aynı isimli okul farklı ilçede ise ayrı seçenek (isim · ilçe)
+    const uniqueTeams = useMemo(() => {
+        const m = new Map();
+        fullResults.forEach(r => {
+            if (!r.okul) return;
+            const key = `${r.okul}|${(r.il || '').trim()}|${(r.ilce || '').trim()}`;
+            if (!m.has(key)) m.set(key, { name: r.okul, il: r.il || '', ilce: r.ilce || '' });
+        });
+        return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
+    }, [fullResults]);
 
     // Deductions Handlers
     const handleAddDeduction = async (e) => {
@@ -729,12 +753,14 @@ export default function FinalsPage() {
             const newDeductionRef = push(deductionRef);
             await set(newDeductionRef, {
                 teamName: deductionForm.team,
+                il: deductionForm.il || '',
+                ilce: deductionForm.ilce || '',
                 categoryId: selectedCategoryId,
                 amount: amountNum.toFixed(3),
                 reason: deductionForm.reason,
                 timestamp: new Date().toISOString()
             });
-            setDeductionForm({ team: "", amount: "", reason: "" });
+            setDeductionForm({ team: "", il: "", ilce: "", amount: "", reason: "" });
             setIsDeductionModalOpen(false);
         } catch (err) {
             if (import.meta.env.DEV) console.error("Ceza eklenirken hata oluştu:", err);
@@ -1934,11 +1960,15 @@ export default function FinalsPage() {
                                                 </thead>
                                                 <tbody>
                                                     {aerobikTeams.map((team) => (
-                                                        <tr key={team.name} className={getMedalClass(team.rank)}>
+                                                        <tr key={`${team.name}|${team.il||''}|${team.ilce||''}`} className={getMedalClass(team.rank)}>
                                                             <td className="td-center rank-col"><span className="rank-badge">{team.rank}</span></td>
                                                             <td className="team-col-bold">
                                                                 {team.name}
-                                                                {team.il && <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>· {team.il}</span>}
+                                                                {(team.ilce || team.il) && (
+                                                                    <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>
+                                                                        · {[team.ilce, team.il].filter(Boolean).join(' / ')}
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                             {isStepCategorySelected ? (
                                                                 <td className="td-center score-col">{formatScore(team.totalScore)}</td>
@@ -1993,11 +2023,15 @@ export default function FinalsPage() {
                                                 {computeTeamResults().map((team) => {
                                                     const rank = team.rank;
                                                     return (
-                                                        <tr key={team.name} className={getMedalClass(rank)}>
+                                                        <tr key={`${team.name}|${team.il||''}|${team.ilce||''}`} className={getMedalClass(rank)}>
                                                             <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
                                                             <td className="team-col-bold">
                                                                 {team.name}
-                                                                {team.il && <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>· {team.il}</span>}
+                                                                {(team.ilce || team.il) && (
+                                                                    <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>
+                                                                        · {[team.ilce, team.il].filter(Boolean).join(' / ')}
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                             {apparatusKeys.map(key => (
                                                                 <td key={key} className="td-center score-col">{formatScore(team.apparatusTotals[key])}</td>
@@ -2041,11 +2075,20 @@ export default function FinalsPage() {
                                     <label>Takım Seçin</label>
                                     <select
                                         value={deductionForm.team}
-                                        onChange={e => setDeductionForm({ ...deductionForm, team: e.target.value })}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            // "OKUL|IL|ILCE" formatından parse et
+                                            const [name, il, ilce] = val.split('|');
+                                            setDeductionForm({ ...deductionForm, team: name || '', il: il || '', ilce: ilce || '' });
+                                        }}
                                         required
                                     >
                                         <option value="">-- Takım Seçiniz --</option>
-                                        {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
+                                        {uniqueTeams.map(t => {
+                                            const val = `${t.name}|${t.il}|${t.ilce}`;
+                                            const label = t.ilce ? `${t.name} — ${t.ilce}${t.il ? ' / ' + t.il : ''}` : t.name;
+                                            return <option key={val} value={val}>{label}</option>;
+                                        })}
                                     </select>
                                 </div>
                                 <div style={{ display: 'flex', gap: '16px' }}>
@@ -2086,7 +2129,14 @@ export default function FinalsPage() {
                                         {Object.entries(teamDeductions).filter(([, d]) => !d.categoryId || d.categoryId === selectedCategoryId).map(([id, d]) => (
                                             <div key={id} className="deduction-item">
                                                 <div className="deduction-info">
-                                                    <strong>{d.teamName}</strong>
+                                                    <strong>
+                                                        {d.teamName}
+                                                        {(d.ilce || d.il) && (
+                                                            <span style={{ marginLeft: 6, fontSize: '0.78em', color: '#9ca3af', fontWeight: 500 }}>
+                                                                — {[d.ilce, d.il].filter(Boolean).join(' / ')}
+                                                            </span>
+                                                        )}
+                                                    </strong>
                                                     <span>{d.reason}</span>
                                                 </div>
                                                 <div className="deduction-action">
