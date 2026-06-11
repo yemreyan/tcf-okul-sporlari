@@ -720,12 +720,27 @@ export default function ScoreboardPage() {
     const compIstanbul = /İSTANBUL|ISTANBUL/.test((competitions[selectedCompId]?.il || competitions[selectedCompId]?.city || '').toLocaleUpperCase('tr-TR'));
     const displayedRanking = useMemo(() => {
         let list = fullRanking;
+        const wasFiltered = compIstanbul && istanbulSide;
         // 1) İstanbul yaka filtresi
-        if (compIstanbul && istanbulSide) {
+        if (wasFiltered) {
             list = list.filter(item => {
                 const fb = `${item.okul || item.kulup || ''}`;
                 const side = istanbulSideOf(item.ilce, fb);
                 return side === istanbulSide;
+            });
+            // Yaka filtresinden sonra sıralar yeniden hesaplanmalı:
+            // ilgili yaka içinde 1., 2., 3. olarak görünsünler (İstanbul geneli değil).
+            // Toplam puana göre azalan sırala + eşitlerde aynı sırayı paylaş
+            const scoreOf = (it) => Number(it.total ?? it.totalScore ?? it.score ?? 0);
+            list = [...list].sort((a, b) => scoreOf(b) - scoreOf(a));
+            let lastScore = -1;
+            let lastRank = 0;
+            list = list.map((it, idx) => {
+                const sc = Math.round(scoreOf(it) * 1000) / 1000;
+                const r = (sc > 0 && sc === lastScore) ? lastRank : (sc > 0 ? idx + 1 : 0);
+                lastScore = sc;
+                lastRank = r;
+                return { ...it, rank: r, totalRank: r };
             });
         }
         // 2) Arama filtresi
