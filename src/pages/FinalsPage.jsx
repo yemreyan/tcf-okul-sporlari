@@ -231,15 +231,16 @@ export default function FinalsPage() {
     }, [isAerobikDiscipline, selectedCompId, selectedCategoryId, firebasePath]);
 
     // 4. Data Processing Logic (Derived State)
-    const fullResults = useMemo(() => {
+    // buildResults(athleteMap): ortak hesaplama — fullResults (yaka filtreli) ve
+    // rawFullResults (yakadan bağımsız, tüm sporcular) için aynı işlem.
+    const buildResults = (athleteMap) => {
         if (!competitionData || !selectedCategoryId) return [];
-
         const catData = competitionData.kategoriler?.[selectedCategoryId];
         if (!catData) return [];
 
         // ── AEROBIK: tek puan, apparatus yok ──
         if (isAerobikDiscipline) {
-            const athletes = Object.entries(categoryAthletes);
+            const athletes = Object.entries(athleteMap);
             if (athletes.length === 0) return [];
 
             const sortedResults = athletes.map(([id, athlete]) => {
@@ -320,7 +321,7 @@ export default function FinalsPage() {
         }
         apparatusKeys = getOlimpikSira(selectedCategoryId, apparatusKeys);
 
-        let participantIds = Object.keys(categoryAthletes);
+        let participantIds = Object.keys(athleteMap);
         let useGlobalAthletes = false;
 
         if (participantIds.length === 0 && competitionData.katilimcilar) {
@@ -329,7 +330,7 @@ export default function FinalsPage() {
         }
 
         const sortedResults = participantIds.map(id => {
-            const athlete = useGlobalAthletes ? globalAthletes[id] : categoryAthletes[id];
+            const athlete = useGlobalAthletes ? globalAthletes[id] : athleteMap[id];
             if (!athlete) return null;
             // İSİMSİZ FİLTRE: ad/soyad boşsa görünmez (data corruption / yarım kayıt)
             const hasName = (athlete.ad && String(athlete.ad).trim()) || (athlete.soyad && String(athlete.soyad).trim());
@@ -440,7 +441,22 @@ export default function FinalsPage() {
         });
 
         return rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
-    }, [competitionData, selectedCategoryId, categoryAthletes, categoryScores, globalAthletes, isAerobikDiscipline]);
+    };
+
+    // Görüntüleme için fullResults — yaka filtreli (Bireysel tab, sporcu sayısı vb.)
+    const fullResults = useMemo(
+        () => buildResults(categoryAthletes),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [competitionData, selectedCategoryId, categoryAthletes, categoryScores, globalAthletes, isAerobikDiscipline]
+    );
+    // Takım hesabı için rawFullResults — TÜM sporcular (yaka filtresi uygulanmaz)
+    // Böylece takım tablosunda Anadolu+Avrupa birlikte görünür, yan rozetlerle
+    // yaka içi sıraları yazılır.
+    const rawFullResults = useMemo(
+        () => buildResults(rawCategoryAthletes),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [competitionData, selectedCategoryId, rawCategoryAthletes, categoryScores, globalAthletes, isAerobikDiscipline]
+    );
 
     const formatScore = (s) => {
         const score = Number(s);
@@ -498,9 +514,11 @@ export default function FinalsPage() {
     };
 
     // Teams Processing
+    // Takım tablosu yaka filtresinden BAĞIMSIZ — rawFullResults kullanılır.
+    // Sonra her takımın yaka-içi sırası ayrıca hesaplanır.
     const computeTeamResults = () => {
         const isRitmikTeam = isRitmikCategory(apparatusKeys);
-        const filteredResults = fullResults.filter(res => {
+        const filteredResults = rawFullResults.filter(res => {
             if (excludedTeams.has(res.okul)) return false;
             // Ritmik: yarismaTuru filtresi YOK — tüm sporcular okula göre takıma dahil
             if (isRitmikTeam) return true;
@@ -557,11 +575,12 @@ export default function FinalsPage() {
                 .sort((a, b) => b.finalScore - a.finalScore);
 
             let lastTSr = -1, lastTRr = 0;
-            return teamList.map((team, index) => {
+            const rankedRitmik = teamList.map((team, index) => {
                 if (team.finalScore !== lastTSr) lastTRr = index + 1;
                 lastTSr = team.finalScore;
                 return { ...team, rank: lastTRr };
             });
+            return attachIstanbulSideRanks(rankedRitmik);
         }
 
         // ── Standart (artistik vs.) takım hesabı ──
@@ -608,12 +627,45 @@ export default function FinalsPage() {
 
         let lastTS = -1;
         let lastTR = 0;
-        return teamList.map((team, index) => {
+        const rankedStd = teamList.map((team, index) => {
             if (team.finalScore !== lastTS) {
                 lastTR = index + 1;
             }
             lastTS = team.finalScore;
             return { ...team, rank: lastTR };
+        });
+        return attachIstanbulSideRanks(rankedStd);
+    };
+
+    // İstanbul yarışmasında takım tablosuna 'sideRank' (Anadolu/Avrupa içi sıra) ekler
+    const attachIstanbulSideRanks = (teams) => {
+        if (!isIstanbulSelected) return teams;
+        const byA = []; const byE = [];
+        teams.forEach(t => {
+            const fb = `${t.name || ''}`;
+            const side = istanbulSideOf(t.ilce, fb);
+            if (side === 'anadolu') byA.push(t);
+            else if (side === 'avrupa') byE.push(t);
+        });
+        const sideMap = new Map();
+        const rankWithin = (list) => {
+            let ls = -1, lr = 0;
+            list.forEach((t, i) => {
+                if (t.finalScore !== ls) lr = i + 1;
+                ls = t.finalScore;
+                sideMap.set(t, lr);
+            });
+        };
+        rankWithin(byA);
+        rankWithin(byE);
+        return teams.map(t => {
+            const fb = `${t.name || ''}`;
+            const side = istanbulSideOf(t.ilce, fb);
+            return {
+                ...t,
+                sideRank: sideMap.has(t) ? sideMap.get(t) : null,
+                sideLabel: side === 'anadolu' ? 'Anadolu' : (side === 'avrupa' ? 'Avrupa' : null),
+            };
         });
     };
 
@@ -788,9 +840,25 @@ export default function FinalsPage() {
         return { compAthletes: athSnap.val() || {}, compScores: scoSnap.val() || {} };
     };
 
+    // İstanbul yaka filtresi aktifse, sporcular listesini sadece o yakadakilerle daralt
+    const applyIstanbulSideFilter = (athObj) => {
+        if (!isIstanbulSelected || !istanbulSide) return athObj || {};
+        const out = {};
+        Object.entries(athObj || {}).forEach(([id, ath]) => {
+            if (!ath) return;
+            const fb = `${ath?.okul || ath?.kulup || ''} ${ath?.adres || ''}`;
+            const side = istanbulSideOf(ath?.ilce, fb);
+            if (side === istanbulSide) out[id] = ath;
+        });
+        return out;
+    };
+
+    // Sporcu listesini sıralı sonuç dizisine çevirir (compute-only helper, side filtre uygulanır).
+    // teamSource=true ise yaka filtresi UYGULANMAZ (takım hesabı için tüm sporcuları döndürür).
     const computeCategoryResults = (catId, catData, compAthletes, compScores) => {
         // Aerobik: sanal 'aerobik' aleti kullan
         if (isAerobikDiscipline) {
+            // HAM atlet listesi (takım hesabı için tüm sporcular gerekiyor)
             const catAth = compAthletes[catId] || {};
             const catSco = compScores[catId] || {};
             const sortedC = Object.entries(catAth).map(([id, athlete]) => {
@@ -827,8 +895,16 @@ export default function FinalsPage() {
                 }
                 return { ...res, totalRank: res.totalScore > 0 ? lr : null };
             });
-            const teamResults = computeCatTeamResults(rankedC, ['aerobik'], catId);
-            return { results: rankedC, teamResults, apparatusKeysList: ['aerobik'], catName: catData?.name || catData?.ad || catId };
+            // Takım hesabı tüm sporcularla — ardından yaka rozeti eklenir
+            const teamResults = attachIstanbulSideRanks(computeCatTeamResults(rankedC, ['aerobik'], catId));
+            // Bireysel listesi yaka filtresine göre kısaltılır (ekranla aynı)
+            const sideFilteredResults = (isIstanbulSelected && istanbulSide)
+                ? rankedC.filter(r => {
+                    const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
+                    return istanbulSideOf(r.ilce, fb) === istanbulSide;
+                })
+                : rankedC;
+            return { results: sideFilteredResults, teamResults, apparatusKeysList: ['aerobik'], catName: catData?.name || catData?.ad || catId };
         }
 
         let apparatusKeysList = [];
@@ -842,6 +918,7 @@ export default function FinalsPage() {
         }
         apparatusKeysList = getOlimpikSira(catId, apparatusKeysList);
 
+        // HAM sporcu listesi (takım hesabı için tüm sporcular gerekir)
         let catAth = compAthletes[catId] || {};
         let catSco = compScores[catId] || {};
         let participantIds = Object.keys(catAth);
@@ -942,8 +1019,16 @@ export default function FinalsPage() {
             });
         });
 
-        const results = rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
-        const teamResults = computeCatTeamResults(results, apparatusKeysList, catId);
+        const allRanked = rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
+        // Takım hesabı yaka filtresinden BAĞIMSIZ — tüm sporcular kullanılır
+        const teamResults = attachIstanbulSideRanks(computeCatTeamResults(allRanked, apparatusKeysList, catId));
+        // Bireysel listesi yaka filtresine göre kısaltılır
+        const results = (isIstanbulSelected && istanbulSide)
+            ? allRanked.filter(r => {
+                const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
+                return istanbulSideOf(r.ilce, fb) === istanbulSide;
+            })
+            : allRanked;
         return { results, teamResults, apparatusKeysList, catName: catData.name || catData.ad || catId };
     };
 
@@ -966,10 +1051,11 @@ export default function FinalsPage() {
                 if (!res.okul) return;
                 const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
                 const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-                const teamKey = `${okulKey}|${ilKey}`;
+                const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+                const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
                 if (!clubMembers[teamKey]) {
                     clubMembers[teamKey] = {};
-                    clubMetaC[teamKey] = { name: res.okul, il: res.il || '' };
+                    clubMetaC[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '' };
                 }
                 const total = appKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
                 clubMembers[teamKey][res.id] = {
@@ -979,20 +1065,21 @@ export default function FinalsPage() {
             });
 
             const teamsList = Object.entries(clubMembers)
-                // Min 2 sporcu SKORU girilmiş olmalı
                 .filter(([, members]) => {
                     const scoredCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
                     return scoredCount >= 2;
                 })
                 .map(([teamKey, members]) => {
-                    const meta = clubMetaC[teamKey] || { name: teamKey, il: '' };
+                    const meta = clubMetaC[teamKey] || { name: teamKey, il: '', ilce: '' };
                     const appTotals = calcRitmikTeamApparatusTotals(members, appKeys, maxSize);
                     const total = Object.values(appTotals).reduce((s, v) => s + v, 0);
                     const dTotal = Object.values(teamDeductions || {})
-                        .filter(d => d.teamName === meta.name && (!d.categoryId || d.categoryId === catId))
+                        .filter(d => d.teamName === meta.name
+                            && (!d.ilce || (d.ilce || '').trim().toLocaleUpperCase('tr-TR') === (meta.ilce || '').trim().toLocaleUpperCase('tr-TR'))
+                            && (!d.categoryId || d.categoryId === catId))
                         .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
                     const scoredMemberCount = Object.values(members).filter(m => (m.total || 0) > 0).length;
-                    return { name: meta.name, il: meta.il, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: scoredMemberCount, maxSize };
+                    return { name: meta.name, il: meta.il, ilce: meta.ilce, apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal, memberCount: scoredMemberCount, maxSize };
                 })
                 .sort((a, b) => b.finalScore - a.finalScore);
 
@@ -1004,18 +1091,20 @@ export default function FinalsPage() {
             });
         }
 
-        // Standart hesap (artistik vs.) — okul + il birleşik anahtar
+        // Standart hesap (artistik vs.) — okul + il + ilçe birleşik anahtar
         const clubScores = {};
         filtered.forEach(res => {
             if (!res.okul) return;
             const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
             const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-            const teamKey = `${okulKey}|${ilKey}`;
+            const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+            const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
             if (!clubScores[teamKey]) {
-                clubScores[teamKey] = { name: res.okul, il: res.il || '', scores: {} };
+                clubScores[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '', scores: {} };
                 appKeys.forEach(k => clubScores[teamKey].scores[k] = []);
             }
             if (!clubScores[teamKey].il && res.il) clubScores[teamKey].il = res.il;
+            if (!clubScores[teamKey].ilce && res.ilce) clubScores[teamKey].ilce = res.ilce;
             appKeys.forEach(k => clubScores[teamKey].scores[k].push(res.scores[k]));
         });
 
@@ -1034,9 +1123,11 @@ export default function FinalsPage() {
                     total += t;
                 });
                 const dTotal = Object.values(teamDeductions || {})
-                    .filter(d => d.teamName === team.name && (!d.categoryId || d.categoryId === catId))
+                    .filter(d => d.teamName === team.name
+                        && (!d.ilce || (d.ilce || '').trim().toLocaleUpperCase('tr-TR') === (team.ilce || '').trim().toLocaleUpperCase('tr-TR'))
+                        && (!d.categoryId || d.categoryId === catId))
                     .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-                return { name: team.name, il: team.il || '', apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
+                return { name: team.name, il: team.il || '', ilce: team.ilce || '', apparatusTotals: appTotals, totalScore: total, deduction: dTotal, finalScore: total - dTotal };
             }).sort((a, b) => b.finalScore - a.finalScore);
 
         let ctLastS = -1;
@@ -1356,7 +1447,9 @@ export default function FinalsPage() {
                     ]];
 
                     const teamBody = teamResults.map((t) => {
-                        const teamLabel = t.il ? `${normalizeTR(t.name)} (${normalizeTR(t.il)})` : normalizeTR(t.name);
+                        const loc = [t.ilce, t.il].filter(Boolean).join(' / ');
+                        const sideTag = t.sideRank && t.sideLabel ? ` [${normalizeTR(t.sideLabel)} ${t.sideRank}.]` : '';
+                        const teamLabel = (loc ? `${normalizeTR(t.name)} — ${normalizeTR(loc)}` : normalizeTR(t.name)) + sideTag;
                         const row = [
                             { content: `${t.rank}.`, styles: { fontStyle: 'bold', halign: 'center' } },
                             { content: teamLabel, styles: { fontStyle: 'bold' } }
@@ -1504,7 +1597,10 @@ export default function FinalsPage() {
                         const row = {
                             'S.N.': t.rank,
                             'Takım': t.name,
-                            'İl': t.il || ''
+                            'İlçe': t.ilce || '',
+                            'İl': t.il || '',
+                            'Yaka': t.sideLabel || '',
+                            'Yaka Sırası': t.sideRank || ''
                         };
                         apparatusKeysList.forEach(key => row[`${APPARATUS_INFO[key]?.tr || key} (${APPARATUS_INFO[key]?.en || key})`] = parseFloat(formatScore(t.apparatusTotals[key])));
                         row['Alet Toplamı'] = parseFloat(formatScore(t.totalScore));
@@ -2024,12 +2120,34 @@ export default function FinalsPage() {
                                                     const rank = team.rank;
                                                     return (
                                                         <tr key={`${team.name}|${team.il||''}|${team.ilce||''}`} className={getMedalClass(rank)}>
-                                                            <td className="td-center rank-col"><span className="rank-badge">{rank}</span></td>
+                                                            <td className="td-center rank-col">
+                                                                <span className="rank-badge">{rank}</span>
+                                                                {team.sideRank && team.sideLabel && (
+                                                                    <div style={{
+                                                                        fontSize: 10, fontWeight: 700, marginTop: 2,
+                                                                        color: team.sideLabel === 'Anadolu' ? '#1e3a8a' : '#831843',
+                                                                        background: team.sideLabel === 'Anadolu' ? '#dbeafe' : '#fce7f3',
+                                                                        padding: '1px 6px', borderRadius: 4, display: 'inline-block',
+                                                                    }}>
+                                                                        {team.sideLabel === 'Anadolu' ? 'A' : 'AV'} {team.sideRank}.
+                                                                    </div>
+                                                                )}
+                                                            </td>
                                                             <td className="team-col-bold">
                                                                 {team.name}
                                                                 {(team.ilce || team.il) && (
                                                                     <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.85em', marginLeft: 6 }}>
                                                                         · {[team.ilce, team.il].filter(Boolean).join(' / ')}
+                                                                    </span>
+                                                                )}
+                                                                {team.sideLabel && (
+                                                                    <span style={{
+                                                                        marginLeft: 8, fontSize: 11, fontWeight: 700,
+                                                                        padding: '1px 6px', borderRadius: 4,
+                                                                        background: team.sideLabel === 'Anadolu' ? '#dbeafe' : '#fce7f3',
+                                                                        color: team.sideLabel === 'Anadolu' ? '#1e3a8a' : '#831843',
+                                                                    }}>
+                                                                        ({team.sideLabel} {team.sideRank}.)
                                                                     </span>
                                                                 )}
                                                             </td>
