@@ -513,6 +513,30 @@ export default function FinalsPage() {
         return totals;
     };
 
+    // İlçe ayrımı sadece GERÇEK çakışma varsa uygulanır:
+    // - Aynı okul adı + aynı il'de >1 farklı non-boş ilçe varsa → ilçeli anahtar
+    // - Aksi takdirde okul|il (ilçesi eksik olanlar dahil hepsi tek takım)
+    const buildIlceConflictMap = (resultsArr) => {
+        const variants = new Map(); // "OKUL|IL" → Set<ILCE-UPPER>
+        resultsArr.forEach(res => {
+            if (!res.okul) return;
+            const k = `${res.okul.trim().toLocaleUpperCase('tr-TR')}|${(res.il || '').trim().toLocaleUpperCase('tr-TR')}`;
+            if (!variants.has(k)) variants.set(k, new Set());
+            const ilceUp = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+            if (ilceUp) variants.get(k).add(ilceUp);
+        });
+        const conflict = new Set(); // "OKUL|IL" with >1 distinct non-empty ilce
+        variants.forEach((set, k) => { if (set.size > 1) conflict.add(k); });
+        return conflict;
+    };
+    const teamKeyOf = (res, conflictSet) => {
+        const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
+        const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
+        const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
+        const oi = `${okulKey}|${ilKey}`;
+        return conflictSet.has(oi) ? `${oi}|${ilceKey}` : oi;
+    };
+
     // Teams Processing
     // Takım tablosu yaka filtresinden BAĞIMSIZ — rawFullResults kullanılır.
     // Sonra her takımın yaka-içi sırası ayrıca hesaplanır.
@@ -526,6 +550,7 @@ export default function FinalsPage() {
             return t === 'takim' || t === 'takım';
         });
 
+        const ilceConflict = buildIlceConflictMap(filteredResults);
         const catKey = (selectedCategoryId || '').toLowerCase();
 
         if (isRitmikTeam) {
@@ -537,13 +562,14 @@ export default function FinalsPage() {
 
             filteredResults.forEach(res => {
                 if (!res.okul) return;
-                const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
-                const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-                const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
-                const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
+                const teamKey = teamKeyOf(res, ilceConflict);
                 if (!clubMembers[teamKey]) {
                     clubMembers[teamKey] = {};
                     clubMeta[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '' };
+                } else {
+                    // İlçe bilgisi sonradan gelen athlete'ten alınabilir
+                    if (!clubMeta[teamKey].ilce && res.ilce) clubMeta[teamKey].ilce = res.ilce;
+                    if (!clubMeta[teamKey].il && res.il) clubMeta[teamKey].il = res.il;
                 }
                 const total = apparatusKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
                 clubMembers[teamKey][res.id] = {
@@ -584,14 +610,11 @@ export default function FinalsPage() {
         }
 
         // ── Standart (artistik vs.) takım hesabı ──
-        // GRUPLAMA: okul + il + ilçe (aynı isimli okul farklı il/ilçede ayrı sayılır)
+        // GRUPLAMA: ilçe ayrımı sadece çakışma varsa uygulanır (teamKeyOf)
         const clubScores = {};
         filteredResults.forEach(res => {
             if (!res.okul) return;
-            const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
-            const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-            const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
-            const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
+            const teamKey = teamKeyOf(res, ilceConflict);
             if (!clubScores[teamKey]) {
                 clubScores[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '', scores: {} };
                 apparatusKeys.forEach(key => clubScores[teamKey].scores[key] = []);
@@ -1043,19 +1066,21 @@ export default function FinalsPage() {
             return t === 'takim' || t === 'takım';
         });
 
+        const ilceConflictC = buildIlceConflictMap(filtered);
+
         if (isRitmikC) {
             const maxSize = getRitmikMaxTeamSize(catKeyC);
             const clubMembers = {};
             const clubMetaC = {};
             filtered.forEach(res => {
                 if (!res.okul) return;
-                const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
-                const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-                const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
-                const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
+                const teamKey = teamKeyOf(res, ilceConflictC);
                 if (!clubMembers[teamKey]) {
                     clubMembers[teamKey] = {};
                     clubMetaC[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '' };
+                } else {
+                    if (!clubMetaC[teamKey].ilce && res.ilce) clubMetaC[teamKey].ilce = res.ilce;
+                    if (!clubMetaC[teamKey].il && res.il) clubMetaC[teamKey].il = res.il;
                 }
                 const total = appKeys.reduce((s, k) => s + (res.scores[k] || 0), 0);
                 clubMembers[teamKey][res.id] = {
@@ -1091,14 +1116,11 @@ export default function FinalsPage() {
             });
         }
 
-        // Standart hesap (artistik vs.) — okul + il + ilçe birleşik anahtar
+        // Standart hesap (artistik vs.) — ilçe ayrımı sadece çakışma varsa
         const clubScores = {};
         filtered.forEach(res => {
             if (!res.okul) return;
-            const okulKey = res.okul.trim().toLocaleUpperCase('tr-TR');
-            const ilKey = (res.il || '').trim().toLocaleUpperCase('tr-TR');
-            const ilceKey = (res.ilce || '').trim().toLocaleUpperCase('tr-TR');
-            const teamKey = `${okulKey}|${ilKey}|${ilceKey}`;
+            const teamKey = teamKeyOf(res, ilceConflictC);
             if (!clubScores[teamKey]) {
                 clubScores[teamKey] = { name: res.okul, il: res.il || '', ilce: res.ilce || '', scores: {} };
                 appKeys.forEach(k => clubScores[teamKey].scores[k] = []);
