@@ -2011,21 +2011,23 @@ export default function FinalsPage() {
                                 <div className="team-exclusion-bar no-print">
                                     <span className="exclusion-label">Sıralamaya Dahil Takımlar:</span>
                                     <div className="exclusion-chips">
-                                        {uniqueTeams.map(team => {
-                                            const isExcluded = excludedTeams.has(team);
+                                        {uniqueTeams.map((team, idx) => {
+                                            // uniqueTeams: { name, il, ilce } nesneleri — chip ad bazlı (aynı isim varsa tek chip)
+                                            const teamName = typeof team === 'string' ? team : team.name;
+                                            const isExcluded = excludedTeams.has(teamName);
                                             return (
                                                 <button
-                                                    key={team}
+                                                    key={`${teamName}|${idx}`}
                                                     className={`exclusion-chip ${isExcluded ? 'excluded' : 'included'}`}
                                                     onClick={() => {
                                                         const newSet = new Set(excludedTeams);
-                                                        if (isExcluded) newSet.delete(team);
-                                                        else newSet.add(team);
+                                                        if (isExcluded) newSet.delete(teamName);
+                                                        else newSet.add(teamName);
                                                         setExcludedTeams(newSet);
                                                     }}
                                                 >
                                                     <i className="material-icons-round">{isExcluded ? "visibility_off" : "check_circle"}</i>
-                                                    {team}
+                                                    {teamName}
                                                 </button>
                                             )
                                         })}
