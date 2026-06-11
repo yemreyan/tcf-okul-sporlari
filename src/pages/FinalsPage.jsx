@@ -876,6 +876,40 @@ export default function FinalsPage() {
         return out;
     };
 
+    // Filtrelenmiş sporcu listesi içinde sıraları YENİDEN hesaplar:
+    // 1) totalScore'a göre azalan sırala
+    // 2) totalRank'i yeniden ata (eşitlikte aynı sırayı paylaş)
+    // 3) Her alet için apparatusRanks'i de filtreli liste içinde 1'den başlat
+    // Kullanım: Anadolu/Avrupa filtresi sonrası export ve raporlarda sporcu
+    //   sıralaması overall yerine yaka-içi olarak görünsün.
+    const recomputeRanksWithin = (filteredList, appKeys) => {
+        const sorted = [...filteredList].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+        let lS = -1, lR = 0;
+        const ranked = sorted.map((res, idx) => {
+            if ((res.totalScore || 0) > 0) {
+                const rd = Math.round((res.totalScore || 0) * 1000) / 1000;
+                if (rd !== lS) lR = idx + 1;
+                lS = rd;
+            }
+            return { ...res, totalRank: (res.totalScore || 0) > 0 ? lR : null };
+        });
+        const newApparatusRanks = {};
+        (appKeys || []).forEach(key => {
+            const scored = [...ranked]
+                .filter(r => (r.scores?.[key] || 0) > 0)
+                .sort((a, b) => (b.scores[key] || 0) - (a.scores[key] || 0));
+            let lsV = -Infinity, lrV = 0;
+            scored.forEach((r, i) => {
+                const sv = r.scores[key];
+                if (sv !== lsV) lrV = i + 1;
+                if (!newApparatusRanks[r.id]) newApparatusRanks[r.id] = {};
+                newApparatusRanks[r.id][key] = lrV;
+                lsV = sv;
+            });
+        });
+        return ranked.map(r => ({ ...r, apparatusRanks: newApparatusRanks[r.id] || {} }));
+    };
+
     // Sporcu listesini sıralı sonuç dizisine çevirir (compute-only helper, side filtre uygulanır).
     // teamSource=true ise yaka filtresi UYGULANMAZ (takım hesabı için tüm sporcuları döndürür).
     const computeCategoryResults = (catId, catData, compAthletes, compScores) => {
@@ -920,12 +954,15 @@ export default function FinalsPage() {
             });
             // Takım hesabı tüm sporcularla — ardından yaka rozeti eklenir
             const teamResults = attachIstanbulSideRanks(computeCatTeamResults(rankedC, ['aerobik'], catId));
-            // Bireysel listesi yaka filtresine göre kısaltılır (ekranla aynı)
+            // Bireysel listesi yaka filtresine göre kısaltılır + sıralar YENİDEN hesaplanır
             const sideFilteredResults = (isIstanbulSelected && istanbulSide)
-                ? rankedC.filter(r => {
-                    const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
-                    return istanbulSideOf(r.ilce, fb) === istanbulSide;
-                })
+                ? recomputeRanksWithin(
+                    rankedC.filter(r => {
+                        const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
+                        return istanbulSideOf(r.ilce, fb) === istanbulSide;
+                    }),
+                    ['aerobik']
+                )
                 : rankedC;
             return { results: sideFilteredResults, teamResults, apparatusKeysList: ['aerobik'], catName: catData?.name || catData?.ad || catId };
         }
@@ -1045,12 +1082,15 @@ export default function FinalsPage() {
         const allRanked = rankedResults.map(r => ({ ...r, apparatusRanks: apparatusRanks[r.id] || {} }));
         // Takım hesabı yaka filtresinden BAĞIMSIZ — tüm sporcular kullanılır
         const teamResults = attachIstanbulSideRanks(computeCatTeamResults(allRanked, apparatusKeysList, catId));
-        // Bireysel listesi yaka filtresine göre kısaltılır
+        // Bireysel listesi yaka filtresine göre kısaltılır + sıralar YENİDEN hesaplanır
         const results = (isIstanbulSelected && istanbulSide)
-            ? allRanked.filter(r => {
-                const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
-                return istanbulSideOf(r.ilce, fb) === istanbulSide;
-            })
+            ? recomputeRanksWithin(
+                allRanked.filter(r => {
+                    const fb = `${r.okul || r.kulup || ''} ${r.adres || ''}`;
+                    return istanbulSideOf(r.ilce, fb) === istanbulSide;
+                }),
+                apparatusKeysList
+            )
             : allRanked;
         return { results, teamResults, apparatusKeysList, catName: catData.name || catData.ad || catId };
     };
