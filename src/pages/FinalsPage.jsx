@@ -109,7 +109,7 @@ export default function FinalsPage() {
     const [aerobikGroupData, setAerobikGroupData] = useState({});
 
     const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
-    const [deductionForm, setDeductionForm] = useState({ team: "", amount: "", reason: "" });
+    const [deductionForm, setDeductionForm] = useState({ team: "", teamKey: "", il: "", ilce: "", amount: "", reason: "" });
 
     // 1. Fetch Competitions List
     useEffect(() => {
@@ -835,7 +835,7 @@ export default function FinalsPage() {
                 reason: deductionForm.reason,
                 timestamp: new Date().toISOString()
             });
-            setDeductionForm({ team: "", il: "", ilce: "", amount: "", reason: "" });
+            setDeductionForm({ team: "", teamKey: "", il: "", ilce: "", amount: "", reason: "" });
             setIsDeductionModalOpen(false);
         } catch (err) {
             if (import.meta.env.DEV) console.error("Ceza eklenirken hata oluştu:", err);
@@ -2256,19 +2256,30 @@ export default function FinalsPage() {
                                 <div className="form-group">
                                     <label>Takım Seçin</label>
                                     <select
-                                        value={deductionForm.team}
+                                        value={deductionForm.teamKey || ''}
                                         onChange={e => {
                                             const val = e.target.value;
-                                            // "OKUL|IL|ILCE" formatından parse et
-                                            const [name, il, ilce] = val.split('|');
-                                            setDeductionForm({ ...deductionForm, team: name || '', il: il || '', ilce: ilce || '' });
+                                            // "OKUL|IL|ILCE" birleşik anahtardan parça parça parse et
+                                            const parts = val.split('|');
+                                            const name = parts[0] || '';
+                                            const il = parts[1] || '';
+                                            const ilce = parts[2] || '';
+                                            setDeductionForm({
+                                                ...deductionForm,
+                                                team: name,
+                                                teamKey: val,
+                                                il,
+                                                ilce,
+                                            });
                                         }}
                                         required
                                     >
                                         <option value="">-- Takım Seçiniz --</option>
                                         {uniqueTeams.map(t => {
-                                            const val = `${t.name}|${t.il}|${t.ilce}`;
-                                            const label = t.ilce ? `${t.name} — ${t.ilce}${t.il ? ' / ' + t.il : ''}` : t.name;
+                                            const val = `${t.name}|${t.il || ''}|${t.ilce || ''}`;
+                                            const label = t.ilce
+                                                ? `${t.name} — ${t.ilce}${t.il ? ' / ' + t.il : ''}`
+                                                : (t.il ? `${t.name} (${t.il})` : t.name);
                                             return <option key={val} value={val}>{label}</option>;
                                         })}
                                     </select>
